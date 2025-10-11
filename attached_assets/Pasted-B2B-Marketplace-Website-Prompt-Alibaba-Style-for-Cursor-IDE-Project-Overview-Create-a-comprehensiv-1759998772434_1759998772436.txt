@@ -1,0 +1,1000 @@
+B2B Marketplace Website Prompt (Alibaba-Style) for Cursor IDE
+Project Overview
+Create a comprehensive B2B (Business-to-Business) marketplace platform similar to Alibaba.com. This platform connects suppliers/manufacturers with business buyers for bulk wholesale orders. The focus is on trade, wholesale pricing, MOQ (Minimum Order Quantity), and RFQ (Request for Quotation) features.
+IMPORTANT: Reference Existing Template
+I have an existing ecommerce website template. Please analyze the main pages, components, and structure from my template and use them as the foundation. Adapt and enhance these existing pages to fit the B2B marketplace model described below.
+Instructions for using my template:
+
+Scan through all pages in my existing template
+Identify reusable components (headers, footers, cards, forms)
+Maintain the existing design language and styling approach
+Adapt the template's pages to B2B functionality
+Keep the same folder structure where possible
+Preserve any custom utilities or helper functions
+
+
+Tech Stack Requirements
+
+Frontend Framework: Next.js 14+ (App Router) with TypeScript
+Styling: Tailwind CSS (match existing template's approach)
+UI Components: Use template's existing components + shadcn/ui where needed
+State Management: Zustand or React Context
+Database: PostgreSQL with Prisma ORM
+Authentication: NextAuth.js (dual role: Buyer & Supplier)
+File Upload: Uploadthing or Cloudinary
+Real-time Chat: Socket.io or Pusher
+Email: Resend or SendGrid
+Forms: React Hook Form + Zod
+Icons: Lucide React
+
+
+Key B2B Differences from B2C
+B2B Features to Implement:
+
+MOQ (Minimum Order Quantity) instead of single item purchase
+Tiered Pricing (different prices for different quantities)
+RFQ System (Request for Quotation)
+Supplier Profiles with verification badges
+Bulk Inquiry Forms
+Trade Assurance
+Sample Orders
+Negotiation System
+Business Verification
+Multiple Contact Persons
+Company Profiles
+
+
+CORE PAGES & FEATURES
+1. HOME PAGE (Adapt from template's home page)
+Hero Section:
+
+Large search bar with three fields:
+
+"What are you looking for?" (product search)
+"Categories" dropdown
+"Search" button
+
+
+Background: Professional B2B imagery
+Text: "Leading B2B Marketplace for Global Trade"
+CTA: "Start Sourcing" and "Become a Supplier"
+
+Components Needed:
+
+Featured categories grid (8-12 categories with icons)
+Trending products by industry
+Top-ranked suppliers showcase
+Request for Quotation (RFQ) section prominently
+Recent RFQs ticker/carousel
+"Ready to Ship" products section
+Trade shows and events banner
+Buyer protection/Trade assurance badges
+Stats counter (suppliers, products, countries, buyers)
+Industry news/blog section
+Testimonials from real businesses
+Newsletter for B2B updates
+
+B2B Specific Elements:
+
+"Get Quotations Now" CTA button
+"Join Free" for suppliers
+Industry vertical shortcuts (Electronics, Fashion, Machinery, etc.)
+Regional supplier spotlights
+
+
+2. PRODUCT LISTING/SEARCH PAGE (Adapt from template's shop page)
+Layout:
+
+Left sidebar filters (collapsible on mobile)
+Main content area with product grid
+Top bar with sorting and view options
+
+Product Card Design (B2B focused):
+
+Product image with "Verified Supplier" badge
+Product name
+Price range: $5.00-$8.00 /piece
+MOQ: 100 pieces minimum
+Supplier name with country flag
+Response rate & time
+"Contact Supplier" button
+"Request Quote" button
+Trade assurance badge
+Quick view option
+
+Filters (B2B Specific):
+
+Categories & subcategories
+Supplier type (Manufacturer, Trading Company, Wholesaler)
+Supplier location (country/region)
+Price range
+MOQ range
+Verified suppliers only
+Trade assurance
+Ready to ship
+Sample available
+Customization available
+Min order value
+Production capacity
+Certifications (ISO, CE, FDA, etc.)
+
+Sorting Options:
+
+Best match
+Price: Low to High
+Price: High to Low
+Minimum Order
+Supplier rating
+Transaction level
+
+
+3. PRODUCT DETAIL PAGE (Enhance template's product page)
+Top Section:
+
+Image gallery (multiple product images, zoom, 360° view if available)
+Video showcase
+Product title
+Price range with quantity breaks:
+
+  100-499 pieces: $5.00/piece
+  500-999 pieces: $4.50/piece
+  1000+ pieces: $4.00/piece
+
+MOQ: 100 pieces
+Sample available: Yes ($15.00 + shipping)
+Lead time: 15-30 days
+Customization: Available
+Port: Shanghai/Ningbo
+Payment terms: T/T, L/C, Western Union
+
+Action Buttons:
+
+"Contact Supplier" (opens chat/message)
+"Start Order" (bulk order form)
+"Request Quotation"
+"Request Sample"
+Add to favorites
+
+Product Details Tabs:
+
+Specifications Table:
+
+Material, Size, Color, Weight, Packaging
+Customization options
+Technical specifications
+
+
+Product Description:
+
+Detailed product information
+Features and benefits
+Applications and use cases
+Rich text with images
+
+
+Company Profile:
+
+Supplier name and verification status
+Business type
+Location with map
+Years in business
+Main products
+Total employees
+Factory size
+Certifications
+"Visit supplier's store" link
+
+
+Trade Capacity:
+
+Export percentage
+Main markets
+Annual revenue
+Production capacity
+OEM/ODM services
+
+
+Quality Control:
+
+Quality control process
+Factory inspection reports
+Certifications (uploadable PDFs)
+
+
+Shipping & Payment:
+
+Delivery time
+Shipping methods
+Payment terms
+Port of loading
+Packaging details
+
+
+FAQ:
+
+Common questions with answers
+Can contact for more info
+
+
+
+Related Products:
+
+"You may also like" section
+"Frequently bought together"
+"Other products from this supplier"
+
+Inquiry Form (Sticky Sidebar):
+
+Quantity input
+Target price
+Customization requirements
+Expected delivery date
+Message to supplier
+Contact details
+"Send Inquiry" button
+
+
+4. RFQ (REQUEST FOR QUOTATION) PAGES
+Create RFQ Page:
+Form with following fields:
+
+RFQ title
+Product category
+Detailed requirements (rich text editor)
+Quantity needed
+Target price (optional)
+Upload images/documents
+Delivery location
+Expected delivery date
+Additional requirements
+Buyer information (auto-filled if logged in)
+"Post RFQ" button
+
+Browse RFQs Page (For Suppliers):
+
+List of active RFQs
+Filter by:
+
+Category
+Location
+Quantity range
+Date posted
+
+
+Each RFQ card shows:
+
+RFQ title
+Quantity
+Budget range
+Location
+Time remaining
+Number of quotations
+"Send Quotation" button
+
+
+
+My RFQs (Buyer Dashboard):
+
+Active RFQs
+Received quotations count
+Status (Open, In Progress, Closed)
+View and compare quotations
+Message suppliers
+Accept quotation
+
+RFQ Detail Page:
+
+Full RFQ details
+Attached images/documents
+Received quotations list
+Compare quotations side-by-side
+Contact suppliers
+Mark as closed
+
+
+5. SUPPLIER/COMPANY PROFILE PAGE
+Company Header:
+
+Cover banner image
+Company logo
+Company name
+Verification badges (Gold supplier, Verified, Trade assurance)
+Business type
+Location with flag
+Years in business
+"Contact Supplier" button
+"Add to Favorites" button
+
+Company Stats Bar:
+
+Total products
+Total transactions
+Response rate
+Response time
+Positive feedback %
+
+Navigation Tabs:
+1. Products Tab:
+
+All products from this supplier
+Category filters
+Search within supplier
+
+2. About Company:
+
+Business overview
+Main products
+Company introduction
+Year established
+Legal representative
+Registered capital
+Business scope
+
+3. Capabilities:
+
+Production capacity
+OEM/ODM services
+R&D capabilities
+Quality control
+Delivery capabilities
+
+4. Certifications:
+
+Display all certificates
+Clickable to view full size
+Download option
+
+5. Factory Tour:
+
+Image gallery of factory
+Video tours
+Production line photos
+
+6. Trade Data:
+
+Export markets
+Export percentage
+Main customers (anonymized)
+Annual sales volume
+
+7. Contact Information:
+
+Contact person name and title
+Department
+Phone number
+Email
+WhatsApp
+Wechat
+Address
+Website
+
+8. Reviews & Ratings:
+
+Overall rating (5 stars)
+Recent reviews from buyers
+Filter by star rating
+Response from supplier
+
+
+6. SHOPPING CART / INQUIRY CART
+Different from B2C:
+Instead of immediate purchase, the cart is an "Inquiry Cart"
+Features:
+
+List of products interested in
+Each item shows:
+
+Product image
+Name
+Desired quantity
+Target price
+Supplier name
+Remove option
+
+
+"Send Inquiry to All Suppliers" button
+"Send Individual Inquiries" option
+Bulk inquiry form
+Save cart for later
+
+Inquiry Form Fields:
+
+Quantity for each product
+Target price
+Customization needs
+Expected delivery time
+Payment terms preference
+Additional requirements
+Contact information
+
+
+7. MESSAGING SYSTEM
+Chat Interface (Real-time):
+
+List of conversations (left sidebar)
+Active chat window (right side)
+Search conversations
+Filter by unread/archived
+
+Conversation List Item:
+
+Supplier/Buyer avatar
+Company name
+Last message preview
+Unread badge
+Timestamp
+
+Chat Window:
+
+Message history
+Product/RFQ context at top
+Send text messages
+File attachments
+Image uploads
+Quick replies templates
+Online/offline status
+"Send Inquiry Form" shortcut
+"View Products" link
+Block/report user
+
+Notifications:
+
+New message alerts
+Email notifications
+Push notifications
+
+
+8. BUYER DASHBOARD
+Main Dashboard:
+
+Welcome message
+Quick stats cards:
+
+Active RFQs
+Pending inquiries
+Unread messages
+Favorite suppliers
+
+
+Recent activity feed
+Recommended products
+Recommended suppliers
+
+My RFQs:
+
+All RFQs created
+Status tracking
+Quotations received
+Compare quotations
+
+My Inquiries:
+
+All product inquiries sent
+Status (Sent, Replied, Negotiating, Closed)
+Supplier responses
+Follow-up actions
+
+Messages:
+
+Inbox with all conversations
+Quick access to chat
+
+Favorites:
+
+Saved products
+Saved suppliers
+Organize by folders
+
+Purchase Orders (if implemented):
+
+Order history
+Order tracking
+Invoices
+Payments
+
+My Profile:
+
+Company information
+Business verification
+Contact persons
+Buying preferences
+Industry interests
+
+
+9. SUPPLIER DASHBOARD
+Main Dashboard:
+
+Welcome message
+Quick stats:
+
+Product views
+Inquiries received
+Response rate
+Store visits
+
+
+Performance metrics graph
+Recent inquiries
+Low stock alerts
+
+Product Management:
+
+Add new product
+Product list (table view)
+Edit/delete products
+Bulk upload (CSV)
+Inventory management
+Product analytics
+
+Inquiries & RFQs:
+
+Received inquiries
+RFQs matching my products
+Send quotations
+Inquiry status tracking
+Response templates
+
+Quotations:
+
+Sent quotations
+Quotation templates
+Track quotation status
+Convert to order
+
+Messages:
+
+Inbox for buyer communications
+Quick reply templates
+Auto-responses
+
+Orders (if implemented):
+
+Order management
+Update order status
+Upload shipping info
+Invoice generation
+
+Company Profile:
+
+Edit company information
+Upload certifications
+Manage product showcase
+Update capabilities
+Factory photos/videos
+
+Analytics:
+
+Product view statistics
+Inquiry conversion rate
+Top performing products
+Buyer demographics
+Search keywords
+
+
+10. CATEGORY PAGES
+Layout:
+
+Category banner
+Breadcrumb navigation
+Subcategories showcase
+Featured suppliers in this category
+Product listing (filtered by category)
+Category description (SEO content)
+Related categories
+Trade shows/events in this category
+
+Industry-specific Categories:
+
+Electronics & Electrical
+Machinery & Industrial Parts
+Apparel & Accessories
+Home & Garden
+Packaging & Printing
+Chemicals & Materials
+Food & Beverage
+Health & Beauty
+Toys & Gifts
+And more...
+
+
+11. SEARCH RESULTS PAGE
+Advanced Search Options:
+
+Product search
+Supplier search
+RFQ search
+Switch between tabs
+
+Search Suggestions:
+
+Popular searches
+Search history
+Auto-complete
+
+Results Display:
+
+Total results count
+"Did you mean...?" for typos
+Filters sidebar
+Sort options
+Results grid
+Pagination
+
+
+12. AUTHENTICATION PAGES
+Register Page:
+Two options:
+
+Register as Buyer:
+
+Company name
+Full name
+Email
+Phone
+Country
+Industry
+Password
+Terms acceptance
+
+
+Register as Supplier:
+
+Company name
+Business type (Manufacturer/Trading/Wholesaler)
+Full name
+Position
+Email
+Phone
+Country
+Main products
+Password
+Terms acceptance
+
+
+
+Login Page:
+
+Email/phone
+Password
+Remember me
+Forgot password
+Social login (Google, LinkedIn)
+Role selection (Buyer/Supplier)
+
+Forgot Password:
+
+Email input
+Send reset link
+Reset password form
+
+Email Verification:
+
+Verify email after registration
+Resend verification link
+
+
+13. BUSINESS VERIFICATION
+Verification Process Page:
+For suppliers to get verified badge
+Required Documents:
+
+Business license
+Tax registration
+Identity verification
+Bank account info
+Factory photos (optional)
+Certifications (optional)
+
+Upload Forms:
+
+File upload for each document
+Instructions for each
+Review process info
+Status tracking
+
+Verification Levels:
+
+Basic Verified (email + phone)
+Business Verified (documents)
+Premium Verified (inspection)
+Trade Assurance
+
+
+14. TRADE ASSURANCE PAGE
+Informational Page:
+
+What is Trade Assurance?
+How it works (step-by-step)
+Benefits for buyers
+Benefits for suppliers
+Coverage details
+FAQs
+"Get Started" CTA
+
+For Buyers:
+
+Browse trade assurance suppliers
+Place protected orders
+Track order protection
+File disputes if needed
+
+For Suppliers:
+
+Apply for trade assurance
+Requirements and fees
+Manage protected orders
+
+
+15. STATIC/INFORMATION PAGES
+About Us:
+
+Company story
+Mission and vision
+How our marketplace works
+Team (optional)
+Global reach map
+Success stories
+Press/media section
+
+How It Works:
+For Buyers:
+
+Search products or post RFQ
+Contact suppliers
+Get quotations
+Compare and negotiate
+Place order
+Receive goods
+
+For Suppliers:
+
+Register and verify
+List products
+Respond to inquiries
+Send quotations
+Manage orders
+Build reputation
+
+Buyer Protection:
+
+Policies and guarantees
+How to stay safe
+Red flags to watch
+Dispute resolution
+Payment protection
+
+Seller Guide:
+
+How to sell effectively
+Product listing tips
+Pricing strategies
+Responding to inquiries
+Building trust
+
+Help Center/FAQ:
+
+Categorized questions
+Search functionality
+For buyers section
+For suppliers section
+Account management
+Payment and shipping
+Policies
+
+Contact Us:
+
+Contact form
+Email addresses (sales, support)
+Phone numbers
+Regional offices
+Live chat option
+Business hours
+
+Terms of Service:
+
+User agreement
+Supplier agreement
+Buyer agreement
+
+Privacy Policy:
+
+Data collection
+Data usage
+Cookie policy
+
+Shipping Guide:
+
+International shipping info
+Incoterms explanation
+Customs and duties
+Shipping methods
+
+Payment Methods:
+
+Accepted payment methods
+Payment terms explained (T/T, L/C, etc.)
+Currency options
+Payment security
+
+
+HEADER DESIGN (Adapt from template)
+Top Bar:
+
+Language selector
+Currency selector
+"Sell on [Platform]" link
+"Help" link
+"Sign In" / "Join Free"
+
+Main Header:
+
+Logo (left)
+Search bar (center - prominent, 3 fields)
+Icons (right):
+
+Messages (with badge)
+Favorites/Wishlist
+User account dropdown
+
+
+
+Navigation Menu:
+
+Categories (mega menu)
+RFQ Marketplace
+Suppliers
+Trade Assurance
+Buyer Protection
+Help Center
+
+Mega Menu Structure:
+Example for Electronics:
+
+Consumer Electronics
+
+Mobile Phones
+Laptops
+Cameras
+
+
+Electronic Components
+
+Integrated Circuits
+Capacitors
+Resistors
+
+
+Featured Suppliers
+Top Products
+
+
+FOOTER DESIGN (Adapt from template)
+Multi-column Layout:
+Column 1 - Buy:
+
+Post RFQ
+Product Directory
+Find Suppliers
+Trade Assurance
+
+Column 2 - Sell:
+
+Sell on Platform
+Supplier Membership
+Learning Center
+Supplier Guide
+
+Column 3 - Help:
+
+Help Center
+Contact Us
+Report Abuse
+Policies
+
+Column 4 - About:
+
+About Us
+Careers
+Press
+Blog
+
+Column 5 - Connect:
+
+Social media links
+Mobile app download
+
+Bottom Bar:
+
+Payment method icons
+Shipping partner logos
+Copyright notice
+Terms & Privacy links
+Language/Region selector
+
+
+ADDITIONAL B2B FEATURES
+1. Live Chat Support
+
+For customer service
+For technical support
+Bot for FAQs
+Escalate to human agent
+
+2. Supplier Membership Tiers
+
+Free Basic
+Gold Supplier (paid)
+Premium Supplier (paid)
+Benefits include:
+Better search ranking
+More product listings
+Analytics access
+Priority support
+Badge display
+
+3. Trust & Safety
+
+Verified supplier badges
+Buyer reviews and ratings
+Transaction history visibility
+Dispute resolution system
+Fraud prevention
+Secure payment options
+
+4. Multi-language Support
+
+Language switcher
+Automatic translation of listings
+Regional content
+
+5. Multi-currency Support
+
+Currency converter
+Display prices in buyer's currency
+Payment in multiple currencies
+
+6. Export Tools for Suppliers
+
+Export inquiry data
+Download quotation templates
+Product catalog download
+Invoice generation
+
+7. Recommendation Engine
+
+Recommended products for buyers
+Recommended suppliers
+"Others also viewed"
+"Trending in your industry"
+
+8. Mobile Responsiveness
+
+All pages must be fully responsive
+Mobile-first design approach
+Touch-friendly interfaces
+Mobile app (future consideration)
+
+9. Email Notifications
+
+New inquiry received
+RFQ matches your products
+Message received
+Quotation received
+Order updates
+Weekly digest
+
+10. Analytics Dashboard
+For Suppliers:
+
+Page views
+Product views
+Inquiry conversion rate
+Response time stats
+Top performing products
+
+For Buyers:
+
+Search history
+Inquiry status
+Spending analysis
+Favorite suppliers activity

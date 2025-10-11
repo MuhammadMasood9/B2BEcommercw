@@ -18,12 +18,14 @@ import {
   type Supplier, type InsertSupplier, suppliers,
   type Order, type InsertOrder, orders
 } from "@shared/schema";
+import bcrypt from "bcryptjs";
 
 export interface IStorage {
   // User operations
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  verifyPassword(email: string, password: string): Promise<User | null>;
   
   // Buyer Profile operations
   getBuyerProfile(userId: string): Promise<BuyerProfile | undefined>;
@@ -171,8 +173,21 @@ export class PostgresStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
+    // Hash password before storing
+    const hashedPassword = await bcrypt.hash(insertUser.password, 10);
+    const [user] = await db.insert(users).values({
+      ...insertUser,
+      password: hashedPassword
+    }).returning();
     return user;
+  }
+
+  async verifyPassword(email: string, password: string): Promise<User | null> {
+    const user = await this.getUserByEmail(email);
+    if (!user) return null;
+    
+    const isValid = await bcrypt.compare(password, user.password);
+    return isValid ? user : null;
   }
 
   // Buyer Profile operations

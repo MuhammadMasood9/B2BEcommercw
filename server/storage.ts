@@ -649,16 +649,15 @@ export class PostgresStorage implements IStorage {
 
   // Favorite operations
   async getFavorites(userId: string, itemType?: 'product' | 'supplier'): Promise<Favorite[]> {
-    let query = db.select().from(favorites).where(eq(favorites.userId, userId));
+    const conditions = [eq(favorites.userId, userId)];
     
     if (itemType) {
-      query = query.where(and(
-        eq(favorites.userId, userId),
-        eq(favorites.itemType, itemType)
-      )) as any;
+      conditions.push(eq(favorites.itemType, itemType));
     }
     
-    return await query.orderBy(desc(favorites.createdAt));
+    return await db.select().from(favorites)
+      .where(and(...conditions))
+      .orderBy(desc(favorites.createdAt));
   }
 
   async getFavorite(userId: string, itemId: string): Promise<Favorite | undefined> {

@@ -1,0 +1,2196 @@
+# B2B Marketplace Website Prompt (Alibaba-Style) for Cursor IDE
+
+## Project Overview
+Create a comprehensive B2B (Business-to-Business) marketplace platform similar to Alibaba.com. This platform connects suppliers/manufacturers with business buyers for bulk wholesale orders. The focus is on trade, wholesale pricing, MOQ (Minimum Order Quantity), and RFQ (Request for Quotation) features.
+
+## IMPORTANT: Reference Existing Template
+I have an existing ecommerce website template. Please analyze the main pages, components, and structure from my template and use them as the foundation. Adapt and enhance these existing pages to fit the B2B marketplace model described below.
+
+**Instructions for using my template:**
+1. Scan through all pages in my existing template
+2. Identify reusable components (headers, footers, cards, forms)
+3. Maintain the existing design language and styling approach
+4. Adapt the template's pages to B2B functionality
+5. Keep the same folder structure where possible
+6. Preserve any custom utilities or helper functions
+
+---
+
+## Tech Stack Requirements
+- **Frontend Framework**: Next.js 14+ (App Router) with TypeScript
+- **Styling**: Tailwind CSS (match existing template's approach)
+- **UI Components**: Use template's existing components + shadcn/ui where needed
+- **State Management**: Zustand or React Context
+- **Database**: PostgreSQL with Prisma ORM
+- **Authentication**: NextAuth.js (dual role: Buyer & Supplier)
+- **File Upload**: Uploadthing or Cloudinary
+- **Real-time Chat**: Socket.io or Pusher
+- **Email**: Resend or SendGrid
+- **Forms**: React Hook Form + Zod
+- **Icons**: Lucide React
+
+---
+
+## Key B2B Differences from B2C
+
+### B2B Features to Implement:
+- **MOQ (Minimum Order Quantity)** instead of single item purchase
+- **Tiered Pricing** (different prices for different quantities)
+- **RFQ System** (Request for Quotation)
+- **Supplier Profiles** with verification badges
+- **Bulk Inquiry Forms**
+- **Trade Assurance**
+- **Sample Orders**
+- **Negotiation System**
+- **Business Verification**
+- **Multiple Contact Persons**
+- **Company Profiles**
+
+---
+
+## CORE PAGES & FEATURES
+
+### 1. HOME PAGE (Adapt from template's home page)
+
+**Hero Section:**
+- Large search bar with three fields:
+  - "What are you looking for?" (product search)
+  - "Categories" dropdown
+  - "Search" button
+- Background: Professional B2B imagery
+- Text: "Leading B2B Marketplace for Global Trade"
+- CTA: "Start Sourcing" and "Become a Supplier"
+
+**Components Needed:**
+- Featured categories grid (8-12 categories with icons)
+- Trending products by industry
+- Top-ranked suppliers showcase
+- Request for Quotation (RFQ) section prominently
+- Recent RFQs ticker/carousel
+- "Ready to Ship" products section
+- Trade shows and events banner
+- Buyer protection/Trade assurance badges
+- Stats counter (suppliers, products, countries, buyers)
+- Industry news/blog section
+- Testimonials from real businesses
+- Newsletter for B2B updates
+
+**B2B Specific Elements:**
+- "Get Quotations Now" CTA button
+- "Join Free" for suppliers
+- Industry vertical shortcuts (Electronics, Fashion, Machinery, etc.)
+- Regional supplier spotlights
+
+---
+
+### 2. PRODUCT LISTING/SEARCH PAGE (Adapt from template's shop page)
+
+**Layout:**
+- Left sidebar filters (collapsible on mobile)
+- Main content area with product grid
+- Top bar with sorting and view options
+
+**Product Card Design (B2B focused):**
+- Product image with "Verified Supplier" badge
+- Product name
+- **Price range**: $5.00-$8.00 /piece
+- **MOQ**: 100 pieces minimum
+- Supplier name with country flag
+- Response rate & time
+- "Contact Supplier" button
+- "Request Quote" button
+- Trade assurance badge
+- Quick view option
+
+**Filters (B2B Specific):**
+- Categories & subcategories
+- Supplier type (Manufacturer, Trading Company, Wholesaler)
+- Supplier location (country/region)
+- Price range
+- MOQ range
+- Verified suppliers only
+- Trade assurance
+- Ready to ship
+- Sample available
+- Customization available
+- Min order value
+- Production capacity
+- Certifications (ISO, CE, FDA, etc.)
+
+**Sorting Options:**
+- Best match
+- Price: Low to High
+- Price: High to Low
+- Minimum Order
+- Supplier rating
+- Transaction level
+
+---
+
+### 3. PRODUCT DETAIL PAGE (Enhance template's product page)
+
+**Top Section:**
+- Image gallery (multiple product images, zoom, 360° view if available)
+- Video showcase
+- Product title
+- Price range with quantity breaks:
+  ```
+  100-499 pieces: $5.00/piece
+  500-999 pieces: $4.50/piece
+  1000+ pieces: $4.00/piece
+  ```
+- MOQ: 100 pieces
+- Sample available: Yes ($15.00 + shipping)
+- Lead time: 15-30 days
+- Customization: Available
+- Port: Shanghai/Ningbo
+- Payment terms: T/T, L/C, Western Union
+
+**Action Buttons:**
+- **"Contact Supplier"** (opens chat/message)
+- **"Start Order"** (bulk order form)
+- **"Request Quotation"**
+- **"Request Sample"**
+- Add to favorites
+
+**Product Details Tabs:**
+1. **Specifications Table:**
+   - Material, Size, Color, Weight, Packaging
+   - Customization options
+   - Technical specifications
+
+2. **Product Description:**
+   - Detailed product information
+   - Features and benefits
+   - Applications and use cases
+   - Rich text with images
+
+3. **Company Profile:**
+   - Supplier name and verification status
+   - Business type
+   - Location with map
+   - Years in business
+   - Main products
+   - Total employees
+   - Factory size
+   - Certifications
+   - "Visit supplier's store" link
+
+4. **Trade Capacity:**
+   - Export percentage
+   - Main markets
+   - Annual revenue
+   - Production capacity
+   - OEM/ODM services
+
+5. **Quality Control:**
+   - Quality control process
+   - Factory inspection reports
+   - Certifications (uploadable PDFs)
+
+6. **Shipping & Payment:**
+   - Delivery time
+   - Shipping methods
+   - Payment terms
+   - Port of loading
+   - Packaging details
+
+7. **FAQ:**
+   - Common questions with answers
+   - Can contact for more info
+
+**Related Products:**
+- "You may also like" section
+- "Frequently bought together"
+- "Other products from this supplier"
+
+**Inquiry Form (Sticky Sidebar):**
+- Quantity input
+- Target price
+- Customization requirements
+- Expected delivery date
+- Message to supplier
+- Contact details
+- "Send Inquiry" button
+
+---
+
+### 4. RFQ (REQUEST FOR QUOTATION) PAGES
+
+**Create RFQ Page:**
+Form with following fields:
+- RFQ title
+- Product category
+- Detailed requirements (rich text editor)
+- Quantity needed
+- Target price (optional)
+- Upload images/documents
+- Delivery location
+- Expected delivery date
+- Additional requirements
+- Buyer information (auto-filled if logged in)
+- "Post RFQ" button
+
+**Browse RFQs Page (For Suppliers):**
+- List of active RFQs
+- Filter by:
+  - Category
+  - Location
+  - Quantity range
+  - Date posted
+- Each RFQ card shows:
+  - RFQ title
+  - Quantity
+  - Budget range
+  - Location
+  - Time remaining
+  - Number of quotations
+  - "Send Quotation" button
+
+**My RFQs (Buyer Dashboard):**
+- Active RFQs
+- Received quotations count
+- Status (Open, In Progress, Closed)
+- View and compare quotations
+- Message suppliers
+- Accept quotation
+
+**RFQ Detail Page:**
+- Full RFQ details
+- Attached images/documents
+- Received quotations list
+- Compare quotations side-by-side
+- Contact suppliers
+- Mark as closed
+
+---
+
+### 5. SUPPLIER/COMPANY PROFILE PAGE
+
+**Company Header:**
+- Cover banner image
+- Company logo
+- Company name
+- Verification badges (Gold supplier, Verified, Trade assurance)
+- Business type
+- Location with flag
+- Years in business
+- "Contact Supplier" button
+- "Add to Favorites" button
+
+**Company Stats Bar:**
+- Total products
+- Total transactions
+- Response rate
+- Response time
+- Positive feedback %
+
+**Navigation Tabs:**
+
+**1. Products Tab:**
+- All products from this supplier
+- Category filters
+- Search within supplier
+
+**2. About Company:**
+- Business overview
+- Main products
+- Company introduction
+- Year established
+- Legal representative
+- Registered capital
+- Business scope
+
+**3. Capabilities:**
+- Production capacity
+- OEM/ODM services
+- R&D capabilities
+- Quality control
+- Delivery capabilities
+
+**4. Certifications:**
+- Display all certificates
+- Clickable to view full size
+- Download option
+
+**5. Factory Tour:**
+- Image gallery of factory
+- Video tours
+- Production line photos
+
+**6. Trade Data:**
+- Export markets
+- Export percentage
+- Main customers (anonymized)
+- Annual sales volume
+
+**7. Contact Information:**
+- Contact person name and title
+- Department
+- Phone number
+- Email
+- WhatsApp
+- Wechat
+- Address
+- Website
+
+**8. Reviews & Ratings:**
+- Overall rating (5 stars)
+- Recent reviews from buyers
+- Filter by star rating
+- Response from supplier
+
+---
+
+### 6. SHOPPING CART / INQUIRY CART
+
+**Different from B2C:**
+Instead of immediate purchase, the cart is an "Inquiry Cart"
+
+**Features:**
+- List of products interested in
+- Each item shows:
+  - Product image
+  - Name
+  - Desired quantity
+  - Target price
+  - Supplier name
+  - Remove option
+- "Send Inquiry to All Suppliers" button
+- "Send Individual Inquiries" option
+- Bulk inquiry form
+- Save cart for later
+
+**Inquiry Form Fields:**
+- Quantity for each product
+- Target price
+- Customization needs
+- Expected delivery time
+- Payment terms preference
+- Additional requirements
+- Contact information
+
+---
+
+### 7. MESSAGING SYSTEM
+
+**Chat Interface (Real-time):**
+- List of conversations (left sidebar)
+- Active chat window (right side)
+- Search conversations
+- Filter by unread/archived
+
+**Conversation List Item:**
+- Supplier/Buyer avatar
+- Company name
+- Last message preview
+- Unread badge
+- Timestamp
+
+**Chat Window:**
+- Message history
+- Product/RFQ context at top
+- Send text messages
+- File attachments
+- Image uploads
+- Quick replies templates
+- Online/offline status
+- "Send Inquiry Form" shortcut
+- "View Products" link
+- Block/report user
+
+**Notifications:**
+- New message alerts
+- Email notifications
+- Push notifications
+
+---
+
+### 8. BUYER DASHBOARD
+
+**Main Dashboard:**
+- Welcome message
+- Quick stats cards:
+  - Active RFQs
+  - Pending inquiries
+  - Unread messages
+  - Favorite suppliers
+- Recent activity feed
+- Recommended products
+- Recommended suppliers
+
+**My RFQs:**
+- All RFQs created
+- Status tracking
+- Quotations received
+- Compare quotations
+
+**My Inquiries:**
+- All product inquiries sent
+- Status (Sent, Replied, Negotiating, Closed)
+- Supplier responses
+- Follow-up actions
+
+**Messages:**
+- Inbox with all conversations
+- Quick access to chat
+
+**Favorites:**
+- Saved products
+- Saved suppliers
+- Organize by folders
+
+**Purchase Orders (if implemented):**
+- Order history
+- Order tracking
+- Invoices
+- Payments
+
+**My Profile:**
+- Company information
+- Business verification
+- Contact persons
+- Buying preferences
+- Industry interests
+
+---
+
+### 9. SUPPLIER DASHBOARD
+
+**Main Dashboard:**
+- Welcome message
+- Quick stats:
+  - Product views
+  - Inquiries received
+  - Response rate
+  - Store visits
+- Performance metrics graph
+- Recent inquiries
+- Low stock alerts
+
+**Product Management:**
+- Add new product
+- Product list (table view)
+- Edit/delete products
+- Bulk upload (CSV)
+- Inventory management
+- Product analytics
+
+**Inquiries & RFQs:**
+- Received inquiries
+- RFQs matching my products
+- Send quotations
+- Inquiry status tracking
+- Response templates
+
+**Quotations:**
+- Sent quotations
+- Quotation templates
+- Track quotation status
+- Convert to order
+
+**Messages:**
+- Inbox for buyer communications
+- Quick reply templates
+- Auto-responses
+
+**Orders (if implemented):**
+- Order management
+- Update order status
+- Upload shipping info
+- Invoice generation
+
+**Company Profile:**
+- Edit company information
+- Upload certifications
+- Manage product showcase
+- Update capabilities
+- Factory photos/videos
+
+**Analytics:**
+- Product view statistics
+- Inquiry conversion rate
+- Top performing products
+- Buyer demographics
+- Search keywords
+
+---
+
+### 10. CATEGORY PAGES
+
+**Layout:**
+- Category banner
+- Breadcrumb navigation
+- Subcategories showcase
+- Featured suppliers in this category
+- Product listing (filtered by category)
+- Category description (SEO content)
+- Related categories
+- Trade shows/events in this category
+
+**Industry-specific Categories:**
+- Electronics & Electrical
+- Machinery & Industrial Parts
+- Apparel & Accessories
+- Home & Garden
+- Packaging & Printing
+- Chemicals & Materials
+- Food & Beverage
+- Health & Beauty
+- Toys & Gifts
+- And more...
+
+---
+
+### 11. SEARCH RESULTS PAGE
+
+**Advanced Search Options:**
+- Product search
+- Supplier search
+- RFQ search
+- Switch between tabs
+
+**Search Suggestions:**
+- Popular searches
+- Search history
+- Auto-complete
+
+**Results Display:**
+- Total results count
+- "Did you mean...?" for typos
+- Filters sidebar
+- Sort options
+- Results grid
+- Pagination
+
+---
+
+### 12. AUTHENTICATION PAGES
+
+**Register Page:**
+Two options:
+1. **Register as Buyer:**
+   - Company name
+   - Full name
+   - Email
+   - Phone
+   - Country
+   - Industry
+   - Password
+   - Terms acceptance
+
+2. **Register as Supplier:**
+   - Company name
+   - Business type (Manufacturer/Trading/Wholesaler)
+   - Full name
+   - Position
+   - Email
+   - Phone
+   - Country
+   - Main products
+   - Password
+   - Terms acceptance
+
+**Login Page:**
+- Email/phone
+- Password
+- Remember me
+- Forgot password
+- Social login (Google, LinkedIn)
+- Role selection (Buyer/Supplier)
+
+**Forgot Password:**
+- Email input
+- Send reset link
+- Reset password form
+
+**Email Verification:**
+- Verify email after registration
+- Resend verification link
+
+---
+
+### 13. BUSINESS VERIFICATION
+
+**Verification Process Page:**
+For suppliers to get verified badge
+
+**Required Documents:**
+- Business license
+- Tax registration
+- Identity verification
+- Bank account info
+- Factory photos (optional)
+- Certifications (optional)
+
+**Upload Forms:**
+- File upload for each document
+- Instructions for each
+- Review process info
+- Status tracking
+
+**Verification Levels:**
+- Basic Verified (email + phone)
+- Business Verified (documents)
+- Premium Verified (inspection)
+- Trade Assurance
+
+---
+
+### 14. TRADE ASSURANCE PAGE
+
+**Informational Page:**
+- What is Trade Assurance?
+- How it works (step-by-step)
+- Benefits for buyers
+- Benefits for suppliers
+- Coverage details
+- FAQs
+- "Get Started" CTA
+
+**For Buyers:**
+- Browse trade assurance suppliers
+- Place protected orders
+- Track order protection
+- File disputes if needed
+
+**For Suppliers:**
+- Apply for trade assurance
+- Requirements and fees
+- Manage protected orders
+
+---
+
+### 15. STATIC/INFORMATION PAGES
+
+**About Us:**
+- Company story
+- Mission and vision
+- How our marketplace works
+- Team (optional)
+- Global reach map
+- Success stories
+- Press/media section
+
+**How It Works:**
+**For Buyers:**
+1. Search products or post RFQ
+2. Contact suppliers
+3. Get quotations
+4. Compare and negotiate
+5. Place order
+6. Receive goods
+
+**For Suppliers:**
+1. Register and verify
+2. List products
+3. Respond to inquiries
+4. Send quotations
+5. Manage orders
+6. Build reputation
+
+**Buyer Protection:**
+- Policies and guarantees
+- How to stay safe
+- Red flags to watch
+- Dispute resolution
+- Payment protection
+
+**Seller Guide:**
+- How to sell effectively
+- Product listing tips
+- Pricing strategies
+- Responding to inquiries
+- Building trust
+
+**Help Center/FAQ:**
+- Categorized questions
+- Search functionality
+- For buyers section
+- For suppliers section
+- Account management
+- Payment and shipping
+- Policies
+
+**Contact Us:**
+- Contact form
+- Email addresses (sales, support)
+- Phone numbers
+- Regional offices
+- Live chat option
+- Business hours
+
+**Terms of Service:**
+- User agreement
+- Supplier agreement
+- Buyer agreement
+
+**Privacy Policy:**
+- Data collection
+- Data usage
+- Cookie policy
+
+**Shipping Guide:**
+- International shipping info
+- Incoterms explanation
+- Customs and duties
+- Shipping methods
+
+**Payment Methods:**
+- Accepted payment methods
+- Payment terms explained (T/T, L/C, etc.)
+- Currency options
+- Payment security
+
+---
+
+## HEADER DESIGN (Adapt from template)
+
+**Top Bar:**
+- Language selector
+- Currency selector
+- "Sell on [Platform]" link
+- "Help" link
+- "Sign In" / "Join Free"
+
+**Main Header:**
+- Logo (left)
+- Search bar (center - prominent, 3 fields)
+- Icons (right):
+  - Messages (with badge)
+  - Favorites/Wishlist
+  - User account dropdown
+
+**Navigation Menu:**
+- Categories (mega menu)
+- RFQ Marketplace
+- Suppliers
+- Trade Assurance
+- Buyer Protection
+- Help Center
+
+**Mega Menu Structure:**
+Example for Electronics:
+- Consumer Electronics
+  - Mobile Phones
+  - Laptops
+  - Cameras
+- Electronic Components
+  - Integrated Circuits
+  - Capacitors
+  - Resistors
+- Featured Suppliers
+- Top Products
+
+---
+
+## FOOTER DESIGN (Adapt from template)
+
+**Multi-column Layout:**
+
+**Column 1 - Buy:**
+- Post RFQ
+- Product Directory
+- Find Suppliers
+- Trade Assurance
+
+**Column 2 - Sell:**
+- Sell on Platform
+- Supplier Membership
+- Learning Center
+- Supplier Guide
+
+**Column 3 - Help:**
+- Help Center
+- Contact Us
+- Report Abuse
+- Policies
+
+**Column 4 - About:**
+- About Us
+- Careers
+- Press
+- Blog
+
+**Column 5 - Connect:**
+- Social media links
+- Mobile app download
+
+**Bottom Bar:**
+- Payment method icons
+- Shipping partner logos
+- Copyright notice
+- Terms & Privacy links
+- Language/Region selector
+
+---
+
+## ADDITIONAL B2B FEATURES
+
+### 1. **Live Chat Support**
+- For customer service
+- For technical support
+- Bot for FAQs
+- Escalate to human agent
+
+### 2. **Supplier Membership Tiers**
+- Free Basic
+- Gold Supplier (paid)
+- Premium Supplier (paid)
+Benefits include:
+- Better search ranking
+- More product listings
+- Analytics access
+- Priority support
+- Badge display
+
+### 3. **Trust & Safety**
+- Verified supplier badges
+- Buyer reviews and ratings
+- Transaction history visibility
+- Dispute resolution system
+- Fraud prevention
+- Secure payment options
+
+### 4. **Multi-language Support**
+- Language switcher
+- Automatic translation of listings
+- Regional content
+
+### 5. **Multi-currency Support**
+- Currency converter
+- Display prices in buyer's currency
+- Payment in multiple currencies
+
+### 6. **Export Tools for Suppliers**
+- Export inquiry data
+- Download quotation templates
+- Product catalog download
+- Invoice generation
+
+### 7. **Recommendation Engine**
+- Recommended products for buyers
+- Recommended suppliers
+- "Others also viewed"
+- "Trending in your industry"
+
+### 8. **Mobile Responsiveness**
+- All pages must be fully responsive
+- Mobile-first design approach
+- Touch-friendly interfaces
+- Mobile app (future consideration)
+
+### 9. **Email Notifications**
+- New inquiry received
+- RFQ matches your products
+- Message received
+- Quotation received
+- Order updates
+- Weekly digest
+
+### 10. **Analytics Dashboard**
+For Suppliers:
+- Page views
+- Product views
+- Inquiry conversion rate
+- Response time stats
+- Top performing products
+
+For Buyers:
+- Search history
+- Inquiry status
+- Spending analysis
+- Favorite suppliers activity
+
+---
+
+## DATABASE SCHEMA
+
+### Users Table
+```
+- id
+- email
+- password (hashed)
+- role (buyer/supplier/admin)
+- emailVerified
+- createdAt
+- updatedAt
+```
+
+### Buyer Profile
+```
+- userId (foreign key)
+- companyName
+- fullName
+- phone
+- country
+- industry
+- buyingPreferences
+- isVerified
+```
+
+### Supplier Profile
+```
+- userId (foreign key)
+- companyName
+- businessType
+- fullName
+- position
+- phone
+- country
+- mainProducts
+- website
+- yearEstablished
+- employees
+- factorySize
+- responseRate
+- responseTime
+- verificationLevel
+- membershipTier
+- ratings
+```
+
+### Products
+```
+- id
+- supplierId (foreign key)
+- title
+- slug
+- description
+- specifications (JSON)
+- images[]
+- videos[]
+- categoryId
+- minOrderQuantity
+- priceRanges (JSON) [{ qty, price }]
+- sampleAvailable
+- samplePrice
+- leadTime
+- customizationAvailable
+- port
+- paymentTerms
+- status (active/inactive)
+- views
+- inquiries
+- createdAt
+- updatedAt
+```
+
+### Categories
+```
+- id
+- name
+- slug
+- parentId
+- image
+- description
+- order
+```
+
+### RFQs
+```
+- id
+- buyerId (foreign key)
+- title
+- categoryId
+- description
+- quantity
+- targetPrice
+- deliveryLocation
+- expectedDate
+- attachments[]
+- status (open/closed)
+- quotationsCount
+- createdAt
+- expiresAt
+```
+
+### Quotations
+```
+- id
+- rfqId (foreign key)
+- supplierId (foreign key)
+- pricePerUnit
+- totalPrice
+- moq
+- leadTime
+- paymentTerms
+- validUntil
+- message
+- attachments[]
+- status (pending/accepted/rejected)
+- createdAt
+```
+
+### Inquiries
+```
+- id
+- productId (foreign key)
+- buyerId (foreign key)
+- quantity
+- targetPrice
+- message
+- requirements
+- status
+- createdAt
+```
+
+### Messages
+```
+- id
+- conversationId
+- senderId
+- receiverId
+- message
+- attachments[]
+- isRead
+- createdAt
+```
+
+### Conversations
+```
+- id
+- buyerId
+- supplierId
+- lastMessage
+- lastMessageAt
+- unreadCount
+```
+
+### Reviews
+```
+- id
+- productId (foreign key)
+- supplierId (foreign key)
+- buyerId (foreign key)
+- rating (1-5)
+- comment
+- orderReference
+- createdAt
+```
+
+### Favorites
+```
+- id
+- userId
+- productId/supplierId
+- type (product/supplier)
+- createdAt
+```
+
+### Certifications
+```
+- id
+- supplierId
+- certificateType
+- certificateName
+- issuedBy
+- issueDate
+- expiryDate
+- documentUrl
+- isVerified
+```
+
+### Orders (if implementing order system)
+```
+- id
+- buyerId
+- supplierId
+- orderNumber
+- items (JSON)
+- totalAmount
+- paymentMethod
+- paymentStatus
+- orderStatus
+- shippingAddress
+- trackingNumber
+- createdAt
+```
+
+---
+
+## UI/UX REQUIREMENTS
+
+### Design Principles
+- Professional and trustworthy
+- Clean and organized
+- Easy navigation
+- Clear CTAs
+- Mobile-responsive
+- Fast loading
+
+### Color Scheme
+- Primary: Professional blue or orange (B2B friendly)
+- Secondary: Complementary color
+- Success: Green (verified badges)
+- Warning: Orange (pending actions)
+- Error: Red (alerts)
+- Neutral: Grays for text
+
+### Typography
+- Professional sans-serif fonts
+- Clear hierarchy
+- Readable body text (16px minimum)
+- Bold headings
+
+### Spacing & Layout
+- Max content width: 1400-1600px
+- Generous padding
+- Clear sections
+- White space for breathing room
+
+### Icons & Imagery
+- Professional product photography
+- Clear icons for actions
+- Trust badges and verification marks
+- Country flags
+- Industry-specific icons
+
+---
+
+## TECHNICAL REQUIREMENTS
+
+### Performance
+- Lazy loading images
+- Infinite scroll for listings
+- Code splitting
+- CDN for static assets
+- Image optimization
+- Caching strategies
+- Fast server response (<200ms)
+
+### SEO
+- Semantic HTML
+- Meta tags for all pages
+- Open Graph tags
+- Structured data (Product, Organization, BreadcrumbList)
+- XML sitemap
+- Robots.txt
+- Canonical URLs
+- Multi-language hreflang tags
+
+### Security
+- SSL/HTTPS
+- Input sanitization
+- CSRF protection
+- Rate limiting
+- XSS prevention
+- SQL injection prevention
+- Secure file uploads
+- Role-based access control
+- Two-factor authentication (optional)
+
+### Accessibility
+- ARIA labels
+- Keyboard navigation
+- Screen reader support
+- Color contrast (WCAG AA)
+- Focus indicators
+- Alt text for images
+- Form labels
+
+### API Design
+- RESTful API structure
+- Proper HTTP methods
+- Error handling
+- Validation
+- Authentication (JWT)
+- Rate limiting
+- API documentation
+
+---
+
+## IMPLEMENTATION PRIORITY
+
+### Phase 1 (MVP):
+1. Authentication (Buyer & Supplier)
+2. Home page
+3. Product listing & detail pages
+4. Basic supplier profiles
+5. Inquiry system
+6. Basic messaging
+7. Search functionality
+
+### Phase 2:
+1. RFQ system
+2. Enhanced supplier dashboard
+3. Buyer dashboard
+4. Advanced filters
+5. Email notifications
+6. Reviews & ratings
+
+### Phase 3:
+1. Business verification
+2. Trade assurance
+3. Analytics dashboards
+4. Mobile optimization
+5. Multi-language support
+6. Advanced messaging features
+
+### Phase 4:
+1. Order management system
+2. Payment integration
+3. Supplier membership tiers
+4. Advanced analytics
+5. Mobile app (optional)
+
+---
+
+## FILE STRUCTURE
+```
+/src
+  /app
+    /(auth)
+      /login/page.tsx
+      /register/page.tsx
+      /forgot-password/page.tsx
+      /verify-email/page.tsx
+    /(main)
+      /page.tsx (home)
+      /products
+        /page.tsx (listing)
+        /[slug]/page.tsx (detail)
+      /categories
+        /[slug]/page.tsx
+      /suppliers
+        /page.tsx (all suppliers)
+        /[id]/page.tsx (profile)
+      /rfq
+        /page.tsx (browse)
+        /create/page.tsx
+        /[id]/page.tsx (detail)
+      /search/page.tsx
+      /inquiry-cart/page.tsx
+      /messages/page.tsx
+      /about/page.tsx
+      /contact/page.tsx
+      /help/page.tsx
+    /(buyer)
+      /dashboard/page.tsx
+      /my-rfqs/page.tsx
+      /my-inquiries/page.tsx
+      /favorites/page.tsx
+      /profile/page.tsx
+    /(supplier)
+      /dashboard/page.tsx
+      /products
+        /page.tsx
+        /add/page.tsx
+        /[id]/edit/page.tsx
+      /inquiries/page.tsx
+      /quotations/page.tsx
+      /profile/page.tsx
+      /verification/page.tsx
+      /analytics/page.tsx
+    /api
+      /auth/[...nextauth]/route.ts
+      /products
+      /suppliers
+      /rfq
+      /inquiries
+      /quotations
+      /messages
+      /upload
+  /components
+    /ui (from template + shadcn)
+    /layout
+      /Header.tsx
+      /Footer.tsx
+      /MegaMenu.tsx
+    /home
+      /Hero.tsx
+      /FeaturedCategories.tsx
+      /TrendingProducts.tsx
+    /products
+      /ProductCard.tsx
+      /ProductGrid.tsx
+      /ProductFilters.tsx
+      /ProductGallery.tsx
+      /InquiryForm.tsx
+    /supplier
+      /SupplierCard.tsx
+      /SupplierProfile.tsx
+      /VerificationBadges.tsx
+    /rfq
+      /RFQCard.tsx
+      /RFQForm.tsx
+      /QuotationCard.tsx
+    /messaging
+      /ChatWindow.tsx
+      /ConversationList.tsx
+      /MessageInput.tsx
+    /dashboard
+      /StatsCard.tsx
+      /ActivityFeed.tsx
+      /Analytics.tsx
+  /lib
+    /prisma.ts
+    /auth.ts
+    /utils.ts
+    /api-client.ts
+  /hooks
+    /useAuth.ts
+    /useProducts.ts
+    /useMessages.ts
+  /types
+    /index.ts
+  /prisma
+    /schema.prisma
+    /seed.ts
+  /public
+    /images
+    /icons
+```
+
+---
+
+## SPECIFIC CURSOR IDE INSTRUCTIONS
+
+```
+IMPORTANT: I have an existing ecommerce website template in this project.
+
+Step 1: ANALYZE THE EXISTING TEMPLATE
+- Scan all files in the current project
+- Identify the main pages (home, product listing, product detail, cart, checkout, etc.)
+- Note the component structure and naming conventions
+- Identify the styling approach (Tailwind classes, custom CSS, etc.)
+- Find reusable components (buttons, cards, forms, modals, etc.)
+- Note the folder structure and organization
+
+Step 2: CREATE NEW B2B PROJECT
+- Create a new Next.js 14 project with TypeScript
+- Set up the folder structure as specified above
+- Copy over the design system (colors, fonts, spacing) from the template
+
+Step 3: ADAPT EXISTING PAGES
+For each page in my template, adapt it to B2B functionality:
+
+HOME PAGE:
+- Keep the template's layout and styling
+- Replace B2C sections with B2B sections
+- Change "Add to Cart" to "Request Quote"
+- Add RFQ section
+- Add supplier showcase
+- Maintain the template's hero, category grid, and product sections
+
+PRODUCT LISTING:
+- Use template's grid and card layout
+- Add B2B specific filters (MOQ, supplier location, verification)
+- Modify product cards to show price ranges, MOQ
+- Change CTAs to "Contact Supplier" and "Request Quote"
+
+PRODUCT DETAIL:
+- Keep template's image gallery and layout
+- Replace single price with tiered pricing table
+- Add MOQ information prominently
+- Replace "Add to Cart" with inquiry form
+- Add supplier profile section
+- Add specifications, trade capacity tabs
+
+AUTHENTICATION:
+- Use template's form styling
+- Add role selection (Buyer/Supplier)
+- Add company fields for B2B
+
+HEADER/FOOTER:
+- Adapt template's header with B2B navigation
+- Keep styling consistency
+- Add B2B specific menu items
+
+Step 4: ADD NEW B2B PAGES
+Create these new pages using the template's component style:
+- RFQ pages (create, browse, detail)
+- Supplier profile pages
+- Buyer and Supplier dashboards
+- Messaging system
+- Business verification
+- Trade assurance
+
+Step 5: IMPLEMENT BACKEND
+- Set up Prisma with the schema provided
+- Create API routes for all features
+- Implement authentication with NextAuth
+- Add real-time messaging with Socket.io
+
+Step 6: TESTING & OPTIMIZATION
+- Test all forms and workflows
+- Ensure mobile responsiveness
+- Optimize images and performance
+- Add loading states and error handling
+
+MAINTAIN CONSISTENCY:
+- Use the same button styles from template
+- Keep the same color scheme (or adapt slightly)
+- Use template's card designs for new cards
+- Follow template's spacing and layout patterns
+- Reuse template's form components
+- Keep the same animation and transition styles
+```
+
+---
+
+## DELIVERABLES
+
+✅ Fully functional B2B marketplace website
+✅ Adapted from existing template design
+✅ Buyer and Supplier registration/authentication
+✅ Product listing and detail pages with B2B features
+✅ RFQ system (create, browse, quote)
+✅ Inquiry and quotation system
+✅ Real-time messaging between buyers and suppliers
+✅ Supplier profiles with verification
+✅ Buyer and Supplier dashboards
+✅ Advanced search and filtering
+✅ Responsive design (mobile, tablet, desktop)
+✅ Database schema and API routes
+✅ Email notifications system
+✅ Business verification workflow
+✅ Reviews and ratings system
+✅ Multi-language ready structure
+✅ SEO optimized pages
+✅ Complete documentation
+
+---
+
+## SAMPLE DATA TO SEED
+
+### Sample Categories:
+1. **Electronics & Electrical**
+   - Consumer Electronics
+   - Electronic Components
+   - Electrical Equipment
+   - Batteries & Power
+
+2. **Machinery & Industrial**
+   - Industrial Machinery
+   - Construction Machinery
+   - Food Processing Machinery
+   - Packaging Machinery
+
+3. **Apparel & Fashion**
+   - Men's Clothing
+   - Women's Clothing
+   - Children's Clothing
+   - Sportswear & Activewear
+
+4. **Home & Garden**
+   - Furniture
+   - Home Decor
+   - Kitchenware
+   - Garden Supplies
+
+5. **Packaging & Printing**
+   - Packaging Boxes
+   - Labels & Tags
+   - Printing Materials
+   - Packaging Bags
+
+6. **Health & Beauty**
+   - Skincare Products
+   - Makeup & Cosmetics
+   - Personal Care
+   - Medical Supplies
+
+### Sample Suppliers:
+1. **Shenzhen Tech Electronics Co., Ltd.**
+   - Business Type: Manufacturer
+   - Location: Shenzhen, China
+   - Main Products: Consumer Electronics, Mobile Accessories
+   - Verified: Yes
+   - Years: 12 years
+   - Response Rate: 98%
+
+2. **Global Apparel Manufacturing**
+   - Business Type: Manufacturer & Trading Company
+   - Location: Ho Chi Minh City, Vietnam
+   - Main Products: Clothing, Textiles
+   - Verified: Yes
+   - Years: 8 years
+   - Response Rate: 95%
+
+3. **Industrial Machinery Solutions Ltd.**
+   - Business Type: Manufacturer
+   - Location: Mumbai, India
+   - Main Products: Industrial Equipment, Machinery Parts
+   - Verified: Yes
+   - Years: 15 years
+   - Response Rate: 92%
+
+### Sample Products:
+1. **Wireless Bluetooth Earbuds**
+   - MOQ: 100 pieces
+   - Price Range: $8.50-$12.00/piece
+   - Sample: Available ($15)
+   - Lead Time: 15-25 days
+   - Customization: Logo, Packaging
+
+2. **Custom T-Shirts (Cotton)**
+   - MOQ: 500 pieces
+   - Price Range: $2.50-$4.00/piece
+   - Sample: Available ($10)
+   - Lead Time: 20-30 days
+   - Customization: Print, Embroidery, Color
+
+3. **Industrial Conveyor Belt**
+   - MOQ: 50 meters
+   - Price Range: $25-$45/meter
+   - Sample: Available ($80 + shipping)
+   - Lead Time: 30-45 days
+   - Customization: Width, Material, Length
+
+---
+
+## ADVANCED FEATURES (OPTIONAL ENHANCEMENTS)
+
+### 1. **Product Comparison**
+- Compare up to 4 products side-by-side
+- Comparison table with specifications
+- Add to comparison from product cards
+- Sticky comparison bar
+
+### 2. **Saved Searches**
+- Save search filters
+- Get alerts for new matching products
+- Manage saved searches in dashboard
+
+### 3. **Price Alerts**
+- Set target price for a product
+- Get notified when price drops
+- Manage price alerts
+
+### 4. **Supplier Follow System**
+- Follow favorite suppliers
+- Get updates on new products
+- Supplier activity feed
+
+### 5. **Video Calls/Meetings**
+- Schedule video calls with suppliers
+- Integrated meeting system
+- Calendar integration
+
+### 6. **Document Center**
+- Upload and share documents
+- Contract templates
+- Invoice management
+- Purchase order management
+
+### 7. **Logistics Integration**
+- Shipping calculator
+- Freight forwarder directory
+- Track shipments
+- Compare shipping quotes
+
+### 8. **Trade Shows Integration**
+- List upcoming trade shows
+- Exhibitor directory
+- Virtual booth feature
+- Book meetings with suppliers
+
+### 9. **Buyer Groups**
+- Form buying groups for better prices
+- Group buying campaigns
+- Negotiate as a group
+
+### 10. **Supplier Performance Dashboard**
+- Track supplier KPIs
+- Response time analytics
+- Quality metrics
+- Delivery performance
+- Communication rating
+
+### 11. **AI-Powered Features**
+- Smart product recommendations
+- Auto-translate messages
+- Chatbot for FAQs
+- Price prediction
+- Demand forecasting
+
+### 12. **Escrow Service**
+- Secure payment holding
+- Release funds after inspection
+- Dispute resolution
+- Buyer protection
+
+### 13. **Quality Inspection**
+- Request third-party inspection
+- Inspection report upload
+- Quality assurance badges
+- Inspector directory
+
+### 14. **Customs & Compliance**
+- HS code lookup
+- Import duty calculator
+- Compliance documentation
+- Country-specific requirements
+
+### 15. **Mobile App Features**
+- Push notifications
+- QR code scanner
+- Offline mode
+- Voice search
+- AR product preview
+
+---
+
+## TESTING CHECKLIST
+
+### Functional Testing:
+- [ ] User registration (Buyer & Supplier)
+- [ ] Email verification
+- [ ] Login/Logout
+- [ ] Password reset
+- [ ] Product listing with filters
+- [ ] Product search
+- [ ] Product detail view
+- [ ] Image gallery functionality
+- [ ] Inquiry form submission
+- [ ] RFQ creation
+- [ ] RFQ browsing (suppliers)
+- [ ] Quotation sending
+- [ ] Messaging system
+- [ ] File uploads
+- [ ] Supplier profile viewing
+- [ ] Dashboard access (both roles)
+- [ ] Product management (suppliers)
+- [ ] Favorites/Wishlist
+- [ ] Reviews submission
+- [ ] Business verification upload
+- [ ] Email notifications
+- [ ] Search autocomplete
+- [ ] Category navigation
+- [ ] Mega menu functionality
+- [ ] Sort and filter combinations
+- [ ] Pagination
+- [ ] Form validations
+
+### UI/UX Testing:
+- [ ] Responsive design (mobile, tablet, desktop)
+- [ ] Cross-browser compatibility (Chrome, Firefox, Safari, Edge)
+- [ ] Loading states for all actions
+- [ ] Error messages display correctly
+- [ ] Success messages display correctly
+- [ ] Modal windows work properly
+- [ ] Navigation is intuitive
+- [ ] CTAs are clear and visible
+- [ ] Forms are user-friendly
+- [ ] Images load properly
+- [ ] Icons display correctly
+- [ ] Hover effects work
+- [ ] Animations are smooth
+- [ ] No layout shifts
+- [ ] Readable typography
+- [ ] Proper color contrast
+
+### Performance Testing:
+- [ ] Page load speed (<3s)
+- [ ] Image optimization
+- [ ] Lazy loading works
+- [ ] No memory leaks
+- [ ] Efficient database queries
+- [ ] API response times
+- [ ] Caching effectiveness
+- [ ] Bundle size optimization
+
+### Security Testing:
+- [ ] SQL injection prevention
+- [ ] XSS prevention
+- [ ] CSRF protection
+- [ ] Authentication works properly
+- [ ] Authorization (role-based access)
+- [ ] File upload validation
+- [ ] Rate limiting on APIs
+- [ ] Password hashing
+- [ ] Secure session management
+- [ ] Input sanitization
+
+### SEO Testing:
+- [ ] Meta tags present
+- [ ] Title tags unique
+- [ ] Heading hierarchy correct
+- [ ] Alt text on images
+- [ ] Sitemap generated
+- [ ] Robots.txt configured
+- [ ] Structured data valid
+- [ ] URLs are SEO-friendly
+- [ ] Canonical URLs set
+- [ ] Mobile-friendly (Google test)
+
+---
+
+## DEPLOYMENT GUIDE
+
+### Prerequisites:
+- Node.js 18+ installed
+- PostgreSQL database
+- Domain name
+- SSL certificate
+- Email service (SendGrid/Resend)
+- Cloud storage (Cloudinary/S3)
+
+### Environment Variables:
+```env
+# Database
+DATABASE_URL="postgresql://user:password@host:5432/dbname"
+
+# NextAuth
+NEXTAUTH_URL="https://yourdomain.com"
+NEXTAUTH_SECRET="your-secret-key"
+
+# Email
+EMAIL_SERVER_HOST="smtp.sendgrid.net"
+EMAIL_SERVER_PORT=587
+EMAIL_SERVER_USER="apikey"
+EMAIL_SERVER_PASSWORD="your-api-key"
+EMAIL_FROM="noreply@yourdomain.com"
+
+# File Upload
+CLOUDINARY_CLOUD_NAME="your-cloud-name"
+CLOUDINARY_API_KEY="your-api-key"
+CLOUDINARY_API_SECRET="your-api-secret"
+
+# Stripe (if payment integration)
+STRIPE_PUBLIC_KEY="pk_live_..."
+STRIPE_SECRET_KEY="sk_live_..."
+
+# Real-time (Socket.io or Pusher)
+PUSHER_APP_ID="your-app-id"
+PUSHER_KEY="your-key"
+PUSHER_SECRET="your-secret"
+PUSHER_CLUSTER="your-cluster"
+
+# Google OAuth (optional)
+GOOGLE_CLIENT_ID="your-client-id"
+GOOGLE_CLIENT_SECRET="your-client-secret"
+
+# LinkedIn OAuth (optional)
+LINKEDIN_CLIENT_ID="your-client-id"
+LINKEDIN_CLIENT_SECRET="your-client-secret"
+```
+
+### Deployment Steps:
+
+**1. Build the Application:**
+```bash
+npm run build
+```
+
+**2. Run Database Migrations:**
+```bash
+npx prisma migrate deploy
+```
+
+**3. Seed Initial Data:**
+```bash
+npx prisma db seed
+```
+
+**4. Deploy to Vercel (Recommended):**
+```bash
+vercel --prod
+```
+
+Or deploy to:
+- AWS (EC2 + RDS)
+- DigitalOcean
+- Heroku
+- Railway
+- Render
+
+**5. Configure Domain:**
+- Point DNS to hosting provider
+- Configure SSL certificate
+- Set up CDN (Cloudflare)
+
+**6. Set up Monitoring:**
+- Error tracking (Sentry)
+- Analytics (Google Analytics, Plausible)
+- Uptime monitoring (UptimeRobot)
+- Performance monitoring (New Relic)
+
+**7. Set up Backups:**
+- Database daily backups
+- File storage backups
+- Disaster recovery plan
+
+---
+
+## MAINTENANCE & UPDATES
+
+### Regular Tasks:
+- **Daily:**
+  - Monitor error logs
+  - Check uptime status
+  - Review support tickets
+
+- **Weekly:**
+  - Database optimization
+  - Review analytics
+  - Update content
+
+- **Monthly:**
+  - Security patches
+  - Dependency updates
+  - Performance audit
+  - Backup verification
+
+- **Quarterly:**
+  - Major feature updates
+  - User feedback implementation
+  - A/B testing
+  - SEO audit
+
+---
+
+## SCALING CONSIDERATIONS
+
+### When to Scale:
+- >10,000 active users
+- >100,000 products
+- >1,000 daily inquiries
+- Slow response times
+- High server load
+
+### Scaling Strategies:
+1. **Database:**
+   - Read replicas
+   - Database sharding
+   - Redis caching
+   - Query optimization
+
+2. **Application:**
+   - Horizontal scaling (multiple servers)
+   - Load balancing
+   - Microservices architecture
+   - CDN for static assets
+
+3. **Storage:**
+   - S3 or equivalent for files
+   - Image optimization service
+   - Video streaming service
+
+4. **Search:**
+   - Elasticsearch for advanced search
+   - Algolia for instant search
+   - Search result caching
+
+5. **Messaging:**
+   - Dedicated messaging server
+   - Message queuing (RabbitMQ)
+   - WebSocket server clustering
+
+---
+
+## MONETIZATION STRATEGIES
+
+### Revenue Streams:
+1. **Supplier Memberships:**
+   - Free Basic
+   - Gold ($99/month)
+   - Premium ($299/month)
+
+2. **Featured Listings:**
+   - Boost product visibility
+   - Homepage placement
+   - Category top placement
+
+3. **Commission on Sales:**
+   - Small percentage per transaction
+   - Trade assurance fees
+
+4. **Advertising:**
+   - Banner ads
+   - Sponsored products
+   - Supplier showcase ads
+
+5. **Premium Services:**
+   - Verified badge
+   - Priority support
+   - Advanced analytics
+   - Custom branding
+
+6. **Value-Added Services:**
+   - Quality inspection
+   - Logistics services
+   - Translation services
+   - Legal consultation
+
+---
+
+## SUCCESS METRICS (KPIs)
+
+### Track These Metrics:
+
+**User Metrics:**
+- Total registered users
+- Active users (daily/monthly)
+- User retention rate
+- Buyer to supplier ratio
+
+**Engagement Metrics:**
+- Product views
+- Search queries
+- Inquiries sent
+- RFQs posted
+- Messages exchanged
+- Time on site
+- Pages per session
+
+**Conversion Metrics:**
+- Inquiry conversion rate
+- RFQ to quotation rate
+- Quotation acceptance rate
+- Registration conversion rate
+
+**Supplier Metrics:**
+- Active suppliers
+- Products listed
+- Response rate
+- Response time
+- Supplier satisfaction
+
+**Transaction Metrics:**
+- Total GMV (Gross Merchandise Value)
+- Average order value
+- Transaction completion rate
+- Payment success rate
+
+**Platform Health:**
+- Uptime percentage
+- Page load speed
+- Error rate
+- API response time
+
+---
+
+## MARKETING LAUNCH STRATEGY
+
+### Pre-Launch:
+- Create landing page
+- Build email list
+- Social media presence
+- Beta testing program
+- Supplier outreach
+
+### Launch:
+- Press release
+- Social media campaign
+- Influencer partnerships
+- Trade show presence
+- SEO content creation
+- PPC campaigns (Google Ads)
+- Email marketing
+
+### Post-Launch:
+- Customer testimonials
+- Case studies
+- Referral program
+- Loyalty rewards
+- Content marketing
+- Webinars and tutorials
+- Community building
+
+---
+
+## SUPPORT & DOCUMENTATION
+
+### User Documentation:
+- Getting started guide
+- Video tutorials
+- FAQ section
+- Best practices
+- Troubleshooting guide
+
+### Developer Documentation:
+- API documentation
+- Component library
+- Database schema docs
+- Architecture overview
+- Contributing guide
+
+### Support Channels:
+- Help center/Knowledge base
+- Email support
+- Live chat
+- Phone support (premium)
+- Community forum
+- Social media support
+
+---
+
+## LEGAL & COMPLIANCE
+
+### Required Pages:
+- Terms of Service
+- Privacy Policy
+- Cookie Policy
+- Refund Policy (if applicable)
+- Acceptable Use Policy
+- DMCA Policy
+- User Agreement
+
+### Compliance:
+- GDPR (EU users)
+- CCPA (California users)
+- PCI DSS (if handling payments)
+- Data protection laws
+- Consumer protection laws
+- International trade regulations
+
+### User Safety:
+- Report abuse system
+- Content moderation
+- Fraud detection
+- Identity verification
+- Secure communications
+- Dispute resolution process
+
+---
+
+## FINAL CHECKLIST BEFORE GOING LIVE
+
+- [ ] All pages are functional
+- [ ] No console errors
+- [ ] All forms validated
+- [ ] Email notifications working
+- [ ] Database properly configured
+- [ ] Environment variables set
+- [ ] SSL certificate active
+- [ ] Domain configured
+- [ ] Analytics installed
+- [ ] Error tracking setup
+- [ ] Backups configured
+- [ ] Legal pages complete
+- [ ] Contact information updated
+- [ ] Social media linked
+- [ ] SEO meta tags added
+- [ ] Sitemap submitted
+- [ ] Mobile tested thoroughly
+- [ ] Cross-browser tested
+- [ ] Load testing completed
+- [ ] Security audit done
+- [ ] Terms and privacy policies reviewed by lawyer
+- [ ] Payment system tested (if applicable)
+- [ ] Support system ready
+- [ ] User documentation complete
+
+---
+
+## EXAMPLE PROMPT TO PASTE IN CURSOR
+
+```
+Create a complete B2B marketplace platform similar to Alibaba.com.
+
+CRITICAL: I have an existing ecommerce template in this project. 
+First, analyze all files in my current template and identify:
+- Main pages and their structure
+- Component library and reusable elements
+- Styling approach and design system
+- Navigation and layout patterns
+
+Then, create a NEW Next.js 14 project that:
+
+1. ADAPTS my template's pages to B2B functionality:
+   - Convert B2C product pages to B2B with MOQ and price ranges
+   - Transform "Add to Cart" to "Request Quote" flow
+   - Adapt existing layouts to B2B context
+   - Keep all existing styling and component patterns
+
+2. ADDS new B2B-specific pages:
+   - RFQ system (create, browse, quotations)
+   - Supplier profile pages with verification
+   - Buyer and Supplier dashboards
+   - Real-time messaging system
+   - Business verification workflows
+
+3. IMPLEMENTS dual authentication:
+   - Buyer registration and login
+   - Supplier registration and login
+   - Role-based dashboards and permissions
+
+4. CREATES key B2B features:
+   - MOQ (Minimum Order Quantity) display
+   - Tiered pricing tables
+   - Inquiry forms instead of cart
+   - Supplier verification badges
+   - Trade assurance indicators
+   - Response rate and time tracking
+
+5. BUILDS the database schema with Prisma for:
+   - Users (buyers & suppliers)
+   - Products with B2B pricing
+   - RFQs and quotations
+   - Inquiries
+   - Messages/conversations
+   - Supplier profiles
+   - Reviews and ratings
+   - Certifications
+
+6. DEVELOPS API routes for all functionality:
+   - Product CRUD
+   - RFQ management
+   - Inquiry handling
+   - Messaging
+   - User authentication
+   - Search and filters
+
+Tech stack:
+- Next.js 14 (App Router) + TypeScript
+- Tailwind CSS (match template's approach)
+- Prisma + PostgreSQL
+- NextAuth.js
+- Socket.io for messaging
+- Shadcn/ui components
+- React Hook Form + Zod
+
+Design requirements:
+- Professional B2B aesthetic
+- Mobile-responsive
+- Fast loading (<3s)
+- Clear CTAs for B2B actions
+- Trust indicators (badges, ratings)
+- Easy supplier discovery
+
+Maintain my template's:
+- Design language and color scheme
+- Component architecture
+- Code organization
+- Naming conventions
+
+Start by creating the project structure, then implement pages in this order:
+1. Home page (B2B adapted)
+2. Product listing with B2B filters
+3. Product detail with inquiry form
+4. Authentication (buyer/supplier)
+5. RFQ system
+6. Messaging
+7. Dashboards
+8. Supplier profiles
+
+Include sample seed data for testing with realistic B2B products and suppliers.
+```
+
+---
+
+## CONGRATULATIONS! 🎉
+
+You now have a complete, detailed prompt to build a professional B2B marketplace platform similar to Alibaba.com. This prompt covers:
+
+✅ All essential pages and features
+✅ Complete database design
+✅ Technical specifications
+✅ Security and performance requirements
+✅ Testing and deployment guidelines
+✅ Scaling strategies
+✅ Monetization options
+
+Simply copy the prompt sections you need and paste them into Cursor IDE to start building your B2B marketplace!
+
+**Pro Tips:**
+- Start with the MVP features first
+- Test thoroughly with real users
+- Gather feedback and iterate
+- Focus on supplier quality over quantity
+- Build trust through verification and reviews
+- Provide excellent customer support
+
+Good luck with your B2B marketplace! 🚀

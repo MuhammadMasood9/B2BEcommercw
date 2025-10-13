@@ -1,4 +1,4 @@
-import { eq, and, or, desc, asc, like, sql as drizzleSql, sql } from "drizzle-orm";
+import { eq, and, or, desc, asc, like, sql as drizzleSql } from "drizzle-orm";
 import { db } from "./db";
 import {
   type User, type InsertUser, users,
@@ -702,7 +702,6 @@ export class PostgresStorage implements IStorage {
     const result = await db.delete(orders).where(eq(orders.id, id));
     return result.rowCount !== null && result.rowCount > 0;
   }
-
 
   // Analytics
   async getAnalytics() {

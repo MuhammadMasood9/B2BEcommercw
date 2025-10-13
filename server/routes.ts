@@ -1,17 +1,32 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { authRoutes } from "./authRoutes";
+import categoryRoutes from "./categoryRoutes";
+import uploadRoutes from "./uploadRoutes";
 import { 
-  insertProductSchema, insertCategorySchema, insertCustomerSchema, insertSupplierSchema, insertOrderSchema,
-  insertUserSchema, insertBuyerProfileSchema, insertSupplierProfileSchema,
+  insertProductSchema, insertCategorySchema, insertCustomerSchema, insertOrderSchema,
+  insertUserSchema, insertBuyerProfileSchema,
   insertRfqSchema, insertQuotationSchema, insertInquirySchema,
   insertConversationSchema, insertMessageSchema, insertReviewSchema,
-  insertFavoriteSchema, insertCertificationSchema
+  insertFavoriteSchema
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
-  // ==================== AUTHENTICATION ====================
+  // ==================== AUTHENTICATION ROUTES ====================
+  
+  app.use('/api/auth', authRoutes);
+  
+  // ==================== UPLOAD ROUTES ====================
+  
+  app.use('/api', uploadRoutes);
+  
+  // ==================== CATEGORY ROUTES ====================
+  
+  app.use('/api', categoryRoutes);
+  
+  // ==================== LEGACY AUTHENTICATION (TO BE REMOVED) ====================
   
   app.post("/api/auth/register", async (req, res) => {
     try {
@@ -74,16 +89,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/dashboard/supplier/:supplierId", async (req, res) => {
+
+  // ==================== USERS & AUTHENTICATION ====================
+  
+  app.get("/api/users", async (req, res) => {
     try {
-      const stats = await storage.getSupplierDashboardStats(req.params.supplierId);
-      res.json(stats);
+      const users = await storage.getUsers();
+      // Don't send passwords to client
+      const usersWithoutPasswords = users.map(({ password, ...user }) => user);
+      res.json(usersWithoutPasswords);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
-
-  // ==================== USERS & AUTHENTICATION ====================
   
   app.post("/api/users", async (req, res) => {
     try {
@@ -120,6 +138,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Don't send password to client
       const { password, ...userWithoutPassword } = user;
       res.json(userWithoutPassword);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/users/:id", async (req, res) => {
+    try {
+      const validatedData = insertUserSchema.partial().parse(req.body);
+      const user = await storage.updateUser(req.params.id, validatedData);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      // Don't send password to client
+      const { password, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/users/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteUser(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      res.status(204).send();
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -162,66 +207,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ==================== SUPPLIER PROFILES ====================
-  
-  app.get("/api/supplier-profiles", async (req, res) => {
-    try {
-      const { isVerified, country } = req.query;
-      const filters: any = {};
-      if (isVerified !== undefined) filters.isVerified = isVerified === 'true';
-      if (country) filters.country = country as string;
-      
-      const profiles = await storage.getSupplierProfiles(filters);
-      res.json(profiles);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.get("/api/supplier-profiles/:userId", async (req, res) => {
-    try {
-      const profile = await storage.getSupplierProfile(req.params.userId);
-      if (!profile) {
-        return res.status(404).json({ error: "Supplier profile not found" });
-      }
-      res.json(profile);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.post("/api/supplier-profiles", async (req, res) => {
-    try {
-      const validatedData = insertSupplierProfileSchema.parse(req.body);
-      const profile = await storage.createSupplierProfile(validatedData);
-      res.status(201).json(profile);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  });
-
-  app.patch("/api/supplier-profiles/:userId", async (req, res) => {
-    try {
-      const validatedData = insertSupplierProfileSchema.partial().parse(req.body);
-      const profile = await storage.updateSupplierProfile(req.params.userId, validatedData);
-      if (!profile) {
-        return res.status(404).json({ error: "Supplier profile not found" });
-      }
-      res.json(profile);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  });
 
   // ==================== PRODUCTS ====================
   
   app.get("/api/products", async (req, res) => {
     try {
-      const { categoryId, supplierId, search, isPublished, minMOQ, maxMOQ } = req.query;
+      const { categoryId, search, isPublished, minMOQ, maxMOQ } = req.query;
       const filters: any = {};
       
       if (categoryId) filters.categoryId = categoryId as string;
-      if (supplierId) filters.supplierId = supplierId as string;
       if (search) filters.search = search as string;
       if (isPublished !== undefined) filters.isPublished = isPublished === 'true';
       if (minMOQ) filters.minMOQ = parseInt(minMOQ as string);
@@ -297,6 +291,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Individual stock update endpoint
+  app.patch("/api/products/:id/stock", async (req, res) => {
+    try {
+      const { stockQuantity } = req.body;
+      
+      if (typeof stockQuantity !== 'number' || stockQuantity < 0) {
+        return res.status(400).json({ error: "Invalid stock quantity. Must be a non-negative number." });
+      }
+
+      const product = await storage.updateProduct(req.params.id, { 
+        stockQuantity,
+        inStock: stockQuantity > 0 
+      });
+      
+      if (!product) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+      
+      res.json(product);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Bulk stock update endpoint
+  app.patch("/api/products/bulk-stock-update", async (req, res) => {
+    try {
+      const { productIds, stockQuantity } = req.body;
+      
+      if (!Array.isArray(productIds) || productIds.length === 0) {
+        return res.status(400).json({ error: "productIds must be a non-empty array" });
+      }
+      
+      if (typeof stockQuantity !== 'number' || stockQuantity < 0) {
+        return res.status(400).json({ error: "Invalid stock quantity. Must be a non-negative number." });
+      }
+
+      const updatedProducts = [];
+      
+      for (const productId of productIds) {
+        try {
+          const product = await storage.updateProduct(productId, { 
+            stockQuantity,
+            inStock: stockQuantity > 0 
+          });
+          
+          if (product) {
+            updatedProducts.push(product);
+          }
+        } catch (error) {
+          console.error(`Failed to update product ${productId}:`, error);
+        }
+      }
+      
+      res.json({ 
+        message: `Updated ${updatedProducts.length} products successfully`,
+        updatedProducts 
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Inventory analytics endpoint
+  app.get("/api/products/inventory/analytics", async (req, res) => {
+    try {
+      const products = await storage.getProducts();
+      
+      const analytics = {
+        totalProducts: products.length,
+        inStock: products.filter(p => p.inStock && (p.stockQuantity || 0) > 0).length,
+        lowStock: products.filter(p => p.inStock && (p.stockQuantity || 0) > 0 && (p.stockQuantity || 0) < 10).length,
+        outOfStock: products.filter(p => !p.inStock || (p.stockQuantity || 0) === 0).length,
+        totalValue: products.reduce((sum, p) => {
+          const price = Array.isArray(p.priceRanges) && p.priceRanges.length > 0 
+            ? p.priceRanges[0].pricePerUnit || 0 
+            : 0;
+          return sum + (price * (p.stockQuantity || 0));
+        }, 0),
+        lowStockProducts: products.filter(p => p.inStock && (p.stockQuantity || 0) > 0 && (p.stockQuantity || 0) < 10),
+        outOfStockProducts: products.filter(p => !p.inStock || (p.stockQuantity || 0) === 0)
+      };
+      
+      res.json(analytics);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Bulk product upload
   app.post("/api/products/bulk", async (req, res) => {
     try {
@@ -316,7 +399,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const paymentTerms = p.paymentTerms ? (typeof p.paymentTerms === 'string' ? p.paymentTerms.split(',').map((term: string) => term.trim()).filter(Boolean) : p.paymentTerms) : [];
           
           const productData = {
-            supplierId: p.supplierId || p.SupplierId || '',
             name: p.name || p.Name,
             slug: (p.slug || p.name || p.Name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
             shortDescription: p.shortDescription || p['Short description'],
@@ -496,10 +578,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get("/api/quotations", async (req, res) => {
     try {
-      const { rfqId, supplierId, status } = req.query;
+      const { rfqId, status } = req.query;
       const filters: any = {};
       if (rfqId) filters.rfqId = rfqId as string;
-      if (supplierId) filters.supplierId = supplierId as string;
       if (status) filters.status = status as string;
       
       const quotations = await storage.getQuotations(filters);
@@ -552,11 +633,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get("/api/inquiries", async (req, res) => {
     try {
-      const { productId, buyerId, supplierId, status } = req.query;
+      const { productId, buyerId, status } = req.query;
       const filters: any = {};
       if (productId) filters.productId = productId as string;
       if (buyerId) filters.buyerId = buyerId as string;
-      if (supplierId) filters.supplierId = supplierId as string;
       if (status) filters.status = status as string;
       
       const inquiries = await storage.getInquiries(filters);
@@ -610,11 +690,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/conversations/:userId", async (req, res) => {
     try {
       const { role } = req.query;
-      if (!role || (role !== 'buyer' && role !== 'supplier')) {
-        return res.status(400).json({ error: "Role must be 'buyer' or 'supplier'" });
+      if (!role || (role !== 'buyer' && role !== 'admin')) {
+        return res.status(400).json({ error: "Role must be 'buyer' or 'admin'" });
       }
       
-      const conversations = await storage.getConversations(req.params.userId, role as 'buyer' | 'supplier');
+      const conversations = await storage.getConversations(req.params.userId, role as 'buyer' | 'admin');
       res.json(conversations);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -635,12 +715,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/conversations", async (req, res) => {
     try {
-      const { buyerId, supplierId } = req.body;
-      if (!buyerId || !supplierId) {
-        return res.status(400).json({ error: "buyerId and supplierId are required" });
+      const { buyerId } = req.body;
+      if (!buyerId) {
+        return res.status(400).json({ error: "buyerId is required" });
       }
       
-      const conversation = await storage.getOrCreateConversation(buyerId, supplierId);
+      const conversation = await storage.getOrCreateConversation(buyerId);
       res.json(conversation);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -708,10 +788,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get("/api/reviews", async (req, res) => {
     try {
-      const { productId, supplierId, buyerId } = req.query;
+      const { productId, buyerId } = req.query;
       const filters: any = {};
       if (productId) filters.productId = productId as string;
-      if (supplierId) filters.supplierId = supplierId as string;
       if (buyerId) filters.buyerId = buyerId as string;
       
       const reviews = await storage.getReviews(filters);
@@ -750,7 +829,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { itemType } = req.query;
       const favorites = await storage.getFavorites(
         req.params.userId, 
-        itemType as 'product' | 'supplier' | undefined
+        itemType as 'product' | undefined
       );
       res.json(favorites);
     } catch (error: any) {
@@ -786,51 +865,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ==================== CERTIFICATIONS ====================
-  
-  app.get("/api/certifications/:supplierId", async (req, res) => {
-    try {
-      const certifications = await storage.getCertifications(req.params.supplierId);
-      res.json(certifications);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.post("/api/certifications", async (req, res) => {
-    try {
-      const validatedData = insertCertificationSchema.parse(req.body);
-      const certification = await storage.createCertification(validatedData);
-      res.status(201).json(certification);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  });
-
-  app.patch("/api/certifications/:id", async (req, res) => {
-    try {
-      const validatedData = insertCertificationSchema.partial().parse(req.body);
-      const certification = await storage.updateCertification(req.params.id, validatedData);
-      if (!certification) {
-        return res.status(404).json({ error: "Certification not found" });
-      }
-      res.json(certification);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  });
-
-  app.delete("/api/certifications/:id", async (req, res) => {
-    try {
-      const success = await storage.deleteCertification(req.params.id);
-      if (!success) {
-        return res.status(404).json({ error: "Certification not found" });
-      }
-      res.status(204).send();
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
 
   // ==================== CUSTOMERS (Legacy) ====================
   
@@ -890,73 +924,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ==================== SUPPLIERS (Legacy) ====================
-  
-  app.get("/api/suppliers", async (req, res) => {
-    try {
-      const suppliers = await storage.getSuppliers();
-      res.json(suppliers);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.get("/api/suppliers/:id", async (req, res) => {
-    try {
-      const supplier = await storage.getSupplier(req.params.id);
-      if (!supplier) {
-        return res.status(404).json({ error: "Supplier not found" });
-      }
-      res.json(supplier);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.post("/api/suppliers", async (req, res) => {
-    try {
-      const validatedData = insertSupplierSchema.parse(req.body);
-      const supplier = await storage.createSupplier(validatedData);
-      res.status(201).json(supplier);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  });
-
-  app.patch("/api/suppliers/:id", async (req, res) => {
-    try {
-      const validatedData = insertSupplierSchema.partial().parse(req.body);
-      const supplier = await storage.updateSupplier(req.params.id, validatedData);
-      if (!supplier) {
-        return res.status(404).json({ error: "Supplier not found" });
-      }
-      res.json(supplier);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  });
-
-  app.delete("/api/suppliers/:id", async (req, res) => {
-    try {
-      const success = await storage.deleteSupplier(req.params.id);
-      if (!success) {
-        return res.status(404).json({ error: "Supplier not found" });
-      }
-      res.status(204).send();
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
 
   // ==================== ORDERS ====================
   
   app.get("/api/orders", async (req, res) => {
     try {
-      const { buyerId, supplierId, customerId, status } = req.query;
+      const { buyerId, customerId, status } = req.query;
       const filters: any = {};
       
       if (buyerId) filters.buyerId = buyerId as string;
-      if (supplierId) filters.supplierId = supplierId as string;
       if (customerId) filters.customerId = customerId as string;
       if (status) filters.status = status as string;
       

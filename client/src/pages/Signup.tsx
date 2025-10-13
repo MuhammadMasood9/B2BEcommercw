@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -8,18 +8,49 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Mail, Lock, Eye, EyeOff, Building2, User, Phone } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, Building2, User, Phone, Loader2 } from "lucide-react";
 import { SiGoogle, SiFacebook, SiLinkedin } from "react-icons/si";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);
-  const [accountType, setAccountType] = useState("buyer");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [location, setLocation] = useLocation();
+  const { register } = useAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Form states for buyer
+  const [buyerData, setBuyerData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    companyName: '',
+    phone: '',
+    password: '',
+    terms: false
+  });
+
+  const handleBuyerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Signup attempt for:", accountType);
+    if (!buyerData.terms) return;
+    
+    setIsSubmitting(true);
+    const success = await register({
+      email: buyerData.email,
+      password: buyerData.password,
+      firstName: buyerData.firstName,
+      lastName: buyerData.lastName,
+      companyName: buyerData.companyName,
+      phone: buyerData.phone,
+      role: 'buyer',
+      industry: 'General'
+    });
+    
+    if (success) {
+      setLocation('/dashboard/buyer');
+    }
+    setIsSubmitting(false);
   };
+
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -34,14 +65,12 @@ export default function Signup() {
               </CardDescription>
             </CardHeader>
             <CardContent className="px-4 sm:px-6">
-              <Tabs value={accountType} onValueChange={setAccountType} className="mb-4 sm:mb-6">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="buyer" className="text-sm sm:text-base" data-testid="tab-buyer">I'm a Buyer</TabsTrigger>
-                  <TabsTrigger value="supplier" className="text-sm sm:text-base" data-testid="tab-supplier">I'm a Supplier</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="buyer" className="mt-4 sm:mt-6">
-                  <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+              <div className="mb-4 sm:mb-6">
+                <div className="text-center mb-6">
+                  <h3 className="text-lg font-semibold">Create Your Buyer Account</h3>
+                  <p className="text-sm text-muted-foreground mt-1">Join as a buyer to access our B2B marketplace</p>
+                </div>
+                  <form onSubmit={handleBuyerSubmit} className="space-y-3 sm:space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="buyer-first-name">First Name *</Label>
@@ -52,6 +81,8 @@ export default function Signup() {
                             placeholder="John"
                             className="pl-10"
                             required
+                            value={buyerData.firstName}
+                            onChange={(e) => setBuyerData({...buyerData, firstName: e.target.value})}
                             data-testid="input-buyer-first-name"
                           />
                         </div>
@@ -65,6 +96,8 @@ export default function Signup() {
                             placeholder="Doe"
                             className="pl-10"
                             required
+                            value={buyerData.lastName}
+                            onChange={(e) => setBuyerData({...buyerData, lastName: e.target.value})}
                             data-testid="input-buyer-last-name"
                           />
                         </div>
@@ -81,6 +114,8 @@ export default function Signup() {
                           placeholder="you@company.com"
                           className="pl-10"
                           required
+                          value={buyerData.email}
+                          onChange={(e) => setBuyerData({...buyerData, email: e.target.value})}
                           data-testid="input-buyer-email"
                         />
                       </div>
@@ -95,6 +130,8 @@ export default function Signup() {
                           placeholder="Your Company Ltd."
                           className="pl-10"
                           required
+                          value={buyerData.companyName}
+                          onChange={(e) => setBuyerData({...buyerData, companyName: e.target.value})}
                           data-testid="input-buyer-company"
                         />
                       </div>
@@ -109,6 +146,8 @@ export default function Signup() {
                           type="tel"
                           placeholder="+1 (234) 567-8900"
                           className="pl-10"
+                          value={buyerData.phone}
+                          onChange={(e) => setBuyerData({...buyerData, phone: e.target.value})}
                           data-testid="input-buyer-phone"
                         />
                       </div>
@@ -124,6 +163,8 @@ export default function Signup() {
                           placeholder="Create a strong password"
                           className="pl-10 pr-10"
                           required
+                          value={buyerData.password}
+                          onChange={(e) => setBuyerData({...buyerData, password: e.target.value})}
                           data-testid="input-buyer-password"
                         />
                         <button
@@ -141,129 +182,36 @@ export default function Signup() {
                     </div>
 
                     <div className="flex items-start space-x-2">
-                      <Checkbox id="buyer-terms" required data-testid="checkbox-buyer-terms" />
+                      <Checkbox 
+                        id="buyer-terms" 
+                        checked={buyerData.terms}
+                        onCheckedChange={(checked) => setBuyerData({...buyerData, terms: checked === true})}
+                        required 
+                        data-testid="checkbox-buyer-terms" 
+                      />
                       <Label htmlFor="buyer-terms" className="text-sm cursor-pointer leading-relaxed">
                         I agree to the <Link href="/terms"><a className="text-primary hover:underline">Terms of Service</a></Link> and <Link href="/privacy"><a className="text-primary hover:underline">Privacy Policy</a></Link>
                       </Label>
                     </div>
 
-                    <Button type="submit" className="w-full" size="lg" data-testid="button-buyer-signup">
-                      Create Buyer Account
+                    <Button 
+                      type="submit" 
+                      className="w-full" 
+                      size="lg" 
+                      disabled={isSubmitting}
+                      data-testid="button-buyer-signup"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Creating Account...
+                        </>
+                      ) : (
+                        'Create Buyer Account'
+                      )}
                     </Button>
                   </form>
-                </TabsContent>
-
-                <TabsContent value="supplier" className="mt-4 sm:mt-6">
-                  <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="supplier-first-name">First Name *</Label>
-                        <div className="relative mt-2">
-                          <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
-                          <Input
-                            id="supplier-first-name"
-                            placeholder="John"
-                            className="pl-10"
-                            required
-                            data-testid="input-supplier-first-name"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <Label htmlFor="supplier-last-name">Last Name *</Label>
-                        <div className="relative mt-2">
-                          <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
-                          <Input
-                            id="supplier-last-name"
-                            placeholder="Doe"
-                            className="pl-10"
-                            required
-                            data-testid="input-supplier-last-name"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="supplier-email">Business Email *</Label>
-                      <div className="relative mt-2">
-                        <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
-                        <Input
-                          id="supplier-email"
-                          type="email"
-                          placeholder="sales@company.com"
-                          className="pl-10"
-                          required
-                          data-testid="input-supplier-email"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="supplier-company">Company Name *</Label>
-                      <div className="relative mt-2">
-                        <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
-                        <Input
-                          id="supplier-company"
-                          placeholder="Manufacturing Co. Ltd."
-                          className="pl-10"
-                          required
-                          data-testid="input-supplier-company"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="supplier-phone">Phone Number *</Label>
-                      <div className="relative mt-2">
-                        <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
-                        <Input
-                          id="supplier-phone"
-                          type="tel"
-                          placeholder="+86 123 4567 8900"
-                          className="pl-10"
-                          required
-                          data-testid="input-supplier-phone"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="supplier-password">Password *</Label>
-                      <div className="relative mt-2">
-                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
-                        <Input
-                          id="supplier-password"
-                          type={showPassword ? "text" : "password"}
-                          placeholder="Create a strong password"
-                          className="pl-10 pr-10"
-                          required
-                          data-testid="input-supplier-password"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                          data-testid="button-toggle-password-supplier"
-                        >
-                          {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start space-x-2">
-                      <Checkbox id="supplier-terms" required data-testid="checkbox-supplier-terms" />
-                      <Label htmlFor="supplier-terms" className="text-sm cursor-pointer leading-relaxed">
-                        I agree to the <Link href="/terms"><a className="text-primary hover:underline">Terms of Service</a></Link> and <Link href="/privacy"><a className="text-primary hover:underline">Privacy Policy</a></Link>
-                      </Label>
-                    </div>
-
-                    <Button type="submit" className="w-full" size="lg" data-testid="button-supplier-signup">
-                      Create Supplier Account
-                    </Button>
-                  </form>
-                </TabsContent>
-              </Tabs>
+              </div>
 
               <div className="mt-4 sm:mt-6">
                 <div className="relative">

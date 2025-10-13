@@ -3,25 +3,26 @@ import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
+import { ToastContainer } from 'react-toastify';
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import ChatbotWidget from "@/components/ChatbotWidget";
 import FullScreenLoader from "@/components/FullScreenLoader";
 import { LoadingProvider, useLoading } from "@/contexts/LoadingContext";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
+import 'react-toastify/dist/ReactToastify.css';
 import Home from "@/pages/Home";
 import Products from "@/pages/Products";
 import ProductDetail from "@/pages/ProductDetail";
 import RFQBrowse from "@/pages/RFQBrowse";
 import RFQCreate from "@/pages/RFQCreate";
 import RFQDetail from "@/pages/RFQDetail";
-import SupplierProfile from "@/pages/SupplierProfile";
 import InquiryCart from "@/pages/InquiryCart";
 import Messages from "@/pages/Messages";
 import Dashboard from "@/pages/Dashboard";
-import SupplierDashboard from "@/pages/SupplierDashboard";
 import Categories from "@/pages/Categories";
-import FindSuppliers from "@/pages/FindSuppliers";
 import ReadyToShip from "@/pages/ReadyToShip";
 import TradeShows from "@/pages/TradeShows";
 import BuyerProtection from "@/pages/BuyerProtection";
@@ -34,30 +35,94 @@ import Signup from "@/pages/Signup";
 import MyOrders from "@/pages/MyOrders";
 import MyRFQs from "@/pages/MyRFQs";
 import Favorites from "@/pages/Favorites";
-import ContactSupplier from "@/pages/ContactSupplier";
 import StartOrder from "@/pages/StartOrder";
-import SendQuotation from "@/pages/SendQuotation";
 import CategoryProducts from "@/pages/CategoryProducts";
 import GetVerified from "@/pages/GetVerified";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminProducts from "@/pages/admin/AdminProducts";
+import AdminProductDetail from "@/pages/admin/AdminProductDetail";
+import AdminProductManagement from "@/pages/admin/AdminProductManagement";
 import AdminBulkUpload from "@/pages/admin/AdminBulkUpload";
 import AdminCategories from "@/pages/admin/AdminCategories";
 import AdminCustomers from "@/pages/admin/AdminCustomers";
-import AdminSuppliers from "@/pages/admin/AdminSuppliers";
+import AdminUsers from "@/pages/admin/AdminUsers";
+import AdminUserDetails from "@/pages/admin/AdminUserDetails";
+import AdminUserImportExport from "@/pages/admin/AdminUserImportExport";
+import AdminSettings from "@/pages/admin/AdminSettings";
+import AdminReports from "@/pages/admin/AdminReports";
 import AdminOrders from "@/pages/admin/AdminOrders";
+import AdminLogin from "@/pages/admin/AdminLogin";
 import NotFound from "@/pages/not-found";
 
 function AdminRouter() {
   return (
     <Switch>
-      <Route path="/admin" component={AdminDashboard} />
-      <Route path="/admin/products" component={AdminProducts} />
-      <Route path="/admin/bulk-upload" component={AdminBulkUpload} />
-      <Route path="/admin/categories" component={AdminCategories} />
-      <Route path="/admin/customers" component={AdminCustomers} />
-      <Route path="/admin/suppliers" component={AdminSuppliers} />
-      <Route path="/admin/orders" component={AdminOrders} />
+      <Route path="/admin/login" component={AdminLogin} />
+      <Route path="/admin">
+        <ProtectedRoute requiredRole="admin">
+          <AdminDashboard />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/products">
+        <ProtectedRoute requiredRole="admin">
+          <AdminProducts />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/products/:productId">
+        <ProtectedRoute requiredRole="admin">
+          <AdminProductDetail />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/products/:productId/manage">
+        <ProtectedRoute requiredRole="admin">
+          <AdminProductManagement />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/bulk-upload">
+        <ProtectedRoute requiredRole="admin">
+          <AdminBulkUpload />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/categories">
+        <ProtectedRoute requiredRole="admin">
+          <AdminCategories />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/customers">
+        <ProtectedRoute requiredRole="admin">
+          <AdminCustomers />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/orders">
+        <ProtectedRoute requiredRole="admin">
+          <AdminOrders />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/users">
+        <ProtectedRoute requiredRole="admin">
+          <AdminUsers />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/users/:userId">
+        <ProtectedRoute requiredRole="admin">
+          <AdminUserDetails />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/users/import-export">
+        <ProtectedRoute requiredRole="admin">
+          <AdminUserImportExport />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/settings">
+        <ProtectedRoute requiredRole="admin">
+          <AdminSettings />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/reports">
+        <ProtectedRoute requiredRole="admin">
+          <AdminReports />
+        </ProtectedRoute>
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
@@ -70,8 +135,6 @@ function PublicRouter() {
       <Route path="/products" component={Products} />
       <Route path="/product/:id" component={ProductDetail} />
       <Route path="/categories" component={Categories} />
-      <Route path="/supplier/:id" component={SupplierProfile} />
-      <Route path="/find-suppliers" component={FindSuppliers} />
       <Route path="/ready-to-ship" component={ReadyToShip} />
       <Route path="/trade-shows" component={TradeShows} />
       <Route path="/rfq/browse" component={RFQBrowse} />
@@ -79,8 +142,11 @@ function PublicRouter() {
       <Route path="/rfq/:id" component={RFQDetail} />
       <Route path="/inquiry-cart" component={InquiryCart} />
       <Route path="/messages" component={Messages} />
-      <Route path="/dashboard/buyer" component={Dashboard} />
-      <Route path="/dashboard/supplier" component={SupplierDashboard} />
+      <Route path="/dashboard/buyer">
+        <ProtectedRoute requiredRole="buyer">
+          <Dashboard />
+        </ProtectedRoute>
+      </Route>
       <Route path="/buyer-protection" component={BuyerProtection} />
       <Route path="/contact" component={Contact} />
       <Route path="/help" component={Help} />
@@ -91,9 +157,7 @@ function PublicRouter() {
       <Route path="/my-orders" component={MyOrders} />
       <Route path="/my-rfqs" component={MyRFQs} />
       <Route path="/favorites" component={Favorites} />
-      <Route path="/contact-supplier/:id" component={ContactSupplier} />
       <Route path="/start-order/:productId" component={StartOrder} />
-      <Route path="/send-quotation/:rfqId" component={SendQuotation} />
       <Route path="/category/:slug" component={CategoryProducts} />
       <Route path="/get-verified" component={GetVerified} />
       <Route component={NotFound} />
@@ -139,6 +203,7 @@ function AppContent() {
           showProgress={showProgress}
           progress={progress}
         />
+        <ToastContainer position="top-right" />
       </>
     );
   }
@@ -153,6 +218,7 @@ function AppContent() {
         showProgress={showProgress}
         progress={progress}
       />
+      <ToastContainer position="top-right" />
     </>
   );
 }
@@ -161,10 +227,12 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <LoadingProvider>
-        <TooltipProvider>
-          <Toaster />
-          <AppContent />
-        </TooltipProvider>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <AppContent />
+          </TooltipProvider>
+        </AuthProvider>
       </LoadingProvider>
     </QueryClientProvider>
   );

@@ -3,10 +3,15 @@ import {
   Package, 
   FolderTree, 
   Users, 
-  Building2, 
   ShoppingCart,
   Upload,
-  Settings
+  Settings,
+  UserCog,
+  Shield,
+  BarChart3,
+  UserPlus,
+  FileSpreadsheet,
+  UserCheck
 } from "lucide-react";
 import {
   Sidebar,
@@ -53,9 +58,36 @@ const adminMenuItems = [
     icon: Users,
   },
   {
-    title: "Suppliers",
-    url: "/admin/suppliers",
-    icon: Building2,
+    title: "Users",
+    url: "/admin/users",
+    icon: UserCog,
+    children: [
+      {
+        title: "All Users",
+        url: "/admin/users",
+        icon: Users,
+      },
+      {
+        title: "Add User",
+        url: "/admin/users/add",
+        icon: UserPlus,
+      },
+      {
+        title: "Import/Export",
+        url: "/admin/users/import-export",
+        icon: FileSpreadsheet,
+      },
+    ]
+  },
+  {
+    title: "Reports",
+    url: "/admin/reports",
+    icon: BarChart3,
+  },
+  {
+    title: "Settings",
+    url: "/admin/settings",
+    icon: Settings,
   },
 ];
 

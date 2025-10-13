@@ -1,8 +1,10 @@
-import { Search, ShoppingCart, User, Globe, Menu, ChevronDown } from "lucide-react";
+import { Search, ShoppingCart, User, Globe, Menu, ChevronDown, LogOut, Settings, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select,
   SelectContent,
@@ -24,8 +26,9 @@ import {
 } from "@/components/ui/sheet";
 
 export default function Header() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const { user, isAuthenticated, logout } = useAuth();
 
   const isActivePath = (path: string) => {
     if (path === "/" && location === "/") return true;
@@ -192,26 +195,109 @@ export default function Header() {
             </Sheet>
 
             {/* User Menu */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="hidden sm:flex h-10 w-10" data-testid="button-user-menu">
-                  <User className="w-5 h-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem data-testid="menu-my-account">
-                  <User className="w-4 h-4 mr-2" />
-                  My Account
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <Link href="/my-orders"><DropdownMenuItem data-testid="menu-my-orders">My Orders</DropdownMenuItem></Link>
-                <Link href="/my-rfqs"><DropdownMenuItem data-testid="menu-my-rfqs">My RFQs</DropdownMenuItem></Link>
-                <Link href="/favorites"><DropdownMenuItem data-testid="menu-favorites">Favorites</DropdownMenuItem></Link>
-                <Link href="/messages"><DropdownMenuItem data-testid="menu-messages">Messages</DropdownMenuItem></Link>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem data-testid="menu-sign-out">Sign Out</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {isAuthenticated ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="hidden sm:flex h-10 px-3" data-testid="button-user-menu">
+                    <Avatar className="h-8 w-8 mr-2">
+                      <AvatarImage src="" alt={user?.firstName} />
+                      <AvatarFallback>
+                        {user?.firstName?.[0]}{user?.lastName?.[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="hidden md:block">{user?.firstName}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <div className="px-2 py-1.5 text-sm font-medium">
+                    {user?.firstName} {user?.lastName}
+                  </div>
+                  <div className="px-2 py-1 text-xs text-muted-foreground">
+                    {user?.email}
+                  </div>
+                  <DropdownMenuSeparator />
+                  
+                  {user?.role === 'admin' && (
+                    <>
+                      <Link href="/admin">
+                        <DropdownMenuItem>
+                          <Settings className="w-4 h-4 mr-2" />
+                          Admin Panel
+                        </DropdownMenuItem>
+                      </Link>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
+                  
+                  {user?.role === 'buyer' && (
+                    <>
+                      <Link href="/dashboard/buyer">
+                        <DropdownMenuItem>
+                          <User className="w-4 h-4 mr-2" />
+                          Buyer Dashboard
+                        </DropdownMenuItem>
+                      </Link>
+                      <Link href="/my-orders">
+                        <DropdownMenuItem>My Orders</DropdownMenuItem>
+                      </Link>
+                      <Link href="/my-rfqs">
+                        <DropdownMenuItem>My RFQs</DropdownMenuItem>
+                      </Link>
+                    </>
+                  )}
+                  
+                  {user?.role === 'supplier' && (
+                    <>
+                      <Link href="/dashboard/supplier">
+                        <DropdownMenuItem>
+                          <User className="w-4 h-4 mr-2" />
+                          Supplier Dashboard
+                        </DropdownMenuItem>
+                      </Link>
+                    </>
+                  )}
+                  
+                  <Link href="/favorites">
+                    <DropdownMenuItem>
+                      <Bell className="w-4 h-4 mr-2" />
+                      Favorites
+                    </DropdownMenuItem>
+                  </Link>
+                  <Link href="/messages">
+                    <DropdownMenuItem>
+                      <Bell className="w-4 h-4 mr-2" />
+                      Messages
+                    </DropdownMenuItem>
+                  </Link>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    onClick={() => logout()}
+                    className="text-red-600"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link href="/login">
+                  <Button variant="ghost" size="sm">
+                    Sign In
+                  </Button>
+                </Link>
+                <Link href="/signup">
+                  <Button size="sm">
+                    Join Free
+                  </Button>
+                </Link>
+                <Link href="/admin/login">
+                  <Button variant="outline" size="sm">
+                    Admin
+                  </Button>
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </div>

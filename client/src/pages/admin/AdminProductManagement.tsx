@@ -68,6 +68,14 @@ export default function AdminProductManagement() {
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
 
+  // Helper function for safe number formatting
+  const safeToFixed = (value: any, decimals: number = 2): string => {
+    if (typeof value === 'number' && !isNaN(value)) {
+      return value.toFixed(decimals);
+    }
+    return '0.00';
+  };
+
   // Fetch product data
   const { data: product, isLoading, error } = useQuery<Product & { categoryName?: string }>({
     queryKey: [`/api/products/${productId}`],
@@ -895,7 +903,7 @@ export default function AdminProductManagement() {
                     {product.sampleAvailable && product.samplePrice && (
                       <div className="text-sm">
                         <span className="text-muted-foreground">Sample Price: </span>
-                        <span className="font-medium">${product.samplePrice}</span>
+                        <span className="font-medium">${safeToFixed(product.samplePrice)}</span>
                       </div>
                     )}
                   </div>
@@ -921,7 +929,7 @@ export default function AdminProductManagement() {
                           </div>
                           <div className="text-right">
                             <span className="text-xl font-bold text-green-600">
-                              ${tier.pricePerUnit?.toFixed(2)}
+                              ${safeToFixed(tier.pricePerUnit)}
                             </span>
                             <p className="text-sm text-muted-foreground">per unit</p>
                           </div>
@@ -1177,7 +1185,7 @@ export default function AdminProductManagement() {
                     <div>
                       <p className="font-medium">Sample Available</p>
                       <p className="text-sm text-muted-foreground">
-                        {product.sampleAvailable ? `$${product.samplePrice}` : 'Not available'}
+                        {product.sampleAvailable ? `$${safeToFixed(product.samplePrice)}` : 'Not available'}
                       </p>
                     </div>
                     {product.sampleAvailable ? (

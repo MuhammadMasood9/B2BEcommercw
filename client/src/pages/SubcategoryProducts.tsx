@@ -16,13 +16,13 @@ import { SlidersHorizontal, Search, X, Loader2, Package as PackageIcon } from "l
 import { useLoading } from "@/contexts/LoadingContext";
 import type { Product, Category } from "@shared/schema";
 
-export default function CategoryProducts() {
+export default function SubcategoryProducts() {
   const { setLoading } = useLoading();
-  const [, params] = useRoute("/category/:slug");
-  const categorySlug = params?.slug || "electronics";
+  const [, params] = useRoute("/subcategory/:slug");
+  const subcategorySlug = params?.slug || "";
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Fetch categories to get the category by slug
+  // Fetch categories to get the subcategory by slug
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
     queryFn: async () => {
@@ -42,14 +42,17 @@ export default function CategoryProducts() {
     },
   });
 
-  // Find the category by slug
-  const currentCategory = categories.find(cat => cat.slug === categorySlug);
-  const categoryId = currentCategory?.id;
-  const categoryName = currentCategory?.name || categorySlug;
+  // Find the subcategory by slug
+  const currentSubcategory = categories.find(cat => cat.slug === subcategorySlug);
+  const subcategoryId = currentSubcategory?.id;
+  const subcategoryName = currentSubcategory?.name || subcategorySlug;
 
-  // Fetch products for this category
+  // Find parent category
+  const parentCategory = categories.find(cat => cat.id === currentSubcategory?.parentId);
+
+  // Fetch products for this subcategory
   const { data: apiProducts = [], isLoading: isProductsLoading } = useQuery<Product[]>({
-    queryKey: ["/api/products", categoryId],
+    queryKey: ["/api/products", subcategoryId],
     queryFn: async () => {
       try {
         const response = await fetch("/api/products", {
@@ -59,27 +62,27 @@ export default function CategoryProducts() {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        // Filter products by category
+        // Filter products by subcategory
         const filtered = Array.isArray(data) 
-          ? data.filter((p: Product) => p.categoryId === categoryId)
+          ? data.filter((p: Product) => p.categoryId === subcategoryId)
           : [];
-        console.log("Filtered products for category:", filtered);
+        console.log("Filtered products for subcategory:", filtered);
         return filtered;
       } catch (error) {
         console.error("Error fetching products:", error);
         return [];
       }
     },
-    enabled: !!categoryId, // Only run query if we have a categoryId
+    enabled: !!subcategoryId, // Only run query if we have a subcategoryId
   });
 
   useEffect(() => {
     if (isProductsLoading) {
-      setLoading(true, `Loading ${categoryName} products...`);
+      setLoading(true, `Loading ${subcategoryName} products...`);
     } else {
       setLoading(false);
     }
-  }, [isProductsLoading, categoryName, setLoading]);
+  }, [isProductsLoading, subcategoryName, setLoading]);
 
   // Transform API products for display
   const products = apiProducts.map(product => {
@@ -129,89 +132,17 @@ export default function CategoryProducts() {
     };
   });
 
-  const fallbackProducts = [
-    {
-      id: "1",
-      image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop",
-      name: "Premium Wireless Headphones",
-      priceRange: "$25.00-$35.00 /piece",
-      moq: "100 pieces",
-      supplierName: "AudioTech Pro",
-      supplierCountry: "China",
-      responseRate: "98%",
-      verified: true,
-      tradeAssurance: true,
-    },
-    {
-      id: "2",
-      image: "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=400&h=400&fit=crop",
-      name: "Smart Fitness Tracker Watch",
-      priceRange: "$30.00-$45.00 /piece",
-      moq: "150 pieces",
-      supplierName: "TechHealth Ltd",
-      supplierCountry: "China",
-      responseRate: "96%",
-      verified: true,
-    },
-    {
-      id: "3",
-      image: "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=400&h=400&fit=crop",
-      name: "Designer Sunglasses UV Protection",
-      priceRange: "$8.00-$12.00 /piece",
-      moq: "500 pieces",
-      supplierName: "Vision Plus",
-      supplierCountry: "Taiwan",
-      responseRate: "92%",
-      tradeAssurance: true,
-    },
-    {
-      id: "4",
-      image: "https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=400&h=400&fit=crop",
-      name: "Casual Canvas Sneakers",
-      priceRange: "$12.00-$18.00 /pair",
-      moq: "300 pairs",
-      supplierName: "FootWear Global",
-      supplierCountry: "Vietnam",
-      responseRate: "97%",
-      verified: true,
-      tradeAssurance: true,
-    },
-    {
-      id: "5",
-      image: "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=400&h=400&fit=crop",
-      name: "Smart Fitness Tracker Watch",
-      priceRange: "$30.00-$45.00 /piece",
-      moq: "150 pieces",
-      supplierName: "TechHealth Ltd",
-      supplierCountry: "China",
-      responseRate: "96%",
-      verified: true,
-    },
-    {
-      id: "6",
-      image: "https://images.unsplash.com/photo-1585386959984-a4155224a1ad?w=400&h=400&fit=crop",
-      name: "Leather Laptop Bag Professional",
-      priceRange: "$35.00-$50.00 /piece",
-      moq: "100 pieces",
-      supplierName: "Leather Crafts Co",
-      supplierCountry: "India",
-      responseRate: "94%",
-      verified: true,
-      tradeAssurance: true,
-    },
-  ];
-
   const FilterSidebar = () => (
     <div className="space-y-5">
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Subcategories</CardTitle>
+          <CardTitle className="text-base font-semibold">Price Range</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {["Mobile Phones", "Laptops", "Tablets", "Accessories", "Smart Devices"].map((sub) => (
-            <div key={sub} className="flex flex-wrap items-center gap-3">
-              <Checkbox id={sub} data-testid={`checkbox-${sub.toLowerCase().replace(' ', '-')}`} />
-              <Label htmlFor={sub} className="text-sm cursor-pointer flex-1">{sub}</Label>
+          {["Under $10", "$10 - $50", "$50 - $100", "$100 - $500", "Over $500"].map((range) => (
+            <div key={range} className="flex flex-wrap items-center gap-3">
+              <Checkbox id={range} data-testid={`checkbox-${range.toLowerCase().replace(' ', '-')}`} />
+              <Label htmlFor={range} className="text-sm cursor-pointer flex-1">{range}</Label>
             </div>
           ))}
         </CardContent>
@@ -257,11 +188,12 @@ export default function CategoryProducts() {
       <Header />
       <main className="flex-1">
         <PageHeader
-          title={categoryName || "Products"}
-          subtitle="Discover quality products from verified suppliers"
+          title={subcategoryName || "Subcategory Products"}
+          subtitle={`Products in ${subcategoryName}`}
           breadcrumbs={[
             { label: "Categories", href: "/categories" },
-            { label: categoryName || "Products" }
+            { label: parentCategory?.name || "Category", href: `/category/${parentCategory?.slug}` },
+            { label: subcategoryName || "Subcategory" }
           ]}
           variant="gradient"
         />
@@ -282,11 +214,11 @@ export default function CategoryProducts() {
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
                       <Input
                         type="search"
-                        placeholder="Search in this category..."
+                        placeholder="Search in this subcategory..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="pl-10"
-                        data-testid="input-search-category"
+                        data-testid="input-search-subcategory"
                       />
                     </div>
                     <div className="flex gap-3">

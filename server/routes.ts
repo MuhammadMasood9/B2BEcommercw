@@ -685,6 +685,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== ADMIN INQUIRIES ====================
+  
+  app.get("/api/admin/inquiries", async (req, res) => {
+    try {
+      const { status, search } = req.query;
+      const filters: any = {};
+      
+      if (status && status !== 'all') {
+        filters.status = status;
+      }
+      
+      if (search) {
+        filters.search = search as string;
+      }
+      
+      const inquiries = await storage.getAdminInquiries(filters);
+      res.json({ inquiries });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/admin/inquiries/quotation", async (req, res) => {
+    try {
+      const { inquiryId, quotation } = req.body;
+      
+      if (!inquiryId || !quotation) {
+        return res.status(400).json({ error: "Inquiry ID and quotation data are required" });
+      }
+      
+      // Update inquiry status to 'replied' and add quotation
+      const updatedInquiry = await storage.addQuotationToInquiry(inquiryId, quotation);
+      
+      if (!updatedInquiry) {
+        return res.status(404).json({ error: "Inquiry not found" });
+      }
+      
+      res.json({ success: true, inquiry: updatedInquiry });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   // ==================== CONVERSATIONS ====================
   
   app.get("/api/conversations/:userId", async (req, res) => {

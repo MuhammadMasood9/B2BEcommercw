@@ -11,7 +11,8 @@ import {
   BarChart3,
   UserPlus,
   FileSpreadsheet,
-  UserCheck
+  UserCheck,
+  MessageSquare
 } from "lucide-react";
 import {
   Sidebar,
@@ -46,6 +47,11 @@ const adminMenuItems = [
     title: "Categories",
     url: "/admin/categories",
     icon: FolderTree,
+  },
+  {
+    title: "Customer Inquiries",
+    url: "/admin/inquiries",
+    icon: MessageSquare,
   },
   {
     title: "Orders",

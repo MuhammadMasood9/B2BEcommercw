@@ -73,6 +73,10 @@ export interface IStorage {
   createInquiry(inquiry: InsertInquiry): Promise<Inquiry>;
   updateInquiry(id: string, inquiry: Partial<InsertInquiry>): Promise<Inquiry | undefined>;
   
+  // Admin Inquiry operations
+  getAdminInquiries(filters?: { status?: string; search?: string }): Promise<any[]>;
+  addQuotationToInquiry(inquiryId: string, quotation: any): Promise<Inquiry | undefined>;
+  
   // Conversation operations
   getConversations(userId: string, role: 'buyer' | 'admin'): Promise<Conversation[]>;
   getConversation(id: string): Promise<Conversation | undefined>;
@@ -458,6 +462,74 @@ export class PostgresStorage implements IStorage {
       .set(inquiry)
       .where(eq(inquiries.id, id))
       .returning();
+    return updated;
+  }
+
+  // Admin Inquiry operations
+  async getAdminInquiries(filters?: { status?: string; search?: string }): Promise<any[]> {
+    let whereConditions = [];
+
+    if (filters?.status && filters.status !== 'all') {
+      whereConditions.push(eq(inquiries.status, filters.status));
+    }
+
+    if (filters?.search) {
+      whereConditions.push(
+        or(
+          like(products.name, `%${filters.search}%`),
+          like(users.firstName, `%${filters.search}%`),
+          like(buyerProfiles.companyName, `%${filters.search}%`)
+        )
+      );
+    }
+
+    const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+
+    const results = await db.select({
+      id: inquiries.id,
+      productId: inquiries.productId,
+      buyerId: inquiries.buyerId,
+      quantity: inquiries.quantity,
+      targetPrice: inquiries.targetPrice,
+      message: inquiries.message,
+      requirements: inquiries.requirements,
+      status: inquiries.status,
+      createdAt: inquiries.createdAt,
+      productName: products.name,
+      productImage: products.images,
+      buyerName: users.firstName,
+      buyerEmail: users.email,
+      buyerCompany: buyerProfiles.companyName,
+      buyerCountry: buyerProfiles.country,
+      buyerPhone: buyerProfiles.phone,
+      supplierCompany: sql`'Global Manufacturing Co.'`.as('supplierCompany'),
+      quotations: sql`'[]'`.as('quotations')
+    })
+    .from(inquiries)
+    .leftJoin(products, eq(inquiries.productId, products.id))
+    .leftJoin(users, eq(inquiries.buyerId, users.id))
+    .leftJoin(buyerProfiles, eq(inquiries.buyerId, buyerProfiles.userId))
+    .where(whereClause)
+    .orderBy(desc(inquiries.createdAt));
+    
+    // Transform the results to match the expected format
+    return results.map(result => ({
+      ...result,
+      productImage: result.productImage ? JSON.parse(result.productImage as unknown as string)[0] : null,
+      quotations: []
+    }));
+  }
+
+  async addQuotationToInquiry(inquiryId: string, quotation: any): Promise<Inquiry | undefined> {
+    // Update inquiry status to 'replied'
+    const [updated] = await db.update(inquiries)
+      .set({ status: 'replied' })
+      .where(eq(inquiries.id, inquiryId))
+      .returning();
+    
+    // In a real implementation, you would also store the quotation in a separate table
+    // For now, we'll just update the inquiry status
+    
     return updated;
   }
 

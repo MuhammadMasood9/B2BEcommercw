@@ -29,6 +29,16 @@ import {
   FileText,
   Truck,
   CreditCard,
+  Heart,
+  Download,
+  Mail,
+  Filter,
+  Search,
+  MoreHorizontal,
+  UserCheck,
+  Clock,
+  BarChart3,
+  Award,
 } from "lucide-react";
 
 export default function AdminProductDetail() {
@@ -36,6 +46,10 @@ export default function AdminProductDetail() {
   const productId = params?.productId || "1";
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+
+  // Favorite management state - must be at the top before any early returns
+  const [favoriteSearchQuery, setFavoriteSearchQuery] = useState("");
+  const [favoriteFilter, setFavoriteFilter] = useState("all"); // all, recent, verified, unverified
 
   // Mock product data
   const mockProduct: Product & { categoryName?: string } = {
@@ -169,6 +183,103 @@ export default function AdminProductDetail() {
 
   const priceRanges = (product.priceRanges as any[]) || [];
   const specifications = (product.specifications as Record<string, string>) || {};
+
+  // Mock favorite data - in real app, this would come from API
+  const mockFavorites = [
+    {
+      id: "1",
+      userId: "user1",
+      itemId: productId,
+      itemType: "product",
+      createdAt: new Date("2024-01-15"),
+      user: {
+        id: "user1",
+        firstName: "John",
+        lastName: "Smith",
+        companyName: "Tech Solutions Inc.",
+        email: "john.smith@techsolutions.com",
+        country: "United States",
+        isVerified: true,
+        lastActive: new Date("2024-01-20")
+      }
+    },
+    {
+      id: "2",
+      userId: "user2",
+      itemId: productId,
+      itemType: "product",
+      createdAt: new Date("2024-01-18"),
+      user: {
+        id: "user2",
+        firstName: "Maria",
+        lastName: "Garcia",
+        companyName: "Industrial Supplies Ltd.",
+        email: "maria.garcia@industrialsupplies.com",
+        country: "Spain",
+        isVerified: true,
+        lastActive: new Date("2024-01-19")
+      }
+    },
+    {
+      id: "3",
+      userId: "user3",
+      itemId: productId,
+      itemType: "product",
+      createdAt: new Date("2024-01-20"),
+      user: {
+        id: "user3",
+        firstName: "Ahmed",
+        lastName: "Hassan",
+        companyName: "Middle East Trading Co.",
+        email: "ahmed.hassan@metc.com",
+        country: "UAE",
+        isVerified: false,
+        lastActive: new Date("2024-01-21")
+      }
+    },
+    {
+      id: "4",
+      userId: "user4",
+      itemId: productId,
+      itemType: "product",
+      createdAt: new Date("2024-01-22"),
+      user: {
+        id: "user4",
+        firstName: "Li",
+        lastName: "Wei",
+        companyName: "China Manufacturing Group",
+        email: "li.wei@cmg.com",
+        country: "China",
+        isVerified: true,
+        lastActive: new Date("2024-01-23")
+      }
+    }
+  ];
+
+  // Filter favorites based on search and filter criteria
+  const filteredFavorites = mockFavorites.filter(favorite => {
+    const matchesSearch = favoriteSearchQuery === "" || 
+      favorite.user.firstName.toLowerCase().includes(favoriteSearchQuery.toLowerCase()) ||
+      favorite.user.lastName.toLowerCase().includes(favoriteSearchQuery.toLowerCase()) ||
+      favorite.user.companyName.toLowerCase().includes(favoriteSearchQuery.toLowerCase()) ||
+      favorite.user.email.toLowerCase().includes(favoriteSearchQuery.toLowerCase());
+    
+    const matchesFilter = favoriteFilter === "all" ||
+      (favoriteFilter === "verified" && favorite.user.isVerified) ||
+      (favoriteFilter === "unverified" && !favorite.user.isVerified) ||
+      (favoriteFilter === "recent" && new Date(favorite.createdAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
+    
+    return matchesSearch && matchesFilter;
+  });
+
+  // Favorite statistics
+  const favoriteStats = {
+    total: mockFavorites.length,
+    verified: mockFavorites.filter(f => f.user.isVerified).length,
+    unverified: mockFavorites.filter(f => !f.user.isVerified).length,
+    recent: mockFavorites.filter(f => new Date(f.createdAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length,
+    countries: Array.from(new Set(mockFavorites.map(f => f.user.country))).length
+  };
 
   return (
     <div className="p-8 space-y-6">
@@ -424,7 +535,7 @@ export default function AdminProductDetail() {
                         </div>
                         <div className="text-right">
                           <span className="text-lg font-bold text-green-600">
-                            ${tier.pricePerUnit?.toFixed(2)}
+                            ${Number(tier.pricePerUnit || 0).toFixed(2)}
                           </span>
                           <p className="text-xs text-muted-foreground">per unit</p>
                         </div>
@@ -440,7 +551,7 @@ export default function AdminProductDetail() {
                         <span className="text-sm font-medium text-green-900">Best Price</span>
                       </div>
                       <p className="text-lg font-bold text-green-700">
-                        ${Math.min(...priceRanges.map(tier => tier.pricePerUnit || 0)).toFixed(2)} per unit
+                        ${Math.min(...priceRanges.map(tier => Number(tier.pricePerUnit || 0))).toFixed(2)} per unit
                       </p>
                       <p className="text-xs text-green-600">
                         For orders of {Math.max(...priceRanges.map(tier => tier.minQty || 0)).toLocaleString()}+ units
@@ -467,7 +578,7 @@ export default function AdminProductDetail() {
               <div className="flex items-center justify-between p-3 border rounded-lg">
                 <div>
                   <p className="font-medium">Sample Available</p>
-                  {product.sampleAvailable && (
+                  {product.sampleAvailable && product.samplePrice && (
                     <p className="text-sm text-muted-foreground">Price: ${product.samplePrice}</p>
                   )}
                 </div>
@@ -478,8 +589,21 @@ export default function AdminProductDetail() {
                 )}
               </div>
               <div className="flex items-center justify-between p-3 border rounded-lg">
-                <p className="font-medium">Customization</p>
+                <div>
+                  <p className="font-medium">Customization</p>
+                  {product.customizationAvailable && product.customizationDetails && (
+                    <p className="text-xs text-muted-foreground mt-1">{product.customizationDetails}</p>
+                  )}
+                </div>
                 {product.customizationAvailable ? (
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                ) : (
+                  <XCircle className="h-5 w-5 text-red-500" />
+                )}
+              </div>
+              <div className="flex items-center justify-between p-3 border rounded-lg">
+                <p className="font-medium">Trade Assurance</p>
+                {product.hasTradeAssurance ? (
                   <CheckCircle className="h-5 w-5 text-green-500" />
                 ) : (
                   <XCircle className="h-5 w-5 text-red-500" />
@@ -487,6 +611,82 @@ export default function AdminProductDetail() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Product Variants */}
+          {((product.colors && product.colors.length > 0) || (product.sizes && product.sizes.length > 0)) && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Product Variants</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {product.colors && product.colors.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium mb-2">Available Colors</p>
+                    <div className="flex flex-wrap gap-2">
+                      {product.colors.map((color, idx) => (
+                        <Badge key={idx} variant="secondary">{color}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {product.sizes && product.sizes.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium mb-2">Available Sizes</p>
+                    <div className="flex flex-wrap gap-2">
+                      {product.sizes.map((size, idx) => (
+                        <Badge key={idx} variant="outline">{size}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Certifications */}
+          {product.certifications && product.certifications.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Award className="h-5 w-5" />
+                  Certifications
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {product.certifications.map((cert, idx) => (
+                    <Badge key={idx} variant="default" className="bg-green-600">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      {cert}
+                    </Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Key Features */}
+          {product.keyFeatures && product.keyFeatures.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Star className="h-5 w-5" />
+                  Key Features
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2">
+                  {product.keyFeatures.map((feature, idx) => (
+                    <li key={idx} className="flex items-start gap-2 text-sm">
+                      <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Shipping & Payment */}
           <Card>
@@ -644,6 +844,321 @@ export default function AdminProductDetail() {
             </CardContent>
           </Card>
         </div>
+      </div>
+
+      {/* Favorite Management Section */}
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Heart className="h-5 w-5" />
+                Favorite Management
+              </CardTitle>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm">
+                  <Download className="h-4 w-4 mr-2" />
+                  Export
+                </Button>
+                <Button variant="outline" size="sm">
+                  <Mail className="h-4 w-4 mr-2" />
+                  Notify All
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="overview" className="space-y-6">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="users">Users ({favoriteStats.total})</TabsTrigger>
+                <TabsTrigger value="analytics">Analytics</TabsTrigger>
+                <TabsTrigger value="actions">Actions</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="overview" className="space-y-6">
+                {/* Favorite Statistics */}
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div className="text-center p-3 bg-red-50 rounded-lg">
+                    <div className="text-2xl font-bold text-red-600">{favoriteStats.total}</div>
+                    <div className="text-xs text-red-600">Total Favorites</div>
+                  </div>
+                  <div className="text-center p-3 bg-green-50 rounded-lg">
+                    <div className="text-2xl font-bold text-green-600">{favoriteStats.verified}</div>
+                    <div className="text-xs text-green-600">Verified Users</div>
+                  </div>
+                  <div className="text-center p-3 bg-yellow-50 rounded-lg">
+                    <div className="text-2xl font-bold text-yellow-600">{favoriteStats.unverified}</div>
+                    <div className="text-xs text-yellow-600">Unverified</div>
+                  </div>
+                  <div className="text-center p-3 bg-blue-50 rounded-lg">
+                    <div className="text-2xl font-bold text-blue-600">{favoriteStats.recent}</div>
+                    <div className="text-xs text-blue-600">This Week</div>
+                  </div>
+                  <div className="text-center p-3 bg-purple-50 rounded-lg">
+                    <div className="text-2xl font-bold text-purple-600">{favoriteStats.countries}</div>
+                    <div className="text-xs text-purple-600">Countries</div>
+                  </div>
+                </div>
+
+                {/* Quick Insights */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">Top Countries</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {Array.from(new Set(mockFavorites.map(f => f.user.country))).slice(0, 3).map((country, idx) => {
+                          const count = mockFavorites.filter(f => f.user.country === country).length;
+                          return (
+                            <div key={country} className="flex justify-between items-center">
+                              <span className="text-sm">{country}</span>
+                              <Badge variant="secondary">{count}</Badge>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm">Recent Activity</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {mockFavorites
+                          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                          .slice(0, 3)
+                          .map((favorite) => (
+                            <div key={favorite.id} className="flex items-center gap-2 text-sm">
+                              <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-semibold">
+                                {favorite.user.firstName[0]}
+                              </div>
+                              <span className="text-muted-foreground">
+                                {favorite.user.firstName} favorited this product
+                              </span>
+                              <span className="text-xs text-muted-foreground ml-auto">
+                                {new Date(favorite.createdAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="users" className="space-y-6">
+                {/* Search and Filter Controls */}
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                    <input
+                      type="text"
+                      placeholder="Search users by name, company, or email..."
+                      value={favoriteSearchQuery}
+                      onChange={(e) => setFavoriteSearchQuery(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <select
+                      value={favoriteFilter}
+                      onChange={(e) => setFavoriteFilter(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="all">All Users</option>
+                      <option value="verified">Verified Only</option>
+                      <option value="unverified">Unverified Only</option>
+                      <option value="recent">Recent (7 days)</option>
+                    </select>
+                    <Button variant="outline" size="sm">
+                      <Filter className="h-4 w-4 mr-2" />
+                      More Filters
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Favorites List */}
+                <div className="space-y-3">
+                  {filteredFavorites.length > 0 ? (
+                    filteredFavorites.map((favorite) => (
+                      <div key={favorite.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
+                            {favorite.user.firstName[0]}{favorite.user.lastName[0]}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-semibold">
+                                {favorite.user.firstName} {favorite.user.lastName}
+                              </h4>
+                              {favorite.user.isVerified && (
+                                <Badge variant="default" className="flex items-center gap-1">
+                                  <UserCheck className="h-3 w-3" />
+                                  Verified
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground">{favorite.user.companyName}</p>
+                            <p className="text-xs text-muted-foreground">{favorite.user.email}</p>
+                            <div className="flex items-center gap-4 mt-1">
+                              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />
+                                {favorite.user.country}
+                              </span>
+                              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                Favorited {new Date(favorite.createdAt).toLocaleDateString()}
+                              </span>
+                              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                <BarChart3 className="h-3 w-3" />
+                                Last active {new Date(favorite.user.lastActive).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="sm">
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Profile
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            <Mail className="h-4 w-4 mr-2" />
+                            Contact
+                          </Button>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8">
+                      <Heart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <h3 className="font-semibold mb-2">No favorites found</h3>
+                      <p className="text-muted-foreground">
+                        {favoriteSearchQuery || favoriteFilter !== "all" 
+                          ? "Try adjusting your search or filter criteria"
+                          : "This product hasn't been favorited by any users yet"
+                        }
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Pagination */}
+                {filteredFavorites.length > 0 && (
+                  <div className="flex items-center justify-between pt-4 border-t">
+                    <p className="text-sm text-muted-foreground">
+                      Showing {filteredFavorites.length} of {mockFavorites.length} favorites
+                    </p>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" disabled>
+                        Previous
+                      </Button>
+                      <Button variant="outline" size="sm" disabled>
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="analytics" className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">Favorites Over Time</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-32 flex items-center justify-center text-muted-foreground">
+                        <div className="text-center">
+                          <BarChart3 className="h-8 w-8 mx-auto mb-2" />
+                          <p className="text-sm">Chart visualization would go here</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">Geographic Distribution</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {Array.from(new Set(mockFavorites.map(f => f.user.country))).map((country) => {
+                          const count = mockFavorites.filter(f => f.user.country === country).length;
+                          const percentage = (count / mockFavorites.length) * 100;
+                          return (
+                            <div key={country} className="space-y-1">
+                              <div className="flex justify-between text-sm">
+                                <span>{country}</span>
+                                <span>{count} ({percentage.toFixed(1)}%)</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-blue-600 h-2 rounded-full" 
+                                  style={{ width: `${percentage}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="actions" className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">Bulk Actions</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <Button className="w-full" variant="outline">
+                        <Download className="h-4 w-4 mr-2" />
+                        Export Favorites List
+                      </Button>
+                      <Button className="w-full" variant="outline">
+                        <Mail className="h-4 w-4 mr-2" />
+                        Send Product Update
+                      </Button>
+                      <Button className="w-full" variant="outline">
+                        <FileText className="h-4 w-4 mr-2" />
+                        Generate Report
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">Notifications</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <Button className="w-full" variant="outline">
+                        <Mail className="h-4 w-4 mr-2" />
+                        Notify Price Changes
+                      </Button>
+                      <Button className="w-full" variant="outline">
+                        <Package className="h-4 w-4 mr-2" />
+                        Notify Stock Updates
+                      </Button>
+                      <Button className="w-full" variant="outline">
+                        <Star className="h-4 w-4 mr-2" />
+                        Notify New Features
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

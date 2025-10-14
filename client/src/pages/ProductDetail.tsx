@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useRoute } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
@@ -8,9 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useLoading } from "@/contexts/LoadingContext";
+import { useFavorites } from "@/contexts/FavoriteContext";
+import { useCart } from "@/contexts/CartContext";
+import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import type { Product } from "@shared/schema";
 import { 
   ShieldCheck, 
   MapPin, 
@@ -20,62 +25,172 @@ import {
   Package,
   Truck,
   Award,
-  FileText
+  FileText,
+  Loader2,
+  ShoppingCart
 } from "lucide-react";
+import InquiryForm from "@/components/InquiryForm";
 
 export default function ProductDetail() {
   const { setLoading } = useLoading();
+  const { isFavorite, toggleFavorite } = useFavorites();
+  const { toast } = useToast();
   const [, params] = useRoute("/product/:id");
   const productId = params?.id || "1";
   const [quantity, setQuantity] = useState(100);
   const [selectedImage, setSelectedImage] = useState(0);
 
+  // Fetch product from API
+  const { data: product, isLoading: isProductLoading } = useQuery<Product>({
+    queryKey: ["/api/products", productId],
+    queryFn: async () => {
+      try {
+        const response = await fetch(`/api/products/${productId}`, {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log("Fetched product:", data);
+        return data;
+      } catch (error) {
+        console.error("Error fetching product:", error);
+        throw error;
+      }
+    },
+  });
+
+  // Fetch related products (same category)
+  const { data: relatedProducts = [] } = useQuery<Product[]>({
+    queryKey: ["/api/products", "related", product?.categoryId],
+    queryFn: async () => {
+      if (!product?.categoryId) return [];
+      try {
+        const response = await fetch("/api/products", {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        // Filter by same category and exclude current product
+        return Array.isArray(data) 
+          ? data.filter((p: Product) => p.categoryId === product.categoryId && p.id !== productId).slice(0, 4)
+          : [];
+      } catch (error) {
+        console.error("Error fetching related products:", error);
+        return [];
+      }
+    },
+    enabled: !!product?.categoryId,
+  });
+
   useEffect(() => {
-    setLoading(true, "Loading Product Details...");
-    
-    const timer = setTimeout(() => {
+    if (isProductLoading) {
+      setLoading(true, "Loading Product Details...");
+    } else {
       setLoading(false);
-    }, 900);
+    }
+  }, [isProductLoading, setLoading]);
 
-    return () => clearTimeout(timer);
-  }, [productId]); // Only depend on productId, not setLoading
+  useEffect(() => {
+    if (product) {
+      setQuantity(product.minOrderQuantity || 100);
+    }
+  }, [product]);
 
-  //todo: remove mock functionality
-  const images = [
-    "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&h=600&fit=crop",
-    "https://images.unsplash.com/photo-1484704849700-f032a568e944?w=600&h=600&fit=crop",
-    "https://images.unsplash.com/photo-1545127398-14699f92334b?w=600&h=600&fit=crop",
-  ];
+  if (isProductLoading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-3 text-lg text-muted-foreground">Loading product details...</span>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
-  const relatedProducts = [
-    {
-      id: "10",
-      image: "https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=400&h=400&fit=crop",
-      name: "Wireless Gaming Mouse",
-      priceRange: "$18.00-$28.00 /piece",
-      moq: "200 pieces",
-      supplierName: "TechGear",
-      supplierCountry: "China",
-      responseRate: "96%",
-      verified: true,
-    },
-    {
-      id: "11",
-      image: "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=400&h=400&fit=crop",
-      name: "USB-C Charging Cable",
-      priceRange: "$2.00-$4.00 /piece",
-      moq: "500 pieces",
-      supplierName: "CableWorks",
-      supplierCountry: "Taiwan",
-      responseRate: "94%",
-    },
-  ];
+  if (!product) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 flex items-center justify-center py-20">
+          <div className="text-center">
+            <Package className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+            <h2 className="text-2xl font-bold mb-2">Product Not Found</h2>
+            <p className="text-muted-foreground mb-6">The product you're looking for doesn't exist.</p>
+            <Link href="/products">
+              <Button>Browse All Products</Button>
+            </Link>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  // Parse product data
+  const images = product.images && product.images.length > 0 
+    ? product.images 
+    : ["https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&h=600&fit=crop"];
+  
+  const priceRanges = product.priceRanges ? (typeof product.priceRanges === 'string' ? JSON.parse(product.priceRanges) : product.priceRanges) : [];
+  const specifications = product.specifications ? (typeof product.specifications === 'string' ? JSON.parse(product.specifications) : product.specifications) : {};
+  const keyFeatures = product.keyFeatures || [];
+  const colors = product.colors || [];
+  const sizes = product.sizes || [];
+  const certifications = product.certifications || [];
+  const paymentTerms = product.paymentTerms || [];
 
   const getPriceForQuantity = (qty: number) => {
-    if (qty >= 1000) return "$22.00";
-    if (qty >= 500) return "$25.00";
-    return "$28.00";
+    if (priceRanges.length === 0) return "Contact for price";
+    
+    // Find the appropriate price range
+    for (const range of priceRanges) {
+      if (qty >= range.minQty && (!range.maxQty || qty <= range.maxQty)) {
+        return `$${Number(range.pricePerUnit).toFixed(2)}`;
+      }
+    }
+    
+    // Return the last (highest quantity) price if quantity exceeds all ranges
+    return `$${Number(priceRanges[priceRanges.length - 1].pricePerUnit).toFixed(2)}`;
   };
+
+  const handleFavorite = () => {
+    const wasFavorite = isFavorite(productId);
+    toggleFavorite(productId);
+    
+    toast({
+      title: wasFavorite ? "Removed from Favorites" : "Added to Favorites",
+      description: wasFavorite 
+        ? `${product.name} has been removed from your favorites.`
+        : `${product.name} has been added to your favorites.`,
+    });
+  };
+
+  // Transform related products for ProductCard
+  const transformedRelatedProducts = relatedProducts.map(p => {
+    const pPriceRanges = p.priceRanges ? (typeof p.priceRanges === 'string' ? JSON.parse(p.priceRanges) : p.priceRanges) : [];
+    const minPrice = pPriceRanges.length > 0 ? Math.min(...pPriceRanges.map((r: any) => Number(r.pricePerUnit))) : 0;
+    const maxPrice = pPriceRanges.length > 0 ? Math.max(...pPriceRanges.map((r: any) => Number(r.pricePerUnit))) : 0;
+    const pImages = p.images && p.images.length > 0 ? p.images : ["https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop"];
+    
+    return {
+      id: p.id,
+      image: pImages[0],
+      name: p.name,
+      priceRange: pPriceRanges.length > 0 ? `$${minPrice.toFixed(2)}-$${maxPrice.toFixed(2)} /piece` : 'Contact for price',
+      moq: p.minOrderQuantity || 1,
+      supplierName: "Admin Supplier",
+      supplierCountry: "Unknown",
+      responseRate: "95%",
+      verified: true,
+      tradeAssurance: p.hasTradeAssurance || false,
+    };
+  });
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -115,50 +230,73 @@ export default function ProductDetail() {
                       <ShieldCheck className="w-3 h-3 mr-1" />
                       Verified Supplier
                     </Badge>
-                    <Badge className="bg-primary text-xs sm:text-sm">Trade Assurance</Badge>
+                    {product.hasTradeAssurance && (
+                      <Badge className="bg-primary text-xs sm:text-sm">Trade Assurance</Badge>
+                    )}
+                    {certifications.slice(0, 3).map((cert, idx) => (
+                      <Badge key={idx} variant="outline" className="text-xs sm:text-sm">{cert}</Badge>
+                    ))}
                   </div>
                   
                   <h1 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">
-                    Premium Wireless Bluetooth Headphones with Active Noise Cancellation
+                    {product.name}
                   </h1>
+
+                  {product.shortDescription && (
+                    <p className="text-sm text-muted-foreground mb-4">{product.shortDescription}</p>
+                  )}
 
                   <div className="mb-4 sm:mb-6">
                     <div className="text-2xl sm:text-3xl font-bold text-primary mb-2">
                       {getPriceForQuantity(quantity)} <span className="text-base sm:text-lg text-muted-foreground">/piece</span>
                     </div>
-                    <div className="space-y-1 text-xs sm:text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">100-499 pieces:</span>
-                        <span className="font-medium">$28.00/piece</span>
+                    {priceRanges.length > 0 && (
+                      <div className="space-y-1 text-xs sm:text-sm">
+                        {priceRanges.map((range: any, idx: number) => (
+                          <div key={idx} className="flex justify-between">
+                            <span className="text-muted-foreground">
+                              {range.minQty}{range.maxQty ? `-${range.maxQty}` : '+'} pieces:
+                            </span>
+                            <span className="font-medium">${Number(range.pricePerUnit).toFixed(2)}/piece</span>
+                          </div>
+                        ))}
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">500-999 pieces:</span>
-                        <span className="font-medium">$25.00/piece</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">≥1000 pieces:</span>
-                        <span className="font-medium">$22.00/piece</span>
-                      </div>
-                    </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6 text-xs sm:text-sm">
                     <div>
                       <p className="text-muted-foreground">MOQ:</p>
-                      <p className="font-medium">100 pieces</p>
+                      <p className="font-medium">{product.minOrderQuantity} pieces</p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Lead Time:</p>
-                      <p className="font-medium">15-30 days</p>
+                      <p className="font-medium">{product.leadTime || 'Contact for details'}</p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Sample:</p>
-                      <p className="font-medium">Available ($30)</p>
+                      <p className="font-medium">
+                        {product.sampleAvailable 
+                          ? `Available${product.samplePrice ? ` ($${product.samplePrice})` : ''}`
+                          : 'Not Available'}
+                      </p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Customization:</p>
-                      <p className="font-medium">Available</p>
+                      <p className="font-medium">{product.customizationAvailable ? 'Available' : 'Not Available'}</p>
                     </div>
+                    {colors.length > 0 && (
+                      <div>
+                        <p className="text-muted-foreground">Colors:</p>
+                        <p className="font-medium">{colors.join(', ')}</p>
+                      </div>
+                    )}
+                    {sizes.length > 0 && (
+                      <div>
+                        <p className="text-muted-foreground">Sizes:</p>
+                        <p className="font-medium">{sizes.join(', ')}</p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex flex-col gap-2">
@@ -176,8 +314,14 @@ export default function ProductDetail() {
                           <span className="sm:hidden">Contact</span>
                         </Button>
                       </Link>
-                      <Button size="lg" variant="outline" data-testid="button-add-favorite">
-                        <Heart className="w-4 h-4" />
+                      <Button 
+                        size="lg" 
+                        variant="outline" 
+                        onClick={handleFavorite}
+                        className={isFavorite(productId) ? 'text-red-500 border-red-500' : ''}
+                        data-testid="button-add-favorite"
+                      >
+                        <Heart className={`w-4 h-4 ${isFavorite(productId) ? 'fill-current' : ''}`} />
                       </Button>
                     </div>
                     <Button size="lg" variant="outline" className="w-full" data-testid="button-request-quotation">
@@ -199,73 +343,89 @@ export default function ProductDetail() {
                 
                 <TabsContent value="description" className="mt-4 sm:mt-6">
                   <div className="prose prose-sm sm:prose max-w-none">
-                    <p className="text-sm sm:text-base">Experience premium audio quality with our advanced wireless headphones featuring active noise cancellation technology. Perfect for business professionals and music enthusiasts.</p>
-                    <h3 className="text-base sm:text-lg">Key Features:</h3>
-                    <ul className="text-sm sm:text-base">
-                      <li>Active Noise Cancellation (ANC) technology</li>
-                      <li>40-hour battery life</li>
-                      <li>Premium comfort ear cushions</li>
-                      <li>Bluetooth 5.0 connectivity</li>
-                      <li>Built-in microphone for calls</li>
-                    </ul>
+                    <div className="text-sm sm:text-base whitespace-pre-wrap">
+                      {product.description || 'No description available.'}
+                    </div>
+                    
+                    {keyFeatures.length > 0 && (
+                      <>
+                        <h3 className="text-base sm:text-lg mt-6">Key Features:</h3>
+                        <ul className="text-sm sm:text-base">
+                          {keyFeatures.map((feature, idx) => (
+                            <li key={idx}>{feature}</li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+
+                    {product.customizationAvailable && product.customizationDetails && (
+                      <>
+                        <h3 className="text-base sm:text-lg mt-6">Customization Options:</h3>
+                        <p className="text-sm sm:text-base">{product.customizationDetails}</p>
+                      </>
+                    )}
                   </div>
                 </TabsContent>
                 
                 <TabsContent value="specs" className="mt-4 sm:mt-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    {[
-                      ["Driver Size", "40mm"],
-                      ["Frequency Response", "20Hz-20kHz"],
-                      ["Impedance", "32Ω"],
-                      ["Bluetooth Version", "5.0"],
-                      ["Battery Capacity", "600mAh"],
-                      ["Charging Time", "2 hours"],
-                      ["Weight", "250g"],
-                      ["Colors Available", "Black, White, Blue"],
-                    ].map(([key, value]) => (
-                      <div key={key} className="border-b pb-2 text-sm sm:text-base">
-                        <p className="text-xs sm:text-sm text-muted-foreground">{key}</p>
-                        <p className="font-medium">{value}</p>
-                      </div>
-                    ))}
-                  </div>
+                  {Object.keys(specifications).length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                      {Object.entries(specifications).map(([key, value]) => (
+                        <div key={key} className="border-b pb-2 text-sm sm:text-base">
+                          <p className="text-xs sm:text-sm text-muted-foreground">{key}</p>
+                          <p className="font-medium">{String(value)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">No specifications available</p>
+                    </div>
+                  )}
                 </TabsContent>
                 
                 <TabsContent value="company" className="mt-4 sm:mt-6">
                   <Card>
                     <CardContent className="p-4 sm:p-6">
                       <div className="flex flex-col sm:flex-row items-start gap-4 mb-4 sm:mb-6">
-                        <div className="w-16 h-16 sm:w-20 sm:h-20 bg-muted rounded-lg flex-shrink-0" />
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 bg-muted rounded-lg flex-shrink-0 flex items-center justify-center">
+                          <Award className="w-8 h-8 text-muted-foreground" />
+                        </div>
                         <div className="flex-1 w-full">
-                          <h3 className="text-base sm:text-lg font-semibold mb-2">AudioTech Pro Manufacturing</h3>
+                          <h3 className="text-base sm:text-lg font-semibold mb-2">Admin Supplier</h3>
                           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground mb-2">
                             <div className="flex items-center gap-1">
                               <MapPin className="w-3 h-3 sm:w-4 sm:h-4" />
-                              <span>Shenzhen, China</span>
+                              <span>{product.port || 'Unknown Location'}</span>
                             </div>
                             <div className="flex items-center gap-1">
                               <Star className="w-3 h-3 sm:w-4 sm:h-4 fill-amber-400 text-amber-400" />
-                              <span>4.8 Rating</span>
+                              <span>Verified Seller</span>
                             </div>
                           </div>
                           <div className="flex flex-wrap gap-2">
                             <Badge className="bg-success text-white text-xs">Verified</Badge>
-                            <Badge className="bg-amber-500 text-white text-xs">Gold Supplier</Badge>
+                            {product.hasTradeAssurance && (
+                              <Badge className="bg-primary text-white text-xs">Trade Assurance</Badge>
+                            )}
+                            {certifications.map((cert, idx) => (
+                              <Badge key={idx} variant="outline" className="text-xs">{cert}</Badge>
+                            ))}
                           </div>
                         </div>
                       </div>
                       <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center text-xs sm:text-sm border-t pt-4">
                         <div>
-                          <p className="font-semibold text-sm sm:text-base">12 Years</p>
-                          <p className="text-muted-foreground text-xs">In Business</p>
+                          <p className="font-semibold text-sm sm:text-base">{product.views || 0}</p>
+                          <p className="text-muted-foreground text-xs">Views</p>
                         </div>
                         <div>
-                          <p className="font-semibold text-sm sm:text-base">500+</p>
-                          <p className="text-muted-foreground text-xs">Products</p>
+                          <p className="font-semibold text-sm sm:text-base">{product.inquiries || 0}</p>
+                          <p className="text-muted-foreground text-xs">Inquiries</p>
                         </div>
                         <div>
-                          <p className="font-semibold text-sm sm:text-base">95%</p>
-                          <p className="text-muted-foreground text-xs">Response Rate</p>
+                          <p className="font-semibold text-sm sm:text-base">{product.inStock ? 'In Stock' : 'Out of Stock'}</p>
+                          <p className="text-muted-foreground text-xs">Status</p>
                         </div>
                       </div>
                     </CardContent>
@@ -273,90 +433,39 @@ export default function ProductDetail() {
                 </TabsContent>
                 
                 <TabsContent value="reviews" className="mt-4 sm:mt-6">
-                  <div className="space-y-3 sm:space-y-4">
-                    {[1, 2, 3].map((i) => (
-                      <Card key={i}>
-                        <CardContent className="p-3 sm:p-4">
-                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
-                            <div className="flex">
-                              {[...Array(5)].map((_, idx) => (
-                                <Star key={idx} className="w-3 h-3 sm:w-4 sm:h-4 fill-amber-400 text-amber-400" />
-                              ))}
-                            </div>
-                            <span className="text-xs sm:text-sm text-muted-foreground">John D. • 2 weeks ago</span>
-                          </div>
-                          <p className="text-xs sm:text-sm">Great quality headphones! The supplier was very responsive and shipping was fast. Highly recommend for bulk orders.</p>
-                        </CardContent>
-                      </Card>
-                    ))}
+                  <div className="text-center py-8">
+                    <Star className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">No Reviews Yet</h3>
+                    <p className="text-muted-foreground">Be the first to review this product after placing an order.</p>
                   </div>
                 </TabsContent>
               </Tabs>
             </div>
 
             <div className="lg:col-span-1">
-              <Card className="sticky top-24">
-                <CardContent className="p-4 sm:p-6">
-                  <h3 className="font-semibold text-base sm:text-lg mb-4">Send Inquiry</h3>
-                  <div className="space-y-3 sm:space-y-4">
-                    <div>
-                      <label className="text-xs sm:text-sm font-medium mb-2 block">Quantity (pieces)</label>
-                      <Input 
-                        type="number" 
-                        value={quantity} 
-                        onChange={(e) => setQuantity(Number(e.target.value))}
-                        min={100}
-                        className="text-sm"
-                        data-testid="input-quantity"
-                      />
-                      <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                        Price: {getPriceForQuantity(quantity)}/piece
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-xs sm:text-sm font-medium mb-2 block">Target Price (Optional)</label>
-                      <Input placeholder="Your target price" className="text-sm" data-testid="input-target-price" />
-                    </div>
-                    <div>
-                      <label className="text-xs sm:text-sm font-medium mb-2 block">Message to Supplier</label>
-                      <Textarea 
-                        placeholder="Describe your requirements..."
-                        rows={3}
-                        className="text-sm"
-                        data-testid="textarea-message"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs sm:text-sm font-medium mb-2 block">Your Email</label>
-                      <Input type="email" placeholder="your@email.com" className="text-sm" data-testid="input-email" />
-                    </div>
-                    <Button className="w-full bg-gray-700 hover:bg-gray-800 text-white no-default-hover-elevate" size="lg" data-testid="button-send-inquiry">
-                      Send Inquiry
-                    </Button>
-                    <Link href={`/contact-supplier/${productId}`}>
-                      <Button variant="outline" className="w-full" size="lg" data-testid="button-contact-supplier-sidebar">
-                        <MessageSquare className="w-4 h-4 mr-2" />
-                        Contact Supplier
-                      </Button>
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
+              <InquiryForm 
+                productId={productId}
+                productName={product.name}
+                productPrice={getPriceForQuantity(quantity)}
+                supplierName="Admin Supplier"
+              />
             </div>
           </div>
 
-          <section className="mt-10 sm:mt-16">
-            <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Related Products</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-              {relatedProducts.map((product) => (
-                <ProductCard key={product.id} {...product} />
-              ))}
-            </div>
-          </section>
+          {transformedRelatedProducts.length > 0 && (
+            <section className="mt-10 sm:mt-16">
+              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Related Products</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+                {transformedRelatedProducts.map((product) => (
+                  <ProductCard key={product.id} {...product} />
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       </main>
       <Footer />
-      <FloatingChatButton supplierName="AudioTech Pro Manufacturing" supplierId={productId} />
+      <FloatingChatButton supplierName="Admin Supplier" supplierId={productId} />
     </div>
   );
 }

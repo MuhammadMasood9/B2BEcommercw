@@ -99,6 +99,12 @@ const mockProducts: (Product & { categoryName?: string })[] = [
     tags: ["LED", "Lighting", "Industrial", "Waterproof"],
     sku: "LED-FL-100W-001",
     metaData: null,
+    colors: ["White", "Black", "Silver"],
+    sizes: ["100W", "150W", "200W"],
+    keyFeatures: ["IP65 Waterproof", "Energy Efficient", "Long Lifespan", "Wide Beam Angle"],
+    certifications: ["ISO9001", "CE", "RoHS"],
+    hasTradeAssurance: true,
+    customizationDetails: "Logo printing, custom packaging, color customization available",
     createdAt: new Date("2024-01-10"),
     updatedAt: new Date("2024-01-10"),
     categoryName: "Electronics",
@@ -140,6 +146,12 @@ const mockProducts: (Product & { categoryName?: string })[] = [
     tags: ["Furniture", "Office", "Ergonomic", "Chair"],
     sku: "CHAIR-ERG-001",
     metaData: null,
+    colors: ["Black", "Gray", "Blue"],
+    sizes: ["Standard"],
+    keyFeatures: ["Lumbar Support", "Adjustable Height", "Breathable Mesh", "360° Swivel"],
+    certifications: ["ISO9001", "CE"],
+    hasTradeAssurance: false,
+    customizationDetails: "Custom upholstery colors available for bulk orders",
     createdAt: new Date("2024-01-15"),
     updatedAt: new Date("2024-01-15"),
     categoryName: "Furniture",
@@ -981,6 +993,7 @@ function ProductForm({ product, categories, onSubmit, isLoading, onCancel }: Pro
       sampleAvailable: product?.sampleAvailable ?? false,
       samplePrice: product?.samplePrice || "",
       customizationAvailable: product?.customizationAvailable ?? false,
+      customizationDetails: product?.customizationDetails || "",
       leadTime: product?.leadTime || "",
       port: product?.port || "",
       paymentTerms: product?.paymentTerms || [],
@@ -988,6 +1001,11 @@ function ProductForm({ product, categories, onSubmit, isLoading, onCancel }: Pro
       stockQuantity: product?.stockQuantity || 0,
       isPublished: product?.isPublished ?? true,
       isFeatured: product?.isFeatured ?? false,
+      colors: product?.colors || [],
+      sizes: product?.sizes || [],
+      keyFeatures: product?.keyFeatures || [],
+      certifications: product?.certifications || [],
+      hasTradeAssurance: product?.hasTradeAssurance ?? false,
       tags: product?.tags || [],
       sku: product?.sku || "",
       metaData: product?.metaData || null,
@@ -1343,6 +1361,104 @@ function ProductForm({ product, categories, onSubmit, isLoading, onCancel }: Pro
             )}
           />
         </div>
+
+            {/* Colors */}
+            <div>
+              <Label>Available Colors</Label>
+              <FormDescription className="mb-2">Enter colors (comma-separated, e.g., Black, White, Blue)</FormDescription>
+              <Input
+                placeholder="e.g., Black, White, Red"
+                value={(form.watch("colors") || []).join(", ")}
+                onChange={(e) => {
+                  const colorsArray = e.target.value.split(",").map(c => c.trim()).filter(c => c);
+                  form.setValue("colors", colorsArray as any);
+                }}
+              />
+            </div>
+
+            {/* Sizes */}
+            <div>
+              <Label>Available Sizes</Label>
+              <FormDescription className="mb-2">Enter sizes (comma-separated, e.g., S, M, L, XL or 250g, 500g, 1kg)</FormDescription>
+              <Input
+                placeholder="e.g., S, M, L, XL"
+                value={(form.watch("sizes") || []).join(", ")}
+                onChange={(e) => {
+                  const sizesArray = e.target.value.split(",").map(s => s.trim()).filter(s => s);
+                  form.setValue("sizes", sizesArray as any);
+                }}
+              />
+            </div>
+
+            {/* Key Features */}
+            <div>
+              <Label>Key Features</Label>
+              <FormDescription className="mb-2">Enter key features (comma-separated)</FormDescription>
+              <Textarea
+                placeholder="e.g., Waterproof, Energy Efficient, Long Lifespan"
+                rows={3}
+                value={(form.watch("keyFeatures") || []).join(", ")}
+                onChange={(e) => {
+                  const featuresArray = e.target.value.split(",").map(f => f.trim()).filter(f => f);
+                  form.setValue("keyFeatures", featuresArray as any);
+                }}
+              />
+            </div>
+
+            {/* Certifications */}
+            <div>
+              <Label>Certifications</Label>
+              <FormDescription className="mb-2">Enter certifications (comma-separated, e.g., ISO9001, CE, RoHS)</FormDescription>
+              <Input
+                placeholder="e.g., ISO9001, CE, RoHS, FDA"
+                value={(form.watch("certifications") || []).join(", ")}
+                onChange={(e) => {
+                  const certsArray = e.target.value.split(",").map(c => c.trim()).filter(c => c);
+                  form.setValue("certifications", certsArray as any);
+                }}
+              />
+            </div>
+
+            {/* Customization Details */}
+            <FormField
+              control={form.control}
+              name="customizationDetails"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Customization Details</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      {...field}
+                      value={field.value || ""}
+                      placeholder="Describe available customization options..."
+                      rows={3}
+                    />
+                  </FormControl>
+                  <FormDescription>Details about how this product can be customized</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Trade Assurance */}
+            <FormField
+              control={form.control}
+              name="hasTradeAssurance"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">Trade Assurance</FormLabel>
+                    <FormDescription>This product is covered by trade assurance</FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value || false}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
             <div>
               <Label>Payment Terms</Label>

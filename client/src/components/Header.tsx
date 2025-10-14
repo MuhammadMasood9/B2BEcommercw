@@ -1,9 +1,11 @@
-import { Search, ShoppingCart, User, Globe, Menu, ChevronDown, LogOut, Settings, Bell } from "lucide-react";
+import { Search, ShoppingCart, User, Globe, Menu, ChevronDown, LogOut, Settings, Bell, Heart } from "lucide-react";
+import CartWidget from "@/components/CartWidget";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useFavorites } from "@/contexts/FavoriteContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select,
@@ -29,6 +31,7 @@ export default function Header() {
   const [location, setLocation] = useLocation();
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
+  const { favoriteCount } = useFavorites();
 
   const isActivePath = (path: string) => {
     if (path === "/" && location === "/") return true;
@@ -61,9 +64,31 @@ export default function Header() {
               </DropdownMenu>
             </div>
             <div className="flex items-center gap-3 lg:gap-6 text-xs lg:text-sm">
-              <Link href="/dashboard/buyer" className="text-muted-foreground hover:text-primary transition-colors hover-elevate px-2 py-1 rounded-md" data-testid="link-buyer-center">
-                Buyer Center
-              </Link>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors hover-elevate px-2 py-1 rounded-md text-xs lg:text-sm" data-testid="button-buyer-center">
+                    <span>Buyer Center</span>
+                    <ChevronDown className="w-3 h-3 ml-0.5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem asChild>
+                    <Link href="/buyer/dashboard">Dashboard</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/buyer/inquiries">My Inquiries</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/buyer/rfqs">My RFQs</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/messages">Messages</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/favorites">Favorites</Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Link href="/help" className="text-muted-foreground hover:text-primary transition-colors hover-elevate px-2 py-1 rounded-md" data-testid="link-help">
                 Help
               </Link>
@@ -142,15 +167,20 @@ export default function Header() {
               <Search className="w-5 h-5" />
             </Button>
             
-            {/* Cart */}
-            <Link href="/inquiry-cart" data-testid="link-inquiry-cart">
+            {/* Favorites */}
+            <Link href="/favorites" data-testid="link-favorites">
               <Button variant="ghost" size="icon" className="relative h-10 w-10">
-                <ShoppingCart className="w-5 h-5" />
-                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs w-5 h-5 rounded-full flex items-center justify-center font-medium" data-testid="text-cart-count">
-                  3
-                </span>
+                <Heart className="w-5 h-5" />
+                {favoriteCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-medium" data-testid="text-favorites-count">
+                    {favoriteCount}
+                  </span>
+                )}
               </Button>
             </Link>
+
+            {/* Cart */}
+            <CartWidget />
 
             {/* Mobile Menu */}
             <Sheet>
@@ -173,6 +203,9 @@ export default function Header() {
                     </Link>
                     <Link href="/products" className="block py-3 text-lg font-medium hover:text-primary transition-colors">
                       Products
+                    </Link>
+                    <Link href="/favorites" className="block py-3 text-lg font-medium hover:text-primary transition-colors">
+                      Favorites
                     </Link>
                     <Link href="/find-suppliers" className="block py-3 text-lg font-medium hover:text-primary transition-colors">
                       Suppliers
@@ -331,20 +364,6 @@ export default function Header() {
             >
               Products
               {isActivePath("/products") && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
-              )}
-            </Link>
-            <Link 
-              href="/find-suppliers" 
-              className={`text-sm font-medium transition-colors hover:text-primary relative py-3 ${
-                isActivePath("/find-suppliers") 
-                  ? "text-primary" 
-                  : "text-foreground"
-              }`}
-              data-testid="link-suppliers"
-            >
-              Suppliers
-              {isActivePath("/find-suppliers") && (
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
               )}
             </Link>

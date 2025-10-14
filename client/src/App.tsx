@@ -11,6 +11,8 @@ import ChatbotWidget from "@/components/ChatbotWidget";
 import FullScreenLoader from "@/components/FullScreenLoader";
 import { LoadingProvider, useLoading } from "@/contexts/LoadingContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { FavoriteProvider } from "@/contexts/FavoriteContext";
+import { CartProvider } from "@/contexts/CartContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import 'react-toastify/dist/ReactToastify.css';
 import Home from "@/pages/Home";
@@ -23,6 +25,8 @@ import InquiryCart from "@/pages/InquiryCart";
 import Messages from "@/pages/Messages";
 import Dashboard from "@/pages/Dashboard";
 import Categories from "@/pages/Categories";
+import Favorites from "@/pages/Favorites";
+import Cart from "@/pages/Cart";
 import ReadyToShip from "@/pages/ReadyToShip";
 import TradeShows from "@/pages/TradeShows";
 import BuyerProtection from "@/pages/BuyerProtection";
@@ -34,10 +38,14 @@ import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
 import MyOrders from "@/pages/MyOrders";
 import MyRFQs from "@/pages/MyRFQs";
-import Favorites from "@/pages/Favorites";
 import StartOrder from "@/pages/StartOrder";
 import CategoryProducts from "@/pages/CategoryProducts";
+import SubcategoryProducts from "@/pages/SubcategoryProducts";
 import GetVerified from "@/pages/GetVerified";
+import BuyerDashboard from "@/pages/buyer/BuyerDashboard";
+import BuyerInquiries from "@/pages/buyer/BuyerInquiries";
+import BuyerRFQs from "@/pages/buyer/BuyerRFQs";
+import AdminInquiries from "@/pages/admin/AdminInquiries";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminProducts from "@/pages/admin/AdminProducts";
 import AdminProductDetail from "@/pages/admin/AdminProductDetail";
@@ -88,6 +96,11 @@ function AdminRouter() {
           <AdminCategories />
         </ProtectedRoute>
       </Route>
+      <Route path="/admin/inquiries">
+        <ProtectedRoute requiredRole="admin">
+          <AdminInquiries />
+        </ProtectedRoute>
+      </Route>
       <Route path="/admin/customers">
         <ProtectedRoute requiredRole="admin">
           <AdminCustomers />
@@ -135,16 +148,32 @@ function PublicRouter() {
       <Route path="/products" component={Products} />
       <Route path="/product/:id" component={ProductDetail} />
       <Route path="/categories" component={Categories} />
+      <Route path="/favorites" component={Favorites} />
       <Route path="/ready-to-ship" component={ReadyToShip} />
       <Route path="/trade-shows" component={TradeShows} />
       <Route path="/rfq/browse" component={RFQBrowse} />
       <Route path="/rfq/create" component={RFQCreate} />
       <Route path="/rfq/:id" component={RFQDetail} />
-      <Route path="/inquiry-cart" component={InquiryCart} />
+      <Route path="/inquiry-cart" component={Cart} />
       <Route path="/messages" component={Messages} />
       <Route path="/dashboard/buyer">
         <ProtectedRoute requiredRole="buyer">
           <Dashboard />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/buyer/dashboard">
+        <ProtectedRoute requiredRole="buyer">
+          <BuyerDashboard />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/buyer/inquiries">
+        <ProtectedRoute requiredRole="buyer">
+          <BuyerInquiries />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/buyer/rfqs">
+        <ProtectedRoute requiredRole="buyer">
+          <BuyerRFQs />
         </ProtectedRoute>
       </Route>
       <Route path="/buyer-protection" component={BuyerProtection} />
@@ -157,8 +186,10 @@ function PublicRouter() {
       <Route path="/my-orders" component={MyOrders} />
       <Route path="/my-rfqs" component={MyRFQs} />
       <Route path="/favorites" component={Favorites} />
+      <Route path="/cart" component={Cart} />
       <Route path="/start-order/:productId" component={StartOrder} />
       <Route path="/category/:slug" component={CategoryProducts} />
+      <Route path="/subcategory/:slug" component={SubcategoryProducts} />
       <Route path="/get-verified" component={GetVerified} />
       <Route component={NotFound} />
     </Switch>
@@ -228,10 +259,14 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <LoadingProvider>
         <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <AppContent />
-          </TooltipProvider>
+          <FavoriteProvider>
+            <CartProvider>
+              <TooltipProvider>
+                <Toaster />
+                <AppContent />
+              </TooltipProvider>
+            </CartProvider>
+          </FavoriteProvider>
         </AuthProvider>
       </LoadingProvider>
     </QueryClientProvider>

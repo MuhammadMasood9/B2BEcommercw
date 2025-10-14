@@ -1,20 +1,67 @@
-import { MapPin, MessageSquare, ShieldCheck } from "lucide-react";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { 
+  MapPin, 
+  MessageSquare, 
+  ShieldCheck, 
+  Star, 
+  Eye, 
+  Clock, 
+  Package, 
+  Truck, 
+  CheckCircle, 
+  Zap,
+  Award,
+  Globe,
+  Phone,
+  Mail,
+  Heart,
+  Share2,
+  MoreHorizontal,
+  ShoppingCart
+} from "lucide-react";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Link } from "wouter";
+import { useState } from "react";
+import { useFavorites } from "@/contexts/FavoriteContext";
+import { useCart } from "@/contexts/CartContext";
+import { useToast } from "@/hooks/use-toast";
 
 interface ProductCardProps {
   id: string;
   image: string;
   name: string;
   priceRange: string;
-  moq: string;
+  moq: number | string;
   supplierName: string;
   supplierCountry: string;
+  supplierType?: string;
   responseRate: string;
+  responseTime?: string;
   verified?: boolean;
   tradeAssurance?: boolean;
+  readyToShip?: boolean;
+  sampleAvailable?: boolean;
+  customizationAvailable?: boolean;
+  certifications?: string[];
+  leadTime?: string;
+  port?: string;
+  paymentTerms?: string[];
+  inStock?: boolean;
+  stockQuantity?: number;
+  views?: number;
+  inquiries?: number;
+  rating?: number;
+  reviews?: number;
+  isFavorited?: boolean;
+  onFavorite?: (id: string) => void;
+  onShare?: (id: string) => void;
+  onContact?: (id: string) => void;
+  onQuote?: (id: string) => void;
+  onSample?: (id: string) => void;
+  viewMode?: 'grid' | 'list';
 }
 
 export default function ProductCard({
@@ -25,12 +72,249 @@ export default function ProductCard({
   moq,
   supplierName,
   supplierCountry,
+  supplierType,
   responseRate,
+  responseTime,
   verified = false,
   tradeAssurance = false,
+  readyToShip = false,
+  sampleAvailable = false,
+  customizationAvailable = false,
+  certifications = [],
+  leadTime,
+  port,
+  paymentTerms = [],
+  inStock = true,
+  stockQuantity,
+  views = 0,
+  inquiries = 0,
+  rating = 0,
+  reviews = 0,
+  isFavorited = false,
+  onFavorite,
+  onShare,
+  onContact,
+  onQuote,
+  onSample,
+  viewMode = 'grid'
 }: ProductCardProps) {
+  const { isFavorite, toggleFavorite } = useFavorites();
+  const { addToCart, isInCart } = useCart();
+  const { toast } = useToast();
+  const [isFav, setIsFav] = useState(isFavorited);
+
+  const handleFavorite = () => {
+    const wasFavorite = isFavorite(id);
+    toggleFavorite(id);
+    setIsFav(!wasFavorite);
+    
+    toast({
+      title: wasFavorite ? "Removed from Favorites" : "Added to Favorites",
+      description: wasFavorite 
+        ? `${name} has been removed from your favorites.`
+        : `${name} has been added to your favorites.`,
+    });
+    
+    onFavorite?.(id);
+  };
+
+  const handleShare = () => {
+    onShare?.(id);
+  };
+
+  const handleContact = () => {
+    onContact?.(id);
+  };
+
+  const handleQuote = () => {
+    onQuote?.(id);
+  };
+
+  const handleSample = () => {
+    onSample?.(id);
+  };
+
+  const handleAddToCart = () => {
+    addToCart({
+      productId: id,
+      name,
+      image,
+      priceRange,
+      moq: typeof moq === 'number' ? moq : parseInt(moq.toString()) || 1,
+      supplierName,
+      supplierCountry,
+      verified,
+      tradeAssurance,
+      readyToShip,
+      sampleAvailable,
+      customizationAvailable,
+      certifications,
+      leadTime,
+      port,
+      paymentTerms,
+      inStock,
+      stockQuantity,
+    });
+  };
+
+  const getSupplierTypeColor = (type?: string) => {
+    switch (type) {
+      case 'manufacturer': return 'bg-blue-100 text-blue-800';
+      case 'trading-company': return 'bg-green-100 text-green-800';
+      case 'wholesaler': return 'bg-purple-100 text-purple-800';
+      case 'distributor': return 'bg-orange-100 text-orange-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getSupplierTypeLabel = (type?: string) => {
+    switch (type) {
+      case 'manufacturer': return 'Manufacturer';
+      case 'trading-company': return 'Trading Co.';
+      case 'wholesaler': return 'Wholesaler';
+      case 'distributor': return 'Distributor';
+      default: return 'Supplier';
+    }
+  };
+
+  if (viewMode === 'list') {
+    return (
+      <Card className="group hover:shadow-lg transition-all duration-300" data-testid={`card-product-${id}`}>
+        <div className="flex">
+          <Link href={`/product/${id}`} className="flex-shrink-0">
+            <div className="relative w-32 h-32 overflow-hidden bg-muted">
+              <img 
+                src={image} 
+                alt={name} 
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              {verified && (
+                <Badge className="absolute top-2 right-2 bg-green-600 text-white border-0 text-xs">
+                  <ShieldCheck className="w-3 h-3 mr-1" />
+                  Verified
+                </Badge>
+              )}
+            </div>
+          </Link>
+          
+          <div className="flex-1 p-4">
+            <div className="flex justify-between items-start mb-2">
+              <div className="flex-1">
+                <Link href={`/product/${id}`}>
+                  <h3 className="font-semibold text-lg hover:text-primary transition-colors line-clamp-2" data-testid={`text-product-name-${id}`}>
+                    {name}
+                  </h3>
+                </Link>
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge className={getSupplierTypeColor(supplierType)}>
+                    {getSupplierTypeLabel(supplierType)}
+                  </Badge>
+                  {tradeAssurance && (
+                    <Badge variant="outline" className="text-xs">
+                      <Award className="w-3 h-3 mr-1" />
+                      Trade Assurance
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleFavorite}
+                  className={`h-8 w-8 p-0 ${isFavorite(id) ? 'text-red-500' : 'text-gray-400'}`}
+                >
+                  <Heart className={`h-4 w-4 ${isFavorite(id) ? 'fill-current' : ''}`} />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={handleShare} className="h-8 w-8 p-0">
+                  <Share2 className="h-4 w-4" />
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleContact}>
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Contact Supplier
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleSample}>
+                      <Package className="h-4 w-4 mr-2" />
+                      Request Sample
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                      <Phone className="h-4 w-4 mr-2" />
+                      Call Supplier
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <p className="text-2xl font-bold text-primary" data-testid={`text-price-${id}`}>{priceRange}</p>
+                <p className="text-sm text-muted-foreground" data-testid={`text-moq-${id}`}>MOQ: {typeof moq === 'number' ? moq : moq}</p>
+              </div>
+              <div className="text-right">
+                <div className="flex items-center justify-end gap-1 mb-1">
+                  <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                  <span className="font-semibold">{rating}</span>
+                  <span className="text-sm text-muted-foreground">({reviews})</span>
+                </div>
+                <p className="text-sm text-muted-foreground">{views} views • {inquiries} inquiries</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <MapPin className="w-4 h-4" />
+                  <span>{supplierCountry}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Clock className="w-4 h-4" />
+                  <span>{responseTime}</span>
+                </div>
+                {leadTime && (
+                  <div className="flex items-center gap-1">
+                    <Truck className="w-4 h-4" />
+                    <span>{leadTime}</span>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={handleContact}>
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Contact
+                </Button>
+                <Button 
+                  variant={isInCart(id) ? "secondary" : "default"} 
+                  size="sm" 
+                  onClick={handleAddToCart}
+                  className={isInCart(id) ? "bg-green-100 text-green-800 hover:bg-green-200" : ""}
+                >
+                  <ShoppingCart className="w-4 h-4 mr-2" />
+                  {isInCart(id) ? "In Cart" : "Add to Cart"}
+                </Button>
+                <Button size="sm" onClick={handleQuote}>
+                  Get Quote
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
   return (
-    <Card className="group overflow-hidden hover-elevate transition-all duration-300 hover:shadow-xl" data-testid={`card-product-${id}`}>
+    <Card className="group overflow-hidden hover:shadow-xl transition-all duration-300" data-testid={`card-product-${id}`}>
       <Link href={`/product/${id}`}>
         <div className="relative aspect-square overflow-hidden bg-muted">
           <img 
@@ -39,47 +323,196 @@ export default function ProductCard({
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          {verified && (
-            <Badge className="absolute top-3 right-3 bg-green-600 text-white border-0" data-testid={`badge-verified-${id}`}>
-              <ShieldCheck className="w-3 h-3 mr-1" />
-              Verified
-            </Badge>
-          )}
-          {tradeAssurance && (
-            <Badge className="absolute bottom-3 left-3 bg-primary border-0" data-testid={`badge-trade-assurance-${id}`}>
-              Trade Assurance
-            </Badge>
-          )}
+          
+          {/* Badges */}
+          <div className="absolute top-3 right-3 flex flex-col gap-2">
+            {verified && (
+              <Badge className="bg-green-600 text-white border-0 text-xs" data-testid={`badge-verified-${id}`}>
+                <ShieldCheck className="w-3 h-3 mr-1" />
+                Verified
+              </Badge>
+            )}
+            {tradeAssurance && (
+              <Badge className="bg-blue-600 text-white border-0 text-xs">
+                <Award className="w-3 h-3 mr-1" />
+                Trade Assurance
+              </Badge>
+            )}
+          </div>
+          
+          <div className="absolute bottom-3 left-3 flex flex-wrap gap-1">
+            {readyToShip && (
+              <Badge variant="secondary" className="text-xs">
+                <Truck className="w-3 h-3 mr-1" />
+                Ready to Ship
+              </Badge>
+            )}
+            {sampleAvailable && (
+              <Badge variant="secondary" className="text-xs">
+                <Package className="w-3 h-3 mr-1" />
+                Sample Available
+              </Badge>
+            )}
+          </div>
+          
+          {/* Action buttons overlay */}
+          <div className="absolute top-3 left-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={(e) => {
+                e.preventDefault();
+                handleFavorite();
+              }}
+              className={`h-8 w-8 p-0 ${isFavorite(id) ? 'text-red-500' : 'text-gray-600'}`}
+            >
+              <Heart className={`h-4 w-4 ${isFavorite(id) ? 'fill-current' : ''}`} />
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={(e) => {
+                e.preventDefault();
+                handleShare();
+              }}
+              className="h-8 w-8 p-0"
+            >
+              <Share2 className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={(e) => {
+                e.preventDefault();
+                handleAddToCart();
+              }}
+              className={`h-8 w-8 p-0 ${isInCart(id) ? 'text-green-600 bg-green-100' : 'text-gray-600'}`}
+            >
+              <ShoppingCart className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </Link>
       
-      <CardContent className="p-3 sm:p-4 space-y-2 sm:space-y-3">
-        <Link href={`/product/${id}`}>
-          <h3 className="font-semibold text-sm sm:text-base mb-1 sm:mb-2 line-clamp-2 hover:text-primary transition-colors leading-snug" data-testid={`text-product-name-${id}`}>
-            {name}
-          </h3>
-        </Link>
-        <div className="space-y-1">
-          <p className="text-lg sm:text-2xl font-bold text-primary" data-testid={`text-price-${id}`}>{priceRange}</p>
-          <p className="text-xs sm:text-sm text-muted-foreground font-medium" data-testid={`text-moq-${id}`}>MOQ: {moq}</p>
+      <CardContent className="p-4 space-y-3">
+        <div className="flex justify-between items-start">
+          <Link href={`/product/${id}`}>
+            <h3 className="font-semibold text-base mb-2 line-clamp-2 hover:text-primary transition-colors leading-snug" data-testid={`text-product-name-${id}`}>
+              {name}
+            </h3>
+          </Link>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleContact}>
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Contact Supplier
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleSample}>
+                <Package className="h-4 w-4 mr-2" />
+                Request Sample
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Phone className="h-4 w-4 mr-2" />
+                Call Supplier
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        <div className="pt-2 border-t border-border space-y-1">
-          <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
-            <MapPin className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-            <span className="truncate" data-testid={`text-supplier-${id}`}>{supplierName}</span>
+        
+        <div className="space-y-2">
+          <p className="text-xl font-bold text-primary" data-testid={`text-price-${id}`}>{priceRange}</p>
+          <p className="text-sm text-muted-foreground font-medium" data-testid={`text-moq-${id}`}>MOQ: {typeof moq === 'number' ? moq : moq}</p>
+        </div>
+        
+        {/* Supplier Info */}
+        <div className="pt-2 border-t border-border space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <MapPin className="w-4 h-4 flex-shrink-0" />
+              <span className="truncate" data-testid={`text-supplier-${id}`}>{supplierName}</span>
+            </div>
+            <Badge className={getSupplierTypeColor(supplierType)}>
+              {getSupplierTypeLabel(supplierType)}
+            </Badge>
           </div>
-          <p className="text-[10px] sm:text-xs text-muted-foreground" data-testid={`text-location-${id}`}>
-            {supplierCountry} • {responseRate} response
-          </p>
+          
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span data-testid={`text-location-${id}`}>{supplierCountry}</span>
+            <div className="flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              <span>{responseTime}</span>
+            </div>
+          </div>
+          
+          {/* Rating and Stats */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1">
+              <Star className="h-4 w-4 text-yellow-500 fill-current" />
+              <span className="text-sm font-semibold">{rating}</span>
+              <span className="text-xs text-muted-foreground">({reviews})</span>
+            </div>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Eye className="w-3 h-3" />
+                <span>{views}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <MessageSquare className="w-3 h-3" />
+                <span>{inquiries}</span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Certifications */}
+          {certifications.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {certifications.slice(0, 3).map((cert, index) => (
+                <Badge key={index} variant="outline" className="text-xs">
+                  {cert}
+                </Badge>
+              ))}
+              {certifications.length > 3 && (
+                <Badge variant="outline" className="text-xs">
+                  +{certifications.length - 3}
+                </Badge>
+              )}
+            </div>
+          )}
         </div>
       </CardContent>
       
-      <CardFooter className="p-3 sm:p-4 pt-0 flex gap-2">
-        <Button variant="outline" size="sm" className="flex-1 text-xs sm:text-sm h-8 sm:h-9" data-testid={`button-contact-${id}`}>
-          <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
-          <span className="hidden sm:inline">Contact</span>
+      <CardFooter className="p-4 pt-0 flex gap-2">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="flex-1 text-sm h-9" 
+          onClick={handleContact}
+          data-testid={`button-contact-${id}`}
+        >
+          <MessageSquare className="w-4 h-4 mr-2" />
+          Contact
         </Button>
-        <Button size="sm" className="flex-1 text-xs sm:text-sm h-8 sm:h-9" data-testid={`button-quote-${id}`}>
+        <Button 
+          variant={isInCart(id) ? "secondary" : "default"} 
+          size="sm" 
+          className={`flex-1 text-sm h-9 ${isInCart(id) ? "bg-green-100 text-green-800 hover:bg-green-200" : ""}`}
+          onClick={handleAddToCart}
+          data-testid={`button-cart-${id}`}
+        >
+          <ShoppingCart className="w-4 h-4 mr-2" />
+          {isInCart(id) ? "In Cart" : "Add to Cart"}
+        </Button>
+        <Button 
+          size="sm" 
+          className="flex-1 text-sm h-9" 
+          onClick={handleQuote}
+          data-testid={`button-quote-${id}`}
+        >
           Get Quote
         </Button>
       </CardFooter>

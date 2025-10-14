@@ -112,6 +112,16 @@ export const products = pgTable("products", {
   views: integer("views").default(0),
   inquiries: integer("inquiries").default(0),
   
+  // Product Variants & Options
+  colors: text("colors").array(), // Available colors: ["Black", "White", "Blue"]
+  sizes: text("sizes").array(), // Available sizes: ["S", "M", "L", "XL"] or ["250g", "500g", "1kg"]
+  keyFeatures: text("key_features").array(), // Array of key features
+  customizationDetails: text("customization_details"), // Details about customization options
+  
+  // Certifications & Badges
+  certifications: text("certifications").array(), // ["ISO9001", "CE", "RoHS"]
+  hasTradeAssurance: boolean("has_trade_assurance").default(false),
+  
   // Metadata
   tags: text("tags").array(),
   sku: text("sku"),

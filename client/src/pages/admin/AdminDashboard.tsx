@@ -1,306 +1,604 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, ShoppingCart, Users, Building2, DollarSign, TrendingUp, TrendingDown, Eye, MessageSquare, Star, AlertCircle } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import AdminChat from "@/components/AdminChat";
+import Breadcrumb from "@/components/Breadcrumb";
+import {
+  Package,
+  Users,
+  MessageSquare,
+  TrendingUp,
+  ShoppingCart,
+  Eye,
+  Star,
+  DollarSign,
+  Globe,
+  Settings,
+  BarChart3,
+  Bell,
+  Search,
+  Filter,
+  Download,
+  Plus,
+  ArrowUpRight,
+  ArrowDownRight,
+  Activity,
+  Zap,
+  Shield,
+  Award,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  XCircle
+} from "lucide-react";
 
 export default function AdminDashboard() {
-  const { data: analytics, isLoading } = useQuery<{
-    totalProducts: number;
-    totalOrders: number;
-    totalCustomers: number;
-    totalSuppliers: number;
-    totalRevenue: string;
-    totalUsers: number;
-    totalInquiries: number;
-    totalMessages: number;
-    totalReviews: number;
-    recentOrders: any[];
-    recentProducts: any[];
-    topSuppliers: any[];
-    monthlyRevenue: any[];
-    orderStatusCounts: any;
-    userGrowth: any[];
-    productCategories: any[];
-  }>({
-    queryKey: ["/api/analytics"],
-  });
+  const [activeTab, setActiveTab] = useState("overview");
 
-  // Fetch additional data for comprehensive dashboard
-  const { data: recentProducts = [] } = useQuery<any[]>({
-    queryKey: ["/api/products"],
-  });
-
-  const { data: allUsers = [] } = useQuery<any[]>({
-    queryKey: ["/api/users"],
-  });
-
-  const { data: allOrders = [] } = useQuery<any[]>({
-    queryKey: ["/api/orders"],
-  });
-
-  if (isLoading) {
-    return (
-      <div className="p-8">
-        <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5 mb-8">
-          {[...Array(5)].map((_, i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-4 w-20" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-8 w-16" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // Calculate additional metrics
-  const totalUsers = allUsers?.length || analytics?.totalUsers || 0;
-  const totalProducts = recentProducts?.length || analytics?.totalProducts || 0;
-  const totalOrders = allOrders?.length || analytics?.totalOrders || 0;
-  const totalRevenue = analytics?.totalRevenue ? Number(analytics.totalRevenue).toFixed(2) : '0.00';
-  
-  // Calculate growth percentages (mock data for now)
-  const growthData = {
-    users: 12.5,
-    products: 8.3,
-    orders: 15.2,
-    revenue: 22.1
+  // Mock data for dashboard
+  const stats = {
+    totalProducts: 1247,
+    totalUsers: 3421,
+    totalOrders: 892,
+    totalRevenue: 125430,
+    activeConversations: 23,
+    pendingInquiries: 45,
+    newUsersToday: 12,
+    productsViewed: 3456
   };
 
-  const stats = [
+  const recentActivity = [
     {
-      title: "Total Users",
-      value: totalUsers,
+      id: "1",
+      type: "new_user",
+      message: "New user John Smith registered",
+      timestamp: "2 minutes ago",
       icon: Users,
-      growth: growthData.users,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50",
+      color: "text-green-600"
     },
     {
-      title: "Total Products",
-      value: totalProducts,
-      icon: Package,
-      growth: growthData.products,
-      color: "text-green-600",
-      bgColor: "bg-green-50",
+      id: "2",
+      type: "new_inquiry",
+      message: "New inquiry for LED Flood Lights",
+      timestamp: "5 minutes ago",
+      icon: MessageSquare,
+      color: "text-blue-600"
     },
     {
-      title: "Total Orders",
-      value: totalOrders,
-      icon: ShoppingCart,
-      growth: growthData.orders,
-      color: "text-purple-600",
-      bgColor: "bg-purple-50",
+      id: "3",
+      type: "product_view",
+      message: "High view count on Industrial Sensors",
+      timestamp: "10 minutes ago",
+      icon: Eye,
+      color: "text-purple-600"
     },
     {
-      title: "Total Revenue",
-      value: `$${totalRevenue}`,
-      icon: DollarSign,
-      growth: growthData.revenue,
-      color: "text-orange-600",
-      bgColor: "bg-orange-50",
-    },
+      id: "4",
+      type: "order_completed",
+      message: "Order #1234 completed successfully",
+      timestamp: "15 minutes ago",
+      icon: CheckCircle,
+      color: "text-green-600"
+    }
   ];
 
-  const quickActions = [
-    { title: "Add Product", icon: Package, href: "/admin/products", color: "bg-blue-500" },
-    { title: "Manage Suppliers", icon: Building2, href: "/admin/suppliers", color: "bg-green-500" },
-    { title: "View Orders", icon: ShoppingCart, href: "/admin/orders", color: "bg-purple-500" },
-    { title: "Customer Support", icon: MessageSquare, href: "/admin/customers", color: "bg-orange-500" },
+  const topProducts = [
+    {
+      id: "1",
+      name: "Industrial LED Flood Lights 100W",
+      views: 1250,
+      inquiries: 45,
+      orders: 12,
+      revenue: 5400,
+      growth: 15.2
+    },
+    {
+      id: "2",
+      name: "Precision CNC Machined Parts",
+      views: 890,
+      inquiries: 23,
+      orders: 8,
+      revenue: 3200,
+      growth: 8.7
+    },
+    {
+      id: "3",
+      name: "High-Quality Cotton T-Shirts",
+      views: 2100,
+      inquiries: 67,
+      orders: 15,
+      revenue: 1800,
+      growth: -2.1
+    }
+  ];
+
+  const recentInquiries = [
+    {
+      id: "1",
+      product: "LED Flood Lights",
+      user: "John Smith",
+      company: "Tech Solutions Inc.",
+      quantity: 500,
+      status: "pending",
+      timestamp: "2 hours ago"
+    },
+    {
+      id: "2",
+      product: "CNC Parts",
+      user: "Maria Garcia",
+      company: "Industrial Supplies Ltd.",
+      quantity: 1000,
+      status: "replied",
+      timestamp: "4 hours ago"
+    },
+    {
+      id: "3",
+      product: "Safety Shoes",
+      user: "Ahmed Hassan",
+      company: "Middle East Trading Co.",
+      quantity: 300,
+      status: "negotiating",
+      timestamp: "6 hours ago"
+    }
   ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'delivered': return 'default';
-      case 'processing': return 'secondary';
-      case 'shipped': return 'outline';
-      case 'pending': return 'secondary';
-      case 'cancelled': return 'destructive';
-      default: return 'default';
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'replied': return 'bg-blue-100 text-blue-800';
+      case 'negotiating': return 'bg-purple-100 text-purple-800';
+      case 'completed': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'pending': return AlertCircle;
+      case 'replied': return CheckCircle;
+      case 'negotiating': return Clock;
+      case 'completed': return CheckCircle;
+      default: return XCircle;
     }
   };
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-8 space-y-6">
+      {/* Breadcrumb */}
+      <Breadcrumb items={[{ label: "Admin Dashboard" }]} />
+
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold" data-testid="text-dashboard-title">Admin Dashboard</h1>
-          <p className="text-muted-foreground mt-2">Welcome back! Here's what's happening with your B2B marketplace.</p>
+          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+          <p className="text-muted-foreground mt-1">Welcome back! Here's what's happening with your B2B marketplace.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <TrendingUp className="w-4 h-4 mr-2" />
-            View Reports
+          <Button variant="outline">
+            <Download className="h-4 w-4 mr-2" />
+            Export Report
+          </Button>
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Product
           </Button>
         </div>
       </div>
 
-      {/* Key Metrics */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
-          <Card key={stat.title} data-testid={`card-stat-${stat.title.toLowerCase().replace(' ', '-')}`}>
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
-              <div className={`p-2 rounded-lg ${stat.bgColor}`}>
-                <stat.icon className={`h-4 w-4 ${stat.color}`} />
-              </div>
+            <CardTitle className="text-sm font-medium">Total Products</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold" data-testid={`text-stat-${stat.title.toLowerCase().replace(' ', '-')}`}>
-                {stat.value}
+            <div className="text-2xl font-bold">{stats.totalProducts.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">
+              <span className="text-green-600">+12%</span> from last month
+            </p>
+            </CardContent>
+          </Card>
+
+      <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+            <div className="text-2xl font-bold">{stats.totalUsers.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">
+              <span className="text-green-600">+8%</span> from last month
+            </p>
+        </CardContent>
+      </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Conversations</CardTitle>
+            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.activeConversations}</div>
+            <p className="text-xs text-muted-foreground">
+              <span className="text-red-600">+3</span> new today
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${stats.totalRevenue.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">
+              <span className="text-green-600">+18%</span> from last month
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Main Content Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="products">Products</TabsTrigger>
+          <TabsTrigger value="users">Users</TabsTrigger>
+          <TabsTrigger value="messages">Messages</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Recent Activity */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5" />
+                  Recent Activity
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+              <div className="space-y-4">
+                  {recentActivity.map((activity) => (
+                    <div key={activity.id} className="flex items-center gap-3">
+                      <div className={`p-2 rounded-full bg-gray-100`}>
+                        <activity.icon className={`h-4 w-4 ${activity.color}`} />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{activity.message}</p>
+                        <p className="text-xs text-muted-foreground">{activity.timestamp}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Top Products */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5" />
+                  Top Performing Products
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {topProducts.map((product, index) => (
+                    <div key={product.id} className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-semibold text-blue-600">
+                          {index + 1}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{product.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {product.views} views • {product.inquiries} inquiries
+                          </p>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-sm font-semibold">${product.revenue.toLocaleString()}</p>
+                        <div className="flex items-center gap-1 text-xs">
+                          {product.growth > 0 ? (
+                            <ArrowUpRight className="h-3 w-3 text-green-600" />
+                          ) : (
+                            <ArrowDownRight className="h-3 w-3 text-red-600" />
+                          )}
+                          <span className={product.growth > 0 ? "text-green-600" : "text-red-600"}>
+                            {Math.abs(product.growth)}%
+                          </span>
+                        </div>
+                      </div>
+                  </div>
+                ))}
               </div>
-              <div className="flex items-center mt-2">
-                <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
-                <span className="text-xs text-green-600">+{stat.growth}%</span>
-                <span className="text-xs text-muted-foreground ml-2">from last month</span>
+          </CardContent>
+        </Card>
+      </div>
+
+          {/* Recent Inquiries */}
+      <Card>
+        <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" />
+                Recent Inquiries
+              </CardTitle>
+        </CardHeader>
+        <CardContent>
+              <div className="space-y-4">
+                {recentInquiries.map((inquiry) => {
+                  const StatusIcon = getStatusIcon(inquiry.status);
+                  return (
+                    <div key={inquiry.id} className="flex items-center justify-between p-3 border rounded-lg">
+            <div className="flex items-center gap-3">
+                        <StatusIcon className="h-4 w-4 text-muted-foreground" />
+              <div>
+                          <p className="font-medium">{inquiry.product}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {inquiry.user} • {inquiry.company}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Qty: {inquiry.quantity} • {inquiry.timestamp}
+                          </p>
+              </div>
+            </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className={getStatusColor(inquiry.status)}>
+                          {inquiry.status}
+                        </Badge>
+                        <Button variant="ghost" size="sm">
+                          <ArrowUpRight className="h-4 w-4" />
+                        </Button>
+              </div>
+            </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
-        ))}
-      </div>
+        </TabsContent>
 
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {quickActions.map((action) => (
-              <Button
-                key={action.title}
-                variant="outline"
-                className="h-auto p-4 flex flex-col items-center gap-2 hover:bg-gray-50"
-                asChild
-              >
-                <a href={action.href}>
-                  <div className={`p-3 rounded-lg ${action.color} text-white`}>
-                    <action.icon className="h-6 w-6" />
+        <TabsContent value="products" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Product Management</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Link href="/admin/products">
+                  <Button className="w-full justify-start">
+                    <Package className="h-4 w-4 mr-2" />
+                    View All Products
+                  </Button>
+                </Link>
+                <Link href="/admin/products/add">
+                  <Button variant="outline" className="w-full justify-start">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add New Product
+                  </Button>
+                </Link>
+                <Link href="/admin/categories">
+                  <Button variant="outline" className="w-full justify-start">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Manage Categories
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Product Analytics</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Total Views</span>
+                    <span className="font-semibold">{stats.productsViewed.toLocaleString()}</span>
                   </div>
-                  <span className="text-sm font-medium">{action.title}</span>
-                </a>
-              </Button>
-            ))}
+                  <Progress value={75} className="h-2" />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Inquiry Rate</span>
+                    <span className="font-semibold">3.2%</span>
+                  </div>
+                  <Progress value={32} className="h-2" />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Conversion Rate</span>
+                    <span className="font-semibold">1.8%</span>
+                  </div>
+                  <Progress value={18} className="h-2" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Quick Actions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Button variant="outline" className="w-full justify-start">
+                  <Download className="h-4 w-4 mr-2" />
+                  Export Product Data
+                </Button>
+                <Button variant="outline" className="w-full justify-start">
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  View Analytics
+                </Button>
+                <Button variant="outline" className="w-full justify-start">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Bulk Edit
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="users" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">User Management</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Link href="/admin/users">
+                  <Button className="w-full justify-start">
+                    <Users className="h-4 w-4 mr-2" />
+                    View All Users
+                  </Button>
+                </Link>
+                <Button variant="outline" className="w-full justify-start">
+                  <Shield className="h-4 w-4 mr-2" />
+                  Verify Users
+                </Button>
+                <Button variant="outline" className="w-full justify-start">
+                  <Award className="h-4 w-4 mr-2" />
+                  Manage Badges
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">User Statistics</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span>New Users Today</span>
+                  <span className="font-semibold text-green-600">+{stats.newUsersToday}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Verified Users</span>
+                  <span className="font-semibold">2,847 (83%)</span>
+              </div>
+                <div className="flex justify-between text-sm">
+                  <span>Active Users</span>
+                  <span className="font-semibold">1,234 (36%)</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">User Actions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Button variant="outline" className="w-full justify-start">
+                  <Download className="h-4 w-4 mr-2" />
+                  Export User Data
+                </Button>
+                <Button variant="outline" className="w-full justify-start">
+                  <Bell className="h-4 w-4 mr-2" />
+                  Send Notifications
+                </Button>
+                <Button variant="outline" className="w-full justify-start">
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  User Analytics
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="messages" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" />
+                Live Chat System
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Communicate with users in real-time and manage inquiries efficiently.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <AdminChat />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  Performance Metrics
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Page Views</span>
+                      <span className="font-semibold">45,678</span>
+                    </div>
+                    <Progress value={85} className="h-2" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Inquiry Conversion</span>
+                      <span className="font-semibold">3.2%</span>
+                    </div>
+                    <Progress value={32} className="h-2" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>User Engagement</span>
+                      <span className="font-semibold">78%</span>
+                    </div>
+                    <Progress value={78} className="h-2" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Globe className="h-5 w-5" />
+                  Geographic Distribution
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span>China</span>
+                    <span className="font-semibold">45%</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>India</span>
+                    <span className="font-semibold">23%</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Vietnam</span>
+                    <span className="font-semibold">15%</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Thailand</span>
+                    <span className="font-semibold">12%</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Others</span>
+                    <span className="font-semibold">5%</span>
+            </div>
           </div>
         </CardContent>
       </Card>
-
-      {/* Recent Activity */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Recent Orders */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Recent Orders</CardTitle>
-            <Button variant="ghost" size="sm">View All</Button>
-          </CardHeader>
-          <CardContent>
-            {analytics?.recentOrders && analytics.recentOrders.length > 0 ? (
-              <div className="space-y-4">
-                {analytics.recentOrders.slice(0, 5).map((order: any) => (
-                  <div key={order.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <p className="font-medium">#{order.orderNumber}</p>
-                      <p className="text-sm text-muted-foreground">{new Date(order.createdAt).toLocaleDateString()}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-medium">${parseFloat(order.totalAmount).toFixed(2)}</p>
-                      <Badge variant={getStatusColor(order.status)} className="text-xs">
-                        {order.status}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <ShoppingCart className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No recent orders</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Recent Products */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Recent Products</CardTitle>
-            <Button variant="ghost" size="sm">View All</Button>
-          </CardHeader>
-          <CardContent>
-            {recentProducts && recentProducts.length > 0 ? (
-              <div className="space-y-4">
-                {recentProducts.slice(0, 5).map((product: any) => (
-                  <div key={product.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <p className="font-medium">{product.name}</p>
-                      <p className="text-sm text-muted-foreground">SKU: {product.sku || 'N/A'}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-medium">${product.regularPrice || '0.00'}</p>
-                      <Badge variant={product.isPublished ? "default" : "secondary"} className="text-xs">
-                        {product.isPublished ? "Published" : "Draft"}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No products yet</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* System Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle>System Status</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <TrendingUp className="h-4 w-4 text-green-600" />
-              </div>
-              <div>
-                <p className="font-medium">Server Status</p>
-                <p className="text-sm text-green-600">All systems operational</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Users className="h-4 w-4 text-blue-600" />
-              </div>
-              <div>
-                <p className="font-medium">Active Users</p>
-                <p className="text-sm text-blue-600">{totalUsers} users online</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Package className="h-4 w-4 text-purple-600" />
-              </div>
-              <div>
-                <p className="font-medium">Products</p>
-                <p className="text-sm text-purple-600">{totalProducts} total products</p>
-              </div>
-            </div>
           </div>
-        </CardContent>
-      </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

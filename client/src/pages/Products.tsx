@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import PageHeader from "@/components/PageHeader";
@@ -10,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLoading } from "@/contexts/LoadingContext";
+import type { Product, Category } from "@shared/schema";
 import {
   Select,
   SelectContent,
@@ -18,205 +20,556 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { SlidersHorizontal, Search, X } from "lucide-react";
+import { SlidersHorizontal, Search, X, Loader2 } from "lucide-react";
 
 export default function Products() {
   const { setLoading } = useLoading();
   const [priceRange, setPriceRange] = useState([0, 1000]);
+  const [moqRange, setMoqRange] = useState([0, 10000]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedSubcategory, setSelectedSubcategory] = useState("all");
+  const [supplierType, setSupplierType] = useState("all");
+  const [supplierLocation, setSupplierLocation] = useState("all");
+  const [sortBy, setSortBy] = useState("best-match");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [showFilters, setShowFilters] = useState(false);
+  
+  // B2B specific filters
+  const [verifiedSuppliersOnly, setVerifiedSuppliersOnly] = useState(false);
+  const [tradeAssuranceOnly, setTradeAssuranceOnly] = useState(false);
+  const [readyToShipOnly, setReadyToShipOnly] = useState(false);
+  const [sampleAvailable, setSampleAvailable] = useState(false);
+  const [customizationAvailable, setCustomizationAvailable] = useState(false);
+  const [certifications, setCertifications] = useState<string[]>([]);
+
+  // Fetch products from API
+  const { data: apiProducts = [], isLoading: isProductsLoading } = useQuery<Product[]>({
+    queryKey: ["/api/products"],
+    queryFn: async () => {
+      try {
+        const response = await fetch("/api/products", {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log("Fetched products from API:", data);
+        return Array.isArray(data) ? data : [];
+      } catch (error) {
+        console.error("Error fetching products:", error);
+        return [];
+      }
+    },
+  });
+
+  // Fetch categories from API
+  const { data: apiCategories = [] } = useQuery<Category[]>({
+    queryKey: ["/api/categories"],
+    queryFn: async () => {
+      try {
+        const response = await fetch("/api/categories", {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+        return [];
+      }
+    },
+  });
 
   useEffect(() => {
-    setLoading(true, "Loading Products...");
-    
-    const timer = setTimeout(() => {
+    if (isProductsLoading) {
+      setLoading(true, "Loading Products...");
+    } else {
       setLoading(false);
-    }, 1000);
+    }
+  }, [isProductsLoading, setLoading]);
 
-    return () => clearTimeout(timer);
-  }, []);
+  // Transform API categories into the format needed for filters
+  const parentCategories = apiCategories.filter(cat => !cat.parentId && cat.isActive);
+  
+  const categories = parentCategories.map(cat => ({
+    id: cat.id,
+    name: cat.name,
+    subcategories: apiCategories
+      .filter(sub => sub.parentId === cat.id && sub.isActive)
+      .map(sub => ({ id: sub.id, name: sub.name }))
+  }));
 
-  const products = [
-    {
-      id: "1",
-      image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop",
-      name: "Premium Wireless Headphones",
-      priceRange: "$25.00-$35.00 /piece",
-      moq: "100 pieces",
-      supplierName: "AudioTech Pro",
-      supplierCountry: "China",
-      responseRate: "98%",
-      verified: true,
-      tradeAssurance: true,
-    },
-    {
-      id: "2",
-      image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop",
-      name: "Classic Analog Wristwatch",
-      priceRange: "$15.00-$22.00 /piece",
-      moq: "200 pieces",
-      supplierName: "TimeKeeper Industries",
-      supplierCountry: "Hong Kong",
-      responseRate: "95%",
-      verified: true,
-    },
-    {
-      id: "3",
-      image: "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=400&h=400&fit=crop",
-      name: "Designer Sunglasses UV Protection",
-      priceRange: "$8.00-$12.00 /piece",
-      moq: "500 pieces",
-      supplierName: "Vision Plus",
-      supplierCountry: "Taiwan",
-      responseRate: "92%",
-      tradeAssurance: true,
-    },
-    {
-      id: "4",
-      image: "https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=400&h=400&fit=crop",
-      name: "Casual Canvas Sneakers",
-      priceRange: "$12.00-$18.00 /pair",
-      moq: "300 pairs",
-      supplierName: "FootWear Global",
-      supplierCountry: "Vietnam",
-      responseRate: "97%",
-      verified: true,
-      tradeAssurance: true,
-    },
-    {
-      id: "5",
-      image: "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=400&h=400&fit=crop",
-      name: "Smart Fitness Tracker Watch",
-      priceRange: "$30.00-$45.00 /piece",
-      moq: "150 pieces",
-      supplierName: "TechHealth Ltd",
-      supplierCountry: "China",
-      responseRate: "96%",
-      verified: true,
-    },
-    {
-      id: "6",
-      image: "https://images.unsplash.com/photo-1585386959984-a4155224a1ad?w=400&h=400&fit=crop",
-      name: "Leather Laptop Bag Professional",
-      priceRange: "$35.00-$50.00 /piece",
-      moq: "100 pieces",
-      supplierName: "Leather Crafts Co",
-      supplierCountry: "India",
-      responseRate: "94%",
-      verified: true,
-      tradeAssurance: true,
-    },
-    {
-      id: "7",
-      image: "https://images.unsplash.com/photo-1551963831-b3b1ca40c98e?w=400&h=400&fit=crop",
-      name: "Stainless Steel Water Bottle",
-      priceRange: "$5.00-$8.00 /piece",
-      moq: "1000 pieces",
-      supplierName: "EcoBottle Mfg",
-      supplierCountry: "China",
-      responseRate: "99%",
-      verified: true,
-    },
-    {
-      id: "8",
-      image: "https://images.unsplash.com/photo-1484788984921-03950022c9ef?w=400&h=400&fit=crop",
-      name: "Wireless Gaming Mouse RGB",
-      priceRange: "$18.00-$28.00 /piece",
-      moq: "200 pieces",
-      supplierName: "GameGear Pro",
-      supplierCountry: "Taiwan",
-      responseRate: "97%",
-      verified: true,
-      tradeAssurance: true,
-    },
+  const supplierTypes = [
+    { id: "manufacturer", name: "Manufacturer" },
+    { id: "trading-company", name: "Trading Company" },
+    { id: "wholesaler", name: "Wholesaler" },
+    { id: "distributor", name: "Distributor" }
   ];
+
+  const supplierLocations = [
+    { id: "china", name: "China" },
+    { id: "india", name: "India" },
+    { id: "vietnam", name: "Vietnam" },
+    { id: "thailand", name: "Thailand" },
+    { id: "indonesia", name: "Indonesia" },
+    { id: "philippines", name: "Philippines" },
+    { id: "malaysia", name: "Malaysia" },
+    { id: "taiwan", name: "Taiwan" },
+    { id: "hong-kong", name: "Hong Kong" },
+    { id: "south-korea", name: "South Korea" }
+  ];
+
+  const certificationOptions = [
+    { id: "iso9001", name: "ISO 9001" },
+    { id: "iso14001", name: "ISO 14001" },
+    { id: "ce", name: "CE" },
+    { id: "fda", name: "FDA" },
+    { id: "rohs", name: "RoHS" },
+    { id: "ul", name: "UL" },
+    { id: "fcc", name: "FCC" },
+    { id: "gs", name: "GS" }
+  ];
+
+  // Get subcategories for selected category
+  const currentSubcategories = selectedCategory !== "all" 
+    ? categories.find(c => c.id === selectedCategory)?.subcategories || []
+    : [];
+
+  // Clear subcategory when category changes
+  useEffect(() => {
+    if (selectedCategory === "all") {
+      setSelectedSubcategory("all");
+    }
+  }, [selectedCategory]);
+
+  // Transform API products for display
+  const products = apiProducts.map(product => {
+    // Parse price ranges from product data
+    const priceRanges = product.priceRanges ? (typeof product.priceRanges === 'string' ? JSON.parse(product.priceRanges) : product.priceRanges) : [];
+    const minPrice = priceRanges.length > 0 ? Math.min(...priceRanges.map((r: any) => Number(r.pricePerUnit))) : 0;
+    const maxPrice = priceRanges.length > 0 ? Math.max(...priceRanges.map((r: any) => Number(r.pricePerUnit))) : 0;
+    const priceRange = priceRanges.length > 0 
+      ? `$${minPrice.toFixed(2)}-$${maxPrice.toFixed(2)} /piece`
+      : 'Contact for price';
+
+    // Get images
+    const images = product.images && product.images.length > 0 ? product.images : [];
+    const firstImage = images.length > 0 ? images[0] : 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop';
+
+    // Get certifications
+    const certs = product.certifications || [];
+
+    return {
+      id: product.id,
+      image: firstImage,
+      name: product.name,
+      priceRange,
+      moq: product.minOrderQuantity || 1,
+      supplierName: 'Admin Supplier', // Admin is the supplier
+      supplierCountry: 'Global',
+      supplierType: 'manufacturer',
+      responseRate: '95%',
+      responseTime: '24 hours',
+      verified: true,
+      tradeAssurance: product.hasTradeAssurance || false,
+      readyToShip: product.isPublished || false,
+      sampleAvailable: product.sampleAvailable || false,
+      customizationAvailable: product.customizationAvailable || false,
+      certifications: certs,
+      category: product.categoryId || '',
+      subcategory: product.categoryId || '',
+      leadTime: product.leadTime || '15-30 days',
+      port: product.port || 'N/A',
+      paymentTerms: product.paymentTerms || [],
+      inStock: product.inStock || false,
+      stockQuantity: product.stockQuantity || 0,
+      views: product.views || 0,
+      inquiries: product.inquiries || 0,
+      rating: 4.5,
+      reviews: 0
+    };
+  });
+
+  // Filter products based on current filters
+  const filteredProducts = products.filter(product => {
+    // Search query filter
+    if (searchQuery && !product.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        !product.supplierName.toLowerCase().includes(searchQuery.toLowerCase())) {
+      return false;
+    }
+
+    // Category filter
+    if (selectedCategory !== "all" && product.category !== selectedCategory) {
+      return false;
+    }
+
+    // Subcategory filter
+    if (selectedSubcategory !== "all" && product.subcategory !== selectedSubcategory) {
+      return false;
+    }
+
+    // Supplier type filter
+    if (supplierType !== "all" && product.supplierType !== supplierType) {
+      return false;
+    }
+
+    // Supplier location filter
+    if (supplierLocation !== "all" && product.supplierCountry.toLowerCase() !== supplierLocation) {
+      return false;
+    }
+
+    // Price range filter
+    const minPrice = priceRange[0];
+    const maxPrice = priceRange[1];
+    const productMinPrice = parseFloat(product.priceRange.split('-')[0].replace('$', ''));
+    const productMaxPrice = parseFloat(product.priceRange.split('-')[1].split(' ')[0].replace('$', ''));
+    
+    if (productMinPrice < minPrice || productMaxPrice > maxPrice) {
+      return false;
+    }
+
+    // MOQ range filter
+    if (product.moq < moqRange[0] || product.moq > moqRange[1]) {
+      return false;
+    }
+
+    // B2B specific filters
+    if (verifiedSuppliersOnly && !product.verified) {
+      return false;
+    }
+
+    if (tradeAssuranceOnly && !product.tradeAssurance) {
+      return false;
+    }
+
+    if (readyToShipOnly && !product.readyToShip) {
+      return false;
+    }
+
+    if (sampleAvailable && !product.sampleAvailable) {
+      return false;
+    }
+
+    if (customizationAvailable && !product.customizationAvailable) {
+      return false;
+    }
+
+    // Certifications filter
+    if (certifications.length > 0) {
+      const hasRequiredCert = certifications.some(cert => 
+        product.certifications.includes(cert)
+      );
+      if (!hasRequiredCert) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  // Sort products
+  const sortedProducts = [...filteredProducts].sort((a, b) => {
+    switch (sortBy) {
+      case "price-low-high":
+        const aMinPrice = parseFloat(a.priceRange.split('-')[0].replace('$', ''));
+        const bMinPrice = parseFloat(b.priceRange.split('-')[0].replace('$', ''));
+        return aMinPrice - bMinPrice;
+      case "price-high-low":
+        const aMaxPrice = parseFloat(a.priceRange.split('-')[1].split(' ')[0].replace('$', ''));
+        const bMaxPrice = parseFloat(b.priceRange.split('-')[1].split(' ')[0].replace('$', ''));
+        return bMaxPrice - aMaxPrice;
+      case "moq-low-high":
+        return a.moq - b.moq;
+      case "rating-high-low":
+        return b.rating - a.rating;
+      case "views-high-low":
+        return b.views - a.views;
+      case "inquiries-high-low":
+        return b.inquiries - a.inquiries;
+      default: // best-match
+        return 0;
+    }
+  });
+
+  // Clear all filters
+  const clearAllFilters = () => {
+    setSearchQuery("");
+    setSelectedCategory("all");
+    setSelectedSubcategory("all");
+    setSupplierType("all");
+    setSupplierLocation("all");
+    setPriceRange([0, 1000]);
+    setMoqRange([0, 10000]);
+    setVerifiedSuppliersOnly(false);
+    setTradeAssuranceOnly(false);
+    setReadyToShipOnly(false);
+    setSampleAvailable(false);
+    setCustomizationAvailable(false);
+    setCertifications([]);
+  };
+
+  // Get active filter count
+  const activeFilterCount = [
+    searchQuery,
+    selectedCategory !== "all",
+    selectedSubcategory !== "all",
+    supplierType !== "all",
+    supplierLocation !== "all",
+    priceRange[0] > 0 || priceRange[1] < 1000,
+    moqRange[0] > 0 || moqRange[1] < 10000,
+    verifiedSuppliersOnly,
+    tradeAssuranceOnly,
+    readyToShipOnly,
+    sampleAvailable,
+    customizationAvailable,
+    certifications.length > 0
+  ].filter(Boolean).length;
 
   const FilterSidebar = () => (
     <div className="space-y-5">
+      {/* Search */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold">Search Products</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search products or suppliers..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Categories */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold">Categories</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {["Electronics", "Fashion", "Machinery", "Automotive", "Home & Garden"].map((cat) => (
-            <div key={cat} className="flex flex-wrap items-center gap-3">
-              <Checkbox id={`cat-${cat}`} data-testid={`checkbox-category-${cat.toLowerCase()}`} />
-              <Label htmlFor={`cat-${cat}`} className="text-sm cursor-pointer flex-1">{cat}</Label>
-            </div>
-          ))}
+          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <SelectTrigger>
+              <SelectValue placeholder="All Categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {categories.map((category) => (
+                <SelectItem key={category.id} value={category.id}>
+                  {category.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          {currentSubcategories.length > 0 && (
+            <Select value={selectedSubcategory} onValueChange={setSelectedSubcategory}>
+              <SelectTrigger>
+                <SelectValue placeholder="All Subcategories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Subcategories</SelectItem>
+                {currentSubcategories.map((subcategory) => (
+                  <SelectItem key={subcategory.id} value={subcategory.id}>
+                    {subcategory.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </CardContent>
       </Card>
 
+      {/* Supplier Type */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold">Supplier Type</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {["Manufacturer", "Trading Company", "Wholesaler"].map((type) => (
-            <div key={type} className="flex flex-wrap items-center gap-3">
-              <Checkbox id={`type-${type}`} data-testid={`checkbox-type-${type.toLowerCase()}`} />
-              <Label htmlFor={`type-${type}`} className="text-sm cursor-pointer flex-1">{type}</Label>
-            </div>
-          ))}
+          <Select value={supplierType} onValueChange={setSupplierType}>
+            <SelectTrigger>
+              <SelectValue placeholder="All Supplier Types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Supplier Types</SelectItem>
+              {supplierTypes.map((type) => (
+                <SelectItem key={type.id} value={type.id}>
+                  {type.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </CardContent>
       </Card>
 
+      {/* Supplier Location */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Price Range</CardTitle>
+          <CardTitle className="text-base font-semibold">Supplier Location</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Select value={supplierLocation} onValueChange={setSupplierLocation}>
+            <SelectTrigger>
+              <SelectValue placeholder="All Locations" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Locations</SelectItem>
+              {supplierLocations.map((location) => (
+                <SelectItem key={location.id} value={location.id}>
+                  {location.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
+
+      {/* Price Range */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold">Price Range (USD)</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label className="text-sm">${priceRange[0]} - ${priceRange[1]}</Label>
           <Slider
             value={priceRange}
             onValueChange={setPriceRange}
             max={1000}
             step={10}
-            data-testid="slider-price-range"
+              className="w-full"
           />
-          <div className="flex justify-between text-sm font-medium text-muted-foreground">
-            <span>${priceRange[0]}</span>
-            <span>${priceRange[1]}</span>
           </div>
         </CardContent>
       </Card>
 
+      {/* MOQ Range */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">MOQ Range</CardTitle>
+          <CardTitle className="text-base font-semibold">Minimum Order Quantity</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label className="text-sm">{moqRange[0]} - {moqRange[1]} pieces</Label>
+            <Slider
+              value={moqRange}
+              onValueChange={setMoqRange}
+              max={10000}
+              step={100}
+              className="w-full"
+            />
+            </div>
+        </CardContent>
+      </Card>
+
+      {/* B2B Specific Filters */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold">B2B Features</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {["1-99", "100-499", "500-999", "1000+"].map((range) => (
-            <div key={range} className="flex flex-wrap items-center gap-3">
-              <Checkbox id={`moq-${range}`} data-testid={`checkbox-moq-${range}`} />
-              <Label htmlFor={`moq-${range}`} className="text-sm cursor-pointer flex-1">{range} pieces</Label>
+          <div className="flex items-center space-x-2">
+            <Checkbox 
+              id="verified-suppliers" 
+              checked={verifiedSuppliersOnly}
+              onCheckedChange={(checked) => setVerifiedSuppliersOnly(checked === true)}
+            />
+            <Label htmlFor="verified-suppliers" className="text-sm cursor-pointer">
+              Verified Suppliers Only
+            </Label>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Checkbox 
+              id="trade-assurance" 
+              checked={tradeAssuranceOnly}
+              onCheckedChange={(checked) => setTradeAssuranceOnly(checked === true)}
+            />
+            <Label htmlFor="trade-assurance" className="text-sm cursor-pointer">
+              Trade Assurance
+            </Label>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Checkbox 
+              id="ready-to-ship" 
+              checked={readyToShipOnly}
+              onCheckedChange={(checked) => setReadyToShipOnly(checked === true)}
+            />
+            <Label htmlFor="ready-to-ship" className="text-sm cursor-pointer">
+              Ready to Ship
+            </Label>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Checkbox 
+              id="sample-available" 
+              checked={sampleAvailable}
+              onCheckedChange={(checked) => setSampleAvailable(checked === true)}
+            />
+            <Label htmlFor="sample-available" className="text-sm cursor-pointer">
+              Sample Available
+            </Label>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Checkbox 
+              id="customization" 
+              checked={customizationAvailable}
+              onCheckedChange={(checked) => setCustomizationAvailable(checked === true)}
+            />
+            <Label htmlFor="customization" className="text-sm cursor-pointer">
+              Customization Available
+            </Label>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Certifications */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold">Certifications</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {certificationOptions.map((cert) => (
+            <div key={cert.id} className="flex items-center space-x-2">
+              <Checkbox 
+                id={`cert-${cert.id}`}
+                checked={certifications.includes(cert.id)}
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    setCertifications([...certifications, cert.id]);
+                  } else {
+                    setCertifications(certifications.filter(c => c !== cert.id));
+                  }
+                }}
+              />
+              <Label htmlFor={`cert-${cert.id}`} className="text-sm cursor-pointer">
+                {cert.name}
+              </Label>
             </div>
           ))}
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Supplier Features</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <Checkbox id="verified" data-testid="checkbox-verified" />
-            <Label htmlFor="verified" className="text-sm cursor-pointer flex-1">Verified Suppliers</Label>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <Checkbox id="trade-assurance" data-testid="checkbox-trade-assurance" />
-            <Label htmlFor="trade-assurance" className="text-sm cursor-pointer flex-1">Trade Assurance</Label>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <Checkbox id="ready-ship" data-testid="checkbox-ready-ship" />
-            <Label htmlFor="ready-ship" className="text-sm cursor-pointer flex-1">Ready to Ship</Label>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Button variant="outline" className="w-full" data-testid="button-clear-filters">
-        <X className="w-4 h-4 mr-2" />
-        Clear All Filters
+      {/* Clear Filters */}
+      {activeFilterCount > 0 && (
+        <Button 
+          variant="outline" 
+          onClick={clearAllFilters}
+          className="w-full"
+        >
+          <X className="h-4 w-4 mr-2" />
+          Clear All Filters ({activeFilterCount})
       </Button>
+      )}
     </div>
   );
 
@@ -257,32 +610,103 @@ export default function Products() {
                         </SheetContent>
                       </Sheet>
                       <p className="text-sm text-muted-foreground">
-                        Showing <span className="font-semibold text-foreground">{products.length}</span> products
+                        Showing <span className="font-semibold text-foreground">{sortedProducts.length}</span> of <span className="font-semibold text-foreground">{products.length}</span> products
+                        {activeFilterCount > 0 && (
+                          <span className="ml-2 text-blue-600">
+                            ({activeFilterCount} filter{activeFilterCount > 1 ? 's' : ''} applied)
+                          </span>
+                        )}
                       </p>
                     </div>
                     
-                    <Select defaultValue="best-match">
+                    <div className="flex items-center gap-3">
+                      <Select value={sortBy} onValueChange={setSortBy}>
                       <SelectTrigger className="w-48" data-testid="select-sort">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="best-match">Best Match</SelectItem>
-                        <SelectItem value="price-low">Price: Low to High</SelectItem>
-                        <SelectItem value="price-high">Price: High to Low</SelectItem>
-                        <SelectItem value="moq">Minimum Order</SelectItem>
-                        <SelectItem value="rating">Supplier Rating</SelectItem>
+                          <SelectItem value="price-low-high">Price: Low to High</SelectItem>
+                          <SelectItem value="price-high-low">Price: High to Low</SelectItem>
+                          <SelectItem value="moq-low-high">MOQ: Low to High</SelectItem>
+                          <SelectItem value="rating-high-low">Rating: High to Low</SelectItem>
+                          <SelectItem value="views-high-low">Most Viewed</SelectItem>
+                          <SelectItem value="inquiries-high-low">Most Inquired</SelectItem>
                       </SelectContent>
                     </Select>
+                      
+                      <div className="flex items-center gap-1 border rounded-lg p-1">
+                        <Button
+                          variant={viewMode === "grid" ? "default" : "ghost"}
+                          size="sm"
+                          onClick={() => setViewMode("grid")}
+                          className="h-8 w-8 p-0"
+                        >
+                          <div className="w-4 h-4 grid grid-cols-2 gap-0.5">
+                            <div className="bg-current rounded-sm"></div>
+                            <div className="bg-current rounded-sm"></div>
+                            <div className="bg-current rounded-sm"></div>
+                            <div className="bg-current rounded-sm"></div>
+                          </div>
+                        </Button>
+                        <Button
+                          variant={viewMode === "list" ? "default" : "ghost"}
+                          size="sm"
+                          onClick={() => setViewMode("list")}
+                          className="h-8 w-8 p-0"
+                        >
+                          <div className="w-4 h-4 flex flex-col gap-0.5">
+                            <div className="bg-current rounded-sm h-1"></div>
+                            <div className="bg-current rounded-sm h-1"></div>
+                            <div className="bg-current rounded-sm h-1"></div>
+                          </div>
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                {products.map((product) => (
+              {isProductsLoading ? (
+                <div className="flex items-center justify-center py-20">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <span className="ml-3 text-lg text-muted-foreground">Loading products...</span>
+                </div>
+              ) : sortedProducts.length === 0 ? (
+                <Card className="p-12 text-center">
+                  <div className="space-y-4">
+                    <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center">
+                      <Search className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-lg font-semibold">
+                      {products.length === 0 ? "No Products Available" : "No products found"}
+                    </h3>
+                    <p className="text-muted-foreground">
+                      {products.length === 0 
+                        ? "Products will appear here once they are added by the administrator."
+                        : "Try adjusting your search criteria or filters to find what you're looking for."}
+                    </p>
+                    {activeFilterCount > 0 && (
+                      <Button variant="outline" onClick={clearAllFilters}>
+                        <X className="w-4 w-4 mr-2" />
+                        Clear All Filters
+                      </Button>
+                    )}
+                  </div>
+                </Card>
+              ) : (
+                <div className={`grid gap-5 ${
+                  viewMode === "grid" 
+                    ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3" 
+                    : "grid-cols-1"
+                }`}>
+                  {sortedProducts.map((product) => (
                   <ProductCard key={product.id} {...product} />
                 ))}
               </div>
+              )}
 
+              {/* Pagination */}
               <div className="mt-10 flex justify-center">
                 <div className="inline-flex gap-1 p-1 bg-card rounded-lg border">
                   <Button variant="ghost" size="sm" data-testid="button-prev-page">Previous</Button>

@@ -54,7 +54,7 @@ export default function InquiryForm({
           productId,
           buyerId: user?.id,
           quantity: parseInt(inquiryData.quantity),
-          targetPrice: inquiryData.targetPrice ? parseFloat(inquiryData.targetPrice) : null,
+          targetPrice: inquiryData.targetPrice || null,
           message: inquiryData.message,
           requirements: inquiryData.requirements,
           status: 'pending'

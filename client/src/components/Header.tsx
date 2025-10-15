@@ -273,6 +273,12 @@ export default function Header() {
                       <Link href="/my-orders">
                         <DropdownMenuItem>My Orders</DropdownMenuItem>
                       </Link>
+                      <Link href="/my-inquiries">
+                        <DropdownMenuItem>My Inquiries</DropdownMenuItem>
+                      </Link>
+                      <Link href="/track-order">
+                        <DropdownMenuItem>Track Order</DropdownMenuItem>
+                      </Link>
                       <Link href="/my-rfqs">
                         <DropdownMenuItem>My RFQs</DropdownMenuItem>
                       </Link>

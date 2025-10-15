@@ -8,12 +8,14 @@ import {
   type Rfq, type InsertRfq, rfqs,
   type Quotation, type InsertQuotation, quotations,
   type Inquiry, type InsertInquiry, inquiries,
+  type InquiryQuotation, type InsertInquiryQuotation, inquiryQuotations,
+  type InquiryRevision, type InsertInquiryRevision, inquiryRevisions,
+  type Order, type InsertOrder, orders,
   type Conversation, type InsertConversation, conversations,
   type Message, type InsertMessage, messages,
   type Review, type InsertReview, reviews,
   type Favorite, type InsertFavorite, favorites,
-  type Customer, type InsertCustomer, customers,
-  type Order, type InsertOrder, orders
+  type Customer, type InsertCustomer, customers
 } from "@shared/schema";
 import bcrypt from "bcryptjs";
 
@@ -68,14 +70,32 @@ export interface IStorage {
   updateQuotation(id: string, quotation: Partial<InsertQuotation>): Promise<Quotation | undefined>;
   
   // Inquiry operations
-  getInquiries(filters?: { productId?: string; buyerId?: string; status?: string }): Promise<Inquiry[]>;
-  getInquiry(id: string): Promise<Inquiry | undefined>;
+  getInquiries(filters?: { productId?: string; buyerId?: string; status?: string }): Promise<any[]>;
+  getInquiry(id: string): Promise<any | undefined>;
   createInquiry(inquiry: InsertInquiry): Promise<Inquiry>;
   updateInquiry(id: string, inquiry: Partial<InsertInquiry>): Promise<Inquiry | undefined>;
   
   // Admin Inquiry operations
   getAdminInquiries(filters?: { status?: string; search?: string }): Promise<any[]>;
   addQuotationToInquiry(inquiryId: string, quotation: any): Promise<Inquiry | undefined>;
+  
+  // Inquiry Quotation operations
+  createInquiryQuotation(quotation: InsertInquiryQuotation): Promise<InquiryQuotation>;
+  getInquiryQuotations(inquiryId?: string): Promise<any[]>;
+  updateInquiryQuotation(id: string, quotation: Partial<InsertInquiryQuotation>): Promise<InquiryQuotation | undefined>;
+  getInquiryQuotation(id: string): Promise<InquiryQuotation | undefined>;
+  
+  // Inquiry revision operations
+  createInquiryRevision(revision: InsertInquiryRevision): Promise<InquiryRevision>;
+  getInquiryRevisions(inquiryId: string): Promise<any[]>;
+  updateInquiryStatus(inquiryId: string, status: string): Promise<void>;
+  
+  // Order operations
+  createOrder(order: InsertOrder): Promise<Order>;
+  getOrders(filters?: { buyerId?: string; status?: string }): Promise<any[]>;
+  getOrder(id: string): Promise<Order | undefined>;
+  updateOrder(id: string, order: Partial<InsertOrder>): Promise<Order | undefined>;
+  getAdminOrders(filters?: { status?: string; search?: string }): Promise<any[]>;
   
   // Conversation operations
   getConversations(userId: string, role: 'buyer' | 'admin'): Promise<Conversation[]>;
@@ -426,29 +446,62 @@ export class PostgresStorage implements IStorage {
   }
 
   // Inquiry operations
-  async getInquiries(filters?: { productId?: string; buyerId?: string; status?: string }): Promise<Inquiry[]> {
-    let query = db.select().from(inquiries);
-    const conditions = [];
+  async getInquiries(filters?: { productId?: string; buyerId?: string; status?: string }): Promise<any[]> {
+    let whereConditions = [];
     
     if (filters?.productId) {
-      conditions.push(eq(inquiries.productId, filters.productId));
+      whereConditions.push(eq(inquiries.productId, filters.productId));
     }
     if (filters?.buyerId) {
-      conditions.push(eq(inquiries.buyerId, filters.buyerId));
+      whereConditions.push(eq(inquiries.buyerId, filters.buyerId));
     }
     if (filters?.status) {
-      conditions.push(eq(inquiries.status, filters.status));
+      whereConditions.push(eq(inquiries.status, filters.status));
     }
     
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions)) as any;
-    }
-    
-    return await query.orderBy(desc(inquiries.createdAt));
+    const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+
+    const results = await db.select({
+      id: inquiries.id,
+      productId: inquiries.productId,
+      buyerId: inquiries.buyerId,
+      quantity: inquiries.quantity,
+      targetPrice: inquiries.targetPrice,
+      message: inquiries.message,
+      requirements: inquiries.requirements,
+      status: inquiries.status,
+      createdAt: inquiries.createdAt,
+      // Join with product data
+      productName: products.name,
+      productImage: products.images
+    })
+    .from(inquiries)
+    .leftJoin(products, eq(inquiries.productId, products.id))
+    .where(whereClause)
+    .orderBy(desc(inquiries.createdAt));
+
+    return results;
   }
 
-  async getInquiry(id: string): Promise<Inquiry | undefined> {
-    const [inquiry] = await db.select().from(inquiries).where(eq(inquiries.id, id)).limit(1);
+  async getInquiry(id: string): Promise<any | undefined> {
+    const [inquiry] = await db.select({
+      id: inquiries.id,
+      productId: inquiries.productId,
+      buyerId: inquiries.buyerId,
+      quantity: inquiries.quantity,
+      targetPrice: inquiries.targetPrice,
+      message: inquiries.message,
+      requirements: inquiries.requirements,
+      status: inquiries.status,
+      createdAt: inquiries.createdAt,
+      // Join with product data
+      productName: products.name,
+      productImage: products.images
+    })
+    .from(inquiries)
+    .leftJoin(products, eq(inquiries.productId, products.id))
+    .where(eq(inquiries.id, id))
+    .limit(1);
     return inquiry;
   }
 
@@ -513,11 +566,24 @@ export class PostgresStorage implements IStorage {
     .orderBy(desc(inquiries.createdAt));
     
     // Transform the results to match the expected format
-    return results.map(result => ({
-      ...result,
-      productImage: result.productImage ? JSON.parse(result.productImage as unknown as string)[0] : null,
-      quotations: []
-    }));
+    return results.map(result => {
+      let productImage = null;
+      try {
+        if (result.productImage && typeof result.productImage === 'string') {
+          const parsed = JSON.parse(result.productImage);
+          productImage = Array.isArray(parsed) && parsed.length > 0 ? parsed[0] : null;
+        }
+      } catch (error) {
+        console.error('Error parsing product image:', error);
+        productImage = null;
+      }
+      
+      return {
+        ...result,
+        productImage,
+        quotations: []
+      };
+    });
   }
 
   async addQuotationToInquiry(inquiryId: string, quotation: any): Promise<Inquiry | undefined> {
@@ -824,6 +890,223 @@ export class PostgresStorage implements IStorage {
       unreadMessages: unreadMessageCount.total || 0,
       favoriteProducts: favoriteProductCount.count || 0
     };
+  }
+
+  // Inquiry Quotation operations
+  async createInquiryQuotation(quotation: InsertInquiryQuotation): Promise<InquiryQuotation> {
+    const [created] = await db.insert(inquiryQuotations).values(quotation).returning();
+    return created;
+  }
+
+  async getInquiryQuotations(inquiryId?: string): Promise<any[]> {
+    let whereCondition = undefined;
+    if (inquiryId) {
+      whereCondition = eq(inquiryQuotations.inquiryId, inquiryId);
+    }
+
+    const results = await db.select({
+      id: inquiryQuotations.id,
+      inquiryId: inquiryQuotations.inquiryId,
+      pricePerUnit: inquiryQuotations.pricePerUnit,
+      totalPrice: inquiryQuotations.totalPrice,
+      moq: inquiryQuotations.moq,
+      leadTime: inquiryQuotations.leadTime,
+      paymentTerms: inquiryQuotations.paymentTerms,
+      validUntil: inquiryQuotations.validUntil,
+      message: inquiryQuotations.message,
+      attachments: inquiryQuotations.attachments,
+      status: inquiryQuotations.status,
+      createdAt: inquiryQuotations.createdAt,
+      // Join with inquiry data
+      productName: products.name,
+      buyerName: users.firstName,
+      buyerEmail: users.email,
+      buyerCompany: buyerProfiles.companyName,
+      inquiryQuantity: inquiries.quantity,
+      inquiryMessage: inquiries.message
+    })
+    .from(inquiryQuotations)
+    .leftJoin(inquiries, eq(inquiryQuotations.inquiryId, inquiries.id))
+    .leftJoin(products, eq(inquiries.productId, products.id))
+    .leftJoin(users, eq(inquiries.buyerId, users.id))
+    .leftJoin(buyerProfiles, eq(inquiries.buyerId, buyerProfiles.userId))
+    .where(whereCondition)
+    .orderBy(desc(inquiryQuotations.createdAt));
+
+    return results;
+  }
+
+  async updateInquiryQuotation(id: string, quotation: Partial<InsertInquiryQuotation>): Promise<InquiryQuotation | undefined> {
+    const [updated] = await db.update(inquiryQuotations)
+      .set(quotation)
+      .where(eq(inquiryQuotations.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getInquiryQuotation(id: string): Promise<InquiryQuotation | undefined> {
+    const [quotation] = await db.select().from(inquiryQuotations).where(eq(inquiryQuotations.id, id)).limit(1);
+    return quotation;
+  }
+
+  // Order operations
+  async createOrder(order: InsertOrder): Promise<Order> {
+    const [created] = await db.insert(orders).values(order).returning();
+    return created;
+  }
+
+  async getOrders(filters?: { buyerId?: string; status?: string }): Promise<any[]> {
+    let whereConditions = [];
+
+    if (filters?.buyerId) {
+      whereConditions.push(eq(orders.buyerId, filters.buyerId));
+    }
+
+    if (filters?.status) {
+      whereConditions.push(eq(orders.status, filters.status));
+    }
+
+    const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+
+    const results = await db.select({
+      id: orders.id,
+      orderNumber: orders.orderNumber,
+      buyerId: orders.buyerId,
+      inquiryId: orders.inquiryId,
+      quotationId: orders.quotationId,
+      productId: orders.productId,
+      quantity: orders.quantity,
+      unitPrice: orders.unitPrice,
+      totalAmount: orders.totalAmount,
+      status: orders.status,
+      paymentMethod: orders.paymentMethod,
+      paymentStatus: orders.paymentStatus,
+      shippingAddress: orders.shippingAddress,
+      trackingNumber: orders.trackingNumber,
+      notes: orders.notes,
+      createdAt: orders.createdAt,
+      updatedAt: orders.updatedAt,
+      // Join with product and user data
+      productName: products.name,
+      productImage: products.images,
+      buyerName: users.firstName,
+      buyerEmail: users.email,
+      buyerCompany: buyerProfiles.companyName
+    })
+    .from(orders)
+    .leftJoin(products, eq(orders.productId, products.id))
+    .leftJoin(users, eq(orders.buyerId, users.id))
+    .leftJoin(buyerProfiles, eq(orders.buyerId, buyerProfiles.userId))
+    .where(whereClause)
+    .orderBy(desc(orders.createdAt));
+
+    return results;
+  }
+
+  async getOrder(id: string): Promise<Order | undefined> {
+    const [order] = await db.select().from(orders).where(eq(orders.id, id)).limit(1);
+    return order;
+  }
+
+  async updateOrder(id: string, order: Partial<InsertOrder>): Promise<Order | undefined> {
+    const [updated] = await db.update(orders)
+      .set({ ...order, updatedAt: new Date() })
+      .where(eq(orders.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getAdminOrders(filters?: { status?: string; search?: string }): Promise<any[]> {
+    let whereConditions = [];
+
+    if (filters?.status && filters.status !== 'all') {
+      whereConditions.push(eq(orders.status, filters.status));
+    }
+
+    if (filters?.search) {
+      whereConditions.push(
+        or(
+          like(products.name, `%${filters.search}%`),
+          like(users.firstName, `%${filters.search}%`),
+          like(buyerProfiles.companyName, `%${filters.search}%`),
+          like(orders.orderNumber, `%${filters.search}%`)
+        )
+      );
+    }
+
+    const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+
+    const results = await db.select({
+      id: orders.id,
+      orderNumber: orders.orderNumber,
+      buyerId: orders.buyerId,
+      inquiryId: orders.inquiryId,
+      quotationId: orders.quotationId,
+      productId: orders.productId,
+      quantity: orders.quantity,
+      unitPrice: orders.unitPrice,
+      totalAmount: orders.totalAmount,
+      status: orders.status,
+      paymentMethod: orders.paymentMethod,
+      paymentStatus: orders.paymentStatus,
+      shippingAddress: orders.shippingAddress,
+      trackingNumber: orders.trackingNumber,
+      notes: orders.notes,
+      createdAt: orders.createdAt,
+      updatedAt: orders.updatedAt,
+      // Join with product and user data
+      productName: products.name,
+      productImage: products.images,
+      buyerName: users.firstName,
+      buyerEmail: users.email,
+      buyerCompany: buyerProfiles.companyName,
+      buyerPhone: buyerProfiles.phone,
+      buyerCountry: buyerProfiles.country
+    })
+    .from(orders)
+    .leftJoin(products, eq(orders.productId, products.id))
+    .leftJoin(users, eq(orders.buyerId, users.id))
+    .leftJoin(buyerProfiles, eq(orders.buyerId, buyerProfiles.userId))
+    .where(whereClause)
+    .orderBy(desc(orders.createdAt));
+
+    return results;
+  }
+
+  // Inquiry revision operations
+  async createInquiryRevision(revision: InsertInquiryRevision): Promise<InquiryRevision> {
+    const [result] = await db.insert(inquiryRevisions).values(revision).returning();
+    return result;
+  }
+
+  async getInquiryRevisions(inquiryId: string): Promise<any[]> {
+    const results = await db.select({
+      id: inquiryRevisions.id,
+      inquiryId: inquiryRevisions.inquiryId,
+      revisionNumber: inquiryRevisions.revisionNumber,
+      quantity: inquiryRevisions.quantity,
+      targetPrice: inquiryRevisions.targetPrice,
+      message: inquiryRevisions.message,
+      requirements: inquiryRevisions.requirements,
+      status: inquiryRevisions.status,
+      createdBy: inquiryRevisions.createdBy,
+      createdAt: inquiryRevisions.createdAt,
+      // Join with user data to get creator name
+      creatorName: users.firstName,
+      creatorEmail: users.email
+    })
+    .from(inquiryRevisions)
+    .leftJoin(users, eq(inquiryRevisions.createdBy, users.id))
+    .where(eq(inquiryRevisions.inquiryId, inquiryId))
+    .orderBy(asc(inquiryRevisions.revisionNumber));
+
+    return results;
+  }
+
+  async updateInquiryStatus(inquiryId: string, status: string): Promise<void> {
+    await db.update(inquiries)
+      .set({ status })
+      .where(eq(inquiries.id, inquiryId));
   }
 }
 

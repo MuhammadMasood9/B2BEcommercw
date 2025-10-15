@@ -112,7 +112,7 @@ export default function Cart() {
       productId: item.productId,
       buyerId: user.id,
       quantity: item.quantity,
-      targetPrice: inquiryData.paymentTerms ? parseFloat(inquiryData.paymentTerms) : null,
+      targetPrice: null, // Cart doesn't have individual target prices
       message: inquiryData.requirements || '',
       requirements: inquiryData.requirements || '',
     }));

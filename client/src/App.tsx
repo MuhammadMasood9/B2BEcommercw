@@ -4,6 +4,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { ToastContainer } from 'react-toastify';
+import { Toaster as HotToaster } from 'react-hot-toast';
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/AdminSidebar";
@@ -37,8 +38,11 @@ import Privacy from "@/pages/Privacy";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
 import MyOrders from "@/pages/MyOrders";
+import MyInquiries from "@/pages/MyInquiries";
 import MyRFQs from "@/pages/MyRFQs";
 import StartOrder from "@/pages/StartOrder";
+import OrderConfirmation from "@/pages/OrderConfirmation";
+import OrderTracking from "@/pages/OrderTracking";
 import CategoryProducts from "@/pages/CategoryProducts";
 import SubcategoryProducts from "@/pages/SubcategoryProducts";
 import GetVerified from "@/pages/GetVerified";
@@ -46,6 +50,9 @@ import BuyerDashboard from "@/pages/buyer/BuyerDashboard";
 import BuyerInquiries from "@/pages/buyer/BuyerInquiries";
 import BuyerRFQs from "@/pages/buyer/BuyerRFQs";
 import AdminInquiries from "@/pages/admin/AdminInquiries";
+import AdminQuotations from "@/pages/admin/AdminQuotations";
+// import AdminOrders from "@/pages/admin/AdminOrders";
+import AdminOrders from "@/pages/admin/AdminOrders";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminProducts from "@/pages/admin/AdminProducts";
 import AdminProductDetail from "@/pages/admin/AdminProductDetail";
@@ -58,7 +65,6 @@ import AdminUserDetails from "@/pages/admin/AdminUserDetails";
 import AdminUserImportExport from "@/pages/admin/AdminUserImportExport";
 import AdminSettings from "@/pages/admin/AdminSettings";
 import AdminReports from "@/pages/admin/AdminReports";
-import AdminOrders from "@/pages/admin/AdminOrders";
 import AdminLogin from "@/pages/admin/AdminLogin";
 import NotFound from "@/pages/not-found";
 
@@ -99,6 +105,16 @@ function AdminRouter() {
       <Route path="/admin/inquiries">
         <ProtectedRoute requiredRole="admin">
           <AdminInquiries />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/quotations">
+        <ProtectedRoute requiredRole="admin">
+          <AdminQuotations />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/orders">
+        <ProtectedRoute requiredRole="admin">
+          <AdminOrders />
         </ProtectedRoute>
       </Route>
       <Route path="/admin/customers">
@@ -184,10 +200,14 @@ function PublicRouter() {
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
       <Route path="/my-orders" component={MyOrders} />
+      <Route path="/my-inquiries" component={MyInquiries} />
       <Route path="/my-rfqs" component={MyRFQs} />
       <Route path="/favorites" component={Favorites} />
       <Route path="/cart" component={Cart} />
       <Route path="/start-order/:productId" component={StartOrder} />
+      <Route path="/order-confirmation/:orderId" component={OrderConfirmation} />
+      <Route path="/track-order/:orderId" component={OrderTracking} />
+      <Route path="/track-order" component={OrderTracking} />
       <Route path="/category/:slug" component={CategoryProducts} />
       <Route path="/subcategory/:slug" component={SubcategoryProducts} />
       <Route path="/get-verified" component={GetVerified} />
@@ -235,6 +255,7 @@ function AppContent() {
           progress={progress}
         />
         <ToastContainer position="top-right" />
+        <HotToaster position="top-right" />
       </>
     );
   }
@@ -250,6 +271,7 @@ function AppContent() {
         progress={progress}
       />
       <ToastContainer position="top-right" />
+      <HotToaster position="top-right" />
     </>
   );
 }

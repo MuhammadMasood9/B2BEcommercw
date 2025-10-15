@@ -214,6 +214,86 @@ export const insertInquirySchema = createInsertSchema(inquiries).omit({
 export type InsertInquiry = z.infer<typeof insertInquirySchema>;
 export type Inquiry = typeof inquiries.$inferSelect;
 
+// ==================== INQUIRY QUOTATIONS ====================
+
+export const inquiryQuotations = pgTable("inquiry_quotations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  inquiryId: varchar("inquiry_id").notNull(),
+  pricePerUnit: decimal("price_per_unit", { precision: 10, scale: 2 }).notNull(),
+  totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
+  moq: integer("moq").notNull(),
+  leadTime: text("lead_time"),
+  paymentTerms: text("payment_terms"),
+  validUntil: timestamp("valid_until"),
+  message: text("message"),
+  attachments: text("attachments").array(),
+  status: text("status").default("pending"), // pending, accepted, rejected
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertInquiryQuotationSchema = createInsertSchema(inquiryQuotations).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertInquiryQuotation = z.infer<typeof insertInquiryQuotationSchema>;
+export type InquiryQuotation = typeof inquiryQuotations.$inferSelect;
+
+// ==================== INQUIRY REVISIONS ====================
+
+export const inquiryRevisions = pgTable("inquiry_revisions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  inquiryId: varchar("inquiry_id").notNull(),
+  revisionNumber: integer("revision_number").notNull(),
+  quantity: integer("quantity").notNull(),
+  targetPrice: decimal("target_price", { precision: 10, scale: 2 }),
+  message: text("message"),
+  requirements: text("requirements"),
+  status: text("status").default("pending"), // pending, replied, negotiating, closed
+  createdBy: varchar("created_by").notNull(), // buyer_id or admin_id
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertInquiryRevisionSchema = createInsertSchema(inquiryRevisions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertInquiryRevision = z.infer<typeof insertInquiryRevisionSchema>;
+export type InquiryRevision = typeof inquiryRevisions.$inferSelect;
+
+// ==================== ORDERS ====================
+
+export const orders = pgTable("orders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orderNumber: text("order_number").notNull().unique(),
+  buyerId: varchar("buyer_id").notNull(),
+  inquiryId: varchar("inquiry_id"),
+  quotationId: varchar("quotation_id"),
+  productId: varchar("product_id").notNull(),
+  quantity: integer("quantity").notNull(),
+  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  status: text("status").default("pending"), // pending, confirmed, processing, shipped, delivered, cancelled
+  paymentMethod: text("payment_method"),
+  paymentStatus: text("payment_status").default("pending"), // pending, paid, failed, refunded
+  shippingAddress: json("shipping_address"),
+  billingAddress: json("billing_address"),
+  trackingNumber: text("tracking_number"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertOrderSchema = createInsertSchema(orders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertOrder = z.infer<typeof insertOrderSchema>;
+export type Order = typeof orders.$inferSelect;
+
 // ==================== CONVERSATIONS ====================
 
 export const conversations = pgTable("conversations", {
@@ -323,36 +403,6 @@ export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
 export type Customer = typeof customers.$inferSelect;
 
 
-// ==================== ORDERS ====================
-
-export const orders = pgTable("orders", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  orderNumber: text("order_number").notNull().unique(),
-  buyerId: varchar("buyer_id"),
-  customerId: varchar("customer_id"),
-  status: text("status").default("pending"), // pending, processing, shipped, delivered, cancelled
-  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
-  shippingAmount: decimal("shipping_amount", { precision: 10, scale: 2 }).default("0"),
-  taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }).default("0"),
-  items: json("items").notNull(),
-  shippingAddress: json("shipping_address"),
-  billingAddress: json("billing_address"),
-  paymentMethod: text("payment_method"),
-  paymentStatus: text("payment_status").default("pending"),
-  trackingNumber: text("tracking_number"),
-  notes: text("notes"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const insertOrderSchema = createInsertSchema(orders).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export type InsertOrder = z.infer<typeof insertOrderSchema>;
-export type Order = typeof orders.$inferSelect;
 
 // ==================== SESSIONS TABLE ====================
 

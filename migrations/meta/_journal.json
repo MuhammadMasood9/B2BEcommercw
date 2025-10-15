@@ -15,6 +15,13 @@
       "when": 1760448022800,
       "tag": "0001_powerful_risque",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1760531773243,
+      "tag": "0002_oval_speedball",
+      "breakpoints": true
     }
   ]
 }

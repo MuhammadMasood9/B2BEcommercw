@@ -54,6 +54,11 @@ const adminMenuItems = [
     icon: MessageSquare,
   },
   {
+    title: "Quotations",
+    url: "/admin/quotations",
+    icon: FileSpreadsheet,
+  },
+  {
     title: "Orders",
     url: "/admin/orders",
     icon: ShoppingCart,

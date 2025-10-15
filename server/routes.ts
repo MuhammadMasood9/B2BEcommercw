@@ -715,16 +715,345 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Inquiry ID and quotation data are required" });
       }
       
-      // Update inquiry status to 'replied' and add quotation
-      const updatedInquiry = await storage.addQuotationToInquiry(inquiryId, quotation);
+      // Create quotation
+      const createdQuotation = await storage.createInquiryQuotation({
+        inquiryId,
+        pricePerUnit: quotation.pricePerUnit,
+        totalPrice: quotation.totalPrice,
+        moq: quotation.moq,
+        leadTime: quotation.leadTime,
+        paymentTerms: quotation.paymentTerms,
+        validUntil: quotation.validUntil ? new Date(quotation.validUntil) : null,
+        message: quotation.message,
+        attachments: quotation.attachments || [],
+        status: 'pending'
+      });
       
-      if (!updatedInquiry) {
-        return res.status(404).json({ error: "Inquiry not found" });
-      }
+      // Update inquiry status to 'replied'
+      await storage.updateInquiry(inquiryId, { status: 'replied' });
       
-      res.json({ success: true, inquiry: updatedInquiry });
+      res.json({ success: true, quotation: createdQuotation });
     } catch (error: any) {
       res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Get all quotations
+  app.get("/api/admin/quotations", async (req, res) => {
+    try {
+      const quotations = await storage.getInquiryQuotations();
+      res.json({ quotations });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get specific quotation
+  app.get("/api/admin/quotations/:id", async (req, res) => {
+    try {
+      const quotation = await storage.getInquiryQuotation(req.params.id);
+      if (!quotation) {
+        return res.status(404).json({ error: "Quotation not found" });
+      }
+      res.json(quotation);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update quotation
+  app.patch("/api/admin/quotations/:id", async (req, res) => {
+    try {
+      const quotation = await storage.updateInquiryQuotation(req.params.id, req.body);
+      if (!quotation) {
+        return res.status(404).json({ error: "Quotation not found" });
+      }
+      res.json(quotation);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ==================== INQUIRY REVISION & NEGOTIATION ROUTES ====================
+
+  // Get inquiry revisions (negotiation history)
+  app.get("/api/inquiries/:id/revisions", async (req, res) => {
+    try {
+      const revisions = await storage.getInquiryRevisions(req.params.id);
+      res.json({ revisions });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create counter-offer (customer revises inquiry)
+  app.post("/api/inquiries/:id/counter-offer", async (req, res) => {
+    try {
+      const { quantity, targetPrice, message, requirements } = req.body;
+      
+      if (!quantity) {
+        return res.status(400).json({ error: "Quantity is required" });
+      }
+
+      // Get current inquiry to determine next revision number
+      const inquiry = await storage.getInquiry(req.params.id);
+      if (!inquiry) {
+        return res.status(404).json({ error: "Inquiry not found" });
+      }
+
+      // Get current revision count
+      const existingRevisions = await storage.getInquiryRevisions(req.params.id);
+      const nextRevisionNumber = existingRevisions.length + 1;
+
+      // Create revision
+      const revision = await storage.createInquiryRevision({
+        inquiryId: req.params.id,
+        revisionNumber: nextRevisionNumber,
+        quantity: parseInt(quantity),
+        targetPrice: targetPrice ? parseFloat(targetPrice) : null,
+        message,
+        requirements,
+        status: 'pending',
+        createdBy: req.user?.id
+      });
+
+      // Update inquiry status to negotiating
+      await storage.updateInquiryStatus(req.params.id, 'negotiating');
+
+      res.json({ success: true, revision });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Admin creates revised quotation
+  app.post("/api/admin/inquiries/:id/revised-quotation", async (req, res) => {
+    try {
+      console.log('Received revised quotation request:', req.body);
+      const { quotation } = req.body;
+      
+      if (!quotation) {
+        console.log('No quotation data provided');
+        return res.status(400).json({ error: "Quotation data is required" });
+      }
+      
+      console.log('Quotation data:', quotation);
+      
+      // Validate required fields
+      if (!quotation.pricePerUnit || !quotation.totalPrice || !quotation.moq) {
+        return res.status(400).json({ error: "Missing required fields: pricePerUnit, totalPrice, moq" });
+      }
+      
+      // Create new quotation
+      const createdQuotation = await storage.createInquiryQuotation({
+        inquiryId: req.params.id,
+        pricePerUnit: quotation.pricePerUnit,
+        totalPrice: quotation.totalPrice,
+        moq: quotation.moq,
+        leadTime: quotation.leadTime,
+        paymentTerms: quotation.paymentTerms,
+        validUntil: quotation.validUntil ? new Date(quotation.validUntil) : null,
+        message: quotation.message,
+        attachments: quotation.attachments || [],
+        status: 'pending'
+      });
+      
+      // Update inquiry status to 'replied'
+      await storage.updateInquiryStatus(req.params.id, 'replied');
+      
+      console.log('Revised quotation created successfully:', createdQuotation);
+      res.json({ success: true, quotation: createdQuotation });
+    } catch (error: any) {
+      console.error('Error creating revised quotation:', error);
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Customer accepts quotation (creates order)
+  app.post("/api/inquiries/:id/accept-quotation", async (req, res) => {
+    try {
+      const { quotationId } = req.body;
+      
+      if (!quotationId) {
+        return res.status(400).json({ error: "Quotation ID is required" });
+      }
+
+      // Get quotation details
+      const quotation = await storage.getInquiryQuotation(quotationId);
+      if (!quotation) {
+        return res.status(404).json({ error: "Quotation not found" });
+      }
+
+      // Get inquiry details
+      const inquiry = await storage.getInquiry(req.params.id);
+      if (!inquiry) {
+        return res.status(404).json({ error: "Inquiry not found" });
+      }
+
+      // Generate order number
+      const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+
+      // Create order
+      const order = await storage.createOrder({
+        orderNumber,
+        buyerId: req.user?.id,
+        inquiryId: req.params.id,
+        quotationId,
+        productId: inquiry.productId,
+        quantity: inquiry.quantity,
+        unitPrice: quotation.pricePerUnit,
+        totalAmount: quotation.totalPrice,
+        status: 'confirmed',
+        paymentMethod: 'T/T',
+        paymentStatus: 'pending',
+        shippingAddress: null, // Will be filled later
+        notes: `Order created from accepted quotation`
+      });
+
+      // Update quotation status to accepted
+      await storage.updateInquiryQuotation(quotationId, { status: 'accepted' });
+
+      // Update inquiry status to closed
+      await storage.updateInquiryStatus(req.params.id, 'closed');
+
+      res.json({ success: true, order });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Customer rejects quotation
+  app.post("/api/inquiries/:id/reject-quotation", async (req, res) => {
+    try {
+      const { quotationId } = req.body;
+      
+      if (!quotationId) {
+        return res.status(400).json({ error: "Quotation ID is required" });
+      }
+
+      // Update quotation status to rejected
+      await storage.updateInquiryQuotation(quotationId, { status: 'rejected' });
+
+      // Update inquiry status to negotiating (allows for counter-offer)
+      await storage.updateInquiryStatus(req.params.id, 'negotiating');
+
+      res.json({ success: true, message: "Quotation rejected. You can now send a counter-offer." });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Orders API
+  app.post("/api/orders", async (req, res) => {
+    try {
+      const { quotationId, inquiryId, productId, quantity, unitPrice, totalAmount, shippingAddress, paymentMethod } = req.body;
+      
+      if (!quotationId || !productId || !quantity || !unitPrice || !totalAmount) {
+        return res.status(400).json({ error: "Missing required order fields" });
+      }
+
+      // Generate order number
+      const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+
+      const order = await storage.createOrder({
+        orderNumber,
+        buyerId: req.user?.id,
+        inquiryId,
+        quotationId,
+        productId,
+        quantity: parseInt(quantity),
+        unitPrice: parseFloat(unitPrice),
+        totalAmount: parseFloat(totalAmount),
+        status: 'pending',
+        paymentMethod: paymentMethod || 'T/T',
+        paymentStatus: 'pending',
+        shippingAddress: shippingAddress || null,
+        notes: 'Order created from quotation'
+      });
+
+      // Update quotation status to accepted
+      await storage.updateInquiryQuotation(quotationId, { status: 'accepted' });
+
+      res.status(201).json(order);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/orders", async (req, res) => {
+    try {
+      const { status } = req.query;
+      const filters: any = {};
+      
+      if (req.user?.id) {
+        filters.buyerId = req.user.id;
+      }
+      
+      if (status) {
+        filters.status = status as string;
+      }
+      
+      const orders = await storage.getOrders(filters);
+      res.json({ orders });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/orders/:id", async (req, res) => {
+    try {
+      const order = await storage.getOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      res.json(order);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/orders/:id", async (req, res) => {
+    try {
+      const order = await storage.updateOrder(req.params.id, req.body);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      res.json(order);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin Orders API
+  app.get("/api/admin/orders", async (req, res) => {
+    try {
+      const { status, search } = req.query;
+      const filters: any = {};
+      
+      if (status && status !== 'all') {
+        filters.status = status as string;
+      }
+      
+      if (search) {
+        filters.search = search as string;
+      }
+      
+      const orders = await storage.getAdminOrders(filters);
+      res.json({ orders });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/admin/orders/:id", async (req, res) => {
+    try {
+      const order = await storage.updateOrder(req.params.id, req.body);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      res.json(order);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 

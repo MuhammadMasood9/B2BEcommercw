@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'wouter';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -16,170 +17,94 @@ import {
   CheckCircle, 
   AlertCircle,
   Eye,
-  Edit,
   Trash2,
   Plus,
   Users,
   DollarSign,
   Calendar,
-  MessageSquare,
-  TrendingUp
+  Package,
+  TrendingUp,
+  Loader2
 } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 export default function BuyerRFQs() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  // Mock data - in real app, this would come from API
-  const { data: rfqs = [], isLoading } = useQuery({
-    queryKey: ['/api/buyer/rfqs', statusFilter, searchQuery],
+  // Fetch RFQs from API
+  const { data: rfqsData, isLoading } = useQuery({
+    queryKey: ['/api/rfqs', user?.id],
     queryFn: async () => {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return [
-        {
-          id: 1,
-          title: 'Industrial Water Pumps for Treatment Plant',
-          description: 'Need high-quality water pumps for municipal water treatment facility. Must be energy efficient and meet ISO standards.',
-          category: 'Machinery',
-          subcategory: 'Pumps & Valves',
-          quantity: 50,
-          unit: 'pieces',
-          budget: 50000,
-          currency: 'USD',
-          specifications: 'ISO 9001 certified, Energy Star rated, Stainless steel construction',
-          requirements: 'Must include installation and maintenance support',
-          deadline: '2024-02-15',
-          status: 'active',
-          responses: 8,
-          views: 156,
-          createdAt: '2024-01-15T10:30:00Z',
-          quotations: [
-            {
-              id: 1,
-              supplierName: 'Shanghai Manufacturing Co.',
-              supplierCountry: 'China',
-              price: 850,
-              totalPrice: 42500,
-              leadTime: '30 days',
-              paymentTerms: 'T/T 30% advance',
-              rating: 4.8,
-              isVerified: true
-            },
-            {
-              id: 2,
-              supplierName: 'Guangzhou Industrial Ltd.',
-              supplierCountry: 'China',
-              price: 920,
-              totalPrice: 46000,
-              leadTime: '25 days',
-              paymentTerms: 'L/C at sight',
-              rating: 4.6,
-              isVerified: true
-            }
-          ]
-        },
-        {
-          id: 2,
-          title: 'LED Street Lighting System',
-          description: 'Municipal project requiring LED street lights with smart controls and monitoring system.',
-          category: 'Electronics',
-          subcategory: 'LED Lighting',
-          quantity: 200,
-          unit: 'units',
-          budget: 25000,
-          currency: 'USD',
-          specifications: 'IP65 rating, 5000K color temperature, Smart control system',
-          requirements: 'Include installation and 5-year warranty',
-          deadline: '2024-03-01',
-          status: 'active',
-          responses: 12,
-          views: 234,
-          createdAt: '2024-01-14T14:20:00Z',
-          quotations: []
-        },
-        {
-          id: 3,
-          title: 'Custom Packaging Solutions',
-          description: 'Need eco-friendly packaging boxes for electronics products with custom printing.',
-          category: 'Packaging',
-          subcategory: 'Custom Boxes',
-          quantity: 10000,
-          unit: 'boxes',
-          budget: 15000,
-          currency: 'USD',
-          specifications: 'Recycled cardboard, Custom printing, Various sizes',
-          requirements: 'FSC certified materials, Fast turnaround',
-          deadline: '2024-02-28',
-          status: 'closed',
-          responses: 6,
-          views: 89,
-          createdAt: '2024-01-10T09:15:00Z',
-          quotations: [
-            {
-              id: 3,
-              supplierName: 'Dongguan Packaging Co.',
-              supplierCountry: 'China',
-              price: 1.45,
-              totalPrice: 14500,
-              leadTime: '20 days',
-              paymentTerms: 'T/T 50% advance',
-              rating: 4.7,
-              isVerified: false
-            }
-          ]
-        },
-        {
-          id: 4,
-          title: 'Steel Construction Materials',
-          description: 'Structural steel beams and columns for commercial building construction.',
-          category: 'Construction',
-          subcategory: 'Steel Materials',
-          quantity: 100,
-          unit: 'tons',
-          budget: 80000,
-          currency: 'USD',
-          specifications: 'ASTM A572 Grade 50, Various sizes, Galvanized finish',
-          requirements: 'Include delivery and installation quotes',
-          deadline: '2024-04-15',
-          status: 'draft',
-          responses: 0,
-          views: 0,
-          createdAt: '2024-01-20T16:45:00Z',
-          quotations: []
-        }
-      ];
+      const response = await fetch(`/api/rfqs?buyerId=${user?.id}`);
+      if (!response.ok) throw new Error('Failed to fetch RFQs');
+      return response.json();
+    },
+    enabled: !!user?.id
+  });
+
+  const rfqs = rfqsData || [];
+
+  // Fetch categories for display
+  const { data: categories = [] } = useQuery({
+    queryKey: ['/api/categories'],
+    queryFn: async () => {
+      const response = await fetch('/api/categories?isActive=true');
+      if (!response.ok) throw new Error('Failed to fetch categories');
+      return response.json();
+    }
+  });
+
+  // Helper function to get category name
+  const getCategoryName = (categoryId: string) => {
+    const category = categories.find((cat: any) => cat.id === categoryId);
+    return category ? category.name : categoryId || 'General';
+  };
+
+  // Delete RFQ mutation
+  const deleteRFQMutation = useMutation({
+    mutationFn: async (rfqId: string) => {
+      const response = await fetch(`/api/rfqs/${rfqId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) throw new Error('Failed to delete RFQ');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/rfqs'] });
+      toast.success('RFQ deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to delete RFQ');
     }
   });
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'bg-green-100 text-green-800 border-green-200';
+      case 'open': return 'bg-green-100 text-green-800 border-green-200';
       case 'closed': return 'bg-gray-100 text-gray-800 border-gray-200';
-      case 'draft': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'expired': return 'bg-red-100 text-red-800 border-red-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'active': return TrendingUp;
+      case 'open': return TrendingUp;
       case 'closed': return CheckCircle;
-      case 'draft': return Clock;
-      case 'expired': return AlertCircle;
       default: return Clock;
     }
   };
 
-  const filteredRFQs = rfqs.filter(rfq => {
-    const matchesSearch = rfq.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         rfq.category.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredRFQs = rfqs.filter((rfq: any) => {
+    const matchesSearch = rfq.title?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || rfq.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
@@ -187,18 +112,19 @@ export default function BuyerRFQs() {
     });
   };
 
-  const formatPrice = (price: number, currency: string) => {
+  const formatPrice = (price: number) => {
+    if (!price) return 'N/A';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: currency
+      currency: 'USD'
     }).format(price);
   };
 
   const stats = {
     total: rfqs.length,
-    active: rfqs.filter(r => r.status === 'active').length,
-    closed: rfqs.filter(r => r.status === 'closed').length,
-    draft: rfqs.filter(r => r.status === 'draft').length
+    open: rfqs.filter((r: any) => r.status === 'open').length,
+    closed: rfqs.filter((r: any) => r.status === 'closed').length,
+    totalValue: rfqs.reduce((sum: number, r: any) => sum + (parseFloat(r.targetPrice) || 0), 0)
   };
 
   return (
@@ -226,50 +152,50 @@ export default function BuyerRFQs() {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card>
+            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total RFQs</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</p>
+                    <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Total RFQs</p>
+                    <p className="text-2xl font-bold text-blue-900 dark:text-white">{stats.total}</p>
                   </div>
                   <FileText className="h-8 w-8 text-blue-600" />
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border-green-200">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Active</p>
-                    <p className="text-2xl font-bold text-green-600">{stats.active}</p>
+                    <p className="text-sm font-medium text-green-600 dark:text-green-400">Open</p>
+                    <p className="text-2xl font-bold text-green-900 dark:text-white">{stats.open}</p>
                   </div>
                   <TrendingUp className="h-8 w-8 text-green-600" />
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900/20 dark:to-gray-800/20 border-gray-200">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Closed</p>
-                    <p className="text-2xl font-bold text-gray-600">{stats.closed}</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.closed}</p>
                   </div>
                   <CheckCircle className="h-8 w-8 text-gray-600" />
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border-purple-200">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Drafts</p>
-                    <p className="text-2xl font-bold text-yellow-600">{stats.draft}</p>
+                    <p className="text-sm font-medium text-purple-600 dark:text-purple-400">Total Budget</p>
+                    <p className="text-2xl font-bold text-purple-900 dark:text-white">{formatPrice(stats.totalValue)}</p>
                   </div>
-                  <Clock className="h-8 w-8 text-yellow-600" />
+                  <DollarSign className="h-8 w-8 text-purple-600" />
                 </div>
               </CardContent>
             </Card>
@@ -297,10 +223,8 @@ export default function BuyerRFQs() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="open">Open</SelectItem>
                       <SelectItem value="closed">Closed</SelectItem>
-                      <SelectItem value="draft">Draft</SelectItem>
-                      <SelectItem value="expired">Expired</SelectItem>
                     </SelectContent>
                   </Select>
                   <Button variant="outline">
@@ -340,28 +264,54 @@ export default function BuyerRFQs() {
                 </CardContent>
               </Card>
             ) : (
-              filteredRFQs.map((rfq) => {
+              filteredRFQs.map((rfq: any) => {
                 const StatusIcon = getStatusIcon(rfq.status);
+                const quotationCount = rfq.quotationsCount || 0;
                 return (
                   <Card key={rfq.id} className="hover:shadow-lg transition-shadow">
                     <CardContent className="p-6">
                       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between mb-4">
                         <div className="flex-1">
                           <div className="flex items-start justify-between mb-2">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                              {rfq.title}
-                            </h3>
-                            <Badge className={getStatusColor(rfq.status)}>
-                              <StatusIcon className="w-3 h-3 mr-1" />
-                              {rfq.status.charAt(0).toUpperCase() + rfq.status.slice(1)}
-                            </Badge>
+                            <div>
+                              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                                {rfq.title}
+                              </h3>
+                              <div className="flex gap-2">
+                                <Badge className={getStatusColor(rfq.status)}>
+                                  <StatusIcon className="w-3 h-3 mr-1" />
+                                  {rfq.status?.charAt(0).toUpperCase() + rfq.status?.slice(1)}
+                                </Badge>
+                                {rfq.categoryId && (
+                                  <Badge variant="outline" className="text-blue-600 border-blue-200">
+                                    {getCategoryName(rfq.categoryId)}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                            {rfq.category} • {rfq.subcategory}
-                          </p>
                           <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
                             {rfq.description}
                           </p>
+                          {rfq.attachments && rfq.attachments.length > 0 && (
+                            <div className="mb-4">
+                              <p className="text-xs font-medium text-gray-600 mb-2">Attachments:</p>
+                              <div className="flex flex-wrap gap-2">
+                                {rfq.attachments.map((attachment: string, index: number) => (
+                                  <a 
+                                    key={index}
+                                    href={attachment} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-600 text-xs rounded hover:bg-blue-100"
+                                  >
+                                    <FileText className="w-3 h-3" />
+                                    Doc {index + 1}
+                                  </a>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -370,72 +320,37 @@ export default function BuyerRFQs() {
                         <div className="flex items-center gap-2 text-sm">
                           <Package className="h-4 w-4 text-gray-400" />
                           <span className="text-gray-600">Quantity:</span>
-                          <span className="font-medium">{rfq.quantity.toLocaleString()} {rfq.unit}</span>
+                          <span className="font-medium">{rfq.quantity?.toLocaleString() || 'N/A'} units</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
                           <DollarSign className="h-4 w-4 text-gray-400" />
-                          <span className="text-gray-600">Budget:</span>
-                          <span className="font-medium">{formatPrice(rfq.budget, rfq.currency)}</span>
+                          <span className="text-gray-600">Target Price:</span>
+                          <span className="font-medium">{formatPrice(parseFloat(rfq.targetPrice))}</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
                           <Calendar className="h-4 w-4 text-gray-400" />
-                          <span className="text-gray-600">Deadline:</span>
-                          <span className="font-medium">{formatDate(rfq.deadline)}</span>
+                          <span className="text-gray-600">Expected:</span>
+                          <span className="font-medium">{formatDate(rfq.expectedDate)}</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
                           <Users className="h-4 w-4 text-gray-400" />
-                          <span className="text-gray-600">Responses:</span>
-                          <span className="font-medium">{rfq.responses}</span>
+                          <span className="text-gray-600">Quotations:</span>
+                          <span className="font-medium text-blue-600">{quotationCount}</span>
                         </div>
                       </div>
 
                       {/* Statistics */}
                       <div className="flex items-center gap-6 text-sm text-gray-600 mb-4">
-                        <span>Views: {rfq.views}</span>
+                        <span>Location: {rfq.deliveryLocation || 'N/A'}</span>
                         <span>Created: {formatDate(rfq.createdAt)}</span>
                       </div>
 
-                      {/* Quotations Preview */}
-                      {rfq.quotations.length > 0 && (
-                        <div className="mb-4">
-                          <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
-                            Top Quotations ({rfq.quotations.length})
-                          </h4>
-                          <div className="space-y-2">
-                            {rfq.quotations.slice(0, 2).map((quotation) => (
-                              <div key={quotation.id} className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-                                <div className="flex justify-between items-start mb-2">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-medium">{quotation.supplierName}</span>
-                                    <span className="text-xs text-gray-500">({quotation.supplierCountry})</span>
-                                    {quotation.isVerified && (
-                                      <Badge variant="secondary" className="text-xs">
-                                        Verified
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  <div className="text-right">
-                                    <div className="font-medium text-green-600">
-                                      {formatPrice(quotation.price, rfq.currency)}/unit
-                                    </div>
-                                    <div className="text-xs text-gray-500">
-                                      Total: {formatPrice(quotation.totalPrice, rfq.currency)}
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="grid grid-cols-3 gap-2 text-xs text-gray-600">
-                                  <span>Lead Time: {quotation.leadTime}</span>
-                                  <span>Payment: {quotation.paymentTerms}</span>
-                                  <span>Rating: {quotation.rating}/5</span>
-                                </div>
-                              </div>
-                            ))}
-                            {rfq.quotations.length > 2 && (
-                              <p className="text-xs text-gray-500 text-center">
-                                And {rfq.quotations.length - 2} more quotations...
-                              </p>
-                            )}
-                          </div>
+                      {/* Quotation Badge */}
+                      {quotationCount > 0 && (
+                        <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 rounded-lg">
+                          <p className="text-sm text-green-800 dark:text-green-200 font-medium">
+                            ✓ {quotationCount} quotation{quotationCount > 1 ? 's' : ''} received from admin
+                          </p>
                         </div>
                       )}
 
@@ -447,32 +362,30 @@ export default function BuyerRFQs() {
                             View Details
                           </Button>
                         </Link>
-                        {rfq.status === 'draft' && (
-                          <>
-                            <Button variant="outline" size="sm">
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit
+                        {quotationCount > 0 && (
+                          <Link href={`/rfq/${rfq.id}`}>
+                            <Button size="sm" className="bg-green-600 hover:bg-green-700">
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              View Quotations ({quotationCount})
                             </Button>
-                            <Button variant="outline" size="sm">
-                              <FileText className="h-4 w-4 mr-2" />
-                              Publish
-                            </Button>
-                          </>
+                          </Link>
                         )}
-                        {rfq.status === 'active' && (
-                          <Button variant="outline" size="sm">
-                            <MessageSquare className="h-4 w-4 mr-2" />
-                            View Responses
-                          </Button>
-                        )}
-                        {rfq.quotations.length > 0 && (
-                          <Button variant="outline" size="sm">
-                            <Users className="h-4 w-4 mr-2" />
-                            Compare Quotes
-                          </Button>
-                        )}
-                        <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                          <Trash2 className="h-4 w-4 mr-2" />
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-red-600 hover:text-red-700"
+                          onClick={() => {
+                            if (confirm('Are you sure you want to delete this RFQ?')) {
+                              deleteRFQMutation.mutate(rfq.id);
+                            }
+                          }}
+                          disabled={deleteRFQMutation.isPending}
+                        >
+                          {deleteRFQMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4 mr-2" />
+                          )}
                           Delete
                         </Button>
                       </div>

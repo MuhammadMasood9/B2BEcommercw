@@ -643,6 +643,53 @@ export default function AdminInquiries() {
                               Country: {inquiry.buyerCountry}
                             </span>
                           </div>
+
+                          {/* Display sent quotations */}
+                          {inquiry.quotations && inquiry.quotations.length > 0 && (
+                            <div className="mt-4 pt-4 border-t">
+                              <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                                <FileText className="h-4 w-4" />
+                                Quotations Sent ({inquiry.quotations.length})
+                              </h4>
+                              <div className="space-y-2">
+                                {inquiry.quotations.map((quotation: any) => (
+                                  <div key={quotation.id} className="bg-gray-50 dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-700">
+                                    <div className="flex justify-between items-start mb-2">
+                                      <div>
+                                        <span className="font-medium text-blue-600">${quotation.pricePerUnit}/unit</span>
+                                        <span className="text-gray-600 ml-2 text-sm">(Total: ${quotation.totalPrice})</span>
+                                        <Badge className="ml-2" variant={
+                                          quotation.status === 'accepted' ? 'default' : 
+                                          quotation.status === 'rejected' ? 'destructive' : 
+                                          'secondary'
+                                        }>
+                                          {quotation.status || 'pending'}
+                                        </Badge>
+                                      </div>
+                                      <span className="text-xs text-gray-500">
+                                        {formatDate(quotation.createdAt)}
+                                      </span>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2 text-xs text-gray-600">
+                                      <span>MOQ: {quotation.moq}</span>
+                                      <span>Lead: {quotation.leadTime}</span>
+                                      <span>Payment: {quotation.paymentTerms}</span>
+                                    </div>
+                                    {quotation.status === 'accepted' && (
+                                      <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded text-xs text-green-700 dark:text-green-400">
+                                        ✓ Accepted - Order created
+                                      </div>
+                                    )}
+                                    {quotation.status === 'rejected' && (
+                                      <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded text-xs text-red-700 dark:text-red-400">
+                                        ✗ Rejected by buyer
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="flex flex-col gap-2">

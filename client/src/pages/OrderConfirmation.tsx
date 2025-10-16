@@ -47,7 +47,7 @@ export default function OrderConfirmation() {
           throw new Error('Failed to fetch order');
         }
         const data = await response.json();
-        return data.order;
+        return data;
       } catch (error) {
         console.error('Error fetching order:', error);
         throw error;

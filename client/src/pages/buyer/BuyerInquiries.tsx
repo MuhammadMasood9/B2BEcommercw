@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { Link } from 'wouter';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'react-hot-toast';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { 
   Search, 
   Filter, 
@@ -20,121 +23,146 @@ import {
   Download,
   Calendar,
   DollarSign,
-  Truck
+  Truck,
+  ThumbsUp,
+  ThumbsDown,
+  ShoppingCart,
+  X,
+  FileText
 } from 'lucide-react';
 
 export default function BuyerInquiries() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
+  const [selectedQuotation, setSelectedQuotation] = useState<any>(null);
+  const [isAcceptDialogOpen, setIsAcceptDialogOpen] = useState(false);
+  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+  const [shippingAddress, setShippingAddress] = useState('');
+  const [rejectionReason, setRejectionReason] = useState('');
 
-  // Mock data - in real app, this would come from API
+  const queryClient = useQueryClient();
+
+  // Fetch inquiries from API
   const { data: inquiries = [], isLoading } = useQuery({
     queryKey: ['/api/inquiries', statusFilter, searchQuery, sortBy],
     queryFn: async () => {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return [
-        {
-          id: 1,
-          productId: 'prod-1',
-          productName: 'Industrial Water Pumps',
-          productImage: 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=200&h=200&fit=crop',
-          supplierName: 'Shanghai Manufacturing Co.',
-          supplierCountry: 'China',
-          supplierVerified: true,
-          quantity: 50,
-          targetPrice: 800,
-          message: 'Need pumps for water treatment plant. Must be ISO certified.',
-          requirements: 'ISO 9001 certification required',
-          status: 'replied',
-          createdAt: '2024-01-15T10:30:00Z',
-          quotations: [
-            {
-              id: 1,
-              pricePerUnit: 850,
-              totalPrice: 42500,
-              moq: 50,
-              leadTime: '30 days',
-              paymentTerms: 'T/T 30% advance',
-              validUntil: '2024-02-15',
-              message: 'We can provide ISO certified pumps. Samples available.'
-            }
-          ]
-        },
-        {
-          id: 2,
-          productId: 'prod-2',
-          productName: 'LED Street Lights',
-          productImage: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=200&h=200&fit=crop',
-          supplierName: 'Guangzhou Electronics Ltd.',
-          supplierCountry: 'China',
-          supplierVerified: true,
-          quantity: 200,
-          targetPrice: 25,
-          message: 'Looking for LED street lights for municipal project.',
-          requirements: 'Must meet IP65 rating',
-          status: 'pending',
-          createdAt: '2024-01-14T14:20:00Z',
-          quotations: []
-        },
-        {
-          id: 3,
-          productId: 'prod-3',
-          productName: 'Custom Packaging Boxes',
-          productImage: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=200&h=200&fit=crop',
-          supplierName: 'Dongguan Packaging Co.',
-          supplierCountry: 'China',
-          supplierVerified: false,
-          quantity: 1000,
-          targetPrice: 2.5,
-          message: 'Need custom printed boxes for electronics packaging.',
-          requirements: 'Eco-friendly materials preferred',
-          status: 'negotiating',
-          createdAt: '2024-01-13T09:15:00Z',
-          quotations: [
-            {
-              id: 2,
-              pricePerUnit: 2.8,
-              totalPrice: 2800,
-              moq: 500,
-              leadTime: '15 days',
-              paymentTerms: 'T/T 50% advance',
-              validUntil: '2024-02-10',
-              message: 'Can provide eco-friendly materials. Sample available.'
-            }
-          ]
-        },
-        {
-          id: 4,
-          productId: 'prod-4',
-          productName: 'Steel Construction Beams',
-          productImage: 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=200&h=200&fit=crop',
-          supplierName: 'Beijing Steel Works',
-          supplierCountry: 'China',
-          supplierVerified: true,
-          quantity: 100,
-          targetPrice: 120,
-          message: 'Construction project requiring structural steel beams.',
-          requirements: 'ASTM A572 Grade 50',
-          status: 'closed',
-          createdAt: '2024-01-10T16:45:00Z',
-          quotations: [
-            {
-              id: 3,
-              pricePerUnit: 125,
-              totalPrice: 12500,
-              moq: 100,
-              leadTime: '45 days',
-              paymentTerms: 'L/C at sight',
-              validUntil: '2024-02-05',
-              message: 'ASTM certified steel available. Factory inspection welcome.'
-            }
-          ]
-        }
-      ];
+      try {
+        const params = new URLSearchParams();
+        if (statusFilter && statusFilter !== 'all') params.append('status', statusFilter);
+        if (searchQuery) params.append('search', searchQuery);
+        if (sortBy) params.append('sort', sortBy);
+        
+        const response = await fetch(`/api/inquiries?${params.toString()}`);
+        if (!response.ok) throw new Error('Failed to fetch inquiries');
+        const data = await response.json();
+        return data.inquiries || [];
+      } catch (error) {
+        console.error('Error fetching inquiries:', error);
+        return [];
+      }
     }
   });
+
+  // Accept quotation and create order
+  const acceptQuotationMutation = useMutation({
+    mutationFn: async ({ quotationId, inquiryId, shippingAddress }: any) => {
+      const response = await fetch('/api/quotations/accept', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quotationId, inquiryId, shippingAddress })
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to accept quotation');
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/inquiries'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
+      setIsAcceptDialogOpen(false);
+      setShippingAddress('');
+      toast.success('Quotation accepted! Order created successfully.');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to accept quotation');
+    }
+  });
+
+  // Reject quotation
+  const rejectQuotationMutation = useMutation({
+    mutationFn: async ({ quotationId, reason }: any) => {
+      const response = await fetch('/api/quotations/reject', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quotationId, reason })
+      });
+      if (!response.ok) throw new Error('Failed to reject quotation');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/inquiries'] });
+      setIsRejectDialogOpen(false);
+      setRejectionReason('');
+      toast.success('Quotation rejected');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to reject quotation');
+    }
+  });
+
+  // Request negotiation
+  const requestNegotiationMutation = useMutation({
+    mutationFn: async ({ inquiryId, message, targetPrice, quantity }: any) => {
+      const response = await fetch('/api/inquiries/negotiate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inquiryId, message, targetPrice, quantity })
+      });
+      if (!response.ok) throw new Error('Failed to request negotiation');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/inquiries'] });
+      toast.success('Negotiation request sent to supplier');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to send negotiation request');
+    }
+  });
+
+  const handleAcceptQuotation = (quotation: any, inquiry: any) => {
+    setSelectedQuotation({ ...quotation, inquiry });
+    setIsAcceptDialogOpen(true);
+  };
+
+  const handleRejectQuotation = (quotation: any) => {
+    setSelectedQuotation(quotation);
+    setIsRejectDialogOpen(true);
+  };
+
+  const confirmAcceptQuotation = () => {
+    if (!selectedQuotation || !shippingAddress.trim()) {
+      toast.error('Please provide a shipping address');
+      return;
+    }
+    
+    acceptQuotationMutation.mutate({
+      quotationId: selectedQuotation.id,
+      inquiryId: selectedQuotation.inquiry.id,
+      shippingAddress
+    });
+  };
+
+  const confirmRejectQuotation = () => {
+    if (!selectedQuotation) return;
+    
+    rejectQuotationMutation.mutate({
+      quotationId: selectedQuotation.id,
+      reason: rejectionReason
+    });
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -156,9 +184,9 @@ export default function BuyerInquiries() {
     }
   };
 
-  const filteredInquiries = inquiries.filter(inquiry => {
-    const matchesSearch = inquiry.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         inquiry.supplierName.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredInquiries = inquiries.filter((inquiry: any) => {
+    const matchesSearch = inquiry.productName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         inquiry.supplierName?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || inquiry.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -268,7 +296,7 @@ export default function BuyerInquiries() {
                 </CardContent>
               </Card>
             ) : (
-              filteredInquiries.map((inquiry) => {
+              filteredInquiries.map((inquiry: any) => {
                 const StatusIcon = getStatusIcon(inquiry.status);
                 return (
                   <Card key={inquiry.id} className="hover:shadow-lg transition-shadow">
@@ -318,12 +346,12 @@ export default function BuyerInquiries() {
                             <div className="flex items-center gap-2 text-sm">
                               <Package className="h-4 w-4 text-gray-400" />
                               <span className="text-gray-600">Quantity:</span>
-                              <span className="font-medium">{inquiry.quantity.toLocaleString()}</span>
+                              <span className="font-medium">{inquiry.quantity ? inquiry.quantity.toLocaleString() : '0'} units</span>
                             </div>
                             <div className="flex items-center gap-2 text-sm">
                               <DollarSign className="h-4 w-4 text-gray-400" />
                               <span className="text-gray-600">Target Price:</span>
-                              <span className="font-medium">{formatPrice(inquiry.targetPrice)}/unit</span>
+                              <span className="font-medium">{inquiry.targetPrice ? formatPrice(inquiry.targetPrice) : 'Not specified'}/unit</span>
                             </div>
                             <div className="flex items-center gap-2 text-sm">
                               <Calendar className="h-4 w-4 text-gray-400" />
@@ -331,6 +359,7 @@ export default function BuyerInquiries() {
                               <span className="font-medium">{formatDate(inquiry.createdAt)}</span>
                             </div>
                           </div>
+                          
 
                           {/* Quotations */}
                           {inquiry.quotations.length > 0 && (
@@ -339,38 +368,135 @@ export default function BuyerInquiries() {
                                 Quotations Received ({inquiry.quotations.length})
                               </h4>
                               <div className="space-y-2">
-                                {inquiry.quotations.map((quotation) => (
-                                  <div key={quotation.id} className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-                                    <div className="flex justify-between items-start mb-2">
+                                {inquiry.quotations.map((quotation: any) => (
+                                  <div key={quotation.id} className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                                    <div className="flex justify-between items-start mb-3">
                                       <div>
-                                        <span className="font-medium text-green-600">
+                                        <span className="font-medium text-green-600 text-lg">
                                           {formatPrice(quotation.pricePerUnit)}/unit
                                         </span>
                                         <span className="text-gray-600 ml-2">
                                           (Total: {formatPrice(quotation.totalPrice)})
                                         </span>
+                                        {quotation.status && (
+                                          <Badge className="ml-2" variant={
+                                            quotation.status === 'accepted' ? 'default' : 
+                                            quotation.status === 'rejected' ? 'destructive' : 
+                                            'secondary'
+                                          }>
+                                            {quotation.status}
+                                          </Badge>
+                                        )}
                                       </div>
                                       <Badge variant="outline" className="text-xs">
                                         Valid until {formatDate(quotation.validUntil)}
                                       </Badge>
                                     </div>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-600">
-                                      <span>MOQ: {quotation.moq}</span>
-                                      <span>Lead Time: {quotation.leadTime}</span>
-                                      <span>Payment: {quotation.paymentTerms}</span>
-                                      <span className="truncate" title={quotation.message}>
-                                        {quotation.message}
-                                      </span>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-gray-600 mb-3">
+                                      <span><strong>MOQ:</strong> {quotation.moq} units</span>
+                                      <span><strong>Lead Time:</strong> {quotation.leadTime}</span>
+                                      <span><strong>Payment:</strong> {quotation.paymentTerms}</span>
+                                      <span><strong>Received:</strong> {formatDate(quotation.createdAt)}</span>
                                     </div>
+                                    {quotation.message && (
+                                      <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
+                                        <strong>Message:</strong> {quotation.message}
+                                      </p>
+                                    )}
+                                    {quotation.attachments && quotation.attachments.length > 0 && (
+                                      <div className="mb-3">
+                                        <p className="text-xs text-gray-600 mb-1">Attachments:</p>
+                                        <div className="flex flex-wrap gap-1">
+                                          {quotation.attachments.map((attachment: string, idx: number) => (
+                                            <Badge key={idx} variant="outline" className="text-xs">
+                                              Attachment {idx + 1}
+                                            </Badge>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Action buttons for pending quotations */}
+                                    {(!quotation.status || quotation.status === 'pending') && (
+                                      <div className="flex gap-2 mt-3">
+                                        <Button 
+                                          size="sm" 
+                                          onClick={() => handleAcceptQuotation(quotation, inquiry)}
+                                          className="bg-green-600 hover:bg-green-700"
+                                        >
+                                          <ThumbsUp className="h-4 w-4 mr-2" />
+                                          Accept & Create Order
+                                        </Button>
+                                        <Button 
+                                          size="sm" 
+                                          variant="outline"
+                                          onClick={() => handleRejectQuotation(quotation)}
+                                        >
+                                          <ThumbsDown className="h-4 w-4 mr-2" />
+                                          Reject
+                                        </Button>
+                                        <Button 
+                                          size="sm" 
+                                          variant="outline"
+                                          onClick={() => {
+                                            // Request negotiation - could open a dialog
+                                            requestNegotiationMutation.mutate({
+                                              inquiryId: inquiry.id,
+                                              message: 'I would like to negotiate the terms',
+                                              targetPrice: quotation.pricePerUnit * 0.9, // 10% less as example
+                                              quantity: inquiry.quantity
+                                            });
+                                          }}
+                                        >
+                                          <MessageSquare className="h-4 w-4 mr-2" />
+                                          Negotiate
+                                        </Button>
+                                      </div>
+                                    )}
+                                    
+                                    {quotation.status === 'accepted' && (
+                                      <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                                        <div className="flex items-center justify-between">
+                                          <div>
+                                            <p className="text-sm font-medium text-green-700 dark:text-green-400 flex items-center gap-2">
+                                              <CheckCircle className="h-4 w-4" />
+                                              ✓ Quotation Accepted
+                                            </p>
+                                            <p className="text-xs text-green-600 dark:text-green-500 mt-1">
+                                              Order has been created and is being processed
+                                            </p>
+                                          </div>
+                                          {quotation.orderId && (
+                                            <Link href="/my-orders">
+                                              <Button size="sm" variant="outline" className="bg-white">
+                                                View Order
+                                              </Button>
+                                            </Link>
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+                                    
+                                    {quotation.status === 'rejected' && (
+                                      <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                                        <p className="text-sm font-medium text-red-700 dark:text-red-400 flex items-center gap-2">
+                                          <AlertCircle className="h-4 w-4" />
+                                          ✗ Quotation Rejected
+                                        </p>
+                                        <p className="text-xs text-red-600 dark:text-red-500 mt-1">
+                                          You can send a new negotiation request for better terms
+                                        </p>
+                                      </div>
+                                    )}
                                   </div>
                                 ))}
                               </div>
                             </div>
                           )}
 
-                          {/* Requirements */}
+                          {/* Requirements and Additional Details */}
                           {inquiry.requirements && (
-                            <div className="mb-4">
+                            <div className="mb-4 bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
                               <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-1">
                                 Requirements:
                               </h4>
@@ -379,6 +505,22 @@ export default function BuyerInquiries() {
                               </p>
                             </div>
                           )}
+
+                          {/* Inquiry Stats */}
+                          <div className="flex flex-wrap gap-2 mb-3">
+                            {inquiry.quotations.length > 0 && (
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">
+                                <FileText className="h-3 w-3 mr-1" />
+                                {inquiry.quotations.length} {inquiry.quotations.length === 1 ? 'Quotation' : 'Quotations'}
+                              </Badge>
+                            )}
+                            {inquiry.quotations.some((q: any) => q.status === 'accepted') && (
+                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Order Created
+                              </Badge>
+                            )}
+                          </div>
 
                           {/* Actions */}
                           <div className="flex flex-wrap gap-2">
@@ -431,6 +573,114 @@ export default function BuyerInquiries() {
         </div>
       </main>
       <Footer />
+
+      {/* Accept Quotation Dialog */}
+      <Dialog open={isAcceptDialogOpen} onOpenChange={setIsAcceptDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Accept Quotation & Create Order</DialogTitle>
+            <DialogDescription>
+              Please provide shipping details to create your order.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedQuotation && (
+            <div className="space-y-4">
+              <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                <h4 className="font-semibold mb-2">Order Summary</h4>
+                <div className="space-y-1 text-sm">
+                  <p><strong>Product:</strong> {selectedQuotation.inquiry?.productName}</p>
+                  <p><strong>Quantity:</strong> {selectedQuotation.moq} units</p>
+                  <p><strong>Unit Price:</strong> {formatPrice(selectedQuotation.pricePerUnit)}</p>
+                  <p><strong>Total:</strong> <span className="text-lg font-bold text-green-600">{formatPrice(selectedQuotation.totalPrice)}</span></p>
+                  <p><strong>Lead Time:</strong> {selectedQuotation.leadTime}</p>
+                  <p><strong>Payment Terms:</strong> {selectedQuotation.paymentTerms}</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Shipping Address *
+                </label>
+                <Textarea
+                  value={shippingAddress}
+                  onChange={(e) => setShippingAddress(e.target.value)}
+                  placeholder="Enter full shipping address with postal code..."
+                  rows={4}
+                  className="w-full"
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsAcceptDialogOpen(false);
+                setShippingAddress('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmAcceptQuotation}
+              disabled={acceptQuotationMutation.isPending || !shippingAddress.trim()}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <ShoppingCart className="h-4 w-4 mr-2" />
+              {acceptQuotationMutation.isPending ? 'Creating Order...' : 'Confirm & Create Order'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject Quotation Dialog */}
+      <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reject Quotation</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for rejecting this quotation (optional).
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Rejection Reason (Optional)
+              </label>
+              <Textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="E.g., Price too high, Lead time too long..."
+                rows={3}
+                className="w-full"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsRejectDialogOpen(false);
+                setRejectionReason('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmRejectQuotation}
+              disabled={rejectQuotationMutation.isPending}
+            >
+              <X className="h-4 w-4 mr-2" />
+              {rejectQuotationMutation.isPending ? 'Rejecting...' : 'Confirm Rejection'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

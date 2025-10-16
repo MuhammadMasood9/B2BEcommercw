@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -13,10 +16,95 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Upload, FileText } from "lucide-react";
+import { Upload, FileText, Loader2 } from "lucide-react";
+import { toast } from "react-hot-toast";
 
 export default function RFQCreate() {
+  const [, setLocation] = useLocation();
+  const { user } = useAuth();
   const [files, setFiles] = useState<File[]>([]);
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    title: '',
+    categoryId: '',
+    description: '',
+    quantity: '',
+    targetPrice: '',
+    deliveryLocation: '',
+    expectedDate: ''
+  });
+
+
+  // Create RFQ mutation
+  const createRFQMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const formData = new FormData();
+      
+      // Add RFQ data to FormData
+      formData.append('title', data.title);
+      formData.append('description', data.description);
+      formData.append('quantity', data.quantity.toString());
+      formData.append('deliveryLocation', data.deliveryLocation);
+      formData.append('status', data.status);
+      formData.append('buyerId', data.buyerId);
+      
+      if (data.categoryId) formData.append('categoryId', data.categoryId);
+      if (data.targetPrice) formData.append('targetPrice', data.targetPrice);
+      if (data.expectedDate) formData.append('expectedDate', data.expectedDate.toISOString());
+
+      // Add files
+      files.forEach((file, index) => {
+        formData.append(`attachments`, file);
+      });
+
+      const response = await fetch('/api/rfqs', {
+        method: 'POST',
+        body: formData
+      });
+      if (!response.ok) throw new Error('Failed to create RFQ');
+      return response.json();
+    },
+    onSuccess: () => {
+      toast.success('RFQ created successfully!');
+      setLocation('/buyer/rfqs');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to create RFQ');
+    }
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.title || !formData.description || !formData.quantity || !formData.deliveryLocation) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    createRFQMutation.mutate({
+      ...formData,
+      buyerId: user?.id,
+      quantity: parseInt(formData.quantity),
+      targetPrice: formData.targetPrice ? formData.targetPrice.toString() : null,
+      expectedDate: formData.expectedDate ? new Date(formData.expectedDate) : null,
+      status: 'open'
+    });
+  };
+
+  // Fetch categories for the dropdown
+  const { data: categories = [], isLoading: categoriesLoading } = useQuery({
+    queryKey: ['/api/categories'],
+    queryFn: async () => {
+      const response = await fetch('/api/categories?isActive=true');
+      if (!response.ok) throw new Error('Failed to fetch categories');
+      return response.json();
+    }
+  });
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -33,29 +121,37 @@ export default function RFQCreate() {
               <CardTitle className="text-lg sm:text-xl">RFQ Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6">
+              <form onSubmit={handleSubmit}>
               <div>
                 <Label htmlFor="title" className="text-sm sm:text-base">RFQ Title *</Label>
                 <Input
                   id="title"
+                  value={formData.title}
+                  onChange={(e) => handleInputChange('title', e.target.value)}
                   placeholder="e.g., Looking for High-Quality Wireless Earbuds"
                   className="mt-2 text-sm sm:text-base"
                   data-testid="input-rfq-title"
+                  required
                 />
               </div>
 
               <div>
-                <Label htmlFor="category" className="text-sm sm:text-base">Product Category *</Label>
-                <Select>
+                <Label htmlFor="category" className="text-sm sm:text-base">Product Category</Label>
+                <Select value={formData.categoryId} onValueChange={(value) => handleInputChange('categoryId', value)}>
                   <SelectTrigger className="mt-2 text-sm sm:text-base" data-testid="select-category">
-                    <SelectValue placeholder="Select a category" />
+                    <SelectValue placeholder={categoriesLoading ? "Loading categories..." : "Select a category (optional)"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="electronics">Electronics</SelectItem>
-                    <SelectItem value="fashion">Fashion & Apparel</SelectItem>
-                    <SelectItem value="machinery">Machinery</SelectItem>
-                    <SelectItem value="automotive">Automotive</SelectItem>
-                    <SelectItem value="construction">Construction</SelectItem>
-                    <SelectItem value="packaging">Packaging</SelectItem>
+                    {categories.map((category: any) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                    {categories.length === 0 && !categoriesLoading && (
+                      <SelectItem value="" disabled>
+                        No categories available
+                      </SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -64,10 +160,13 @@ export default function RFQCreate() {
                 <Label htmlFor="description" className="text-sm sm:text-base">Detailed Requirements *</Label>
                 <Textarea
                   id="description"
+                  value={formData.description}
+                  onChange={(e) => handleInputChange('description', e.target.value)}
                   placeholder="Describe your product requirements in detail: specifications, quality standards, packaging needs, etc."
                   rows={5}
                   className="mt-2 text-sm sm:text-base"
                   data-testid="textarea-requirements"
+                  required
                 />
                 <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                   Be as specific as possible to get accurate quotations
@@ -80,59 +179,62 @@ export default function RFQCreate() {
                   <Input
                     id="quantity"
                     type="number"
+                    value={formData.quantity}
+                    onChange={(e) => handleInputChange('quantity', e.target.value)}
                     placeholder="e.g., 5000"
                     className="mt-2 text-sm sm:text-base"
                     data-testid="input-quantity"
+                    min="1"
+                    required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="unit" className="text-sm sm:text-base">Unit</Label>
-                  <Select>
-                    <SelectTrigger className="mt-2 text-sm sm:text-base" data-testid="select-unit">
-                      <SelectValue placeholder="Select unit" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pieces">Pieces</SelectItem>
-                      <SelectItem value="units">Units</SelectItem>
-                      <SelectItem value="sets">Sets</SelectItem>
-                      <SelectItem value="boxes">Boxes</SelectItem>
-                      <SelectItem value="kg">Kilograms</SelectItem>
-                      <SelectItem value="meters">Meters</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="target-price" className="text-sm sm:text-base">Target Price (Optional)</Label>
+                  <Input
+                    id="target-price"
+                    type="number"
+                    value={formData.targetPrice}
+                    onChange={(e) => handleInputChange('targetPrice', e.target.value)}
+                    placeholder="e.g., 15.50"
+                    className="mt-2 text-sm sm:text-base"
+                    data-testid="input-target-price"
+                    step="0.01"
+                    min="0"
+                  />
                 </div>
-              </div>
-
-              <div>
-                <Label htmlFor="target-price" className="text-sm sm:text-base">Target Price (Optional)</Label>
-                <Input
-                  id="target-price"
-                  placeholder="e.g., $15-20 per unit"
-                  className="mt-2 text-sm sm:text-base"
-                  data-testid="input-target-price"
-                />
-                <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                  Providing a budget helps suppliers give accurate quotes
-                </p>
               </div>
 
               <div>
                 <Label className="text-sm sm:text-base">Upload Images/Documents (Optional)</Label>
-                <div className="mt-2 border-2 border-dashed rounded-lg p-6 sm:p-8 text-center hover:bg-muted/50 transition-colors cursor-pointer">
+                <div 
+                  className="mt-2 border-2 border-dashed rounded-lg p-6 sm:p-8 text-center hover:bg-muted/50 transition-colors cursor-pointer"
+                  onClick={() => document.getElementById('file-upload')?.click()}
+                >
                   <Upload className="w-10 h-10 sm:w-12 sm:h-12 text-muted-foreground mx-auto mb-3 sm:mb-4" />
                   <p className="text-xs sm:text-sm text-muted-foreground mb-2">
                     Click to upload or drag and drop
                   </p>
                   <p className="text-[10px] sm:text-xs text-muted-foreground">
-                    Supports: JPG, PNG, PDF (Max 10MB each)
+                    Supports: JPG, PNG, PDF, DOC, DOCX (Max 10MB each)
                   </p>
                   <Input
+                    id="file-upload"
                     type="file"
                     multiple
+                    accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
                     className="hidden"
                     onChange={(e) => {
                       if (e.target.files) {
-                        setFiles(Array.from(e.target.files));
+                        const selectedFiles = Array.from(e.target.files);
+                        const validFiles = selectedFiles.filter(file => {
+                          const maxSize = 10 * 1024 * 1024; // 10MB
+                          if (file.size > maxSize) {
+                            toast.error(`File ${file.name} is too large. Maximum size is 10MB.`);
+                            return false;
+                          }
+                          return true;
+                        });
+                        setFiles(validFiles);
                       }
                     }}
                     data-testid="input-file-upload"
@@ -140,10 +242,25 @@ export default function RFQCreate() {
                 </div>
                 {files.length > 0 && (
                   <div className="mt-3 space-y-2">
+                    <p className="text-xs font-medium text-gray-600">Uploaded files:</p>
                     {files.map((file, index) => (
-                      <div key={index} className="flex items-center gap-2 text-xs sm:text-sm">
-                        <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
-                        <span className="truncate">{file.name}</span>
+                      <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                        <div className="flex items-center gap-2 text-xs sm:text-sm">
+                          <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
+                          <span className="truncate">{file.name}</span>
+                          <span className="text-gray-500">({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setFiles(files.filter((_, i) => i !== index));
+                          }}
+                          className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                        >
+                          ×
+                        </Button>
                       </div>
                     ))}
                   </div>
@@ -155,9 +272,12 @@ export default function RFQCreate() {
                   <Label htmlFor="delivery-location" className="text-sm sm:text-base">Delivery Location *</Label>
                   <Input
                     id="delivery-location"
+                    value={formData.deliveryLocation}
+                    onChange={(e) => handleInputChange('deliveryLocation', e.target.value)}
                     placeholder="City, Country"
                     className="mt-2 text-sm sm:text-base"
                     data-testid="input-location"
+                    required
                   />
                 </div>
                 <div>
@@ -165,74 +285,43 @@ export default function RFQCreate() {
                   <Input
                     id="delivery-date"
                     type="date"
+                    value={formData.expectedDate}
+                    onChange={(e) => handleInputChange('expectedDate', e.target.value)}
                     className="mt-2 text-sm sm:text-base"
                     data-testid="input-delivery-date"
                   />
                 </div>
               </div>
 
-              <div>
-                <Label htmlFor="additional" className="text-sm sm:text-base">Additional Requirements</Label>
-                <Textarea
-                  id="additional"
-                  placeholder="Certifications needed, special packaging, delivery terms, etc."
-                  rows={3}
-                  className="mt-2 text-sm sm:text-base"
-                  data-testid="textarea-additional"
-                />
-              </div>
-
-              <div className="border-t pt-4 sm:pt-6">
-                <h3 className="font-semibold mb-3 sm:mb-4 text-base sm:text-lg">Your Contact Information</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  <div>
-                    <Label htmlFor="contact-name" className="text-sm sm:text-base">Full Name *</Label>
-                    <Input
-                      id="contact-name"
-                      placeholder="John Doe"
-                      className="mt-2 text-sm sm:text-base"
-                      data-testid="input-contact-name"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="contact-email" className="text-sm sm:text-base">Email *</Label>
-                    <Input
-                      id="contact-email"
-                      type="email"
-                      placeholder="john@company.com"
-                      className="mt-2 text-sm sm:text-base"
-                      data-testid="input-contact-email"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="contact-phone" className="text-sm sm:text-base">Phone Number</Label>
-                    <Input
-                      id="contact-phone"
-                      placeholder="+1 234 567 8900"
-                      className="mt-2 text-sm sm:text-base"
-                      data-testid="input-contact-phone"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="company" className="text-sm sm:text-base">Company Name</Label>
-                    <Input
-                      id="company"
-                      placeholder="Your Company Ltd."
-                      className="mt-2 text-sm sm:text-base"
-                      data-testid="input-company"
-                    />
-                  </div>
-                </div>
-              </div>
-
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4 sm:pt-6 border-t">
-                <Button size="lg" className="flex-1 text-sm sm:text-base" data-testid="button-post-rfq">
-                  Post RFQ
+                <Button 
+                  type="submit" 
+                  size="lg" 
+                  className="flex-1 text-sm sm:text-base" 
+                  data-testid="button-post-rfq"
+                  disabled={createRFQMutation.isPending}
+                >
+                  {createRFQMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Creating RFQ...
+                    </>
+                  ) : (
+                    'Post RFQ'
+                  )}
                 </Button>
-                <Button size="lg" variant="outline" className="flex-1 text-sm sm:text-base" data-testid="button-save-draft">
-                  Save as Draft
+                <Button 
+                  type="button"
+                  size="lg" 
+                  variant="outline" 
+                  className="flex-1 text-sm sm:text-base" 
+                  data-testid="button-cancel"
+                  onClick={() => setLocation('/buyer/rfqs')}
+                >
+                  Cancel
                 </Button>
               </div>
+              </form>
             </CardContent>
           </Card>
         </div>

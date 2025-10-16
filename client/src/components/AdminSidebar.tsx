@@ -12,7 +12,8 @@ import {
   UserPlus,
   FileSpreadsheet,
   UserCheck,
-  MessageSquare
+  MessageSquare,
+  FileText
 } from "lucide-react";
 import {
   Sidebar,
@@ -57,6 +58,11 @@ const adminMenuItems = [
     title: "Quotations",
     url: "/admin/quotations",
     icon: FileSpreadsheet,
+  },
+  {
+    title: "RFQs",
+    url: "/admin/rfqs",
+    icon: FileText,
   },
   {
     title: "Orders",

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 import { 
   Search, 
   Package, 
@@ -20,7 +21,12 @@ import {
   RefreshCw,
   ExternalLink,
   FileText,
-  DollarSign
+  DollarSign,
+  Download,
+  MessageSquare,
+  Info,
+  Mail,
+  Phone
 } from "lucide-react";
 
 export default function OrderTracking() {
@@ -111,20 +117,54 @@ export default function OrderTracking() {
 
   const getTrackingSteps = (status: string) => {
     const steps = [
-      { id: 'pending', label: 'Order Placed', description: 'Your order has been received' },
-      { id: 'confirmed', label: 'Order Confirmed', description: 'Order confirmed by supplier' },
-      { id: 'processing', label: 'In Production', description: 'Your order is being processed' },
-      { id: 'shipped', label: 'Shipped', description: 'Your order is on its way' },
-      { id: 'delivered', label: 'Delivered', description: 'Order delivered successfully' }
+      { 
+        id: 'pending', 
+        label: 'Order Placed', 
+        description: 'Your order has been received and is awaiting confirmation',
+        icon: Package,
+        date: new Date()
+      },
+      { 
+        id: 'confirmed', 
+        label: 'Order Confirmed', 
+        description: 'Supplier has confirmed your order and will begin processing',
+        icon: CheckCircle,
+        date: new Date()
+      },
+      { 
+        id: 'processing', 
+        label: 'In Production', 
+        description: 'Your order is being manufactured and prepared',
+        icon: Package,
+        date: new Date()
+      },
+      { 
+        id: 'shipped', 
+        label: 'Shipped', 
+        description: 'Your order is on its way to the destination',
+        icon: Truck,
+        date: new Date()
+      },
+      { 
+        id: 'delivered', 
+        label: 'Delivered', 
+        description: 'Order has been successfully delivered',
+        icon: CheckCircle,
+        date: new Date()
+      }
     ];
 
     const currentStepIndex = steps.findIndex(step => step.id === status);
+    const completionPercentage = currentStepIndex >= 0 ? ((currentStepIndex + 1) / steps.length) * 100 : 0;
     
-    return steps.map((step, index) => ({
-      ...step,
-      completed: index <= currentStepIndex,
-      current: index === currentStepIndex
-    }));
+    return {
+      steps: steps.map((step, index) => ({
+        ...step,
+        completed: index <= currentStepIndex,
+        current: index === currentStepIndex
+      })),
+      completionPercentage
+    };
   };
 
   const handleSearch = () => {
@@ -294,51 +334,92 @@ export default function OrderTracking() {
                 </CardContent>
               </Card>
 
-              {/* Tracking Timeline */}
+              {/* Enhanced Tracking Timeline with Progress Bar */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Truck className="h-5 w-5" />
-                    Order Progress
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <Truck className="h-5 w-5" />
+                      Order Progress
+                    </CardTitle>
+                    <Badge className={getStatusColor(order.status)}>
+                      {getStatusIcon(order.status)}
+                      {order.status}
+                    </Badge>
+                  </div>
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+                      <span>Order Journey</span>
+                      <span className="font-semibold">{Math.round(getTrackingSteps(order.status).completionPercentage)}% Complete</span>
+                    </div>
+                    <Progress value={getTrackingSteps(order.status).completionPercentage} className="h-2" />
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
-                    {getTrackingSteps(order.status).map((step, index) => (
-                      <div key={step.id} className="flex items-start gap-4">
-                        <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                          step.completed 
-                            ? 'bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-300' 
-                            : 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-600'
-                        }`}>
-                          {step.completed ? (
-                            <CheckCircle className="h-5 w-5" />
-                          ) : (
-                            <Clock className="h-5 w-5" />
+                    {getTrackingSteps(order.status).steps.map((step, index) => {
+                      const StepIcon = step.icon;
+                      return (
+                        <div key={step.id} className="relative">
+                          {index < getTrackingSteps(order.status).steps.length - 1 && (
+                            <div 
+                              className={`absolute left-4 top-12 w-0.5 h-full -ml-px ${
+                                step.completed ? 'bg-green-500' : 'bg-gray-200'
+                              }`}
+                            />
                           )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className={`font-medium ${
-                              step.current ? 'text-blue-600 dark:text-blue-400' : 
-                              step.completed ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'
+                          <div className="flex items-start gap-4">
+                            <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center border-2 z-10 ${
+                              step.completed 
+                                ? 'bg-green-500 border-green-500 text-white' 
+                                : step.current
+                                ? 'bg-blue-500 border-blue-500 text-white animate-pulse'
+                                : 'bg-white dark:bg-gray-800 border-gray-300 text-gray-400'
                             }`}>
-                              {step.label}
-                            </h4>
-                            {step.current && (
-                              <Badge variant="outline" className="text-blue-600 border-blue-600">
-                                Current
-                              </Badge>
-                            )}
+                              {step.completed ? (
+                                <CheckCircle className="h-5 w-5" />
+                              ) : step.current ? (
+                                <StepIcon className="h-5 w-5" />
+                              ) : (
+                                <Clock className="h-4 w-4" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0 pb-6">
+                              <div className="flex items-center justify-between mb-1">
+                                <h4 className={`font-semibold ${
+                                  step.current ? 'text-blue-600 dark:text-blue-400' : 
+                                  step.completed ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'
+                                }`}>
+                                  {step.label}
+                                </h4>
+                                {step.current && (
+                                  <Badge variant="outline" className="text-blue-600 border-blue-600">
+                                    <ArrowRight className="h-3 w-3 mr-1" />
+                                    In Progress
+                                  </Badge>
+                                )}
+                                {step.completed && !step.current && (
+                                  <span className="text-xs text-gray-500">
+                                    {formatDate(step.date.toISOString())}
+                                  </span>
+                                )}
+                              </div>
+                              <p className={`text-sm ${
+                                step.completed ? 'text-gray-600 dark:text-gray-400' : 'text-gray-500 dark:text-gray-500'
+                              }`}>
+                                {step.description}
+                              </p>
+                              {step.current && (
+                                <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-xs text-blue-700 dark:text-blue-400 flex items-start gap-1">
+                                  <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                                  <span>This is the current status of your order. We'll update you when it moves to the next stage.</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <p className={`text-sm ${
-                            step.completed ? 'text-gray-600 dark:text-gray-400' : 'text-gray-500 dark:text-gray-500'
-                          }`}>
-                            {step.description}
-                          </p>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>
@@ -389,23 +470,65 @@ export default function OrderTracking() {
                 </Card>
               )}
 
-              {/* Actions */}
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button onClick={() => refetch()}>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh Status
-                </Button>
-                <Link href="/my-orders">
-                  <Button variant="outline">
-                    <Package className="h-4 w-4 mr-2" />
-                    View All Orders
-                  </Button>
-                </Link>
-                <Button variant="outline">
-                  <FileText className="h-4 w-4 mr-2" />
-                  Download Invoice
-                </Button>
-              </div>
+              {/* Enhanced Actions */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Quick Actions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <Button onClick={() => refetch()} variant="outline" className="w-full">
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Refresh Status
+                    </Button>
+                    <Link href="/my-orders" className="w-full">
+                      <Button variant="outline" className="w-full">
+                        <Package className="h-4 w-4 mr-2" />
+                        All Orders
+                      </Button>
+                    </Link>
+                    <Button variant="outline" className="w-full">
+                      <FileText className="h-4 w-4 mr-2" />
+                      Download Invoice
+                    </Button>
+                    <Button variant="outline" className="w-full">
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Contact Supplier
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Help Section */}
+              <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
+                      <Info className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Need Help?</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                        If you have any questions about your order or need assistance, our support team is here to help.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button size="sm" variant="outline">
+                          <MessageSquare className="h-3 w-3 mr-2" />
+                          Live Chat
+                        </Button>
+                        <Button size="sm" variant="outline">
+                          <Mail className="h-3 w-3 mr-2" />
+                          Email Support
+                        </Button>
+                        <Button size="sm" variant="outline">
+                          <Phone className="h-3 w-3 mr-2" />
+                          Call Us
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           ) : null}
         </div>

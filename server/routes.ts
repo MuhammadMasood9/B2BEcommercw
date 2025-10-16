@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { authRoutes } from "./authRoutes";
 import categoryRoutes from "./categoryRoutes";
 import uploadRoutes from "./uploadRoutes";
+import { upload } from "./upload";
 import { 
   insertProductSchema, insertCategorySchema, insertCustomerSchema, insertOrderSchema,
   insertUserSchema, insertBuyerProfileSchema,
@@ -551,12 +552,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/rfqs", async (req, res) => {
+  app.post("/api/rfqs", upload.array('attachments', 10), async (req, res) => {
     try {
-      const validatedData = insertRfqSchema.parse(req.body);
+      // Handle file uploads
+      const uploadedFiles = req.files as Express.Multer.File[] || [];
+      const filePaths = uploadedFiles.map(file => `/uploads/${file.filename}`);
+
+      // Prepare RFQ data
+      const rfqData = {
+        title: req.body.title,
+        description: req.body.description,
+        quantity: parseInt(req.body.quantity),
+        deliveryLocation: req.body.deliveryLocation,
+        status: req.body.status || 'open',
+        buyerId: req.body.buyerId,
+        categoryId: req.body.categoryId || null,
+        targetPrice: req.body.targetPrice || null,
+        expectedDate: req.body.expectedDate ? new Date(req.body.expectedDate) : null,
+        attachments: filePaths.length > 0 ? filePaths : null
+      };
+
+      const validatedData = insertRfqSchema.parse(rfqData);
       const rfq = await storage.createRfq(validatedData);
       res.status(201).json(rfq);
     } catch (error: any) {
+      console.error('Error creating RFQ:', error);
       res.status(400).json({ error: error.message });
     }
   });
@@ -571,6 +591,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(rfq);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/rfqs/:id", async (req, res) => {
+    try {
+      const rfqId = req.params.id;
+      
+      // Check if RFQ has quotations
+      const quotations = await storage.getQuotations({ rfqId });
+      if (quotations && quotations.length > 0) {
+        return res.status(400).json({ error: "Cannot delete RFQ with existing quotations" });
+      }
+
+      // Delete the RFQ (implementation depends on your storage layer)
+      // For now, we'll just close it
+      const rfq = await storage.updateRfq(rfqId, { status: 'closed' });
+      if (!rfq) {
+        return res.status(404).json({ error: "RFQ not found" });
+      }
+
+      res.json({ success: true, message: 'RFQ deleted successfully' });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 
@@ -604,7 +647,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/quotations", async (req, res) => {
     try {
-      const validatedData = insertQuotationSchema.parse(req.body);
+      // Ensure user is authenticated and is an admin
+      if (!req.user || req.user.role !== 'admin') {
+        return res.status(403).json({ error: "Unauthorized: Only admins can create quotations." });
+      }
+      const supplierId = req.user.id; // Admin is the supplier
+
+      // Convert data types before validation
+      const quotationData = {
+        ...req.body,
+        supplierId: supplierId, // Add supplierId from authenticated admin
+        pricePerUnit: req.body.pricePerUnit ? req.body.pricePerUnit.toString() : null,
+        totalPrice: req.body.totalPrice ? req.body.totalPrice.toString() : null,
+        moq: parseInt(req.body.moq),
+        validUntil: req.body.validUntil ? new Date(req.body.validUntil) : null
+      };
+
+      const validatedData = insertQuotationSchema.parse(quotationData);
       const quotation = await storage.createQuotation(validatedData);
       
       // Increment RFQ quotation count
@@ -612,6 +671,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(201).json(quotation);
     } catch (error: any) {
+      console.error('Error creating quotation:', error);
       res.status(400).json({ error: error.message });
     }
   });
@@ -629,18 +689,265 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Accept RFQ quotation
+  app.post("/api/quotations/:id/accept", async (req, res) => {
+    try {
+      const { shippingAddress } = req.body;
+      const quotationId = req.params.id;
+
+      const quotation = await storage.getQuotation(quotationId);
+      if (!quotation) {
+        return res.status(404).json({ error: "Quotation not found" });
+      }
+
+      if (quotation.status !== 'pending') {
+        return res.status(400).json({ error: "Only pending quotations can be accepted" });
+      }
+
+      // Get RFQ details for order creation
+      const rfq = await storage.getRfq(quotation.rfqId);
+      if (!rfq) {
+        return res.status(404).json({ error: "RFQ not found" });
+      }
+
+      // Create order directly from accepted quotation
+      const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+      const orderData = {
+        orderNumber: orderNumber,
+        buyerId: rfq.buyerId,
+        supplierId: quotation.supplierId,
+        rfqId: quotation.rfqId,
+        quotationId: quotationId,
+        totalAmount: parseFloat(quotation.totalPrice),
+        status: 'pending_approval', // Buyer needs to accept the created order
+        shippingAddress: JSON.stringify({
+          address: shippingAddress,
+          city: '',
+          state: '',
+          country: '',
+          zipCode: ''
+        }),
+        items: JSON.stringify([{
+          productName: rfq.title,
+          quantity: rfq.quantity,
+          unitPrice: parseFloat(quotation.pricePerUnit),
+          totalPrice: parseFloat(quotation.totalPrice)
+        }])
+      };
+
+      const order = await storage.createOrder(orderData as any);
+
+      // Update quotation status to accepted and add order info
+      await storage.updateQuotation(quotationId, { 
+        status: 'accepted',
+        message: `Shipping Address: ${shippingAddress}\n\nOrder Created: ${order.id}\n\n${quotation.message || ''}`
+      });
+
+      // Close the RFQ
+      await storage.updateRfq(quotation.rfqId, { status: 'closed' });
+
+      res.json({ 
+        success: true, 
+        message: 'Quotation accepted and order created successfully!',
+        orderId: order.id
+      });
+    } catch (error: any) {
+      console.error('Error accepting RFQ quotation:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Reject RFQ quotation
+  app.post("/api/quotations/:id/reject", async (req, res) => {
+    try {
+      const { reason } = req.body;
+      const quotationId = req.params.id;
+
+      const quotation = await storage.getQuotation(quotationId);
+      if (!quotation) {
+        return res.status(404).json({ error: "Quotation not found" });
+      }
+
+      if (quotation.status !== 'pending') {
+        return res.status(400).json({ error: "Only pending quotations can be rejected" });
+      }
+
+      // Update quotation status
+      await storage.updateQuotation(quotationId, { 
+        status: 'rejected',
+        rejectionReason: reason || 'No reason provided'
+      });
+
+      res.json({ 
+        success: true, 
+        message: 'Quotation rejected successfully' 
+      });
+    } catch (error: any) {
+      console.error('Error rejecting RFQ quotation:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Accept quotation and create order
+  app.post("/api/quotations/accept", async (req, res) => {
+    try {
+      const { quotationId, inquiryId, shippingAddress } = req.body;
+      
+      if (!quotationId || !inquiryId || !shippingAddress) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      // Get the inquiry quotation
+      const quotation = await storage.getInquiryQuotation(quotationId);
+      if (!quotation) {
+        return res.status(404).json({ error: "Quotation not found" });
+      }
+
+      // Get the inquiry for buyer info
+      const inquiry = await storage.getInquiry(inquiryId);
+      if (!inquiry) {
+        return res.status(404).json({ error: "Inquiry not found" });
+      }
+
+      // Update quotation status to accepted
+      await storage.updateInquiryQuotation(quotationId, { status: 'accepted' });
+
+      // Update inquiry status to closed
+      await storage.updateInquiry(inquiryId, { status: 'closed' });
+
+      // Store shipping address in quotation for admin to use later
+      await storage.updateInquiryQuotation(quotationId, { 
+        message: `Shipping Address: ${shippingAddress}\n\n${quotation.message || ''}` 
+      });
+
+      res.status(200).json({ 
+        success: true, 
+        message: 'Quotation accepted successfully. Admin will create order for your approval.',
+        quotationId,
+        nextStep: 'admin_creates_order'
+      });
+    } catch (error: any) {
+      console.error('Error accepting quotation:', error);
+      res.status(500).json({ error: error.message || 'Failed to accept quotation' });
+    }
+  });
+
+  // Reject quotation
+  app.post("/api/quotations/reject", async (req, res) => {
+    try {
+      const { quotationId, reason } = req.body;
+      
+      if (!quotationId) {
+        return res.status(400).json({ error: "Quotation ID is required" });
+      }
+
+      // Get the quotation
+      const quotation = await storage.getInquiryQuotation(quotationId);
+      if (!quotation) {
+        return res.status(404).json({ error: "Quotation not found" });
+      }
+
+      // Update quotation status to rejected
+      await storage.updateInquiryQuotation(quotationId, { 
+        status: 'rejected',
+        message: reason ? `Rejected: ${reason}` : quotation.message
+      });
+
+      res.json({ 
+        success: true, 
+        message: 'Quotation rejected successfully' 
+      });
+    } catch (error: any) {
+      console.error('Error rejecting quotation:', error);
+      res.status(500).json({ error: error.message || 'Failed to reject quotation' });
+    }
+  });
+
   // ==================== INQUIRIES ====================
   
   app.get("/api/inquiries", async (req, res) => {
     try {
       const { productId, buyerId, status } = req.query;
+      
+      // IMPORTANT: Get buyer ID from authenticated session if not admin
+      // @ts-ignore - req.user is added by auth middleware
+      const currentUserId = req.user?.id;
+      // @ts-ignore
+      const currentUserRole = req.user?.role;
+      
       const filters: any = {};
       if (productId) filters.productId = productId as string;
-      if (buyerId) filters.buyerId = buyerId as string;
+      
+      // If buyer is logged in and not admin, only show their inquiries
+      if (currentUserId && currentUserRole === 'buyer') {
+        filters.buyerId = currentUserId;
+      } else if (buyerId) {
+        // Admin can filter by specific buyer
+        filters.buyerId = buyerId as string;
+      }
+      
       if (status) filters.status = status as string;
       
       const inquiries = await storage.getInquiries(filters);
-      res.json(inquiries);
+      res.json({ inquiries });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get all quotations for buyer (centralized view) - ONLY their own quotations
+  app.get("/api/buyer/quotations", async (req, res) => {
+    try {
+      const { status, search, sort } = req.query;
+      
+      // IMPORTANT: Get buyer ID from authenticated session
+      // @ts-ignore - req.user is added by auth middleware
+      const buyerId = req.user?.id;
+      
+      if (!buyerId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+      
+      // Get all inquiry quotations
+      let quotations = await storage.getInquiryQuotations();
+      
+      // FILTER: Only show quotations for THIS buyer's inquiries
+      quotations = quotations.filter((q: any) => q.buyerId === buyerId);
+      
+      // Filter by status if provided
+      if (status && status !== 'all') {
+        quotations = quotations.filter((q: any) => q.status === status);
+      }
+      
+      // Search filter
+      if (search) {
+        const searchLower = (search as string).toLowerCase();
+        quotations = quotations.filter((q: any) => 
+          q.productName?.toLowerCase().includes(searchLower) ||
+          q.buyerName?.toLowerCase().includes(searchLower) ||
+          q.buyerCompany?.toLowerCase().includes(searchLower)
+        );
+      }
+      
+      // Sort
+      if (sort) {
+        switch(sort) {
+          case 'newest':
+            quotations.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            break;
+          case 'oldest':
+            quotations.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+            break;
+          case 'price-high':
+            quotations.sort((a: any, b: any) => (b.pricePerUnit || 0) - (a.pricePerUnit || 0));
+            break;
+          case 'price-low':
+            quotations.sort((a: any, b: any) => (a.pricePerUnit || 0) - (b.pricePerUnit || 0));
+            break;
+        }
+      }
+      
+      res.json({ quotations });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -685,6 +992,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Request negotiation for inquiry
+  app.post("/api/inquiries/negotiate", async (req, res) => {
+    try {
+      const { inquiryId, message, targetPrice, quantity } = req.body;
+      
+      if (!inquiryId) {
+        return res.status(400).json({ error: "Inquiry ID is required" });
+      }
+
+      // Get the inquiry
+      const inquiry = await storage.getInquiry(inquiryId);
+      if (!inquiry) {
+        return res.status(404).json({ error: "Inquiry not found" });
+      }
+
+      // Update inquiry status to negotiating
+      await storage.updateInquiry(inquiryId, { status: 'negotiating' });
+
+      // Create a revision record for negotiation tracking
+      const revision = await storage.createInquiryRevision({
+        inquiryId,
+        revisionNumber: (inquiry.revisions?.length || 0) + 1,
+        quantity: quantity || inquiry.quantity,
+        targetPrice: targetPrice || inquiry.targetPrice,
+        message: message || 'Requesting negotiation',
+        status: 'negotiating',
+        createdBy: inquiry.buyerId
+      });
+
+      res.status(201).json({ 
+        success: true, 
+        message: 'Negotiation request sent successfully',
+        revision
+      });
+    } catch (error: any) {
+      console.error('Error requesting negotiation:', error);
+      res.status(500).json({ error: error.message || 'Failed to request negotiation' });
+    }
+  });
+
   // ==================== ADMIN INQUIRIES ====================
   
   app.get("/api/admin/inquiries", async (req, res) => {
@@ -718,8 +1065,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create quotation
       const createdQuotation = await storage.createInquiryQuotation({
         inquiryId,
-        pricePerUnit: quotation.pricePerUnit,
-        totalPrice: quotation.totalPrice,
+        pricePerUnit: quotation.pricePerUnit ? quotation.pricePerUnit.toString() : null,
+        totalPrice: quotation.totalPrice ? quotation.totalPrice.toString() : null,
         moq: quotation.moq,
         leadTime: quotation.leadTime,
         paymentTerms: quotation.paymentTerms,
@@ -810,11 +1157,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         inquiryId: req.params.id,
         revisionNumber: nextRevisionNumber,
         quantity: parseInt(quantity),
-        targetPrice: targetPrice ? parseFloat(targetPrice) : null,
+        targetPrice: targetPrice ? parseFloat(targetPrice).toString() : null,
         message,
         requirements,
         status: 'pending',
-        createdBy: req.user?.id
+        createdBy: (req.user as any)?.id || 'admin'
       });
 
       // Update inquiry status to negotiating
@@ -847,8 +1194,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create new quotation
       const createdQuotation = await storage.createInquiryQuotation({
         inquiryId: req.params.id,
-        pricePerUnit: quotation.pricePerUnit,
-        totalPrice: quotation.totalPrice,
+        pricePerUnit: quotation.pricePerUnit ? quotation.pricePerUnit.toString() : null,
+        totalPrice: quotation.totalPrice ? quotation.totalPrice.toString() : null,
         moq: quotation.moq,
         leadTime: quotation.leadTime,
         paymentTerms: quotation.paymentTerms,
@@ -893,10 +1240,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate order number
       const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
-      // Create order
+      // Create order with items
+      const orderItems = [{
+        productId: inquiry.productId,
+        productName: inquiry.productName || 'Product',
+        quantity: inquiry.quantity,
+        unitPrice: parseFloat(quotation.pricePerUnit.toString()),
+        totalPrice: parseFloat(quotation.totalPrice.toString())
+      }];
+
       const order = await storage.createOrder({
         orderNumber,
-        buyerId: req.user?.id,
+        buyerId: (req.user as any)?.id || 'admin',
         inquiryId: req.params.id,
         quotationId,
         productId: inquiry.productId,
@@ -907,8 +1262,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         paymentMethod: 'T/T',
         paymentStatus: 'pending',
         shippingAddress: null, // Will be filled later
-        notes: `Order created from accepted quotation`
-      });
+        notes: `Order created from accepted quotation`,
+        items: orderItems
+      } as any);
 
       // Update quotation status to accepted
       await storage.updateInquiryQuotation(quotationId, { status: 'accepted' });
@@ -946,7 +1302,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Orders API
   app.post("/api/orders", async (req, res) => {
     try {
-      const { quotationId, inquiryId, productId, quantity, unitPrice, totalAmount, shippingAddress, paymentMethod } = req.body;
+      const { quotationId, inquiryId, productId, quantity, unitPrice, totalAmount, shippingAddress, paymentMethod, buyerId } = req.body;
       
       if (!quotationId || !productId || !quantity || !unitPrice || !totalAmount) {
         return res.status(400).json({ error: "Missing required order fields" });
@@ -955,46 +1311,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate order number
       const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
+      // Create order with items
+      const orderItems = [{
+        productId: productId,
+        productName: 'Product', // Default name since we don't have product details here
+        quantity: parseInt(quantity),
+        unitPrice: parseFloat(unitPrice),
+        totalPrice: parseFloat(totalAmount)
+      }];
+
       const order = await storage.createOrder({
         orderNumber,
-        buyerId: req.user?.id,
+        buyerId: buyerId || 'admin-created', // Use provided buyerId or fallback
         inquiryId,
         quotationId,
         productId,
         quantity: parseInt(quantity),
-        unitPrice: parseFloat(unitPrice),
-        totalAmount: parseFloat(totalAmount),
+        unitPrice: parseFloat(unitPrice).toString(),
+        totalAmount: parseFloat(totalAmount).toString(),
         status: 'pending',
         paymentMethod: paymentMethod || 'T/T',
         paymentStatus: 'pending',
         shippingAddress: shippingAddress || null,
-        notes: 'Order created from quotation'
-      });
+        notes: 'Order created from quotation',
+        items: orderItems
+      } as any);
 
       // Update quotation status to accepted
       await storage.updateInquiryQuotation(quotationId, { status: 'accepted' });
 
       res.status(201).json(order);
     } catch (error: any) {
+      console.error('Error creating order:', error);
       res.status(400).json({ error: error.message });
     }
   });
 
   app.get("/api/orders", async (req, res) => {
     try {
-      const { status } = req.query;
+      const { status, search } = req.query;
       const filters: any = {};
       
-      if (req.user?.id) {
-        filters.buyerId = req.user.id;
+      // IMPORTANT: Get buyer ID from authenticated session
+      // @ts-ignore - req.user is added by auth middleware
+      const buyerId = req.user?.id;
+      
+      if (!buyerId) {
+        return res.status(401).json({ error: "Authentication required" });
       }
+      
+      filters.buyerId = buyerId;
       
       if (status) {
         filters.status = status as string;
       }
       
-      const orders = await storage.getOrders(filters);
-      res.json({ orders });
+      const orders = await storage.getOrdersWithDetails(filters);
+      
+      // Apply search filter if provided
+      let filteredOrders = orders;
+      if (search) {
+        const searchLower = (search as string).toLowerCase();
+        filteredOrders = orders.filter((order: any) => 
+          order.orderNumber?.toLowerCase().includes(searchLower) ||
+          order.productName?.toLowerCase().includes(searchLower) ||
+          order.trackingNumber?.toLowerCase().includes(searchLower)
+        );
+      }
+      
+      res.json({ orders: filteredOrders });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -1020,6 +1405,141 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json(order);
     } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin create order from accepted quotation (Step 2: Admin creates order)
+  app.post("/api/admin/orders/create-from-quotation", async (req, res) => {
+    try {
+      const { quotationId } = req.body;
+      
+      if (!quotationId) {
+        return res.status(400).json({ error: "Quotation ID is required" });
+      }
+
+      // Get the accepted quotation with details
+      const quotation = await storage.getInquiryQuotationWithDetails(quotationId);
+      
+      if (!quotation) {
+        return res.status(404).json({ error: "Quotation not found" });
+      }
+
+      if (quotation.status !== 'accepted') {
+        return res.status(400).json({ error: "Only accepted quotations can be converted to orders" });
+      }
+
+      // Create order with items array using quotation data (already has joined inquiry data)
+      const orderItems = [{
+        productId: quotation.productId,
+        productName: quotation.productName || 'Product',
+        quantity: quotation.moq,
+        unitPrice: parseFloat(quotation.pricePerUnit.toString()),
+        totalPrice: parseFloat(quotation.totalPrice.toString())
+      }];
+
+      const orderData = {
+        buyerId: quotation.buyerId,
+        productId: quotation.productId,
+        quantity: quotation.moq,
+        unitPrice: quotation.pricePerUnit,
+        totalAmount: quotation.totalPrice,
+        paymentMethod: quotation.paymentTerms || 'T/T',
+        paymentStatus: 'pending',
+        status: 'pending_approval', // New status: waiting for user approval
+        shippingAddress: quotation.message?.includes('Shipping Address:') 
+          ? quotation.message.split('Shipping Address:')[1]?.split('\n')[0]?.trim() 
+          : 'Address to be provided',
+        orderNumber: `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+        inquiryId: quotation.inquiryId,
+        quotationId,
+        items: orderItems,
+        notes: 'Order created by admin from accepted quotation. Waiting for buyer approval.'
+      } as any;
+
+      const order = await storage.createOrder(orderData);
+
+      // Update quotation to link to the created order
+      await storage.updateInquiryQuotation(quotationId, { 
+        status: 'order_created',
+        message: quotation.message + `\n\nOrder Created: ${order.orderNumber}`
+      });
+
+      res.status(201).json({ 
+        success: true, 
+        message: 'Order created successfully. Waiting for buyer approval.',
+        order 
+      });
+    } catch (error: any) {
+      console.error('Error creating order from quotation:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // User accept order (Step 3: User accepts the order created by admin)
+  app.post("/api/orders/:id/accept", async (req, res) => {
+    try {
+      const orderId = req.params.id;
+      
+      // Get the order
+      const order = await storage.getOrder(orderId);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+
+      // Check if user owns this order
+      // @ts-ignore - req.user is added by auth middleware
+      const buyerId = req.user?.id;
+      if (order.buyerId !== buyerId) {
+        return res.status(403).json({ error: "You can only accept your own orders" });
+      }
+
+      // Check if order is in pending_approval status
+      if (order.status !== 'pending_approval') {
+        return res.status(400).json({ error: "Only orders pending approval can be accepted" });
+      }
+
+      // Update order status to confirmed
+      const updatedOrder = await storage.updateOrder(orderId, { 
+        status: 'confirmed',
+        notes: (order.notes || '') + '\n\nOrder accepted by buyer.'
+      });
+
+      res.json({ 
+        success: true, 
+        message: 'Order accepted successfully',
+        order: updatedOrder 
+      });
+    } catch (error: any) {
+      console.error('Error accepting order:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Admin confirm order
+  app.post("/api/orders/:id/confirm", async (req, res) => {
+    try {
+      const orderId = req.params.id;
+      
+      // Get the order
+      const order = await storage.getOrder(orderId);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+
+      // Update order status to confirmed
+      const updatedOrder = await storage.updateOrder(orderId, { 
+        status: 'confirmed',
+        notes: 'Order confirmed by admin'
+      });
+
+      res.json({ 
+        success: true, 
+        message: 'Order confirmed successfully',
+        order: updatedOrder 
+      });
+    } catch (error: any) {
+      console.error('Error confirming order:', error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -1299,43 +1819,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ==================== ORDERS ====================
   
-  app.get("/api/orders", async (req, res) => {
-    try {
-      const { buyerId, customerId, status } = req.query;
-      const filters: any = {};
-      
-      if (buyerId) filters.buyerId = buyerId as string;
-      if (customerId) filters.customerId = customerId as string;
-      if (status) filters.status = status as string;
-      
-      const orders = await storage.getOrders(filters);
-      res.json(orders);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
 
-  app.get("/api/orders/:id", async (req, res) => {
-    try {
-      const order = await storage.getOrder(req.params.id);
-      if (!order) {
-        return res.status(404).json({ error: "Order not found" });
-      }
-      res.json(order);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.post("/api/orders", async (req, res) => {
-    try {
-      const validatedData = insertOrderSchema.parse(req.body);
-      const order = await storage.createOrder(validatedData);
-      res.status(201).json(order);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  });
+  // Duplicate endpoint removed - using the one above with proper quotation handling
 
   app.patch("/api/orders/:id", async (req, res) => {
     try {

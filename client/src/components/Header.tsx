@@ -1,4 +1,4 @@
-import { Search, ShoppingCart, User, Globe, Menu, ChevronDown, LogOut, Settings, Bell, Heart } from "lucide-react";
+import { Search, ShoppingCart, User, Globe, Menu, ChevronDown, LogOut, Settings, Bell, Heart, Package, FileText, MessageSquare, Truck, FileSearch, Star, ArrowRight, Plus } from "lucide-react";
 import CartWidget from "@/components/CartWidget";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -77,6 +77,9 @@ export default function Header() {
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/buyer/inquiries">My Inquiries</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/buyer/quotations">My Quotations</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/buyer/rfqs">My RFQs</Link>
@@ -271,16 +274,40 @@ export default function Header() {
                         </DropdownMenuItem>
                       </Link>
                       <Link href="/my-orders">
-                        <DropdownMenuItem>My Orders</DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <Package className="w-4 h-4 mr-2" />
+                          My Orders
+                        </DropdownMenuItem>
                       </Link>
-                      <Link href="/my-inquiries">
-                        <DropdownMenuItem>My Inquiries</DropdownMenuItem>
+                      <Link href="/buyer/inquiries">
+                        <DropdownMenuItem>
+                          <FileText className="w-4 h-4 mr-2" />
+                          My Inquiries
+                        </DropdownMenuItem>
+                      </Link>
+                      <Link href="/buyer/quotations">
+                        <DropdownMenuItem>
+                          <FileSearch className="w-4 h-4 mr-2" />
+                          My Quotations
+                        </DropdownMenuItem>
                       </Link>
                       <Link href="/track-order">
-                        <DropdownMenuItem>Track Order</DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <Truck className="w-4 h-4 mr-2" />
+                          Track Order
+                        </DropdownMenuItem>
                       </Link>
-                      <Link href="/my-rfqs">
-                        <DropdownMenuItem>My RFQs</DropdownMenuItem>
+                      <Link href="/buyer/rfqs">
+                        <DropdownMenuItem>
+                          <FileText className="w-4 h-4 mr-2" />
+                          My RFQs
+                        </DropdownMenuItem>
+                      </Link>
+                      <Link href="/rfq/create">
+                        <DropdownMenuItem>
+                          <Plus className="w-4 h-4 mr-2" />
+                          Create RFQ
+                        </DropdownMenuItem>
                       </Link>
                     </>
                   )}
@@ -298,13 +325,13 @@ export default function Header() {
                   
                   <Link href="/favorites">
                     <DropdownMenuItem>
-                      <Bell className="w-4 h-4 mr-2" />
+                      <Heart className="w-4 h-4 mr-2" />
                       Favorites
                     </DropdownMenuItem>
                   </Link>
                   <Link href="/messages">
                     <DropdownMenuItem>
-                      <Bell className="w-4 h-4 mr-2" />
+                      <MessageSquare className="w-4 h-4 mr-2" />
                       Messages
                     </DropdownMenuItem>
                   </Link>
@@ -313,7 +340,7 @@ export default function Header() {
                     onClick={() => logout()}
                     className="text-red-600"
                   >
-                    <LogOut className="w-4 h-4 mr-2" />
+                    <ArrowRight className="w-4 h-4 mr-2" />
                     Sign Out
                   </DropdownMenuItem>
                 </DropdownMenuContent>

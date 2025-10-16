@@ -172,6 +172,7 @@ export type Rfq = typeof rfqs.$inferSelect;
 export const quotations = pgTable("quotations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   rfqId: varchar("rfq_id").notNull(),
+  supplierId: varchar("supplier_id").notNull(), // Admin is the supplier
   pricePerUnit: decimal("price_per_unit", { precision: 10, scale: 2 }).notNull(),
   totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
   moq: integer("moq").notNull(),
@@ -268,12 +269,18 @@ export const orders = pgTable("orders", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   orderNumber: text("order_number").notNull().unique(),
   buyerId: varchar("buyer_id").notNull(),
+  customerId: varchar("customer_id"),
   inquiryId: varchar("inquiry_id"),
   quotationId: varchar("quotation_id"),
-  productId: varchar("product_id").notNull(),
-  quantity: integer("quantity").notNull(),
-  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
+  rfqId: varchar("rfq_id"), // For RFQ-based orders
+  supplierId: varchar("supplier_id"), // For RFQ-based orders
+  productId: varchar("product_id"), // Made optional for RFQ orders
+  quantity: integer("quantity"), // Made optional for RFQ orders
+  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }), // Made optional for RFQ orders
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  shippingAmount: decimal("shipping_amount", { precision: 10, scale: 2 }).default("0"),
+  taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }).default("0"),
+  items: json("items").notNull(), // Array of order items
   status: text("status").default("pending"), // pending, confirmed, processing, shipped, delivered, cancelled
   paymentMethod: text("payment_method"),
   paymentStatus: text("payment_status").default("pending"), // pending, paid, failed, refunded

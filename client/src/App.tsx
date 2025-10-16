@@ -38,7 +38,6 @@ import Privacy from "@/pages/Privacy";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
 import MyOrders from "@/pages/MyOrders";
-import MyInquiries from "@/pages/MyInquiries";
 import MyRFQs from "@/pages/MyRFQs";
 import StartOrder from "@/pages/StartOrder";
 import OrderConfirmation from "@/pages/OrderConfirmation";
@@ -48,9 +47,11 @@ import SubcategoryProducts from "@/pages/SubcategoryProducts";
 import GetVerified from "@/pages/GetVerified";
 import BuyerDashboard from "@/pages/buyer/BuyerDashboard";
 import BuyerInquiries from "@/pages/buyer/BuyerInquiries";
+import BuyerQuotations from "@/pages/buyer/BuyerQuotations";
 import BuyerRFQs from "@/pages/buyer/BuyerRFQs";
 import AdminInquiries from "@/pages/admin/AdminInquiries";
 import AdminQuotations from "@/pages/admin/AdminQuotations";
+import AdminRFQs from "@/pages/admin/AdminRFQs";
 // import AdminOrders from "@/pages/admin/AdminOrders";
 import AdminOrders from "@/pages/admin/AdminOrders";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
@@ -110,6 +111,11 @@ function AdminRouter() {
       <Route path="/admin/quotations">
         <ProtectedRoute requiredRole="admin">
           <AdminQuotations />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/rfqs">
+        <ProtectedRoute requiredRole="admin">
+          <AdminRFQs />
         </ProtectedRoute>
       </Route>
       <Route path="/admin/orders">
@@ -187,6 +193,11 @@ function PublicRouter() {
           <BuyerInquiries />
         </ProtectedRoute>
       </Route>
+      <Route path="/buyer/quotations">
+        <ProtectedRoute requiredRole="buyer">
+          <BuyerQuotations />
+        </ProtectedRoute>
+      </Route>
       <Route path="/buyer/rfqs">
         <ProtectedRoute requiredRole="buyer">
           <BuyerRFQs />
@@ -200,7 +211,6 @@ function PublicRouter() {
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
       <Route path="/my-orders" component={MyOrders} />
-      <Route path="/my-inquiries" component={MyInquiries} />
       <Route path="/my-rfqs" component={MyRFQs} />
       <Route path="/favorites" component={Favorites} />
       <Route path="/cart" component={Cart} />

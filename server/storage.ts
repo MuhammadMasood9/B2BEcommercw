@@ -92,9 +92,11 @@ export interface IStorage {
   
   // Order operations
   createOrder(order: InsertOrder): Promise<Order>;
-  getOrders(filters?: { buyerId?: string; status?: string }): Promise<any[]>;
+  getOrders(filters?: { buyerId?: string; status?: string }): Promise<Order[]>;
+  getOrdersWithDetails(filters?: { buyerId?: string; status?: string }): Promise<any[]>;
   getOrder(id: string): Promise<Order | undefined>;
   updateOrder(id: string, order: Partial<InsertOrder>): Promise<Order | undefined>;
+  deleteOrder(id: string): Promise<boolean>;
   getAdminOrders(filters?: { status?: string; search?: string }): Promise<any[]>;
   
   // Conversation operations
@@ -128,12 +130,6 @@ export interface IStorage {
   updateCustomer(id: string, customer: Partial<InsertCustomer>): Promise<Customer | undefined>;
   deleteCustomer(id: string): Promise<boolean>;
   
-  // Order operations
-  getOrders(filters?: { buyerId?: string; customerId?: string; status?: string }): Promise<Order[]>;
-  getOrder(id: string): Promise<Order | undefined>;
-  createOrder(order: InsertOrder): Promise<Order>;
-  updateOrder(id: string, order: Partial<InsertOrder>): Promise<Order | undefined>;
-  deleteOrder(id: string): Promise<boolean>;
   
   // Analytics
   getAnalytics(): Promise<{
@@ -473,14 +469,50 @@ export class PostgresStorage implements IStorage {
       createdAt: inquiries.createdAt,
       // Join with product data
       productName: products.name,
-      productImage: products.images
+      productImage: products.images,
+      productDescription: products.description,
+      // Join with buyer data (admin name since admin acts as supplier)
+      buyerName: users.firstName,
+      buyerEmail: users.email,
+      buyerCompany: buyerProfiles.companyName,
+      buyerCountry: buyerProfiles.country,
+      buyerPhone: buyerProfiles.phone,
+      supplierName: sql`'Admin Supplier'`.as('supplierName'),
+      supplierCountry: sql`'USA'`.as('supplierCountry'),
+      supplierVerified: sql`true`.as('supplierVerified')
     })
     .from(inquiries)
     .leftJoin(products, eq(inquiries.productId, products.id))
+    .leftJoin(users, eq(inquiries.buyerId, users.id))
+    .leftJoin(buyerProfiles, eq(inquiries.buyerId, buyerProfiles.userId))
     .where(whereClause)
     .orderBy(desc(inquiries.createdAt));
+    
+    // Fetch quotations for each inquiry
+    const resultsWithQuotations = await Promise.all(
+      results.map(async (inquiry) => {
+        const quotations = await this.getInquiryQuotations(inquiry.id);
+        
+        // Parse product image
+        let productImage = null;
+        try {
+          if (inquiry.productImage && typeof inquiry.productImage === 'string') {
+            const parsed = JSON.parse(inquiry.productImage);
+            productImage = Array.isArray(parsed) && parsed.length > 0 ? parsed[0] : null;
+          }
+        } catch (error) {
+          productImage = null;
+        }
+        
+        return {
+          ...inquiry,
+          productImage,
+          quotations: quotations || []
+        };
+      })
+    );
 
-    return results;
+    return resultsWithQuotations;
   }
 
   async getInquiry(id: string): Promise<any | undefined> {
@@ -554,9 +586,7 @@ export class PostgresStorage implements IStorage {
       buyerEmail: users.email,
       buyerCompany: buyerProfiles.companyName,
       buyerCountry: buyerProfiles.country,
-      buyerPhone: buyerProfiles.phone,
-      supplierCompany: sql`'Global Manufacturing Co.'`.as('supplierCompany'),
-      quotations: sql`'[]'`.as('quotations')
+      buyerPhone: buyerProfiles.phone
     })
     .from(inquiries)
     .leftJoin(products, eq(inquiries.productId, products.id))
@@ -565,25 +595,31 @@ export class PostgresStorage implements IStorage {
     .where(whereClause)
     .orderBy(desc(inquiries.createdAt));
     
-    // Transform the results to match the expected format
-    return results.map(result => {
-      let productImage = null;
-      try {
-        if (result.productImage && typeof result.productImage === 'string') {
-          const parsed = JSON.parse(result.productImage);
-          productImage = Array.isArray(parsed) && parsed.length > 0 ? parsed[0] : null;
+    // Fetch quotations for each inquiry
+    const resultsWithQuotations = await Promise.all(
+      results.map(async (inquiry) => {
+        const quotations = await this.getInquiryQuotations(inquiry.id);
+        
+        // Parse product image
+        let productImage = null;
+        try {
+          if (inquiry.productImage && typeof inquiry.productImage === 'string') {
+            const parsed = JSON.parse(inquiry.productImage);
+            productImage = Array.isArray(parsed) && parsed.length > 0 ? parsed[0] : null;
+          }
+        } catch (error) {
+          productImage = null;
         }
-      } catch (error) {
-        console.error('Error parsing product image:', error);
-        productImage = null;
-      }
-      
-      return {
-        ...result,
-        productImage,
-        quotations: []
-      };
-    });
+        
+        return {
+          ...inquiry,
+          productImage,
+          quotations: quotations || []
+        };
+      })
+    );
+
+    return resultsWithQuotations;
   }
 
   async addQuotationToInquiry(inquiryId: string, quotation: any): Promise<Inquiry | undefined> {
@@ -796,16 +832,13 @@ export class PostgresStorage implements IStorage {
     return result.rowCount !== null && result.rowCount > 0;
   }
 
-  // Order operations
-  async getOrders(filters?: { buyerId?: string; customerId?: string; status?: string }): Promise<Order[]> {
+  // Order operations (legacy - keeping for backward compatibility)
+  async getOrders(filters?: { buyerId?: string; status?: string }): Promise<Order[]> {
     let query = db.select().from(orders);
     const conditions = [];
     
     if (filters?.buyerId) {
       conditions.push(eq(orders.buyerId, filters.buyerId));
-    }
-    if (filters?.customerId) {
-      conditions.push(eq(orders.customerId, filters.customerId));
     }
     if (filters?.status) {
       conditions.push(eq(orders.status, filters.status));
@@ -918,12 +951,20 @@ export class PostgresStorage implements IStorage {
       status: inquiryQuotations.status,
       createdAt: inquiryQuotations.createdAt,
       // Join with inquiry data
+      buyerId: inquiries.buyerId,
+      productId: inquiries.productId,
       productName: products.name,
+      productImage: products.images,
       buyerName: users.firstName,
       buyerEmail: users.email,
       buyerCompany: buyerProfiles.companyName,
+      buyerCountry: buyerProfiles.country,
       inquiryQuantity: inquiries.quantity,
-      inquiryMessage: inquiries.message
+      inquiryMessage: inquiries.message,
+      inquiryRequirements: inquiries.requirements,
+      inquiryStatus: inquiries.status,
+      supplierName: sql`'Admin Supplier'`.as('supplierName'),
+      supplierCountry: sql`'USA'`.as('supplierCountry')
     })
     .from(inquiryQuotations)
     .leftJoin(inquiries, eq(inquiryQuotations.inquiryId, inquiries.id))
@@ -933,7 +974,23 @@ export class PostgresStorage implements IStorage {
     .where(whereCondition)
     .orderBy(desc(inquiryQuotations.createdAt));
 
-    return results;
+    // Transform results to include parsed product images
+    return results.map(result => {
+      let productImage = null;
+      try {
+        if (result.productImage && typeof result.productImage === 'string') {
+          const parsed = JSON.parse(result.productImage);
+          productImage = Array.isArray(parsed) && parsed.length > 0 ? parsed[0] : null;
+        }
+      } catch (error) {
+        productImage = null;
+      }
+      
+      return {
+        ...result,
+        productImage
+      };
+    });
   }
 
   async updateInquiryQuotation(id: string, quotation: Partial<InsertInquiryQuotation>): Promise<InquiryQuotation | undefined> {
@@ -949,13 +1006,66 @@ export class PostgresStorage implements IStorage {
     return quotation;
   }
 
-  // Order operations
-  async createOrder(order: InsertOrder): Promise<Order> {
-    const [created] = await db.insert(orders).values(order).returning();
-    return created;
+  async getInquiryQuotationWithDetails(id: string): Promise<any | undefined> {
+    const results = await db.select({
+      id: inquiryQuotations.id,
+      inquiryId: inquiryQuotations.inquiryId,
+      pricePerUnit: inquiryQuotations.pricePerUnit,
+      totalPrice: inquiryQuotations.totalPrice,
+      moq: inquiryQuotations.moq,
+      leadTime: inquiryQuotations.leadTime,
+      paymentTerms: inquiryQuotations.paymentTerms,
+      validUntil: inquiryQuotations.validUntil,
+      message: inquiryQuotations.message,
+      attachments: inquiryQuotations.attachments,
+      status: inquiryQuotations.status,
+      createdAt: inquiryQuotations.createdAt,
+      // Join with inquiry data
+      buyerId: inquiries.buyerId,
+      productId: inquiries.productId,
+      productName: products.name,
+      productImage: products.images,
+      buyerName: users.firstName,
+      buyerEmail: users.email,
+      buyerCompany: buyerProfiles.companyName,
+      buyerCountry: buyerProfiles.country,
+      inquiryQuantity: inquiries.quantity,
+      inquiryMessage: inquiries.message,
+      inquiryRequirements: inquiries.requirements,
+      inquiryStatus: inquiries.status,
+      supplierName: sql`'Admin Supplier'`.as('supplierName'),
+      supplierCountry: sql`'USA'`.as('supplierCountry')
+    })
+    .from(inquiryQuotations)
+    .leftJoin(inquiries, eq(inquiryQuotations.inquiryId, inquiries.id))
+    .leftJoin(products, eq(inquiries.productId, products.id))
+    .leftJoin(users, eq(inquiries.buyerId, users.id))
+    .leftJoin(buyerProfiles, eq(inquiries.buyerId, buyerProfiles.userId))
+    .where(eq(inquiryQuotations.id, id))
+    .limit(1);
+
+    if (results.length === 0) {
+      return undefined;
+    }
+
+    const result = results[0];
+    
+    // Parse product image
+    let productImage = null;
+    try {
+      if (result.productImage && typeof result.productImage === 'string') {
+        const parsed = JSON.parse(result.productImage);
+        productImage = Array.isArray(parsed) && parsed.length > 0 ? parsed[0] : null;
+      }
+    } catch (error) {
+      productImage = null;
+    }
+
+    return { ...result, productImage };
   }
 
-  async getOrders(filters?: { buyerId?: string; status?: string }): Promise<any[]> {
+  // Enhanced Order operations with joins
+  async getOrdersWithDetails(filters?: { buyerId?: string; status?: string }): Promise<any[]> {
     let whereConditions = [];
 
     if (filters?.buyerId) {
@@ -1001,19 +1111,6 @@ export class PostgresStorage implements IStorage {
     .orderBy(desc(orders.createdAt));
 
     return results;
-  }
-
-  async getOrder(id: string): Promise<Order | undefined> {
-    const [order] = await db.select().from(orders).where(eq(orders.id, id)).limit(1);
-    return order;
-  }
-
-  async updateOrder(id: string, order: Partial<InsertOrder>): Promise<Order | undefined> {
-    const [updated] = await db.update(orders)
-      .set({ ...order, updatedAt: new Date() })
-      .where(eq(orders.id, id))
-      .returning();
-    return updated;
   }
 
   async getAdminOrders(filters?: { status?: string; search?: string }): Promise<any[]> {

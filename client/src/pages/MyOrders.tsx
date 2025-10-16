@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useRoute } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-hot-toast";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,7 +31,9 @@ import {
   ArrowLeft,
   RefreshCw,
   Star,
-  ExternalLink
+  ExternalLink,
+  ShoppingCart,
+  Check
 } from "lucide-react";
 
 export default function MyOrders() {
@@ -38,6 +41,29 @@ export default function MyOrders() {
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [isOrderDetailOpen, setIsOrderDetailOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
+  const queryClient = useQueryClient();
+
+  // Accept order mutation
+  const acceptOrderMutation = useMutation({
+    mutationFn: async (orderId: string) => {
+      const response = await fetch(`/api/orders/${orderId}/accept`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to accept order');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
+      toast.success('Order accepted successfully!');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to accept order');
+    }
+  });
 
   // Fetch user's orders
   const { data: orders = [], isLoading, error, refetch } = useQuery({
@@ -65,6 +91,8 @@ export default function MyOrders() {
     switch (status) {
       case 'pending':
         return <Clock className="h-4 w-4" />;
+      case 'pending_approval':
+        return <AlertCircle className="h-4 w-4" />;
       case 'confirmed':
         return <CheckCircle className="h-4 w-4" />;
       case 'processing':
@@ -84,6 +112,8 @@ export default function MyOrders() {
     switch (status) {
       case 'pending':
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
+      case 'pending_approval':
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
       case 'confirmed':
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
       case 'processing':
@@ -134,6 +164,7 @@ export default function MyOrders() {
   const stats = {
     total: orders.length,
     pending: orders.filter((o: any) => o.status === 'pending').length,
+    pendingApproval: orders.filter((o: any) => o.status === 'pending_approval').length,
     confirmed: orders.filter((o: any) => o.status === 'confirmed').length,
     processing: orders.filter((o: any) => o.status === 'processing').length,
     shipped: orders.filter((o: any) => o.status === 'shipped').length,
@@ -248,6 +279,7 @@ export default function MyOrders() {
             <TabsList className="bg-white dark:bg-gray-800">
               <TabsTrigger value="all">All Orders ({stats.total})</TabsTrigger>
               <TabsTrigger value="pending">Pending ({stats.pending})</TabsTrigger>
+              <TabsTrigger value="pending_approval">Pending Approval ({stats.pendingApproval || 0})</TabsTrigger>
               <TabsTrigger value="confirmed">Confirmed ({stats.confirmed})</TabsTrigger>
               <TabsTrigger value="processing">Processing ({stats.processing})</TabsTrigger>
               <TabsTrigger value="shipped">Shipped ({stats.shipped})</TabsTrigger>
@@ -371,6 +403,17 @@ export default function MyOrders() {
 
                             {/* Actions */}
                             <div className="flex flex-col gap-2">
+                              {order.status === 'pending_approval' && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => acceptOrderMutation.mutate(order.id)}
+                                  disabled={acceptOrderMutation.isPending}
+                                  className="bg-green-600 hover:bg-green-700"
+                                >
+                                  <Check className="h-4 w-4 mr-2" />
+                                  Accept Order
+                                </Button>
+                              )}
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -418,6 +461,73 @@ export default function MyOrders() {
           
           {selectedOrder && (
             <div className="space-y-6">
+              {/* Order Flow Timeline */}
+              {(selectedOrder.inquiryId || selectedOrder.quotationId) && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      Order Journey
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between relative">
+                      {/* Inquiry */}
+                      <div className="flex flex-col items-center flex-1">
+                        <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center mb-2">
+                          <MessageSquare className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        </div>
+                        <p className="text-xs font-medium">Inquiry Sent</p>
+                        <CheckCircle className="h-4 w-4 text-green-600 mt-1" />
+                      </div>
+                      <div className="flex-1 h-0.5 bg-green-300 dark:bg-green-700 mx-2"></div>
+                      
+                      {/* Quotation */}
+                      <div className="flex flex-col items-center flex-1">
+                        <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center mb-2">
+                          <FileText className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        </div>
+                        <p className="text-xs font-medium">Quotation Received</p>
+                        <CheckCircle className="h-4 w-4 text-green-600 mt-1" />
+                      </div>
+                      <div className="flex-1 h-0.5 bg-green-300 dark:bg-green-700 mx-2"></div>
+                      
+                      {/* Order */}
+                      <div className="flex flex-col items-center flex-1">
+                        <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center mb-2">
+                          <ShoppingCart className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        </div>
+                        <p className="text-xs font-medium">Order Created</p>
+                        <CheckCircle className="h-4 w-4 text-green-600 mt-1" />
+                      </div>
+                      <div className={`flex-1 h-0.5 mx-2 ${
+                        selectedOrder.status === 'delivered' ? 'bg-green-300 dark:bg-green-700' : 'bg-gray-300 dark:bg-gray-700'
+                      }`}></div>
+                      
+                      {/* Delivery */}
+                      <div className="flex flex-col items-center flex-1">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${
+                          selectedOrder.status === 'delivered' 
+                            ? 'bg-green-100 dark:bg-green-900' 
+                            : 'bg-gray-100 dark:bg-gray-800'
+                        }`}>
+                          <Truck className={`h-5 w-5 ${
+                            selectedOrder.status === 'delivered' 
+                              ? 'text-green-600 dark:text-green-400' 
+                              : 'text-gray-400'
+                          }`} />
+                        </div>
+                        <p className="text-xs font-medium">Delivered</p>
+                        {selectedOrder.status === 'delivered' ? (
+                          <CheckCircle className="h-4 w-4 text-green-600 mt-1" />
+                        ) : (
+                          <Clock className="h-4 w-4 text-gray-400 mt-1" />
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Order Status */}
               <Card>
                 <CardHeader>
@@ -469,6 +579,25 @@ export default function MyOrders() {
                           <span>Total Amount:</span>
                           <span>{formatPrice(selectedOrder.totalAmount)}</span>
                         </div>
+                        {selectedOrder.inquiryId && (
+                          <div className="flex justify-between pt-2 border-t">
+                            <span className="text-gray-600 text-sm">Related Inquiry:</span>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="p-0 h-auto text-blue-600 hover:text-blue-800"
+                              onClick={() => window.location.href = '/buyer/inquiries'}
+                            >
+                              View Inquiry
+                            </Button>
+                          </div>
+                        )}
+                        {selectedOrder.quotationId && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600 text-sm">From Quotation:</span>
+                            <span className="text-sm font-medium text-blue-600">#{selectedOrder.quotationId.slice(0, 8)}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center justify-center">

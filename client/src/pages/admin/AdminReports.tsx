@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import Breadcrumb from "@/components/Breadcrumb";
 import { 
   BarChart3, 
   TrendingUp, 
@@ -115,6 +116,9 @@ export default function AdminReports() {
 
   return (
     <div className="p-8 space-y-8">
+      {/* Breadcrumb */}
+      <Breadcrumb items={[{ label: "Reports" }]} />
+      
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -162,62 +166,66 @@ export default function AdminReports() {
 
       {/* Key Metrics */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        {/* Total Revenue - Green */}
+        <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-green-100">Total Revenue</CardTitle>
+            <DollarSign className="h-6 w-6 text-green-200" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${reports.overview.totalRevenue.toLocaleString()}</div>
+            <div className="text-3xl font-bold text-white">${reports.overview.totalRevenue.toLocaleString()}</div>
             <div className="flex items-center mt-2">
-              <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
-              <span className="text-xs text-green-600">+{reports.overview.revenueGrowth}%</span>
-              <span className="text-xs text-muted-foreground ml-2">from last period</span>
+              <TrendingUp className="h-4 w-4 text-green-200 mr-1" />
+              <span className="text-sm text-green-200">+{reports.overview.revenueGrowth}%</span>
+              <span className="text-sm text-green-100 ml-2">from last period</span>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Total Orders - Blue */}
+        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-blue-100">Total Orders</CardTitle>
+            <ShoppingCart className="h-6 w-6 text-blue-200" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{reports.overview.totalOrders}</div>
+            <div className="text-3xl font-bold text-white">{reports.overview.totalOrders}</div>
             <div className="flex items-center mt-2">
-              <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
-              <span className="text-xs text-green-600">+{reports.overview.ordersGrowth}%</span>
-              <span className="text-xs text-muted-foreground ml-2">from last period</span>
+              <TrendingUp className="h-4 w-4 text-blue-200 mr-1" />
+              <span className="text-sm text-blue-200">+{reports.overview.ordersGrowth}%</span>
+              <span className="text-sm text-blue-100 ml-2">from last period</span>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Total Users - Purple */}
+        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-purple-100">Total Users</CardTitle>
+            <Users className="h-6 w-6 text-purple-200" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{reports.overview.totalUsers}</div>
+            <div className="text-3xl font-bold text-white">{reports.overview.totalUsers}</div>
             <div className="flex items-center mt-2">
-              <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
-              <span className="text-xs text-green-600">+{reports.overview.usersGrowth}%</span>
-              <span className="text-xs text-muted-foreground ml-2">from last period</span>
+              <TrendingUp className="h-4 w-4 text-purple-200 mr-1" />
+              <span className="text-sm text-purple-200">+{reports.overview.usersGrowth}%</span>
+              <span className="text-sm text-purple-100 ml-2">from last period</span>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Total Products - Orange */}
+        <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Products</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-orange-100">Total Products</CardTitle>
+            <Package className="h-6 w-6 text-orange-200" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{reports.overview.totalProducts}</div>
+            <div className="text-3xl font-bold text-white">{reports.overview.totalProducts}</div>
             <div className="flex items-center mt-2">
-              <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
-              <span className="text-xs text-green-600">+{reports.overview.productsGrowth}%</span>
-              <span className="text-xs text-muted-foreground ml-2">from last period</span>
+              <TrendingUp className="h-4 w-4 text-orange-200 mr-1" />
+              <span className="text-sm text-orange-200">+{reports.overview.productsGrowth}%</span>
+              <span className="text-sm text-orange-100 ml-2">from last period</span>
             </div>
           </CardContent>
         </Card>

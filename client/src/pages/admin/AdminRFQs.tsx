@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import Breadcrumb from '@/components/Breadcrumb';
 import { 
   Search, 
   Filter, 
@@ -171,7 +172,10 @@ export default function AdminRFQs() {
 
   return (
     <div className="flex-1 p-8">
-      <div className="max-w-7xl mx-auto">
+      <div className=" mx-auto">
+        {/* Breadcrumb */}
+        <Breadcrumb items={[{ label: "RFQs" }]} />
+        
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
@@ -197,50 +201,54 @@ export default function AdminRFQs() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200">
+          {/* Total RFQs - Blue */}
+          <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Total RFQs</p>
-                  <p className="text-2xl font-bold text-blue-900 dark:text-white">{stats.total}</p>
+                  <p className="text-sm font-medium text-blue-100">Total RFQs</p>
+                  <p className="text-3xl font-bold text-white">{stats.total}</p>
                 </div>
-                <FileText className="h-8 w-8 text-blue-600" />
+                <FileText className="h-8 w-8 text-blue-200" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border-green-200">
+          {/* Open RFQs - Green */}
+          <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-lg">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-green-600 dark:text-green-400">Open RFQs</p>
-                  <p className="text-2xl font-bold text-green-900 dark:text-white">{stats.open}</p>
+                  <p className="text-sm font-medium text-green-100">Open RFQs</p>
+                  <p className="text-3xl font-bold text-white">{stats.open}</p>
                 </div>
-                <TrendingUp className="h-8 w-8 text-green-600" />
+                <TrendingUp className="h-8 w-8 text-green-200" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900/20 dark:to-gray-800/20 border-gray-200">
+          {/* Closed - Gray */}
+          <Card className="bg-gradient-to-br from-gray-500 to-gray-600 text-white border-0 shadow-lg">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Closed</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.closed}</p>
+                  <p className="text-sm font-medium text-gray-100">Closed</p>
+                  <p className="text-3xl font-bold text-white">{stats.closed}</p>
                 </div>
-                <CheckCircle className="h-8 w-8 text-gray-600" />
+                <CheckCircle className="h-8 w-8 text-gray-200" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border-purple-200">
+          {/* Total Value - Purple */}
+          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-lg">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-purple-600 dark:text-purple-400">Total Value</p>
-                  <p className="text-2xl font-bold text-purple-900 dark:text-white">{formatPrice(stats.totalValue)}</p>
+                  <p className="text-sm font-medium text-purple-100">Total Value</p>
+                  <p className="text-3xl font-bold text-white">{formatPrice(stats.totalValue)}</p>
                 </div>
-                <DollarSign className="h-8 w-8 text-purple-600" />
+                <DollarSign className="h-8 w-8 text-purple-200" />
               </div>
             </CardContent>
           </Card>

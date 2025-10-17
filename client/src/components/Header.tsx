@@ -95,6 +95,9 @@ export default function Header() {
               <Link href="/help" className="text-muted-foreground hover:text-primary transition-colors hover-elevate px-2 py-1 rounded-md" data-testid="link-help">
                 Help
               </Link>
+              <Link href="/chat" className="text-muted-foreground hover:text-primary transition-colors hover-elevate px-2 py-1 rounded-md" data-testid="link-chat">
+                Chat
+              </Link>
               <Link href="/login" className="text-muted-foreground hover:text-primary transition-colors hover-elevate px-2 py-1 rounded-md" data-testid="link-signin">
                 Sign In
               </Link>
@@ -213,17 +216,16 @@ export default function Header() {
                     <Link href="/find-suppliers" className="block py-3 text-lg font-medium hover:text-primary transition-colors">
                       Suppliers
                     </Link>
-                    <Link href="/rfq/browse" className="block py-3 text-lg font-medium hover:text-primary transition-colors">
-                      RFQ
-                    </Link>
+                  
                     <Link href="/ready-to-ship" className="block py-3 text-lg font-medium hover:text-primary transition-colors">
                       Ready to Ship
                     </Link>
-                    <Link href="/trade-shows" className="block py-3 text-lg font-medium hover:text-primary transition-colors">
-                      Trade Shows
-                    </Link>
+                  
                     <Link href="/buyer-protection" className="block py-3 text-lg font-medium hover:text-primary transition-colors">
                       Buyer Protection
+                    </Link>
+                    <Link href="/chat" className="block py-3 text-lg font-medium hover:text-primary transition-colors">
+                      Chat Support
                     </Link>
                   </div>
                 </div>
@@ -400,20 +402,7 @@ export default function Header() {
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
               )}
             </Link>
-            <Link 
-              href="/rfq/browse" 
-              className={`text-sm font-medium transition-colors hover:text-primary relative py-3 ${
-                isActivePath("/rfq") 
-                  ? "text-primary" 
-                  : "text-foreground"
-              }`}
-              data-testid="link-rfq"
-            >
-              RFQ
-              {isActivePath("/rfq") && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
-              )}
-            </Link>
+           
             <Link 
               href="/ready-to-ship" 
               className={`text-sm font-medium transition-colors hover:text-primary relative py-3 ${
@@ -428,20 +417,7 @@ export default function Header() {
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
               )}
             </Link>
-            <Link 
-              href="/trade-shows" 
-              className={`text-sm font-medium transition-colors hover:text-primary relative py-3 ${
-                isActivePath("/trade-shows") 
-                  ? "text-primary" 
-                  : "text-foreground"
-              }`}
-              data-testid="link-trade-shows"
-            >
-              Trade Shows
-              {isActivePath("/trade-shows") && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
-              )}
-            </Link>
+          
             <Link 
               href="/buyer-protection" 
               className={`text-sm font-medium transition-colors hover:text-primary relative py-3 ${

@@ -102,6 +102,11 @@ const adminMenuItems = [
     icon: BarChart3,
   },
   {
+    title: "Chat Management",
+    url: "/admin/chat",
+    icon: MessageSquare,
+  },
+  {
     title: "Settings",
     url: "/admin/settings",
     icon: Settings,

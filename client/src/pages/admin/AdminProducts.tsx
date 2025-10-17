@@ -629,60 +629,73 @@ export default function AdminProducts() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4">
-        <Card>
+        {/* Total Products - Blue */}
+        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Products</CardTitle>
+            <CardTitle className="text-sm font-medium text-blue-100">Total Products</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
+            <div className="text-3xl font-bold text-white">{stats.total}</div>
           </CardContent>
         </Card>
-        <Card>
+        
+        {/* Published - Green */}
+        <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-lg">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Published</CardTitle>
+            <CardTitle className="text-sm font-medium text-green-100">Published</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.published}</div>
+            <div className="text-3xl font-bold text-white">{stats.published}</div>
           </CardContent>
         </Card>
-        <Card>
+        
+        {/* Draft - Yellow */}
+        <Card className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white border-0 shadow-lg">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Draft</CardTitle>
+            <CardTitle className="text-sm font-medium text-yellow-100">Draft</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{stats.draft}</div>
+            <div className="text-3xl font-bold text-white">{stats.draft}</div>
           </CardContent>
         </Card>
-        <Card>
+        
+        {/* Featured - Purple */}
+        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-lg">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Featured</CardTitle>
+            <CardTitle className="text-sm font-medium text-purple-100">Featured</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.featured}</div>
+            <div className="text-3xl font-bold text-white">{stats.featured}</div>
           </CardContent>
         </Card>
-        <Card>
+        
+        {/* Out of Stock - Red */}
+        <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white border-0 shadow-lg">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Out of Stock</CardTitle>
+            <CardTitle className="text-sm font-medium text-red-100">Out of Stock</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.outOfStock}</div>
+            <div className="text-3xl font-bold text-white">{stats.outOfStock}</div>
           </CardContent>
         </Card>
-        <Card>
+        
+        {/* Total Views - Indigo */}
+        <Card className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white border-0 shadow-lg">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Views</CardTitle>
+            <CardTitle className="text-sm font-medium text-indigo-100">Total Views</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalViews.toLocaleString()}</div>
+            <div className="text-3xl font-bold text-white">{stats.totalViews.toLocaleString()}</div>
           </CardContent>
         </Card>
-        <Card>
+        
+        {/* Total Inquiries - Teal */}
+        <Card className="bg-gradient-to-br from-teal-500 to-teal-600 text-white border-0 shadow-lg">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Inquiries</CardTitle>
+            <CardTitle className="text-sm font-medium text-teal-100">Total Inquiries</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalInquiries}</div>
+            <div className="text-3xl font-bold text-white">{stats.totalInquiries}</div>
           </CardContent>
         </Card>
       </div>

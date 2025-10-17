@@ -64,6 +64,7 @@ export const categories = pgTable("categories", {
   imageUrl: text("image_url"),
   displayOrder: integer("display_order").default(0),
   isActive: boolean("is_active").default(true),
+  isFeatured: boolean("is_featured").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -306,10 +307,12 @@ export type Order = typeof orders.$inferSelect;
 export const conversations = pgTable("conversations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   buyerId: varchar("buyer_id").notNull(),
+  unreadCountAdmin: varchar("unread_count_admin").notNull(), // This is actually adminId in existing table
   lastMessage: text("last_message"),
   lastMessageAt: timestamp("last_message_at"),
   unreadCountBuyer: integer("unread_count_buyer").default(0),
-  unreadCountAdmin: integer("unread_count_admin").default(0),
+  unreadCountSupplier: integer("unread_count_supplier").default(0),
+  productId: varchar("product_id"), // Add productId for product-based conversations
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -408,7 +411,6 @@ export const insertCustomerSchema = createInsertSchema(customers).omit({
 
 export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
 export type Customer = typeof customers.$inferSelect;
-
 
 
 // ==================== SESSIONS TABLE ====================

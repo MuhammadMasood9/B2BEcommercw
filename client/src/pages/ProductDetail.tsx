@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
-import FloatingChatButton from "@/components/FloatingChatButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,11 +29,15 @@ import {
   ShoppingCart
 } from "lucide-react";
 import InquiryForm from "@/components/InquiryForm";
+import { useAuth } from "@/contexts/AuthContext";
+import { useProduct } from "@/contexts/ProductContext";
 
 export default function ProductDetail() {
   const { setLoading } = useLoading();
   const { isFavorite, toggleFavorite } = useFavorites();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { setCurrentProduct } = useProduct();
   const [, params] = useRoute("/product/:id");
   const productId = params?.id || "1";
   const [quantity, setQuantity] = useState(100);
@@ -100,6 +103,19 @@ export default function ProductDetail() {
     }
   }, [product]);
 
+  // Set current product in context
+  useEffect(() => {
+    if (product) {
+      setCurrentProduct({
+        id: product.id,
+        name: product.name
+      });
+    }
+    return () => {
+      setCurrentProduct(null);
+    };
+  }, [product, setCurrentProduct]);
+
   if (isProductLoading) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -138,6 +154,8 @@ export default function ProductDetail() {
     : ["https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&h=600&fit=crop"];
   
   const priceRanges = product.priceRanges ? (typeof product.priceRanges === 'string' ? JSON.parse(product.priceRanges) : product.priceRanges) : [];
+  // Ensure priceRanges is always an array
+  const safePriceRanges = Array.isArray(priceRanges) ? priceRanges : [];
   const specifications = product.specifications ? (typeof product.specifications === 'string' ? JSON.parse(product.specifications) : product.specifications) : {};
   const keyFeatures = product.keyFeatures || [];
   const colors = product.colors || [];
@@ -146,17 +164,17 @@ export default function ProductDetail() {
   const paymentTerms = product.paymentTerms || [];
 
   const getPriceForQuantity = (qty: number) => {
-    if (priceRanges.length === 0) return "Contact for price";
+    if (safePriceRanges.length === 0) return "Contact for price";
     
     // Find the appropriate price range
-    for (const range of priceRanges) {
+    for (const range of safePriceRanges) {
       if (qty >= range.minQty && (!range.maxQty || qty <= range.maxQty)) {
         return `$${Number(range.pricePerUnit).toFixed(2)}`;
       }
     }
     
     // Return the last (highest quantity) price if quantity exceeds all ranges
-    return `$${Number(priceRanges[priceRanges.length - 1].pricePerUnit).toFixed(2)}`;
+    return `$${Number(safePriceRanges[safePriceRanges.length - 1].pricePerUnit).toFixed(2)}`;
   };
 
   const handleFavorite = () => {
@@ -168,6 +186,29 @@ export default function ProductDetail() {
       description: wasFavorite 
         ? `${product.name} has been removed from your favorites.`
         : `${product.name} has been added to your favorites.`,
+    });
+  };
+
+  const handleContactSupplier = () => {
+    if (!user) {
+      toast({
+        title: "Please Sign In",
+        description: "You need to be signed in to contact the supplier.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Set the current product in context for the global chat button
+    if (product) {
+      setCurrentProduct(product);
+    }
+    
+    // Show a message that directs user to the chat button
+    toast({
+      title: "Chat Now Available",
+      description: "Click the blue chat button on the right side to start a conversation about this product.",
+      duration: 5000,
     });
   };
 
@@ -250,9 +291,9 @@ export default function ProductDetail() {
                     <div className="text-2xl sm:text-3xl font-bold text-primary mb-2">
                       {getPriceForQuantity(quantity)} <span className="text-base sm:text-lg text-muted-foreground">/piece</span>
                     </div>
-                    {priceRanges.length > 0 && (
+                    {safePriceRanges.length > 0 && (
                       <div className="space-y-1 text-xs sm:text-sm">
-                        {priceRanges.map((range: any, idx: number) => (
+                        {safePriceRanges.map((range: any, idx: number) => (
                           <div key={idx} className="flex justify-between">
                             <span className="text-muted-foreground">
                               {range.minQty}{range.maxQty ? `-${range.maxQty}` : '+'} pieces:
@@ -307,13 +348,17 @@ export default function ProductDetail() {
                       </Button>
                     </Link>
                     <div className="flex gap-2">
-                      <Link href={`/contact-supplier/${productId}`} className="flex-1">
-                        <Button size="lg" variant="outline" className="w-full" data-testid="button-contact-supplier">
-                          <MessageSquare className="w-4 h-4 mr-2" />
-                          <span className="hidden sm:inline">Contact Supplier</span>
-                          <span className="sm:hidden">Contact</span>
-                        </Button>
-                      </Link>
+                      <Button 
+                        size="lg" 
+                        variant="outline" 
+                        className="flex-1" 
+                        onClick={handleContactSupplier}
+                        data-testid="button-contact-supplier"
+                      >
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        <span className="hidden sm:inline">Chat now</span>
+                        <span className="sm:hidden">Chat</span>
+                      </Button>
                       <Button 
                         size="lg" 
                         variant="outline" 
@@ -465,7 +510,6 @@ export default function ProductDetail() {
         </div>
       </main>
       <Footer />
-      <FloatingChatButton supplierName="Admin Supplier" supplierId={productId} />
     </div>
   );
 }

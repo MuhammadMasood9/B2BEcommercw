@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { authRoutes } from "./authRoutes";
 import categoryRoutes from "./categoryRoutes";
 import uploadRoutes from "./uploadRoutes";
+import chatRoutes from "./chatRoutes";
 import { upload } from "./upload";
 import { 
   insertProductSchema, insertCategorySchema, insertCustomerSchema, insertOrderSchema,
@@ -26,6 +27,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ==================== CATEGORY ROUTES ====================
   
   app.use('/api', categoryRoutes);
+  
+  // ==================== CHAT ROUTES ====================
+  
+  app.use('/api/chat', chatRoutes);
   
   // ==================== LEGACY AUTHENTICATION (TO BE REMOVED) ====================
   
@@ -213,7 +218,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get("/api/products", async (req, res) => {
     try {
-      const { categoryId, search, isPublished, minMOQ, maxMOQ } = req.query;
+      const { categoryId, search, isPublished, minMOQ, maxMOQ, featured, limit } = req.query;
       const filters: any = {};
       
       if (categoryId) filters.categoryId = categoryId as string;
@@ -221,6 +226,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isPublished !== undefined) filters.isPublished = isPublished === 'true';
       if (minMOQ) filters.minMOQ = parseInt(minMOQ as string);
       if (maxMOQ) filters.maxMOQ = parseInt(maxMOQ as string);
+      if (featured === 'true') filters.featured = true;
+      if (limit) filters.limit = parseInt(limit as string);
       
       const products = await storage.getProducts(filters);
       res.json(products);
@@ -452,13 +459,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get("/api/categories", async (req, res) => {
     try {
-      const { parentId, isActive } = req.query;
+      const { parentId, isActive, featured } = req.query;
       const filters: any = {};
       if (parentId !== undefined) filters.parentId = parentId === 'null' ? null : parentId as string;
       if (isActive !== undefined) filters.isActive = isActive === 'true';
+      if (featured === 'true') filters.featured = true;
       
       const categories = await storage.getCategories(filters);
-      res.json(categories);
+      
+      // Add product count to each category
+      const categoriesWithCount = await Promise.all(
+        categories.map(async (category) => {
+          const products = await storage.getProducts({ categoryId: category.id, isPublished: true });
+          return {
+            ...category,
+            productCount: products.length
+          };
+        })
+      );
+      
+      res.json(categoriesWithCount);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -774,8 +794,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Update quotation status
       await storage.updateQuotation(quotationId, { 
-        status: 'rejected',
-        rejectionReason: reason || 'No reason provided'
+        status: 'rejected'
       });
 
       res.json({ 
@@ -1418,8 +1437,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Quotation ID is required" });
       }
 
-      // Get the accepted quotation with details
-      const quotation = await storage.getInquiryQuotationWithDetails(quotationId);
+      // First try to get as inquiry quotation
+      let quotation = await storage.getInquiryQuotationWithDetails(quotationId);
+      let quotationType = 'inquiry';
+      
+      // If not found, try as RFQ quotation
+      if (!quotation) {
+        quotation = await storage.getQuotation(quotationId);
+        if (quotation) {
+          // Get RFQ details for RFQ quotation
+          const rfq = await storage.getRfq(quotation.rfqId);
+          if (rfq) {
+            quotation = {
+              ...quotation,
+              buyerId: rfq.buyerId,
+              productName: 'Custom Product',
+              productId: null,
+              inquiryId: null,
+              rfqId: quotation.rfqId
+            };
+            quotationType = 'rfq';
+          }
+        }
+      }
       
       if (!quotation) {
         return res.status(404).json({ error: "Quotation not found" });
@@ -1429,10 +1469,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Only accepted quotations can be converted to orders" });
       }
 
-      // Create order with items array using quotation data (already has joined inquiry data)
+      // Create order with items array using quotation data
       const orderItems = [{
-        productId: quotation.productId,
-        productName: quotation.productName || 'Product',
+        productId: quotation.productId || 'custom',
+        productName: quotation.productName || 'Custom Product',
         quantity: quotation.moq,
         unitPrice: parseFloat(quotation.pricePerUnit.toString()),
         totalPrice: parseFloat(quotation.totalPrice.toString())
@@ -1440,7 +1480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const orderData = {
         buyerId: quotation.buyerId,
-        productId: quotation.productId,
+        productId: quotation.productId || null,
         quantity: quotation.moq,
         unitPrice: quotation.pricePerUnit,
         totalAmount: quotation.totalPrice,
@@ -1451,7 +1491,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? quotation.message.split('Shipping Address:')[1]?.split('\n')[0]?.trim() 
           : 'Address to be provided',
         orderNumber: `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-        inquiryId: quotation.inquiryId,
+        inquiryId: quotationType === 'inquiry' ? quotation.inquiryId : null,
+        rfqId: quotationType === 'rfq' ? quotation.rfqId : null,
         quotationId,
         items: orderItems,
         notes: 'Order created by admin from accepted quotation. Waiting for buyer approval.'
@@ -1460,10 +1501,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const order = await storage.createOrder(orderData);
 
       // Update quotation to link to the created order
-      await storage.updateInquiryQuotation(quotationId, { 
-        status: 'order_created',
-        message: quotation.message + `\n\nOrder Created: ${order.orderNumber}`
-      });
+      if (quotationType === 'inquiry') {
+        await storage.updateInquiryQuotation(quotationId, { 
+          status: 'order_created',
+          message: quotation.message + `\n\nOrder Created: ${order.orderNumber}`
+        });
+      } else {
+        await storage.updateQuotation(quotationId, { 
+          status: 'order_created',
+          message: quotation.message + `\n\nOrder Created: ${order.orderNumber}`
+        });
+      }
 
       res.status(201).json({ 
         success: true, 
@@ -1632,49 +1680,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ==================== MESSAGES ====================
-  
-  app.get("/api/messages/:conversationId", async (req, res) => {
-    try {
-      const messages = await storage.getMessages(req.params.conversationId);
-      res.json(messages);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.post("/api/messages", async (req, res) => {
-    try {
-      const validatedData = insertMessageSchema.parse(req.body);
-      const message = await storage.createMessage(validatedData);
-      res.status(201).json(message);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  });
-
-  app.patch("/api/messages/:id/read", async (req, res) => {
-    try {
-      await storage.markMessageAsRead(req.params.id);
-      res.status(204).send();
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.patch("/api/messages/conversation/:conversationId/read", async (req, res) => {
-    try {
-      const { userId } = req.body;
-      if (!userId) {
-        return res.status(400).json({ error: "userId is required" });
-      }
-      
-      await storage.markConversationMessagesAsRead(req.params.conversationId, userId);
-      res.status(204).send();
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
 
   // ==================== REVIEWS ====================
   

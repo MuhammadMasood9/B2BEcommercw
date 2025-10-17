@@ -1,4 +1,4 @@
-import { eq, and, or, desc, asc, like, sql as drizzleSql, sql } from "drizzle-orm";
+import { eq, and, or, desc, asc, like, sql as drizzleSql, sql, ne, count } from "drizzle-orm";
 import { db } from "./db";
 import {
   type User, type InsertUser, users,
@@ -38,6 +38,8 @@ export interface IStorage {
     isPublished?: boolean;
     minMOQ?: number;
     maxMOQ?: number;
+    featured?: boolean;
+    limit?: number;
   }): Promise<Product[]>;
   getProduct(id: string): Promise<Product | undefined>;
   getProductBySlug(slug: string): Promise<Product | undefined>;
@@ -49,7 +51,7 @@ export interface IStorage {
   incrementProductInquiries(id: string): Promise<void>;
   
   // Category operations
-  getCategories(filters?: { parentId?: string | null; isActive?: boolean; search?: string }): Promise<Category[]>;
+  getCategories(filters?: { parentId?: string | null; isActive?: boolean; search?: string; featured?: boolean }): Promise<Category[]>;
   getCategory(id: string): Promise<Category | undefined>;
   getCategoryBySlug(slug: string): Promise<Category | undefined>;
   createCategory(category: InsertCategory): Promise<Category>;
@@ -230,6 +232,8 @@ export class PostgresStorage implements IStorage {
     isPublished?: boolean;
     minMOQ?: number;
     maxMOQ?: number;
+    featured?: boolean;
+    limit?: number;
   }): Promise<Product[]> {
     let query = db.select().from(products);
     const conditions = [];
@@ -239,6 +243,9 @@ export class PostgresStorage implements IStorage {
     }
     if (filters?.isPublished !== undefined) {
       conditions.push(eq(products.isPublished, filters.isPublished));
+    }
+    if (filters?.featured !== undefined) {
+      conditions.push(eq(products.isFeatured, filters.featured));
     }
     if (filters?.search) {
       const searchPattern = `%${filters.search}%`;
@@ -252,6 +259,16 @@ export class PostgresStorage implements IStorage {
     
     if (conditions.length > 0) {
       query = query.where(and(...conditions)) as any;
+    }
+    
+    // Add ordering for featured products
+    if (filters?.featured) {
+      query = query.orderBy(desc(products.createdAt)) as any;
+    }
+    
+    // Add limit
+    if (filters?.limit) {
+      query = query.limit(filters.limit) as any;
     }
     
     return await query;
@@ -304,7 +321,7 @@ export class PostgresStorage implements IStorage {
   }
 
   // Category operations
-  async getCategories(filters?: { parentId?: string | null; isActive?: boolean; search?: string }): Promise<Category[]> {
+  async getCategories(filters?: { parentId?: string | null; isActive?: boolean; search?: string; featured?: boolean }): Promise<Category[]> {
     let query = db.select().from(categories);
     const conditions = [];
     
@@ -317,6 +334,9 @@ export class PostgresStorage implements IStorage {
     }
     if (filters?.isActive !== undefined) {
       conditions.push(eq(categories.isActive, filters.isActive));
+    }
+    if (filters?.featured !== undefined) {
+      conditions.push(eq(categories.isFeatured, filters.featured));
     }
     if (filters?.search) {
       const searchPattern = `%${filters.search}%`;
@@ -657,7 +677,12 @@ export class PostgresStorage implements IStorage {
     if (existing) return existing;
     
     const [created] = await db.insert(conversations)
-      .values({ buyerId })
+      .values({ 
+        buyerId,
+        unreadCountAdmin: '0',
+        unreadCountBuyer: 0,
+        unreadCountSupplier: 0
+      })
       .returning();
     return created;
   }
@@ -682,30 +707,6 @@ export class PostgresStorage implements IStorage {
     return message;
   }
 
-  async createMessage(message: InsertMessage): Promise<Message> {
-    const [created] = await db.insert(messages).values(message).returning();
-    
-    // Update conversation
-    const conversation = await db.select().from(conversations)
-      .where(eq(conversations.id, message.conversationId))
-      .limit(1);
-    
-    if (conversation[0]) {
-      const unreadField = message.senderId === conversation[0].buyerId 
-        ? 'unreadCountAdmin' 
-        : 'unreadCountBuyer';
-      
-      await db.update(conversations)
-        .set({
-          lastMessage: message.message,
-          lastMessageAt: new Date(),
-          [unreadField]: drizzleSql`${conversations[unreadField as keyof typeof conversations]} + 1`
-        })
-        .where(eq(conversations.id, message.conversationId));
-    }
-    
-    return created;
-  }
 
   async markMessageAsRead(id: string): Promise<void> {
     await db.update(messages)
@@ -1204,6 +1205,296 @@ export class PostgresStorage implements IStorage {
     await db.update(inquiries)
       .set({ status })
       .where(eq(inquiries.id, inquiryId));
+  }
+
+  // ==================== CHAT SYSTEM METHODS ====================
+
+  async getBuyerConversations(buyerId: string) {
+    const results = await db.select({
+      id: conversations.id,
+      buyerId: conversations.buyerId,
+      adminId: conversations.unreadCountAdmin, // This is actually adminId in existing table
+      subject: conversations.lastMessage,
+      status: sql`'active'`.as('status'), // Default status since it doesn't exist in existing table
+      lastMessageAt: conversations.lastMessageAt,
+      createdAt: conversations.createdAt,
+      // Join with admin data
+      adminName: users.firstName,
+      adminEmail: users.email,
+      adminCompany: users.companyName
+    })
+    .from(conversations)
+    .leftJoin(users, eq(conversations.unreadCountAdmin, users.id))
+    .where(eq(conversations.buyerId, buyerId))
+    .orderBy(desc(conversations.lastMessageAt));
+
+    return results;
+  }
+
+  async getAdminConversations(adminId: string) {
+    const results = await db.select({
+      id: conversations.id,
+      buyerId: conversations.buyerId,
+      adminId: conversations.unreadCountAdmin, // This field actually stores adminId
+      subject: conversations.lastMessage,
+      status: sql`'active'`.as('status'),
+      lastMessageAt: conversations.lastMessageAt,
+      createdAt: conversations.createdAt,
+      productId: conversations.productId,
+      // Join with buyer data
+      buyerName: users.firstName,
+      buyerEmail: users.email,
+      buyerCompany: users.companyName
+    })
+    .from(conversations)
+    .leftJoin(users, eq(conversations.buyerId, users.id))
+    .where(eq(conversations.unreadCountAdmin, adminId))
+    .orderBy(desc(conversations.lastMessageAt));
+
+    return results;
+  }
+
+  async getAllConversationsForAdmin() {
+    const results = await db.select({
+      id: conversations.id,
+      buyerId: conversations.buyerId,
+      adminId: conversations.unreadCountAdmin, // This field actually stores adminId
+      subject: conversations.lastMessage,
+      status: sql`'active'`.as('status'),
+      lastMessageAt: conversations.lastMessageAt,
+      createdAt: conversations.createdAt,
+      productId: conversations.productId,
+      unreadCountBuyer: conversations.unreadCountBuyer,
+      unreadCountSupplier: conversations.unreadCountSupplier,
+      // Join with buyer data
+      buyerName: users.firstName,
+      buyerEmail: users.email,
+      buyerCompany: users.companyName,
+      // Join with product data
+      productName: products.name,
+      productImages: products.images
+    })
+    .from(conversations)
+    .leftJoin(users, eq(conversations.buyerId, users.id))
+    .leftJoin(products, eq(conversations.productId, products.id))
+    .orderBy(desc(conversations.lastMessageAt));
+
+    return results;
+  }
+
+  async getConversationMessages(conversationId: string, userId: string, userRole?: string) {
+    // First get the conversation to determine admin ID
+    const conversation = await db.select({
+      buyerId: conversations.buyerId,
+      adminId: conversations.unreadCountAdmin // This field actually stores adminId
+    })
+    .from(conversations)
+    .where(eq(conversations.id, conversationId))
+    .limit(1);
+
+    if (!conversation[0]) {
+      return [];
+    }
+
+    let { buyerId, adminId } = conversation[0];
+    
+    // If current user is admin and conversation has generic admin ID, update it
+    if (userRole === 'admin' && adminId === 'admin') {
+      await db.update(conversations)
+        .set({ unreadCountAdmin: userId })
+        .where(eq(conversations.id, conversationId));
+      adminId = userId; // Update local variable
+    }
+
+    const results = await db.select({
+      id: messages.id,
+      conversationId: messages.conversationId,
+      senderId: messages.senderId,
+      content: messages.message,
+      messageType: sql`'text'`.as('messageType'),
+      attachments: messages.attachments,
+      isRead: messages.isRead,
+      readAt: sql`NULL`.as('readAt'),
+      createdAt: messages.createdAt,
+      // Join with sender data
+      senderName: users.firstName,
+      senderEmail: users.email,
+      senderCompany: users.companyName
+    })
+    .from(messages)
+    .leftJoin(users, eq(messages.senderId, users.id))
+    .where(eq(messages.conversationId, conversationId))
+    .orderBy(asc(messages.createdAt));
+
+    // Add proper sender type based on current user role and conversation data
+    const processedResults = results.map(msg => {
+      // Check if the sender is the current admin user (regardless of conversation admin ID)
+      const isCurrentAdmin = msg.senderId === userId && userRole === 'admin';
+      // Check if the sender matches the conversation's admin ID
+      const isConversationAdmin = msg.senderId === adminId;
+      
+      // Determine if this is an admin message
+      // Priority: if current user is admin and sent the message, it's admin
+      const isAdminMessage = isCurrentAdmin || isConversationAdmin;
+      
+      console.log('Message processing:', {
+        messageId: msg.id,
+        senderId: msg.senderId,
+        userId: userId,
+        userRole: userRole,
+        conversationAdminId: adminId,
+        isCurrentAdmin: isCurrentAdmin,
+        isConversationAdmin: isConversationAdmin,
+        isAdminMessage: isAdminMessage,
+        finalSenderType: isAdminMessage ? 'admin' : 'buyer'
+      });
+      
+      return {
+        ...msg,
+        senderType: isAdminMessage ? 'admin' : 'buyer',
+        senderName: isAdminMessage 
+          ? (msg.senderName || 'Admin') 
+          : (msg.senderName || 'Customer')
+      };
+    });
+
+    return processedResults;
+  }
+
+  async createConversation(data: {
+    buyerId: string;
+    adminId: string;
+    subject?: string;
+    productId?: string;
+  }) {
+    const [conversation] = await db.insert(conversations)
+      .values({
+        buyerId: data.buyerId,
+        unreadCountAdmin: data.adminId, // Map adminId to unreadCountAdmin column
+        lastMessage: data.subject || '',
+        lastMessageAt: new Date(),
+        productId: data.productId
+      })
+      .returning();
+
+    return conversation;
+  }
+
+  async createMessage(message: InsertMessage): Promise<Message> {
+    const [created] = await db.insert(messages).values(message).returning();
+    
+    // Update conversation
+    const conversation = await db.select().from(conversations)
+      .where(eq(conversations.id, message.conversationId))
+      .limit(1);
+    
+    if (conversation[0]) {
+      const isFromBuyer = message.senderId === conversation[0].buyerId;
+      
+      if (isFromBuyer) {
+        // Message from buyer, increment admin unread count
+        await db.update(conversations)
+          .set({
+            lastMessage: message.message,
+            lastMessageAt: new Date(),
+            unreadCountSupplier: sql`COALESCE(${conversations.unreadCountSupplier}, 0) + 1`
+          })
+          .where(eq(conversations.id, message.conversationId));
+      } else {
+        // Message from admin, increment buyer unread count
+        await db.update(conversations)
+          .set({
+            lastMessage: message.message,
+            lastMessageAt: new Date(),
+            unreadCountBuyer: sql`COALESCE(${conversations.unreadCountBuyer}, 0) + 1`
+          })
+          .where(eq(conversations.id, message.conversationId));
+      }
+    }
+    
+    return created;
+  }
+
+  async updateConversationLastMessage(conversationId: string) {
+    await db.update(conversations)
+      .set({ lastMessageAt: new Date() })
+      .where(eq(conversations.id, conversationId));
+  }
+
+  async markMessagesAsRead(conversationId: string, userId: string) {
+    // Mark messages as read
+    await db.update(messages)
+      .set({ 
+        isRead: true
+      })
+      .where(
+        and(
+          eq(messages.conversationId, conversationId),
+          ne(messages.senderId, userId)
+        )
+      );
+
+    // Reset unread count for the user
+    const conversation = await db.select().from(conversations)
+      .where(eq(conversations.id, conversationId))
+      .limit(1);
+
+    if (conversation[0]) {
+      const isFromBuyer = userId === conversation[0].buyerId;
+      
+      if (isFromBuyer) {
+        // Buyer read messages, reset admin unread count
+        await db.update(conversations)
+          .set({ unreadCountSupplier: 0 })
+          .where(eq(conversations.id, conversationId));
+      } else {
+        // Admin read messages, reset buyer unread count
+        await db.update(conversations)
+          .set({ unreadCountBuyer: 0 })
+          .where(eq(conversations.id, conversationId));
+      }
+    }
+  }
+
+  async getUnreadMessageCount(userId: string) {
+    const result = await db.select({ count: count() })
+      .from(messages)
+      .leftJoin(conversations, eq(messages.conversationId, conversations.id))
+      .where(
+        and(
+          or(
+            eq(conversations.buyerId, userId),
+            eq(conversations.unreadCountAdmin, userId)
+          ),
+          ne(messages.senderId, userId),
+          eq(messages.isRead, false)
+        )
+      );
+
+    return result[0]?.count || 0;
+  }
+
+  async getAvailableAdmins() {
+    const results = await db.select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      email: users.email,
+      companyName: users.companyName
+    })
+    .from(users)
+    .where(eq(users.role, 'admin'));
+
+    return results;
+  }
+
+  async getConversationById(conversationId: string) {
+    const [conversation] = await db.select()
+      .from(conversations)
+      .where(eq(conversations.id, conversationId))
+      .limit(1);
+
+    return conversation;
   }
 }
 

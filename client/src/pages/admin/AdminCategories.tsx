@@ -58,6 +58,7 @@ const mockCategories: Category[] = [
     imageUrl: "https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400",
     displayOrder: 1,
     isActive: true,
+    isFeatured: true,
     createdAt: new Date("2024-01-10"),
   },
   {
@@ -69,6 +70,7 @@ const mockCategories: Category[] = [
     imageUrl: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400",
     displayOrder: 1,
     isActive: true,
+    isFeatured: false,
     createdAt: new Date("2024-01-11"),
   },
   {
@@ -80,6 +82,7 @@ const mockCategories: Category[] = [
     imageUrl: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=400",
     displayOrder: 2,
     isActive: true,
+    isFeatured: false,
     createdAt: new Date("2024-01-11"),
   },
   {
@@ -91,6 +94,7 @@ const mockCategories: Category[] = [
     imageUrl: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400",
     displayOrder: 3,
     isActive: true,
+    isFeatured: false,
     createdAt: new Date("2024-01-11"),
   },
 
@@ -104,6 +108,7 @@ const mockCategories: Category[] = [
     imageUrl: "https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=400",
     displayOrder: 2,
     isActive: true,
+    isFeatured: false,
     createdAt: new Date("2024-01-12"),
   },
   {
@@ -115,6 +120,7 @@ const mockCategories: Category[] = [
     imageUrl: "https://images.unsplash.com/photo-1565008576549-57569a49371d?w=400",
     displayOrder: 1,
     isActive: true,
+    isFeatured: false,
     createdAt: new Date("2024-01-13"),
   },
   {
@@ -126,6 +132,7 @@ const mockCategories: Category[] = [
     imageUrl: "https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=400",
     displayOrder: 2,
     isActive: true,
+    isFeatured: false,
     createdAt: new Date("2024-01-13"),
   },
 
@@ -139,6 +146,7 @@ const mockCategories: Category[] = [
     imageUrl: "https://images.unsplash.com/photo-1558769132-cb1aea3c0eb4?w=400",
     displayOrder: 3,
     isActive: true,
+    isFeatured: false,
     createdAt: new Date("2024-01-14"),
   },
   {
@@ -150,6 +158,7 @@ const mockCategories: Category[] = [
     imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400",
     displayOrder: 1,
     isActive: true,
+    isFeatured: false,
     createdAt: new Date("2024-01-15"),
   },
   {
@@ -161,6 +170,7 @@ const mockCategories: Category[] = [
     imageUrl: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=400",
     displayOrder: 2,
     isActive: true,
+    isFeatured: false,
     createdAt: new Date("2024-01-15"),
   },
 
@@ -174,6 +184,7 @@ const mockCategories: Category[] = [
     imageUrl: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400",
     displayOrder: 4,
     isActive: true,
+    isFeatured: false,
     createdAt: new Date("2024-01-16"),
   },
   {
@@ -185,6 +196,7 @@ const mockCategories: Category[] = [
     imageUrl: "https://images.unsplash.com/photo-1486262715619-67b85e0b08e3?w=400",
     displayOrder: 1,
     isActive: true,
+    isFeatured: false,
     createdAt: new Date("2024-01-17"),
   },
 
@@ -198,6 +210,7 @@ const mockCategories: Category[] = [
     imageUrl: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400",
     displayOrder: 5,
     isActive: true,
+    isFeatured: false,
     createdAt: new Date("2024-01-18"),
   },
   {
@@ -209,6 +222,7 @@ const mockCategories: Category[] = [
     imageUrl: "https://images.unsplash.com/photo-1484154218962-a197022b5858?w=400",
     displayOrder: 1,
     isActive: true,
+    isFeatured: false,
     createdAt: new Date("2024-01-19"),
   },
 
@@ -222,6 +236,7 @@ const mockCategories: Category[] = [
     imageUrl: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400",
     displayOrder: 6,
     isActive: true,
+    isFeatured: false,
     createdAt: new Date("2024-01-20"),
   },
 
@@ -235,6 +250,7 @@ const mockCategories: Category[] = [
     imageUrl: "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=400",
     displayOrder: 7,
     isActive: true,
+    isFeatured: false,
     createdAt: new Date("2024-01-21"),
   },
 
@@ -248,6 +264,7 @@ const mockCategories: Category[] = [
     imageUrl: "https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=400",
     displayOrder: 8,
     isActive: true,
+    isFeatured: false,
     createdAt: new Date("2024-01-22"),
   },
 
@@ -261,6 +278,7 @@ const mockCategories: Category[] = [
     imageUrl: "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=400",
     displayOrder: 9,
     isActive: true,
+    isFeatured: false,
     createdAt: new Date("2024-01-23"),
   },
 
@@ -274,6 +292,7 @@ const mockCategories: Category[] = [
     imageUrl: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400",
     displayOrder: 10,
     isActive: true,
+    isFeatured: false,
     createdAt: new Date("2024-01-24"),
   },
 
@@ -287,6 +306,7 @@ const mockCategories: Category[] = [
     imageUrl: "https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=400",
     displayOrder: 11,
     isActive: true,
+    isFeatured: false,
     createdAt: new Date("2024-01-25"),
   },
 ];
@@ -396,6 +416,28 @@ export default function AdminCategories() {
     },
   });
 
+  // Toggle category featured status
+  const toggleFeaturedMutation = useMutation({
+    mutationFn: async ({ id, isFeatured }: { id: string; isFeatured: boolean }) => {
+      const response = await apiRequest("PATCH", `/api/categories/${id}/featured`, { isFeatured });
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
+      toast({
+        title: "Success",
+        description: "Category featured status updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update category featured status",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Get parent categories (for dropdown)
   const parentCategories = categories.filter(c => !c.parentId);
 
@@ -468,44 +510,53 @@ export default function AdminCategories() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <Card>
+        {/* Total Categories - Blue */}
+        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Categories</CardTitle>
+            <CardTitle className="text-sm font-medium text-blue-100">Total Categories</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
+            <div className="text-3xl font-bold text-white">{stats.total}</div>
           </CardContent>
         </Card>
-        <Card>
+        
+        {/* Parent Categories - Green */}
+        <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-lg">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Parent Categories</CardTitle>
+            <CardTitle className="text-sm font-medium text-green-100">Parent Categories</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.parent}</div>
+            <div className="text-3xl font-bold text-white">{stats.parent}</div>
           </CardContent>
         </Card>
-        <Card>
+        
+        {/* Subcategories - Purple */}
+        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-lg">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Subcategories</CardTitle>
+            <CardTitle className="text-sm font-medium text-purple-100">Subcategories</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.subcategories}</div>
+            <div className="text-3xl font-bold text-white">{stats.subcategories}</div>
           </CardContent>
         </Card>
-        <Card>
+        
+        {/* Active - Teal */}
+        <Card className="bg-gradient-to-br from-teal-500 to-teal-600 text-white border-0 shadow-lg">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active</CardTitle>
+            <CardTitle className="text-sm font-medium text-teal-100">Active</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.active}</div>
+            <div className="text-3xl font-bold text-white">{stats.active}</div>
           </CardContent>
         </Card>
-        <Card>
+        
+        {/* Inactive - Red */}
+        <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white border-0 shadow-lg">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Inactive</CardTitle>
+            <CardTitle className="text-sm font-medium text-red-100">Inactive</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.inactive}</div>
+            <div className="text-3xl font-bold text-white">{stats.inactive}</div>
           </CardContent>
         </Card>
       </div>
@@ -575,6 +626,7 @@ export default function AdminCategories() {
                   <TableHead>Type</TableHead>
                   <TableHead>Products</TableHead>
                   <TableHead>Order</TableHead>
+                  <TableHead>Featured</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -604,6 +656,7 @@ export default function AdminCategories() {
                             }
                           }}
                           onToggleStatus={(id, isActive) => toggleStatusMutation.mutate({ id, isActive })}
+                          onToggleFeatured={(id, isFeatured) => toggleFeaturedMutation.mutate({ id, isFeatured })}
                           level={0}
                         />
                       ))}
@@ -627,6 +680,7 @@ export default function AdminCategories() {
                           }
                         }}
                         onToggleStatus={(id, isActive) => toggleStatusMutation.mutate({ id, isActive })}
+                        onToggleFeatured={(id, isFeatured) => toggleFeaturedMutation.mutate({ id, isFeatured })}
                         level={0}
                         flatView
                       />
@@ -651,6 +705,7 @@ interface CategoryRowProps {
   onEdit: (category: Category) => void;
   onDelete: (id: string) => void;
   onToggleStatus: (id: string, isActive: boolean) => void;
+  onToggleFeatured?: (id: string, isFeatured: boolean) => void;
   level: number;
   flatView?: boolean;
 }
@@ -663,6 +718,7 @@ function CategoryRow({
   onEdit,
   onDelete,
   onToggleStatus,
+  onToggleFeatured,
   level,
   flatView = false,
 }: CategoryRowProps) {
@@ -723,6 +779,12 @@ function CategoryRow({
         </TableCell>
         <TableCell>
           <span className="text-sm">{category.displayOrder}</span>
+        </TableCell>
+        <TableCell>
+          <Switch
+            checked={category.isFeatured ?? false}
+            onCheckedChange={(checked) => onToggleFeatured?.(category.id, checked)}
+          />
         </TableCell>
         <TableCell>
           <Switch

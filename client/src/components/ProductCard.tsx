@@ -15,8 +15,7 @@ import {
   Mail,
   Heart,
   Share2,
-  MoreHorizontal,
-  ShoppingCart
+  MoreHorizontal
 } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,7 +25,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Link } from "wouter";
 import { useState } from "react";
 import { useFavorites } from "@/contexts/FavoriteContext";
-import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
 
 interface ProductCardProps {
@@ -99,7 +97,6 @@ export default function ProductCard({
   viewMode = 'grid'
 }: ProductCardProps) {
   const { isFavorite, toggleFavorite } = useFavorites();
-  const { addToCart, isInCart } = useCart();
   const { toast } = useToast();
   const [isFav, setIsFav] = useState(isFavorited);
 
@@ -132,29 +129,6 @@ export default function ProductCard({
 
   const handleSample = () => {
     onSample?.(id);
-  };
-
-  const handleAddToCart = () => {
-    addToCart({
-      productId: id,
-      name,
-      image,
-      priceRange,
-      moq: typeof moq === 'number' ? moq : parseInt(moq.toString()) || 1,
-      supplierName,
-      supplierCountry,
-      verified,
-      tradeAssurance,
-      readyToShip,
-      sampleAvailable,
-      customizationAvailable,
-      certifications,
-      leadTime,
-      port,
-      paymentTerms,
-      inStock,
-      stockQuantity,
-    });
   };
 
   const getSupplierTypeColor = (type?: string) => {
@@ -255,23 +229,23 @@ export default function ProductCard({
               </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div>
+            <div className="grid grid-cols-2 gap-6 mb-5">
+              <div className="space-y-1">
                 <p className="text-2xl font-bold text-primary" data-testid={`text-price-${id}`}>{priceRange}</p>
-                <p className="text-sm text-muted-foreground" data-testid={`text-moq-${id}`}>MOQ: {typeof moq === 'number' ? moq : moq}</p>
+                <p className="text-sm text-muted-foreground font-medium" data-testid={`text-moq-${id}`}>MOQ: {typeof moq === 'number' ? moq : moq}</p>
               </div>
-              <div className="text-right">
-                <div className="flex items-center justify-end gap-1 mb-1">
+              <div className="text-right space-y-1">
+                <div className="flex items-center justify-end gap-1">
                   <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                  <span className="font-semibold">{rating}</span>
-                  <span className="text-sm text-muted-foreground">({reviews})</span>
+                  <span className="font-semibold text-sm">{rating}</span>
+                  <span className="text-xs text-muted-foreground">({reviews})</span>
                 </div>
-                <p className="text-sm text-muted-foreground">{views} views • {inquiries} inquiries</p>
+                <p className="text-xs text-muted-foreground">{views} views • {inquiries} inquiries</p>
               </div>
             </div>
             
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center justify-between pt-3 border-t border-border">
+              <div className="flex items-center gap-6 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1">
                   <MapPin className="w-4 h-4" />
                   <span>{supplierCountry}</span>
@@ -288,21 +262,12 @@ export default function ProductCard({
                 )}
               </div>
               
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={handleContact}>
+              <div className="flex gap-3">
+                <Button variant="outline" size="sm" onClick={handleContact} className="h-9 font-medium">
                   <MessageSquare className="w-4 h-4 mr-2" />
                   Contact
                 </Button>
-                <Button 
-                  variant={isInCart(id) ? "secondary" : "default"} 
-                  size="sm" 
-                  onClick={handleAddToCart}
-                  className={isInCart(id) ? "bg-green-100 text-green-800 hover:bg-green-200" : ""}
-                >
-                  <ShoppingCart className="w-4 h-4 mr-2" />
-                  {isInCart(id) ? "In Cart" : "Add to Cart"}
-                </Button>
-                <Button size="sm" onClick={handleQuote}>
+                <Button size="sm" onClick={handleQuote} className="h-9 font-medium">
                   Get Quote
                 </Button>
               </div>
@@ -314,41 +279,41 @@ export default function ProductCard({
   }
 
   return (
-    <Card className="group overflow-hidden hover:shadow-xl transition-all duration-300" data-testid={`card-product-${id}`}>
+    <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300 h-full flex flex-col" data-testid={`card-product-${id}`}>
       <Link href={`/product/${id}`}>
-        <div className="relative aspect-square overflow-hidden bg-muted">
+        <div className="relative aspect-[4/3] overflow-hidden bg-muted">
           <img 
             src={image} 
             alt={name} 
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           
           {/* Badges */}
-          <div className="absolute top-3 right-3 flex flex-col gap-2">
+          <div className="absolute top-2 right-2 flex flex-col gap-1">
             {verified && (
-              <Badge className="bg-green-600 text-white border-0 text-xs" data-testid={`badge-verified-${id}`}>
+              <Badge className="bg-green-600 text-white border-0 text-xs px-2 py-1" data-testid={`badge-verified-${id}`}>
                 <ShieldCheck className="w-3 h-3 mr-1" />
                 Verified
               </Badge>
             )}
             {tradeAssurance && (
-              <Badge className="bg-blue-600 text-white border-0 text-xs">
+              <Badge className="bg-blue-600 text-white border-0 text-xs px-2 py-1">
                 <Award className="w-3 h-3 mr-1" />
                 Trade Assurance
               </Badge>
             )}
           </div>
           
-          <div className="absolute bottom-3 left-3 flex flex-wrap gap-1">
+          <div className="absolute bottom-2 left-2 flex flex-wrap gap-1">
             {readyToShip && (
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-xs px-2 py-1">
                 <Truck className="w-3 h-3 mr-1" />
                 Ready to Ship
               </Badge>
             )}
             {sampleAvailable && (
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-xs px-2 py-1">
                 <Package className="w-3 h-3 mr-1" />
                 Sample Available
               </Badge>
@@ -356,7 +321,7 @@ export default function ProductCard({
           </div>
           
           {/* Action buttons overlay */}
-          <div className="absolute top-3 left-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          <div className="absolute top-2 left-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
             <Button
               variant="secondary"
               size="sm"
@@ -364,9 +329,9 @@ export default function ProductCard({
                 e.preventDefault();
                 handleFavorite();
               }}
-              className={`h-8 w-8 p-0 ${isFavorite(id) ? 'text-red-500' : 'text-gray-600'}`}
+              className={`h-7 w-7 p-0 ${isFavorite(id) ? 'text-red-500' : 'text-gray-600'}`}
             >
-              <Heart className={`h-4 w-4 ${isFavorite(id) ? 'fill-current' : ''}`} />
+              <Heart className={`h-3 w-3 ${isFavorite(id) ? 'fill-current' : ''}`} />
             </Button>
             <Button
               variant="secondary"
@@ -375,36 +340,26 @@ export default function ProductCard({
                 e.preventDefault();
                 handleShare();
               }}
-              className="h-8 w-8 p-0"
+              className="h-7 w-7 p-0"
             >
-              <Share2 className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={(e) => {
-                e.preventDefault();
-                handleAddToCart();
-              }}
-              className={`h-8 w-8 p-0 ${isInCart(id) ? 'text-green-600 bg-green-100' : 'text-gray-600'}`}
-            >
-              <ShoppingCart className="h-4 w-4" />
+              <Share2 className="h-3 w-3" />
             </Button>
           </div>
         </div>
       </Link>
       
-      <CardContent className="p-4 space-y-3">
-        <div className="flex justify-between items-start">
-          <Link href={`/product/${id}`}>
-            <h3 className="font-semibold text-base mb-2 line-clamp-2 hover:text-primary transition-colors leading-snug" data-testid={`text-product-name-${id}`}>
+      <CardContent className="p-4 space-y-3 flex-1">
+        {/* Product Title and Actions */}
+        <div className="flex justify-between items-start gap-2">
+          <Link href={`/product/${id}`} className="flex-1 min-w-0">
+            <h3 className="font-semibold text-base mb-1 line-clamp-2 hover:text-primary transition-colors leading-tight" data-testid={`text-product-name-${id}`}>
               {name}
             </h3>
           </Link>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                <MoreHorizontal className="h-4 w-4" />
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0">
+                <MoreHorizontal className="h-3 w-3" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -424,7 +379,8 @@ export default function ProductCard({
           </DropdownMenu>
         </div>
         
-        <div className="space-y-2">
+        {/* Price and MOQ */}
+        <div className="space-y-1">
           <p className="text-xl font-bold text-primary" data-testid={`text-price-${id}`}>{priceRange}</p>
           <p className="text-sm text-muted-foreground font-medium" data-testid={`text-moq-${id}`}>MOQ: {typeof moq === 'number' ? moq : moq}</p>
         </div>
@@ -432,17 +388,20 @@ export default function ProductCard({
         {/* Supplier Info */}
         <div className="pt-2 border-t border-border space-y-2">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <MapPin className="w-4 h-4 flex-shrink-0" />
-              <span className="truncate" data-testid={`text-supplier-${id}`}>{supplierName}</span>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0 flex-1">
+              <MapPin className="w-3 h-3 flex-shrink-0" />
+              <span className="truncate text-xs" data-testid={`text-supplier-${id}`}>{supplierName}</span>
             </div>
-            <Badge className={getSupplierTypeColor(supplierType)}>
+            <Badge className={`${getSupplierTypeColor(supplierType)} text-xs flex-shrink-0 ml-2 px-2 py-1`}>
               {getSupplierTypeLabel(supplierType)}
             </Badge>
           </div>
           
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span data-testid={`text-location-${id}`}>{supplierCountry}</span>
+            <span data-testid={`text-location-${id}`} className="flex items-center gap-1">
+              <Globe className="w-3 h-3" />
+              {supplierCountry}
+            </span>
             <div className="flex items-center gap-1">
               <Clock className="w-3 h-3" />
               <span>{responseTime}</span>
@@ -452,7 +411,7 @@ export default function ProductCard({
           {/* Rating and Stats */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1">
-              <Star className="h-4 w-4 text-yellow-500 fill-current" />
+              <Star className="h-3 w-3 text-yellow-500 fill-current" />
               <span className="text-sm font-semibold">{rating}</span>
               <span className="text-xs text-muted-foreground">({reviews})</span>
             </div>
@@ -470,15 +429,15 @@ export default function ProductCard({
           
           {/* Certifications */}
           {certifications.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {certifications.slice(0, 3).map((cert, index) => (
-                <Badge key={index} variant="outline" className="text-xs">
+            <div className="flex flex-wrap gap-1 pt-1">
+              {certifications.slice(0, 2).map((cert, index) => (
+                <Badge key={index} variant="outline" className="text-xs px-2 py-1">
                   {cert}
                 </Badge>
               ))}
-              {certifications.length > 3 && (
-                <Badge variant="outline" className="text-xs">
-                  +{certifications.length - 3}
+              {certifications.length > 2 && (
+                <Badge variant="outline" className="text-xs px-2 py-1">
+                  +{certifications.length - 2}
                 </Badge>
               )}
             </div>
@@ -486,35 +445,27 @@ export default function ProductCard({
         </div>
       </CardContent>
       
-      <CardFooter className="p-4 pt-0 flex gap-2">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="flex-1 text-sm h-9" 
-          onClick={handleContact}
-          data-testid={`button-contact-${id}`}
-        >
-          <MessageSquare className="w-4 h-4 mr-2" />
-          Contact
-        </Button>
-        <Button 
-          variant={isInCart(id) ? "secondary" : "default"} 
-          size="sm" 
-          className={`flex-1 text-sm h-9 ${isInCart(id) ? "bg-green-100 text-green-800 hover:bg-green-200" : ""}`}
-          onClick={handleAddToCart}
-          data-testid={`button-cart-${id}`}
-        >
-          <ShoppingCart className="w-4 h-4 mr-2" />
-          {isInCart(id) ? "In Cart" : "Add to Cart"}
-        </Button>
-        <Button 
-          size="sm" 
-          className="flex-1 text-sm h-9" 
-          onClick={handleQuote}
-          data-testid={`button-quote-${id}`}
-        >
-          Get Quote
-        </Button>
+      <CardFooter className="p-4 pt-0 mt-auto">
+        <div className="flex gap-2 w-full">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex-1 text-sm h-9 font-medium" 
+            onClick={handleContact}
+            data-testid={`button-contact-${id}`}
+          >
+            <MessageSquare className="w-4 h-4 mr-2" />
+            Contact
+          </Button>
+          <Button 
+            size="sm" 
+            className="flex-1 text-sm h-9 font-medium" 
+            onClick={handleQuote}
+            data-testid={`button-quote-${id}`}
+          >
+            Get Quote
+          </Button>
+        </div>
       </CardFooter>
     </Card>
   );

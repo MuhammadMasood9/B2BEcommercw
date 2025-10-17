@@ -360,44 +360,51 @@ export default function AdminUsers() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        {/* Total Users - Blue */}
+        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <UserCheck className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-blue-100">Total Users</CardTitle>
+            <UserCheck className="h-6 w-6 text-blue-200" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{users.length}</div>
-            <p className="text-xs text-muted-foreground">All registered users</p>
+            <div className="text-3xl font-bold text-white">{users.length}</div>
+            <p className="text-sm text-blue-100 mt-1">All registered users</p>
           </CardContent>
         </Card>
-        <Card>
+        
+        {/* Active Users - Green */}
+        <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-600" />
+            <CardTitle className="text-sm font-medium text-green-100">Active Users</CardTitle>
+            <CheckCircle className="h-6 w-6 text-green-200" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{users.filter(u => u.isActive).length}</div>
-            <p className="text-xs text-muted-foreground">Currently active</p>
+            <div className="text-3xl font-bold text-white">{users.filter(u => u.isActive).length}</div>
+            <p className="text-sm text-green-100 mt-1">Currently active</p>
           </CardContent>
         </Card>
-        <Card>
+        
+        {/* Verified Users - Purple */}
+        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Verified Users</CardTitle>
-            <CheckCircle className="h-4 w-4 text-blue-600" />
+            <CardTitle className="text-sm font-medium text-purple-100">Verified Users</CardTitle>
+            <CheckCircle className="h-6 w-6 text-purple-200" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{users.filter(u => u.emailVerified).length}</div>
-            <p className="text-xs text-muted-foreground">Email verified</p>
+            <div className="text-3xl font-bold text-white">{users.filter(u => u.emailVerified).length}</div>
+            <p className="text-sm text-purple-100 mt-1">Email verified</p>
           </CardContent>
         </Card>
-        <Card>
+        
+        {/* Suppliers - Orange */}
+        <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Suppliers</CardTitle>
-            <Building className="h-4 w-4 text-purple-600" />
+            <CardTitle className="text-sm font-medium text-orange-100">Suppliers</CardTitle>
+            <Building className="h-6 w-6 text-orange-200" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{users.filter(u => u.role === 'supplier').length}</div>
-            <p className="text-xs text-muted-foreground">Registered suppliers</p>
+            <div className="text-3xl font-bold text-white">{users.filter(u => u.role === 'supplier').length}</div>
+            <p className="text-sm text-orange-100 mt-1">Registered suppliers</p>
           </CardContent>
         </Card>
       </div>

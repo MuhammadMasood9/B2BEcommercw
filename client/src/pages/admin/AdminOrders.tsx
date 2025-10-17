@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import Breadcrumb from '@/components/Breadcrumb';
 import { 
   Search, 
   Filter, 
@@ -259,6 +260,9 @@ export default function AdminOrders() {
 
   return (
     <div className=" mx-auto p-6">
+      {/* Breadcrumb */}
+      <Breadcrumb items={[{ label: "Orders" }]} />
+      
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between">

@@ -14,6 +14,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertCustomerSchema, type Customer } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
+import Breadcrumb from "@/components/Breadcrumb";
 import type { z } from "zod";
 
 export default function AdminCustomers() {
@@ -45,6 +46,9 @@ export default function AdminCustomers() {
 
   return (
     <div className="p-8">
+      {/* Breadcrumb */}
+      <Breadcrumb items={[{ label: "Customers" }]} />
+      
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold" data-testid="text-customers-title">Customers</h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

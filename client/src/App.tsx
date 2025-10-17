@@ -14,6 +14,7 @@ import { LoadingProvider, useLoading } from "@/contexts/LoadingContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { FavoriteProvider } from "@/contexts/FavoriteContext";
 import { CartProvider } from "@/contexts/CartContext";
+import { ProductProvider } from "@/contexts/ProductContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import 'react-toastify/dist/ReactToastify.css';
 import Home from "@/pages/Home";
@@ -45,6 +46,7 @@ import OrderTracking from "@/pages/OrderTracking";
 import CategoryProducts from "@/pages/CategoryProducts";
 import SubcategoryProducts from "@/pages/SubcategoryProducts";
 import GetVerified from "@/pages/GetVerified";
+import Chat from "@/pages/Chat";
 import BuyerDashboard from "@/pages/buyer/BuyerDashboard";
 import BuyerInquiries from "@/pages/buyer/BuyerInquiries";
 import BuyerQuotations from "@/pages/buyer/BuyerQuotations";
@@ -66,7 +68,9 @@ import AdminUserDetails from "@/pages/admin/AdminUserDetails";
 import AdminUserImportExport from "@/pages/admin/AdminUserImportExport";
 import AdminSettings from "@/pages/admin/AdminSettings";
 import AdminReports from "@/pages/admin/AdminReports";
+import AdminChat from "@/pages/admin/AdminChat";
 import AdminLogin from "@/pages/admin/AdminLogin";
+import GlobalChatButton from "@/components/GlobalChatButton";
 import NotFound from "@/pages/not-found";
 
 function AdminRouter() {
@@ -158,6 +162,11 @@ function AdminRouter() {
           <AdminReports />
         </ProtectedRoute>
       </Route>
+      <Route path="/admin/chat">
+        <ProtectedRoute requiredRole="admin">
+          <AdminChat />
+        </ProtectedRoute>
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
@@ -206,6 +215,7 @@ function PublicRouter() {
       <Route path="/buyer-protection" component={BuyerProtection} />
       <Route path="/contact" component={Contact} />
       <Route path="/help" component={Help} />
+      <Route path="/chat" component={Chat} />
       <Route path="/terms" component={Terms} />
       <Route path="/privacy" component={Privacy} />
       <Route path="/login" component={Login} />
@@ -264,6 +274,7 @@ function AppContent() {
           showProgress={showProgress}
           progress={progress}
         />
+        <GlobalChatButton />
         <ToastContainer position="top-right" />
         <HotToaster position="top-right" />
       </>
@@ -274,6 +285,7 @@ function AppContent() {
     <>
       <PublicRouter />
       <ChatbotWidget />
+      <GlobalChatButton />
       <FullScreenLoader 
         isLoading={isLoading}
         message={loadingMessage}
@@ -293,10 +305,12 @@ function App() {
         <AuthProvider>
           <FavoriteProvider>
             <CartProvider>
-              <TooltipProvider>
-                <Toaster />
-                <AppContent />
-              </TooltipProvider>
+              <ProductProvider>
+                <TooltipProvider>
+                  <Toaster />
+                  <AppContent />
+                </TooltipProvider>
+              </ProductProvider>
             </CartProvider>
           </FavoriteProvider>
         </AuthProvider>

@@ -2,8 +2,27 @@ import passport from 'passport';
 import { Strategy as LocalStrategy } from 'passport-local';
 import bcrypt from 'bcryptjs';
 import { db } from './db';
-import { users } from '@shared/schema';
+import { users, User } from '@shared/schema';
 import { eq } from 'drizzle-orm';
+import { Request, Response, NextFunction } from 'express';
+
+// Extend Express Request type to include user
+declare global {
+  namespace Express {
+    interface User {
+      id: string;
+      email: string;
+      firstName?: string;
+      lastName?: string;
+      companyName?: string;
+      phone?: string;
+      role: string;
+      emailVerified: boolean;
+      isActive: boolean;
+      createdAt: Date;
+    }
+  }
+}
 
 // Configure passport local strategy
 passport.use(new LocalStrategy(
@@ -59,5 +78,13 @@ passport.deserializeUser(async (id: string, done: any) => {
     done(error);
   }
 });
+
+// Auth middleware
+export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.status(401).json({ error: 'Unauthorized' });
+};
 
 export { passport };

@@ -191,54 +191,58 @@ export default function AdminDashboard() {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Products</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-            <div className="text-2xl font-bold">{stats.totalProducts.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-600">+12%</span> from last month
-            </p>
-            </CardContent>
-          </Card>
-
-      <Card>
+        {/* Total Products Card - Blue */}
+        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-            <div className="text-2xl font-bold">{stats.totalUsers.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-600">+8%</span> from last month
-            </p>
-        </CardContent>
-      </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Conversations</CardTitle>
-            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-blue-100">Total Products</CardTitle>
+            <Package className="h-6 w-6 text-blue-200" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.activeConversations}</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-red-600">+3</span> new today
+            <div className="text-3xl font-bold text-white">{stats.totalProducts.toLocaleString()}</div>
+            <p className="text-sm text-blue-100 mt-1">
+              <span className="text-green-300">+12%</span> from last month
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Total Users Card - Green */}
+        <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-green-100">Total Users</CardTitle>
+            <Users className="h-6 w-6 text-green-200" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats.totalRevenue.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-600">+18%</span> from last month
+            <div className="text-3xl font-bold text-white">{stats.totalUsers.toLocaleString()}</div>
+            <p className="text-sm text-green-100 mt-1">
+              <span className="text-green-300">+8%</span> from last month
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Active Conversations Card - Purple */}
+        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-lg">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-purple-100">Active Conversations</CardTitle>
+            <MessageSquare className="h-6 w-6 text-purple-200" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-white">{stats.activeConversations}</div>
+            <p className="text-sm text-purple-100 mt-1">
+              <span className="text-orange-300">+3</span> new today
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Total Revenue Card - Orange */}
+        <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 shadow-lg">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-orange-100">Total Revenue</CardTitle>
+            <DollarSign className="h-6 w-6 text-orange-200" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-white">${stats.totalRevenue.toLocaleString()}</div>
+            <p className="text-sm text-orange-100 mt-1">
+              <span className="text-green-300">+18%</span> from last month
             </p>
           </CardContent>
         </Card>

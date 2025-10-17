@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import Breadcrumb from '@/components/Breadcrumb';
 import { 
   Search, 
   Filter, 
@@ -332,6 +333,9 @@ export default function AdminInquiries() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="mx-auto p-6">
+        {/* Breadcrumb */}
+        <Breadcrumb items={[{ label: "Inquiries" }]} />
+        
         {/* Header Section */}
         <div className="mb-8">
           <div className="flex items-center justify-between">

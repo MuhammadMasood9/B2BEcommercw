@@ -25,7 +25,8 @@ import {
   DollarSign,
   Loader2,
   Check,
-  X
+  X,
+  User
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
@@ -198,7 +199,7 @@ export default function RFQDetail() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-white">
       <Header />
       <main className="flex-1">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -231,9 +232,12 @@ export default function RFQDetail() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-              <Card>
+              <Card className="bg-white border-gray-100 shadow-lg">
                 <CardHeader>
-                  <CardTitle>RFQ Details</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-blue-600" />
+                    RFQ Details
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -312,10 +316,12 @@ export default function RFQDetail() {
                   ) : quotations.length === 0 ? (
                     <Card>
                       <CardContent className="p-12 text-center">
-                        <MessageSquare className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-                        <h3 className="text-lg font-semibold mb-2">No Quotations Yet</h3>
+                        <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <MessageSquare className="h-10 w-10 text-gray-400" />
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">No Quotations Yet</h3>
                         <p className="text-gray-600">
-                          The admin hasn't submitted any quotations for this RFQ yet.
+                          Admins haven't submitted any quotations for this RFQ yet.
                         </p>
                       </CardContent>
                     </Card>
@@ -429,9 +435,12 @@ export default function RFQDetail() {
             </div>
 
             <div className="lg:col-span-1">
-              <Card className="sticky top-24">
+              <Card className="sticky top-24 bg-gradient-to-br from-white to-gray-50 border-gray-100 shadow-xl">
                 <CardHeader>
-                  <CardTitle>Your Information</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <User className="w-5 h-5 text-purple-600" />
+                    Your Information
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center gap-3">

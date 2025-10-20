@@ -50,6 +50,7 @@ import Chat from "@/pages/Chat";
 import BuyerDashboard from "@/pages/buyer/BuyerDashboard";
 import BuyerInquiries from "@/pages/buyer/BuyerInquiries";
 import BuyerQuotations from "@/pages/buyer/BuyerQuotations";
+import QuotationDetail from "@/pages/QuotationDetail";
 import BuyerRFQs from "@/pages/buyer/BuyerRFQs";
 import AdminInquiries from "@/pages/admin/AdminInquiries";
 import AdminQuotations from "@/pages/admin/AdminQuotations";
@@ -205,6 +206,11 @@ function PublicRouter() {
       <Route path="/buyer/quotations">
         <ProtectedRoute requiredRole="buyer">
           <BuyerQuotations />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/quotation/:id">
+        <ProtectedRoute requiredRole="buyer">
+          <QuotationDetail />
         </ProtectedRoute>
       </Route>
       <Route path="/buyer/rfqs">

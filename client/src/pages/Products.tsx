@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import PageHeader from "@/components/PageHeader";
 import ProductCard from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { useLoading } from "@/contexts/LoadingContext";
 import type { Product, Category } from "@shared/schema";
 import {
@@ -20,7 +20,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { SlidersHorizontal, Search, X, Loader2 } from "lucide-react";
+import { 
+  Search, 
+  Filter,
+  Grid3X3,
+  List,
+  Star,
+  Shield,
+  Clock,
+  Globe,
+  TrendingUp,
+  Zap
+} from "lucide-react";
+import { Link } from "wouter";
 
 export default function Products() {
   const { setLoading } = useLoading();
@@ -28,20 +40,14 @@ export default function Products() {
   const [moqRange, setMoqRange] = useState([0, 10000]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedSubcategory, setSelectedSubcategory] = useState("all");
-  const [supplierType, setSupplierType] = useState("all");
-  const [supplierLocation, setSupplierLocation] = useState("all");
   const [sortBy, setSortBy] = useState("best-match");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showFilters, setShowFilters] = useState(false);
   
   // B2B specific filters
-  const [verifiedSuppliersOnly, setVerifiedSuppliersOnly] = useState(false);
+  const [verifiedAdminsOnly, setVerifiedAdminsOnly] = useState(false);
   const [tradeAssuranceOnly, setTradeAssuranceOnly] = useState(false);
   const [readyToShipOnly, setReadyToShipOnly] = useState(false);
-  const [sampleAvailable, setSampleAvailable] = useState(false);
-  const [customizationAvailable, setCustomizationAvailable] = useState(false);
-  const [certifications, setCertifications] = useState<string[]>([]);
 
   // Fetch products from API
   const { data: apiProducts = [], isLoading: isProductsLoading } = useQuery<Product[]>({
@@ -55,7 +61,6 @@ export default function Products() {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        console.log("Fetched products from API:", data);
         return Array.isArray(data) ? data : [];
       } catch (error) {
         console.error("Error fetching products:", error);
@@ -85,641 +90,392 @@ export default function Products() {
   });
 
   useEffect(() => {
-    if (isProductsLoading) {
-      setLoading(true, "Loading Products...");
-    } else {
-      setLoading(false);
-    }
+    setLoading(isProductsLoading, "Loading products...");
   }, [isProductsLoading, setLoading]);
 
-  // Transform API categories into the format needed for filters
-  const parentCategories = apiCategories.filter(cat => !cat.parentId && cat.isActive);
-  
-  const categories = parentCategories.map(cat => ({
-    id: cat.id,
-    name: cat.name,
-    subcategories: apiCategories
-      .filter(sub => sub.parentId === cat.id && sub.isActive)
-      .map(sub => ({ id: sub.id, name: sub.name }))
-  }));
-
-  const supplierTypes = [
-    { id: "manufacturer", name: "Manufacturer" },
-    { id: "trading-company", name: "Trading Company" },
-    { id: "wholesaler", name: "Wholesaler" },
-    { id: "distributor", name: "Distributor" }
-  ];
-
-  const supplierLocations = [
-    { id: "china", name: "China" },
-    { id: "india", name: "India" },
-    { id: "vietnam", name: "Vietnam" },
-    { id: "thailand", name: "Thailand" },
-    { id: "indonesia", name: "Indonesia" },
-    { id: "philippines", name: "Philippines" },
-    { id: "malaysia", name: "Malaysia" },
-    { id: "taiwan", name: "Taiwan" },
-    { id: "hong-kong", name: "Hong Kong" },
-    { id: "south-korea", name: "South Korea" }
-  ];
-
-  const certificationOptions = [
-    { id: "iso9001", name: "ISO 9001" },
-    { id: "iso14001", name: "ISO 14001" },
-    { id: "ce", name: "CE" },
-    { id: "fda", name: "FDA" },
-    { id: "rohs", name: "RoHS" },
-    { id: "ul", name: "UL" },
-    { id: "fcc", name: "FCC" },
-    { id: "gs", name: "GS" }
-  ];
-
-  // Get subcategories for selected category
-  const currentSubcategories = selectedCategory !== "all" 
-    ? categories.find(c => c.id === selectedCategory)?.subcategories || []
-    : [];
-
-  // Clear subcategory when category changes
-  useEffect(() => {
-    if (selectedCategory === "all") {
-      setSelectedSubcategory("all");
-    }
-  }, [selectedCategory]);
-
-  // Transform API products for display
-  const products = apiProducts.map(product => {
-    // Parse price ranges from product data
-    const priceRanges = product.priceRanges ? (typeof product.priceRanges === 'string' ? JSON.parse(product.priceRanges) : product.priceRanges) : [];
-    const minPrice = priceRanges.length > 0 ? Math.min(...priceRanges.map((r: any) => Number(r.pricePerUnit))) : 0;
-    const maxPrice = priceRanges.length > 0 ? Math.max(...priceRanges.map((r: any) => Number(r.pricePerUnit))) : 0;
-    const priceRange = priceRanges.length > 0 
-      ? `$${minPrice.toFixed(2)}-$${maxPrice.toFixed(2)} /piece`
-      : 'Contact for price';
-
-    // Get images
-    const images = product.images && product.images.length > 0 ? product.images : [];
-    const firstImage = images.length > 0 ? images[0] : 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop';
-
-    // Get certifications
-    const certs = product.certifications || [];
-
-    return {
-      id: product.id,
-      image: firstImage,
-      name: product.name,
-      priceRange,
-      moq: product.minOrderQuantity || 1,
-      supplierName: 'Admin Supplier', // Admin is the supplier
-      supplierCountry: 'Global',
-      supplierType: 'manufacturer',
-      responseRate: '95%',
-      responseTime: '24 hours',
-      verified: true,
-      tradeAssurance: product.hasTradeAssurance || false,
-      readyToShip: product.isPublished || false,
-      sampleAvailable: product.sampleAvailable || false,
-      customizationAvailable: product.customizationAvailable || false,
-      certifications: certs,
-      category: product.categoryId || '',
-      subcategory: product.categoryId || '',
-      leadTime: product.leadTime || '15-30 days',
-      port: product.port || 'N/A',
-      paymentTerms: product.paymentTerms || [],
-      inStock: product.inStock || false,
-      stockQuantity: product.stockQuantity || 0,
-      views: product.views || 0,
-      inquiries: product.inquiries || 0,
-      rating: 4.5,
-      reviews: 0
-    };
-  });
-
-  // Filter products based on current filters
-  const filteredProducts = products.filter(product => {
-    // Search query filter
-    if (searchQuery && !product.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        !product.supplierName.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false;
-    }
-
-    // Category filter
-    if (selectedCategory !== "all" && product.category !== selectedCategory) {
-      return false;
-    }
-
-    // Subcategory filter
-    if (selectedSubcategory !== "all" && product.subcategory !== selectedSubcategory) {
-      return false;
-    }
-
-    // Supplier type filter
-    if (supplierType !== "all" && product.supplierType !== supplierType) {
-      return false;
-    }
-
-    // Supplier location filter
-    if (supplierLocation !== "all" && product.supplierCountry.toLowerCase() !== supplierLocation) {
-      return false;
-    }
-
-    // Price range filter
-    const minPrice = priceRange[0];
-    const maxPrice = priceRange[1];
-    const productMinPrice = parseFloat(product.priceRange.split('-')[0].replace('$', ''));
-    const productMaxPrice = parseFloat(product.priceRange.split('-')[1].split(' ')[0].replace('$', ''));
+  // Filter products based on search and filters
+  const filteredProducts = apiProducts.filter(product => {
+    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         product.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategory === "all" || product.categoryId === selectedCategory;
+    const productPrice = (product as any).minPrice || (product as any).price || 0;
+    const productMaxPrice = (product as any).maxPrice || (product as any).price || 1000;
+    const matchesPrice = productPrice >= priceRange[0] && productMaxPrice <= priceRange[1];
+    const productMoq = (product as any).moq || 1;
+    const matchesMoq = productMoq >= moqRange[0] && productMoq <= moqRange[1];
     
-    if (productMinPrice < minPrice || productMaxPrice > maxPrice) {
-      return false;
-    }
-
-    // MOQ range filter
-    if (product.moq < moqRange[0] || product.moq > moqRange[1]) {
-      return false;
-    }
-
-    // B2B specific filters
-    if (verifiedSuppliersOnly && !product.verified) {
-      return false;
-    }
-
-    if (tradeAssuranceOnly && !product.tradeAssurance) {
-      return false;
-    }
-
-    if (readyToShipOnly && !product.readyToShip) {
-      return false;
-    }
-
-    if (sampleAvailable && !product.sampleAvailable) {
-      return false;
-    }
-
-    if (customizationAvailable && !product.customizationAvailable) {
-      return false;
-    }
-
-    // Certifications filter
-    if (certifications.length > 0) {
-      const hasRequiredCert = certifications.some(cert => 
-        product.certifications.includes(cert)
-      );
-      if (!hasRequiredCert) {
-        return false;
-      }
-    }
-
-    return true;
+    return matchesSearch && matchesCategory && matchesPrice && matchesMoq;
   });
 
   // Sort products
   const sortedProducts = [...filteredProducts].sort((a, b) => {
     switch (sortBy) {
-      case "price-low-high":
-        const aMinPrice = parseFloat(a.priceRange.split('-')[0].replace('$', ''));
-        const bMinPrice = parseFloat(b.priceRange.split('-')[0].replace('$', ''));
-        return aMinPrice - bMinPrice;
-      case "price-high-low":
-        const aMaxPrice = parseFloat(a.priceRange.split('-')[1].split(' ')[0].replace('$', ''));
-        const bMaxPrice = parseFloat(b.priceRange.split('-')[1].split(' ')[0].replace('$', ''));
-        return bMaxPrice - aMaxPrice;
-      case "moq-low-high":
-        return a.moq - b.moq;
-      case "rating-high-low":
-        return b.rating - a.rating;
-      case "views-high-low":
-        return b.views - a.views;
-      case "inquiries-high-low":
-        return b.inquiries - a.inquiries;
-      default: // best-match
+      case "price-low":
+        return ((a as any).minPrice || (a as any).price || 0) - ((b as any).minPrice || (b as any).price || 0);
+      case "price-high":
+        return ((b as any).minPrice || (b as any).price || 0) - ((a as any).minPrice || (a as any).price || 0);
+      case "newest":
+        return new Date(b.createdAt || new Date()).getTime() - new Date(a.createdAt || new Date()).getTime();
+      case "rating":
+        return ((b as any).rating || 0) - ((a as any).rating || 0);
+      default:
         return 0;
     }
   });
 
-  // Clear all filters
-  const clearAllFilters = () => {
-    setSearchQuery("");
-    setSelectedCategory("all");
-    setSelectedSubcategory("all");
-    setSupplierType("all");
-    setSupplierLocation("all");
-    setPriceRange([0, 1000]);
-    setMoqRange([0, 10000]);
-    setVerifiedSuppliersOnly(false);
-    setTradeAssuranceOnly(false);
-    setReadyToShipOnly(false);
-    setSampleAvailable(false);
-    setCustomizationAvailable(false);
-    setCertifications([]);
-  };
+  const transformProductForCard = (product: Product) => ({
+    id: product.id,
+    name: product.name,
+    description: product.description,
+    price: (product as any).minPrice || (product as any).price || 0,
+    maxPrice: (product as any).maxPrice || (product as any).price || 1000,
+    priceRange: `${(product as any).minPrice || (product as any).price || 0} - ${(product as any).maxPrice || (product as any).price || 1000}`,
+    image: (product as any).images?.[0] || '/placeholder-product.jpg',
+    rating: (product as any).rating || 0,
+    reviewCount: (product as any).reviewCount || 0,
+    supplier: (product as any).supplierName || 'Admin Supplier',
+    supplierName: (product as any).supplierName || 'Admin Supplier',
+    supplierCountry: (product as any).supplierCountry || 'Global',
+    moq: (product as any).moq || 1,
+    isVerified: true,
+    isTradeAssurance: true,
+    responseTime: '24h',
+    responseRate: '99%',
+    views: (product as any).views || 0,
+    inquiries: (product as any).inquiries || 0
+  });
 
-  // Get active filter count
-  const activeFilterCount = [
-    searchQuery,
-    selectedCategory !== "all",
-    selectedSubcategory !== "all",
-    supplierType !== "all",
-    supplierLocation !== "all",
-    priceRange[0] > 0 || priceRange[1] < 1000,
-    moqRange[0] > 0 || moqRange[1] < 10000,
-    verifiedSuppliersOnly,
-    tradeAssuranceOnly,
-    readyToShipOnly,
-    sampleAvailable,
-    customizationAvailable,
-    certifications.length > 0
-  ].filter(Boolean).length;
+  return (
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-white">
+      <Header />
+      
+      {/* Hero Section with Gradient */}
+      <section className="relative py-20 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
+        {/* Background Elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-600/10 to-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+        </div>
 
-  const FilterSidebar = () => (
-    <div className="space-y-5">
-      {/* Search */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Search Products</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center text-white">
+            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/30 rounded-full px-6 py-3 text-sm text-white/95 shadow-lg mb-6">
+              <TrendingUp className="w-4 h-4" />
+              <span>Discover Products</span>
+            </div>
+            
+            <h1 className="text-4xl md:text-6xl font-bold mb-6">
+              Find Your Perfect
+              <span className="bg-gradient-to-r from-blue-200 via-white to-blue-200 bg-clip-text text-transparent block">
+                Products
+              </span>
+            </h1>
+            
+            <p className="text-xl text-white/90 max-w-2xl mx-auto mb-8">
+              Browse thousands of verified products from trusted admins worldwide
+            </p>
+
+            {/* Search Bar */}
+            <div className="max-w-2xl mx-auto">
+              <div className="bg-white/15 backdrop-blur-xl border border-white/30 rounded-2xl p-3 shadow-2xl">
+                <div className="flex gap-3">
+                  <div className="flex-1 flex items-center bg-white rounded-xl overflow-hidden shadow-lg">
+                    <div className="flex items-center px-4">
+                      <Search className="w-5 h-5 text-gray-400 mr-3" />
             <Input
-              placeholder="Search products or suppliers..."
+                        placeholder="Search products..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+                        className="flex-1 border-0 focus-visible:ring-0 h-14 text-gray-900 placeholder:text-gray-500 text-lg"
             />
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Categories */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Categories</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger>
-              <SelectValue placeholder="All Categories" />
+                      <SelectTrigger className="w-48 border-0 border-l border-gray-200 rounded-none focus:ring-0 text-gray-700 bg-gray-50">
+                        <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
-              {categories.map((category) => (
+                        {apiCategories.map((category) => (
                 <SelectItem key={category.id} value={category.id}>
                   {category.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          
-          {currentSubcategories.length > 0 && (
-            <Select value={selectedSubcategory} onValueChange={setSelectedSubcategory}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Subcategories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Subcategories</SelectItem>
-                {currentSubcategories.map((subcategory) => (
-                  <SelectItem key={subcategory.id} value={subcategory.id}>
-                    {subcategory.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </CardContent>
-      </Card>
+                  </div>
+                  <Button size="lg" className="h-14 px-8 shadow-lg hover:shadow-xl transition-all duration-200 bg-blue-600 hover:bg-blue-700">
+                    <Search className="w-5 h-5 mr-2" />
+                    Search
+                  </Button>
+                </div>
+              </div>
+            </div>
 
-      {/* Supplier Type */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Supplier Type</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Select value={supplierType} onValueChange={setSupplierType}>
-            <SelectTrigger>
-              <SelectValue placeholder="All Supplier Types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Supplier Types</SelectItem>
-              {supplierTypes.map((type) => (
-                <SelectItem key={type.id} value={type.id}>
-                  {type.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
+            {/* Quick Stats */}
+            <div className="flex flex-wrap justify-center gap-8 mt-8 text-white/80 text-sm">
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-green-300" />
+                <span>Verified Admins</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-yellow-300" />
+                <span>24h Response</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-purple-300" />
+                <span>Global Shipping</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
-      {/* Supplier Location */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Supplier Location</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Select value={supplierLocation} onValueChange={setSupplierLocation}>
-            <SelectTrigger>
-              <SelectValue placeholder="All Locations" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Locations</SelectItem>
-              {supplierLocations.map((location) => (
-                <SelectItem key={location.id} value={location.id}>
-                  {location.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
-
-      {/* Price Range */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Price Range (USD)</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label className="text-sm">${priceRange[0]} - ${priceRange[1]}</Label>
+      <main className="flex-1">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Filters and Controls */}
+          <div className="flex flex-col lg:flex-row gap-6 mb-8">
+            {/* Mobile Filter Toggle */}
+            <div className="lg:hidden">
+              <Sheet open={showFilters} onOpenChange={setShowFilters}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" className="w-full">
+                    <Filter className="w-4 h-4 mr-2" />
+                    Filters
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-80">
+                  <div className="space-y-6">
+                    <h3 className="text-lg font-semibold">Filters</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="text-sm font-medium">Price Range</Label>
           <Slider
             value={priceRange}
             onValueChange={setPriceRange}
             max={1000}
             step={10}
-              className="w-full"
+                          className="mt-2"
           />
+                        <div className="flex justify-between text-sm text-gray-500 mt-1">
+                          <span>${priceRange[0]}</span>
+                          <span>${priceRange[1]}</span>
+                        </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* MOQ Range */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Minimum Order Quantity</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label className="text-sm">{moqRange[0]} - {moqRange[1]} pieces</Label>
+                      
+                      <div>
+                        <Label className="text-sm font-medium">MOQ Range</Label>
             <Slider
               value={moqRange}
               onValueChange={setMoqRange}
               max={10000}
               step={100}
-              className="w-full"
+                          className="mt-2"
             />
+                        <div className="flex justify-between text-sm text-gray-500 mt-1">
+                          <span>{moqRange[0]}</span>
+                          <span>{moqRange[1]}</span>
+                        </div>
             </div>
-        </CardContent>
-      </Card>
 
-      {/* B2B Specific Filters */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">B2B Features</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
+                      <div className="space-y-3">
           <div className="flex items-center space-x-2">
             <Checkbox 
-              id="verified-suppliers" 
-              checked={verifiedSuppliersOnly}
-              onCheckedChange={(checked) => setVerifiedSuppliersOnly(checked === true)}
-            />
-            <Label htmlFor="verified-suppliers" className="text-sm cursor-pointer">
-              Verified Suppliers Only
-            </Label>
+                            id="verified" 
+                            checked={verifiedAdminsOnly}
+                            onCheckedChange={(checked) => setVerifiedAdminsOnly(checked === true)}
+                          />
+                          <Label htmlFor="verified" className="text-sm">Verified Admins Only</Label>
           </div>
-          
           <div className="flex items-center space-x-2">
             <Checkbox 
               id="trade-assurance" 
               checked={tradeAssuranceOnly}
               onCheckedChange={(checked) => setTradeAssuranceOnly(checked === true)}
             />
-            <Label htmlFor="trade-assurance" className="text-sm cursor-pointer">
-              Trade Assurance
-            </Label>
+                          <Label htmlFor="trade-assurance" className="text-sm">Trade Assurance</Label>
           </div>
-          
           <div className="flex items-center space-x-2">
             <Checkbox 
-              id="ready-to-ship" 
+                            id="ready-ship" 
               checked={readyToShipOnly}
               onCheckedChange={(checked) => setReadyToShipOnly(checked === true)}
             />
-            <Label htmlFor="ready-to-ship" className="text-sm cursor-pointer">
-              Ready to Ship
-            </Label>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="sample-available" 
-              checked={sampleAvailable}
-              onCheckedChange={(checked) => setSampleAvailable(checked === true)}
-            />
-            <Label htmlFor="sample-available" className="text-sm cursor-pointer">
-              Sample Available
-            </Label>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="customization" 
-              checked={customizationAvailable}
-              onCheckedChange={(checked) => setCustomizationAvailable(checked === true)}
-            />
-            <Label htmlFor="customization" className="text-sm cursor-pointer">
-              Customization Available
-            </Label>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Certifications */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Certifications</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {certificationOptions.map((cert) => (
-            <div key={cert.id} className="flex items-center space-x-2">
-              <Checkbox 
-                id={`cert-${cert.id}`}
-                checked={certifications.includes(cert.id)}
-                onCheckedChange={(checked) => {
-                  if (checked) {
-                    setCertifications([...certifications, cert.id]);
-                  } else {
-                    setCertifications(certifications.filter(c => c !== cert.id));
-                  }
-                }}
-              />
-              <Label htmlFor={`cert-${cert.id}`} className="text-sm cursor-pointer">
-                {cert.name}
-              </Label>
+                          <Label htmlFor="ready-ship" className="text-sm">Ready to Ship</Label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </SheetContent>
+              </Sheet>
             </div>
-          ))}
+
+            {/* Desktop Filters */}
+            <div className="hidden lg:block lg:w-64">
+              <Card className="sticky top-8">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Filter className="w-4 h-4" />
+                    Filters
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div>
+                    <Label className="text-sm font-medium">Price Range</Label>
+                    <Slider
+                      value={priceRange}
+                      onValueChange={setPriceRange}
+                      max={1000}
+                      step={10}
+                      className="mt-2"
+                    />
+                    <div className="flex justify-between text-sm text-gray-500 mt-1">
+                      <span>${priceRange[0]}</span>
+                      <span>${priceRange[1]}</span>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm font-medium">MOQ Range</Label>
+                    <Slider
+                      value={moqRange}
+                      onValueChange={setMoqRange}
+                      max={10000}
+                      step={100}
+                      className="mt-2"
+                    />
+                    <div className="flex justify-between text-sm text-gray-500 mt-1">
+                      <span>{moqRange[0]}</span>
+                      <span>{moqRange[1]}</span>
+                    </div>
+          </div>
+          
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="verified-desktop" 
+                        checked={verifiedAdminsOnly}
+                        onCheckedChange={(checked) => setVerifiedAdminsOnly(checked === true)}
+                      />
+                      <Label htmlFor="verified-desktop" className="text-sm">Verified Admins Only</Label>
+                    </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox 
+                        id="trade-assurance-desktop" 
+                        checked={tradeAssuranceOnly}
+                        onCheckedChange={(checked) => setTradeAssuranceOnly(checked === true)}
+                      />
+                      <Label htmlFor="trade-assurance-desktop" className="text-sm">Trade Assurance</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox 
+                        id="ready-ship-desktop" 
+                        checked={readyToShipOnly}
+                        onCheckedChange={(checked) => setReadyToShipOnly(checked === true)}
+                      />
+                      <Label htmlFor="ready-ship-desktop" className="text-sm">Ready to Ship</Label>
+                    </div>
+          </div>
         </CardContent>
       </Card>
+            </div>
 
-      {/* Clear Filters */}
-      {activeFilterCount > 0 && (
-        <Button 
-          variant="outline" 
-          onClick={clearAllFilters}
-          className="w-full"
-        >
-          <X className="h-4 w-4 mr-2" />
-          Clear All Filters ({activeFilterCount})
-      </Button>
-      )}
-    </div>
-  );
-
-  return (
-    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      <Header />
-      <main className="flex-1">
-        <PageHeader
-          title="All Products"
-          subtitle="Discover quality products from verified global suppliers"
-          variant="gradient"
-        />
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex gap-6">
-            <aside className="hidden lg:block w-72 flex-shrink-0">
-              <div className="sticky top-24">
-                <FilterSidebar />
-              </div>
-            </aside>
-
-            <div className="flex-1 min-w-0">
-              <Card className="mb-6">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between gap-4 flex-wrap">
-                    <div className="flex items-center gap-3">
-                      <Sheet>
-                        <SheetTrigger asChild>
-                          <Button variant="outline" size="sm" className="lg:hidden" data-testid="button-filters">
-                            <SlidersHorizontal className="w-4 h-4 mr-2" />
-                            Filters
-                          </Button>
-                        </SheetTrigger>
-                        <SheetContent side="left" className="w-80 overflow-y-auto">
-                          <div className="py-6">
-                            <FilterSidebar />
-                          </div>
-                        </SheetContent>
-                      </Sheet>
-                      <p className="text-sm text-muted-foreground">
-                        Showing <span className="font-semibold text-foreground">{sortedProducts.length}</span> of <span className="font-semibold text-foreground">{products.length}</span> products
-                        {activeFilterCount > 0 && (
-                          <span className="ml-2 text-blue-600">
-                            ({activeFilterCount} filter{activeFilterCount > 1 ? 's' : ''} applied)
-                          </span>
-                        )}
+            {/* Products Grid */}
+            <div className="flex-1">
+              {/* Results Header */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    {sortedProducts.length} Products Found
+                  </h2>
+                  <p className="text-gray-600">
+                    Showing results for "{searchQuery || 'all products'}"
                       </p>
                     </div>
                     
-                    <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
+                  {/* Sort */}
                       <Select value={sortBy} onValueChange={setSortBy}>
-                      <SelectTrigger className="w-48" data-testid="select-sort">
+                    <SelectTrigger className="w-48">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="best-match">Best Match</SelectItem>
-                          <SelectItem value="price-low-high">Price: Low to High</SelectItem>
-                          <SelectItem value="price-high-low">Price: High to Low</SelectItem>
-                          <SelectItem value="moq-low-high">MOQ: Low to High</SelectItem>
-                          <SelectItem value="rating-high-low">Rating: High to Low</SelectItem>
-                          <SelectItem value="views-high-low">Most Viewed</SelectItem>
-                          <SelectItem value="inquiries-high-low">Most Inquired</SelectItem>
+                      <SelectItem value="price-low">Price: Low to High</SelectItem>
+                      <SelectItem value="price-high">Price: High to Low</SelectItem>
+                      <SelectItem value="newest">Newest First</SelectItem>
+                      <SelectItem value="rating">Highest Rated</SelectItem>
                       </SelectContent>
                     </Select>
                       
-                      <div className="flex items-center gap-1 border rounded-lg p-1">
+                  {/* View Mode */}
+                  <div className="flex border rounded-lg">
                         <Button
                           variant={viewMode === "grid" ? "default" : "ghost"}
                           size="sm"
                           onClick={() => setViewMode("grid")}
-                          className="h-8 w-8 p-0"
-                        >
-                          <div className="w-4 h-4 grid grid-cols-2 gap-0.5">
-                            <div className="bg-current rounded-sm"></div>
-                            <div className="bg-current rounded-sm"></div>
-                            <div className="bg-current rounded-sm"></div>
-                            <div className="bg-current rounded-sm"></div>
-                          </div>
+                    >
+                      <Grid3X3 className="w-4 h-4" />
                         </Button>
                         <Button
                           variant={viewMode === "list" ? "default" : "ghost"}
                           size="sm"
                           onClick={() => setViewMode("list")}
-                          className="h-8 w-8 p-0"
-                        >
-                          <div className="w-4 h-4 flex flex-col gap-0.5">
-                            <div className="bg-current rounded-sm h-1"></div>
-                            <div className="bg-current rounded-sm h-1"></div>
-                            <div className="bg-current rounded-sm h-1"></div>
-                          </div>
+                    >
+                      <List className="w-4 h-4" />
                         </Button>
                       </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
 
+              {/* Products Grid */}
               {isProductsLoading ? (
-                <div className="flex items-center justify-center py-20">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <span className="ml-3 text-lg text-muted-foreground">Loading products...</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {[...Array(8)].map((_, i) => (
+                    <Card key={i} className="animate-pulse">
+                      <div className="aspect-[4/3] bg-gray-200 rounded-t-lg" />
+                      <CardContent className="p-4 space-y-2">
+                        <div className="h-4 bg-gray-200 rounded" />
+                        <div className="h-3 bg-gray-200 rounded w-2/3" />
+                        <div className="h-3 bg-gray-200 rounded w-1/2" />
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-              ) : sortedProducts.length === 0 ? (
-                <Card className="p-12 text-center">
-                  <div className="space-y-4">
-                    <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center">
-                      <Search className="w-8 h-8 text-gray-400" />
-                    </div>
-                    <h3 className="text-lg font-semibold">
-                      {products.length === 0 ? "No Products Available" : "No products found"}
-                    </h3>
-                    <p className="text-muted-foreground">
-                      {products.length === 0 
-                        ? "Products will appear here once they are added by the administrator."
-                        : "Try adjusting your search criteria or filters to find what you're looking for."}
-                    </p>
-                    {activeFilterCount > 0 && (
-                      <Button variant="outline" onClick={clearAllFilters}>
-                        <X className="w-4 w-4 mr-2" />
-                        Clear All Filters
-                      </Button>
-                    )}
-                  </div>
-                </Card>
-              ) : (
-                <div className={`grid gap-5 ${
+              ) : sortedProducts.length > 0 ? (
+                <div className={`grid gap-6 ${
                   viewMode === "grid" 
-                    ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3" 
+                    ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" 
                     : "grid-cols-1"
                 }`}>
                   {sortedProducts.map((product) => (
-                  <ProductCard key={product.id} {...product} />
+                    <ProductCard key={product.id} {...transformProductForCard(product)} />
                 ))}
               </div>
-              )}
-
-              {/* Pagination */}
-              <div className="mt-10 flex justify-center">
-                <div className="inline-flex gap-1 p-1 bg-card rounded-lg border">
-                  <Button variant="ghost" size="sm" data-testid="button-prev-page">Previous</Button>
-                  <Button variant="default" size="sm" data-testid="button-page-1">1</Button>
-                  <Button variant="ghost" size="sm" data-testid="button-page-2">2</Button>
-                  <Button variant="ghost" size="sm" data-testid="button-page-3">3</Button>
-                  <Button variant="ghost" size="sm" data-testid="button-next-page">Next</Button>
+              ) : (
+                <div className="text-center py-12">
+                  <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Search className="w-12 h-12 text-gray-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No products found</h3>
+                  <p className="text-gray-600 mb-4">
+                    Try adjusting your search criteria or filters
+                  </p>
+                  <Button onClick={() => {
+                    setSearchQuery("");
+                    setSelectedCategory("all");
+                    setPriceRange([0, 1000]);
+                    setMoqRange([0, 10000]);
+                  }}>
+                    Clear Filters
+                  </Button>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
       </main>
+
       <Footer />
     </div>
   );

@@ -74,7 +74,7 @@ export default function AdminInquiries() {
   const queryClient = useQueryClient();
 
   // Dynamic data from API
-  const { data: inquiries = [], isLoading, error } = useQuery({
+  const { data: inquiriesData, isLoading, error } = useQuery({
     queryKey: ['/api/admin/inquiries', statusFilter, searchQuery],
     queryFn: async () => {
       try {
@@ -207,6 +207,35 @@ export default function AdminInquiries() {
     }
   };
 
+  // Ensure inquiries is always an array
+  const inquiries = Array.isArray(inquiriesData) ? inquiriesData : [];
+
+  // Enhanced analytics
+  const stats = {
+    total: inquiries.length,
+    pending: inquiries.filter((i: any) => i.status === 'pending').length,
+    replied: inquiries.filter((i: any) => i.status === 'replied').length,
+    negotiating: inquiries.filter((i: any) => i.status === 'negotiating').length,
+    closed: inquiries.filter((i: any) => i.status === 'closed').length,
+    // Calculate conversion rates
+    conversionRate: inquiries.length > 0 ? 
+      ((inquiries.filter((i: any) => i.status === 'replied').length / inquiries.length) * 100).toFixed(1) : 0,
+    negotiationRate: inquiries.length > 0 ? 
+      ((inquiries.filter((i: any) => i.status === 'negotiating').length / inquiries.length) * 100).toFixed(1) : 0,
+    // Calculate average response time (mock data for now)
+    avgResponseTime: '2.5 hours',
+    // Calculate total inquiry value
+    totalValue: inquiries.reduce((sum: number, inquiry: any) => 
+      sum + ((inquiry.quantity || 0) * (inquiry.targetPrice || 0)), 0),
+    // Recent activity (last 7 days)
+    recentActivity: inquiries.filter((i: any) => {
+      const createdAt = new Date(i.createdAt);
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      return createdAt > weekAgo;
+    }).length
+  };
+
   const filteredInquiries = inquiries.filter((inquiry: any) => {
     const matchesSearch = inquiry.productName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          inquiry.buyerName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -282,31 +311,6 @@ export default function AdminInquiries() {
     });
   };
 
-  // Enhanced analytics
-  const stats = {
-    total: inquiries.length,
-    pending: inquiries.filter((i: any) => i.status === 'pending').length,
-    replied: inquiries.filter((i: any) => i.status === 'replied').length,
-    negotiating: inquiries.filter((i: any) => i.status === 'negotiating').length,
-    closed: inquiries.filter((i: any) => i.status === 'closed').length,
-    // Calculate conversion rates
-    conversionRate: inquiries.length > 0 ? 
-      ((inquiries.filter((i: any) => i.status === 'replied').length / inquiries.length) * 100).toFixed(1) : 0,
-    negotiationRate: inquiries.length > 0 ? 
-      ((inquiries.filter((i: any) => i.status === 'negotiating').length / inquiries.length) * 100).toFixed(1) : 0,
-    // Calculate average response time (mock data for now)
-    avgResponseTime: '2.5 hours',
-    // Calculate total inquiry value
-    totalValue: inquiries.reduce((sum: number, inquiry: any) => 
-      sum + ((inquiry.quantity || 0) * (inquiry.targetPrice || 0)), 0),
-    // Recent activity (last 7 days)
-    recentActivity: inquiries.filter((i: any) => {
-      const createdAt = new Date(i.createdAt);
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      return createdAt > weekAgo;
-    }).length
-  };
 
   if (isLoading) {
     return (

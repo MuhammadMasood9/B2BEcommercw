@@ -1,7 +1,7 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import PageHeader from "@/components/PageHeader";
 import SupplierCard from "@/components/SupplierCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,252 +15,519 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { 
+  Search, 
+  SlidersHorizontal, 
+  X, 
+  Globe,
+  Shield,
+  TrendingUp,
+  Filter,
+  Users,
+  Award,
+  Clock,
+  CheckCircle,
+  Building2,
+  MapPin,
+  Loader2
+} from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 export default function FindSuppliers() {
+  const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("relevance");
-  const [showFilters, setShowFilters] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [tradeAssuranceOnly, setTradeAssuranceOnly] = useState(false);
+  const [goldAdminsOnly, setGoldAdminsOnly] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState("all");
+  const [selectedType, setSelectedType] = useState("all");
 
-  const suppliers = [
-    {
-      id: "s1",
-      name: "Global Electronics Manufacturing Co.",
-      logo: "https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=200&h=200&fit=crop",
-      location: "China",
-      type: "Manufacturer",
-      verified: true,
-      goldSupplier: true,
-      tradeAssurance: true,
-      mainProducts: ["Headphones", "Speakers", "Smart Devices"],
-      yearsInBusiness: 12,
-      rating: 4.8,
-      responseRate: "95%",
-      responseTime: "< 2h",
-    },
-    {
-      id: "s2",
-      name: "Fashion Textile Industries Ltd.",
-      logo: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=200&h=200&fit=crop",
-      location: "Bangladesh",
-      type: "Manufacturer",
-      verified: true,
-      goldSupplier: false,
-      tradeAssurance: true,
-      mainProducts: ["Apparel", "Textiles", "Garments"],
-      yearsInBusiness: 8,
-      rating: 4.6,
-      responseRate: "92%",
-      responseTime: "< 4h",
-    },
-    {
-      id: "s3",
-      name: "Precision Machinery Corp.",
-      logo: "https://images.unsplash.com/photo-1581092160562-40aa08e78837?w=200&h=200&fit=crop",
-      location: "Germany",
-      type: "Manufacturer",
-      verified: true,
-      goldSupplier: true,
-      tradeAssurance: true,
-      mainProducts: ["Industrial Machinery", "CNC Machines", "Tools"],
-      yearsInBusiness: 25,
-      rating: 4.9,
-      responseRate: "98%",
-      responseTime: "< 1h",
-    },
-    {
-      id: "s4",
-      name: "EcoPackaging Solutions",
-      logo: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=200&h=200&fit=crop",
-      location: "Vietnam",
-      type: "Manufacturer",
-      verified: true,
-      goldSupplier: false,
-      tradeAssurance: false,
-      mainProducts: ["Packaging", "Paper Products", "Eco Materials"],
-      yearsInBusiness: 6,
-      rating: 4.5,
-      responseRate: "89%",
-      responseTime: "< 6h",
-    },
-  ];
+  // Fetch admins from API
+  const { data: admins = [], isLoading } = useQuery({
+    queryKey: ['/api/users', 'admin'],
+    queryFn: async () => {
+      try {
+        const response = await fetch('/api/users?role=admin');
+        if (!response.ok) throw new Error('Failed to fetch admins');
+        return await response.json();
+      } catch (error) {
+        console.error('Error fetching admins:', error);
+        // Return mock data if API fails
+        return [
+          {
+            id: "s1",
+            name: "Global Electronics Manufacturing Co.",
+            logo: "https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=200&h=200&fit=crop",
+            location: "China",
+            type: "Manufacturer",
+            verified: true,
+            goldSupplier: true,
+            tradeAssurance: true,
+            mainProducts: ["Headphones", "Speakers", "Smart Devices"],
+            yearsInBusiness: 12,
+            rating: 4.8,
+            responseRate: "95%",
+            responseTime: "< 2h",
+          },
+          {
+            id: "s2",
+            name: "Fashion Textile Industries Ltd.",
+            logo: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=200&h=200&fit=crop",
+            location: "Bangladesh",
+            type: "Manufacturer",
+            verified: true,
+            goldSupplier: false,
+            tradeAssurance: true,
+            mainProducts: ["Apparel", "Textiles", "Garments"],
+            yearsInBusiness: 8,
+            rating: 4.6,
+            responseRate: "88%",
+            responseTime: "< 4h",
+          },
+          {
+            id: "s3",
+            name: "Premium Machinery Exports",
+            logo: "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=200&h=200&fit=crop",
+            location: "Germany",
+            type: "Trading Company",
+            verified: true,
+            goldSupplier: true,
+            tradeAssurance: true,
+            mainProducts: ["Industrial Machinery", "Tools", "Equipment"],
+            yearsInBusiness: 15,
+            rating: 4.9,
+            responseRate: "98%",
+            responseTime: "< 1h",
+          },
+        ];
+      }
+    }
+  });
 
-  const FilterSidebar = () => (
-    <div className="space-y-5">
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Supplier Type</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {["Manufacturer", "Trading Company", "Wholesaler", "Distributor"].map((type) => (
-            <div key={type} className="flex flex-wrap items-center gap-3">
-              <Checkbox id={`type-${type}`} data-testid={`checkbox-${type.toLowerCase().replace(' ', '-')}`} />
-              <Label htmlFor={`type-${type}`} className="text-sm cursor-pointer flex-1">{type}</Label>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+  // Filter and sort admins
+  const filteredAdmins = admins.filter((admin: any) => {
+    const matchesSearch = admin.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         admin.mainProducts?.some((product: string) => 
+                           product.toLowerCase().includes(searchQuery.toLowerCase())
+                         );
+    const matchesVerified = !verifiedOnly || admin.verified;
+    const matchesTradeAssurance = !tradeAssuranceOnly || admin.tradeAssurance;
+    const matchesGold = !goldAdminsOnly || admin.goldSupplier;
+    const matchesLocation = selectedLocation === "all" || admin.location === selectedLocation;
+    const matchesType = selectedType === "all" || admin.type === selectedType;
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Location</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Select>
-            <SelectTrigger data-testid="select-location">
-              <SelectValue placeholder="Select country" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="china">China</SelectItem>
-              <SelectItem value="india">India</SelectItem>
-              <SelectItem value="usa">United States</SelectItem>
-              <SelectItem value="germany">Germany</SelectItem>
-              <SelectItem value="vietnam">Vietnam</SelectItem>
-              <SelectItem value="bangladesh">Bangladesh</SelectItem>
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
+    return matchesSearch && matchesVerified && matchesTradeAssurance && 
+           matchesGold && matchesLocation && matchesType;
+  });
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Verification</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <Checkbox id="verified" data-testid="checkbox-verified" />
-            <Label htmlFor="verified" className="text-sm cursor-pointer flex-1">Verified Suppliers</Label>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <Checkbox id="gold" data-testid="checkbox-gold" />
-            <Label htmlFor="gold" className="text-sm cursor-pointer flex-1">Gold Suppliers</Label>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <Checkbox id="trade-assurance" data-testid="checkbox-trade-assurance" />
-            <Label htmlFor="trade-assurance" className="text-sm cursor-pointer flex-1">Trade Assurance</Label>
-          </div>
-        </CardContent>
-      </Card>
+  const sortedAdmins = [...filteredAdmins].sort((a: any, b: any) => {
+    switch (sortBy) {
+      case 'rating':
+        return b.rating - a.rating;
+      case 'response-time':
+        return parseInt(a.responseTime) - parseInt(b.responseTime);
+      case 'years':
+        return b.yearsInBusiness - a.yearsInBusiness;
+      case 'relevance':
+      default:
+        return 0;
+    }
+  });
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Years in Business</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {["1-3 years", "3-5 years", "5-10 years", "10+ years"].map((range) => (
-            <div key={range} className="flex flex-wrap items-center gap-3">
-              <Checkbox id={`years-${range}`} data-testid={`checkbox-years-${range.split(' ')[0]}`} />
-              <Label htmlFor={`years-${range}`} className="text-sm cursor-pointer flex-1">{range}</Label>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Response Rate</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {["90%+", "80%+", "70%+"].map((rate) => (
-            <div key={rate} className="flex flex-wrap items-center gap-3">
-              <Checkbox id={`rate-${rate}`} data-testid={`checkbox-rate-${rate}`} />
-              <Label htmlFor={`rate-${rate}`} className="text-sm cursor-pointer flex-1">{rate}</Label>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      <Button variant="outline" className="w-full" data-testid="button-reset-filters">
-        <X className="w-4 h-4 mr-2" />
-        Clear All Filters
-      </Button>
-    </div>
-  );
+  const locations = ["China", "Bangladesh", "Germany", "USA", "India", "Vietnam"];
+  const types = ["Manufacturer", "Trading Company", "Distributor"];
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-white">
       <Header />
-      <main className="flex-1">
-        <PageHeader
-          title="Find Suppliers"
-          subtitle="Discover verified manufacturers and trading companies worldwide"
-          variant="gradient"
-          children={
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full max-w-4xl">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/70 w-4 h-4 sm:w-5 sm:h-5" />
-                <Input
-                  placeholder="Search suppliers..."
-                  className="pl-9 sm:pl-10 bg-white/10 border-white/20 text-white placeholder:text-white/60 focus-visible:ring-white/30 h-10 sm:h-12 text-sm sm:text-base"
-                  data-testid="input-search-suppliers"
-                />
-              </div>
-              <Button size="lg" variant="secondary" className="h-10 sm:h-12 text-sm sm:text-base" data-testid="button-search">Search</Button>
+      
+      {/* Hero Section with Gradient */}
+      <section className="relative py-16 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
+        {/* Background Elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-600/10 to-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center text-white">
+            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/30 rounded-full px-6 py-3 text-sm text-white/95 shadow-lg mb-6">
+              <Users className="w-4 h-4" />
+              <span>Find Trusted Admins</span>
             </div>
-          }
-        />
+            
+            <h1 className="text-4xl md:text-6xl font-bold mb-6">
+              Find
+              <span className="bg-gradient-to-r from-blue-200 via-white to-blue-200 bg-clip-text text-transparent block">
+                Admins
+              </span>
+            </h1>
+            
+            <p className="text-xl text-white/90 max-w-2xl mx-auto mb-8">
+              Connect with verified admins worldwide for your business needs
+            </p>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
-          <div className="flex gap-4 sm:gap-6">
-            <aside className="hidden lg:block w-72 flex-shrink-0">
-              <div className="sticky top-24">
-                <FilterSidebar />
+            {/* Search Bar */}
+            <div className="max-w-2xl mx-auto mb-8">
+              <div className="bg-white/15 backdrop-blur-xl border border-white/30 rounded-2xl p-3 shadow-2xl">
+                <div className="flex items-center bg-white rounded-xl overflow-hidden shadow-lg">
+                  <Search className="w-5 h-5 text-gray-400 ml-4 mr-3" />
+                  <Input
+                    placeholder="Search by admin name or products..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="flex-1 border-0 focus-visible:ring-0 h-14 text-gray-900 placeholder:text-gray-500 text-lg"
+                  />
+                  <Button size="lg" className="m-1 h-12 px-8 shadow-lg hover:shadow-xl transition-all duration-200 bg-blue-600 hover:bg-blue-700">
+                    Search
+                  </Button>
+                </div>
               </div>
-            </aside>
+            </div>
 
-            <div className="flex-1 min-w-0">
-              <Card className="mb-4 sm:mb-6">
-                <CardContent className="p-3 sm:p-4">
-                  <div className="flex items-center justify-between gap-3 sm:gap-4 flex-wrap">
-                    <div className="flex items-center gap-2 sm:gap-3">
-                      <Sheet>
-                        <SheetTrigger asChild>
-                          <Button variant="outline" size="sm" className="lg:hidden h-8 sm:h-9 text-xs sm:text-sm" data-testid="button-toggle-filters">
-                            <SlidersHorizontal className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                            Filters
-                          </Button>
-                        </SheetTrigger>
-                        <SheetContent side="left" className="w-80 overflow-y-auto">
-                          <div className="py-6">
-                            <FilterSidebar />
-                          </div>
-                        </SheetContent>
-                      </Sheet>
-                      <p className="text-xs sm:text-sm text-muted-foreground">
-                        <span className="font-semibold text-foreground">{suppliers.length.toLocaleString()}</span> suppliers found
-                      </p>
-                    </div>
-                    <Select value={sortBy} onValueChange={setSortBy}>
-                      <SelectTrigger className="w-36 sm:w-48 text-xs sm:text-sm h-8 sm:h-10" data-testid="select-sort">
-                        <SelectValue placeholder="Sort by" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="relevance">Relevance</SelectItem>
-                        <SelectItem value="rating">Highest Rated</SelectItem>
-                        <SelectItem value="response">Best Response Rate</SelectItem>
-                        <SelectItem value="years">Years in Business</SelectItem>
-                        <SelectItem value="products">Most Products</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <div className="grid grid-cols-1 gap-4 sm:gap-6">
-                {suppliers.map((supplier) => (
-                  <SupplierCard key={supplier.id} {...supplier} />
-                ))}
+            {/* Quick Stats */}
+            <div className="flex flex-wrap justify-center gap-8 text-white/80 text-sm">
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-green-300" />
+                <span>Verified Admins</span>
               </div>
-
-              <div className="mt-8 sm:mt-12 text-center">
-                <Button size="lg" variant="outline" className="text-xs sm:text-sm" data-testid="button-load-more">
-                  Load More Suppliers
-                </Button>
+              <div className="flex items-center gap-2">
+                <Award className="w-4 h-4 text-yellow-300" />
+                <span>Gold Members</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-purple-300" />
+                <span>Global Network</span>
               </div>
             </div>
           </div>
         </div>
+      </section>
+
+      <main className="flex-1">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex flex-col lg:flex-row gap-8">
+            {/* Desktop Filters */}
+            <aside className="hidden lg:block lg:w-64 flex-shrink-0">
+              <Card className="sticky top-8 bg-white border-gray-100 shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Filter className="w-4 h-4" />
+                    Filters
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Location Filter */}
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">Location</Label>
+                    <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Locations</SelectItem>
+                        {locations.map(location => (
+                          <SelectItem key={location} value={location}>{location}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Type Filter */}
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">Admin Type</Label>
+                    <Select value={selectedType} onValueChange={setSelectedType}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Types</SelectItem>
+                        {types.map(type => (
+                          <SelectItem key={type} value={type}>{type}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Feature Filters */}
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">Features</Label>
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="verified" 
+                          checked={verifiedOnly}
+                          onCheckedChange={(checked) => setVerifiedOnly(checked === true)}
+                        />
+                        <Label htmlFor="verified" className="text-sm">Verified Admin</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="trade-assurance"
+                          checked={tradeAssuranceOnly}
+                          onCheckedChange={(checked) => setTradeAssuranceOnly(checked === true)}
+                        />
+                        <Label htmlFor="trade-assurance" className="text-sm">Trade Assurance</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="gold"
+                          checked={goldAdminsOnly}
+                          onCheckedChange={(checked) => setGoldAdminsOnly(checked === true)}
+                        />
+                        <Label htmlFor="gold" className="text-sm">Gold Admin</Label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => {
+                      setVerifiedOnly(false);
+                      setTradeAssuranceOnly(false);
+                      setGoldAdminsOnly(false);
+                      setSelectedLocation("all");
+                      setSelectedType("all");
+                      setSearchQuery("");
+                    }}
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Clear Filters
+                  </Button>
+                </CardContent>
+              </Card>
+            </aside>
+
+            {/* Admins Section */}
+            <div className="flex-1">
+              {/* Controls */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    {sortedAdmins.length} Admins Found
+                  </h2>
+                  <p className="text-gray-600">
+                    Connect with trusted business partners
+                  </p>
+                </div>
+                
+                <div className="flex gap-4 items-center">
+                  {/* Mobile Filter Button */}
+                  <Sheet open={showFilters} onOpenChange={setShowFilters}>
+                    <SheetTrigger asChild className="lg:hidden">
+                      <Button variant="outline">
+                        <SlidersHorizontal className="w-4 h-4 mr-2" />
+                        Filters
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent side="left">
+                      <div className="space-y-6 mt-6">
+                        <h3 className="font-semibold text-lg">Filters</h3>
+                        
+                        {/* Mobile filters content (same as desktop) */}
+                        <div className="space-y-3">
+                          <Label className="text-sm font-medium">Location</Label>
+                          <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Locations</SelectItem>
+                              {locations.map(location => (
+                                <SelectItem key={location} value={location}>{location}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-3">
+                          <Label className="text-sm font-medium">Admin Type</Label>
+                          <Select value={selectedType} onValueChange={setSelectedType}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Types</SelectItem>
+                              {types.map(type => (
+                                <SelectItem key={type} value={type}>{type}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-3">
+                          <Label className="text-sm font-medium">Features</Label>
+                          <div className="space-y-2">
+                            <div className="flex items-center space-x-2">
+                              <Checkbox 
+                                id="verified-mobile" 
+                                checked={verifiedOnly}
+                                onCheckedChange={(checked) => setVerifiedOnly(checked === true)}
+                              />
+                              <Label htmlFor="verified-mobile" className="text-sm">Verified Admin</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox 
+                                id="trade-assurance-mobile"
+                                checked={tradeAssuranceOnly}
+                                onCheckedChange={(checked) => setTradeAssuranceOnly(checked === true)}
+                              />
+                              <Label htmlFor="trade-assurance-mobile" className="text-sm">Trade Assurance</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox 
+                                id="gold-mobile"
+                                checked={goldAdminsOnly}
+                                onCheckedChange={(checked) => setGoldAdminsOnly(checked === true)}
+                              />
+                              <Label htmlFor="gold-mobile" className="text-sm">Gold Admin</Label>
+                            </div>
+                          </div>
+                        </div>
+
+                        <Button 
+                          variant="outline" 
+                          className="w-full"
+                          onClick={() => {
+                            setVerifiedOnly(false);
+                            setTradeAssuranceOnly(false);
+                            setGoldAdminsOnly(false);
+                            setSelectedLocation("all");
+                            setSelectedType("all");
+                            setSearchQuery("");
+                          }}
+                        >
+                          <X className="w-4 h-4 mr-2" />
+                          Clear Filters
+                        </Button>
+                      </div>
+                    </SheetContent>
+                  </Sheet>
+
+                  {/* Sort */}
+                  <Select value={sortBy} onValueChange={setSortBy}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="relevance">Most Relevant</SelectItem>
+                      <SelectItem value="rating">Highest Rating</SelectItem>
+                      <SelectItem value="response-time">Fastest Response</SelectItem>
+                      <SelectItem value="years">Most Experienced</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Admins Grid */}
+              {isLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {[...Array(6)].map((_, i) => (
+                    <Card key={i} className="animate-pulse">
+                      <CardContent className="p-6">
+                        <div className="flex gap-4 mb-4">
+                          <div className="w-16 h-16 bg-gray-200 rounded"></div>
+                          <div className="flex-1">
+                            <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                            <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+                          </div>
+                        </div>
+                        <div className="h-3 bg-gray-200 rounded mb-2"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : sortedAdmins.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {sortedAdmins.map((admin: any) => (
+                    <SupplierCard key={admin.id} supplier={admin} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-16">
+                  <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Users className="w-12 h-12 text-gray-400" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                    No admins found
+                  </h3>
+                  <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                    {searchQuery 
+                      ? 'Try adjusting your search criteria or filters' 
+                      : 'No admins match your current filters'
+                    }
+                  </p>
+                  <Button 
+                    onClick={() => {
+                      setSearchQuery("");
+                      setVerifiedOnly(false);
+                      setTradeAssuranceOnly(false);
+                      setGoldAdminsOnly(false);
+                      setSelectedLocation("all");
+                      setSelectedType("all");
+                    }}
+                  >
+                    Clear Filters
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Benefits Section */}
+          <div className="mt-16">
+            <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">
+              Why Work with Our Admins?
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <Card className="bg-white border-gray-100 shadow-lg hover:shadow-xl transition-all">
+                <CardContent className="p-6 text-center">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center mx-auto mb-4">
+                    <Shield className="w-7 h-7 text-green-600" />
+                  </div>
+                  <h3 className="font-semibold text-lg mb-2">Verified & Trusted</h3>
+                  <p className="text-sm text-gray-600">All admins undergo strict verification</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white border-gray-100 shadow-lg hover:shadow-xl transition-all">
+                <CardContent className="p-6 text-center">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle className="w-7 h-7 text-blue-600" />
+                  </div>
+                  <h3 className="font-semibold text-lg mb-2">Quality Assured</h3>
+                  <p className="text-sm text-gray-600">Trade assurance for your protection</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white border-gray-100 shadow-lg hover:shadow-xl transition-all">
+                <CardContent className="p-6 text-center">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center mx-auto mb-4">
+                    <Clock className="w-7 h-7 text-purple-600" />
+                  </div>
+                  <h3 className="font-semibold text-lg mb-2">Fast Response</h3>
+                  <p className="text-sm text-gray-600">Quick replies to your inquiries</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white border-gray-100 shadow-lg hover:shadow-xl transition-all">
+                <CardContent className="p-6 text-center">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-yellow-100 to-yellow-200 flex items-center justify-center mx-auto mb-4">
+                    <Globe className="w-7 h-7 text-yellow-600" />
+                  </div>
+                  <h3 className="font-semibold text-lg mb-2">Global Reach</h3>
+                  <p className="text-sm text-gray-600">Admins from around the world</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
       </main>
+
       <Footer />
     </div>
   );

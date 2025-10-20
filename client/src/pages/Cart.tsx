@@ -137,7 +137,7 @@ export default function Cart() {
 
   if (items.length === 0) {
     return (
-      <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-white">
         <Header />
         <main className="flex-1">
           <PageHeader
@@ -167,7 +167,7 @@ export default function Cart() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-white">
       <Header />
       <main className="flex-1">
         <PageHeader
@@ -189,7 +189,7 @@ export default function Cart() {
 
               <div className="space-y-4">
                 {items.map((item) => (
-                  <Card key={item.id} className="p-6">
+                  <Card key={item.id} className="p-6 bg-white border-gray-100 shadow-lg hover:shadow-xl transition-all">
                     <div className="flex gap-4">
                       <Avatar className="h-20 w-20 rounded-lg">
                         <AvatarImage src={item.image} alt={item.name} />
@@ -275,10 +275,10 @@ export default function Cart() {
 
             {/* Inquiry Summary */}
             <div className="space-y-6">
-              <Card>
+              <Card className="bg-gradient-to-br from-white to-gray-50 border-gray-100 shadow-xl">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <MessageSquare className="w-5 h-5" />
+                    <MessageSquare className="w-5 h-5 text-blue-600" />
                     Inquiry Summary
                   </CardTitle>
                 </CardHeader>
@@ -319,13 +319,13 @@ export default function Cart() {
                   
                   <div className="space-y-3">
                     <Button 
-                      className="w-full" 
+                      className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg" 
                       size="lg"
                       onClick={handleSendInquiries}
                       disabled={submitInquiriesMutation.isPending}
                     >
                       <MessageSquare className="w-4 h-4 mr-2" />
-                      Send to All Suppliers
+                      Send to All Admins
                     </Button>
                     
                     <Button 
@@ -342,9 +342,12 @@ export default function Cart() {
               </Card>
 
               {/* Inquiry Details */}
-              <Card>
+              <Card className="bg-white border-gray-100 shadow-lg">
                 <CardHeader>
-                  <CardTitle>Inquiry Details</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-purple-600" />
+                    Inquiry Details
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
@@ -390,7 +393,7 @@ export default function Cart() {
                     <Label htmlFor="requirements">Additional Requirements</Label>
                     <Textarea
                       id="requirements"
-                      placeholder="Specify any special requirements, delivery preferences, or questions for suppliers..."
+                      placeholder="Specify any special requirements, delivery preferences, or questions for admins..."
                       value={inquiryData.requirements}
                       onChange={(e) => setInquiryData(prev => ({ ...prev, requirements: e.target.value }))}
                       className="mt-2"
@@ -433,7 +436,7 @@ export default function Cart() {
               </Card>
 
               {/* Trust Signals */}
-              <Card>
+              <Card className="bg-gradient-to-r from-green-50 to-blue-50 border-green-100 shadow-lg">
                 <CardHeader>
                   <CardTitle>Why Choose Us?</CardTitle>
                 </CardHeader>
@@ -453,7 +456,7 @@ export default function Cart() {
                     <div>
                       <h4 className="font-medium">Fast Shipping</h4>
                       <p className="text-sm text-muted-foreground">
-                        Connect with suppliers offering quick delivery
+                        Connect with admins offering quick delivery
                       </p>
                     </div>
                   </div>
@@ -463,7 +466,7 @@ export default function Cart() {
                     <div>
                       <h4 className="font-medium">Direct Communication</h4>
                       <p className="text-sm text-muted-foreground">
-                        Chat directly with verified suppliers
+                        Chat directly with verified admins
                       </p>
                     </div>
                   </div>

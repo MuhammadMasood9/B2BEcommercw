@@ -931,7 +931,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let quotations = await storage.getInquiryQuotations();
       
       // FILTER: Only show quotations for THIS buyer's inquiries
-      quotations = quotations.filter((q: any) => q.buyerId === buyerId);
+      quotations = quotations.filter((q: any) => q.buyerId && q.buyerId.toString() === buyerId.toString());
       
       // Filter by status if provided
       if (status && status !== 'all') {
@@ -1109,6 +1109,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const quotations = await storage.getInquiryQuotations();
       res.json({ quotations });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get specific quotation for buyer (with permission check)
+  app.get("/api/buyer/quotations/:id", async (req, res) => {
+    try {
+      // IMPORTANT: Get buyer ID from authenticated session
+      // @ts-ignore - req.user is added by auth middleware
+      const buyerId = req.user?.id;
+      
+      if (!buyerId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const quotation = await storage.getInquiryQuotationWithDetails(req.params.id);
+      if (!quotation) {
+        return res.status(404).json({ error: "Quotation not found" });
+      }
+
+      // Check if this quotation belongs to the authenticated buyer
+      if (quotation.buyerId && quotation.buyerId.toString() !== buyerId.toString()) {
+        return res.status(403).json({ error: "You don't have permission to view this quotation" });
+      }
+
+      res.json(quotation);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

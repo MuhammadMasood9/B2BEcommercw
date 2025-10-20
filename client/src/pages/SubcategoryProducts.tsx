@@ -134,7 +134,7 @@ export default function SubcategoryProducts() {
 
   const FilterSidebar = () => (
     <div className="space-y-5">
-      <Card>
+      <Card className="bg-white border-gray-100 shadow-lg">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold">Price Range</CardTitle>
         </CardHeader>
@@ -148,9 +148,9 @@ export default function SubcategoryProducts() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="bg-white border-gray-100 shadow-lg">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Supplier Type</CardTitle>
+          <CardTitle className="text-base font-semibold">Admin Type</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {["Manufacturer", "Trading Company", "Wholesaler"].map((type) => (
@@ -162,7 +162,7 @@ export default function SubcategoryProducts() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="bg-white border-gray-100 shadow-lg">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold">Certifications</CardTitle>
         </CardHeader>
@@ -184,7 +184,7 @@ export default function SubcategoryProducts() {
   );
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-white">
       <Header />
       <main className="flex-1">
         <PageHeader
@@ -207,7 +207,7 @@ export default function SubcategoryProducts() {
             </aside>
 
             <div className="flex-1 min-w-0">
-              <Card className="mb-6">
+              <Card className="mb-6 bg-white border-gray-100 shadow-lg">
                 <CardContent className="p-4">
                   <div className="flex flex-col sm:flex-row gap-4">
                     <div className="relative flex-1">

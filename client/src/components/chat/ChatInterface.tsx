@@ -13,7 +13,8 @@ import {
   RefreshCw,
   Bot,
   Shield,
-  User
+  User,
+  Circle
 } from 'lucide-react';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
@@ -29,6 +30,7 @@ export default function ChatInterface({ userRole, userId }: ChatInterfaceProps) 
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showConversationList, setShowConversationList] = useState(userRole === 'admin');
+  const [otherUserStatus, setOtherUserStatus] = useState<{ isOnline: boolean; lastSeen: Date | null } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -62,6 +64,12 @@ export default function ChatInterface({ userRole, userId }: ChatInterfaceProps) 
       apiRequest('PATCH', `/api/chat/conversations/${selectedConversationId}/read`),
   });
 
+  // Update user online status mutation
+  const updateOnlineStatusMutation = useMutation({
+    mutationFn: (isOnline: boolean) =>
+      apiRequest('POST', '/api/chat/user/status', { isOnline }),
+  });
+
   const conversations = Array.isArray(conversationsData) ? conversationsData : (conversationsData as any)?.conversations || [];
   const messages = (messagesData as any)?.messages || [];
   const selectedConversation = conversations.find((c: any) => c.id === selectedConversationId);
@@ -77,6 +85,62 @@ export default function ChatInterface({ userRole, userId }: ChatInterfaceProps) 
       markAsReadMutation.mutate();
     }
   }, [selectedConversationId]);
+
+  // Set user as online when component mounts, offline when unmounts
+  useEffect(() => {
+    updateOnlineStatusMutation.mutate(true);
+    
+    // Set user as offline on unmount or page unload
+    const handleUnload = () => {
+      // Use navigator.sendBeacon for reliable status update on page unload
+      const data = JSON.stringify({ isOnline: false });
+      navigator.sendBeacon('/api/chat/user/status', data);
+    };
+    
+    window.addEventListener('beforeunload', handleUnload);
+    
+    return () => {
+      updateOnlineStatusMutation.mutate(false);
+      window.removeEventListener('beforeunload', handleUnload);
+    };
+  }, []);
+
+  // Fetch other user's online status when conversation is selected
+  useEffect(() => {
+    if (!selectedConversation) {
+      setOtherUserStatus(null);
+      return;
+    }
+
+    const otherUserId = userRole === 'buyer' 
+      ? selectedConversation.unreadCountAdmin 
+      : selectedConversation.buyerId;
+
+    const fetchUserStatus = async () => {
+      try {
+        const status = await apiRequest('GET', `/api/chat/user/${otherUserId}/status`);
+        setOtherUserStatus(status);
+      } catch (error) {
+        console.error('Error fetching user status:', error);
+      }
+    };
+
+    fetchUserStatus();
+
+    // Poll for status updates every 30 seconds
+    const interval = setInterval(fetchUserStatus, 30000);
+
+    return () => clearInterval(interval);
+  }, [selectedConversation, userRole]);
+
+  // Update user activity timestamp periodically
+  useEffect(() => {
+    const activityInterval = setInterval(() => {
+      updateOnlineStatusMutation.mutate(true);
+    }, 60000); // Update every minute
+
+    return () => clearInterval(activityInterval);
+  }, []);
 
   const handleSendMessage = (content: string, attachments?: any[]) => {
     if (!selectedConversationId) return;
@@ -150,6 +214,27 @@ export default function ChatInterface({ userRole, userId }: ChatInterfaceProps) 
     return subtitle;
   };
 
+  const formatLastSeen = (lastSeen: Date | null) => {
+    if (!lastSeen) return '';
+    
+    const now = new Date();
+    const lastSeenDate = new Date(lastSeen);
+    const diffMs = now.getTime() - lastSeenDate.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min ago`;
+    
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    
+    return lastSeenDate.toLocaleDateString();
+  };
+
   return (
     <div className="flex h-full bg-gray-50 w-full">
       {/* Conversation List */}
@@ -183,20 +268,44 @@ export default function ChatInterface({ userRole, userId }: ChatInterfaceProps) 
                   </Button>
                   
                   <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
-                      {userRole === 'buyer' ? (
-                        <Shield className="h-6 w-6 text-white" />
-                      ) : (
-                        <User className="h-6 w-6 text-white" />
+                    <div className="relative">
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
+                        {userRole === 'buyer' ? (
+                          <Shield className="h-6 w-6 text-white" />
+                        ) : (
+                          <User className="h-6 w-6 text-white" />
+                        )}
+                      </div>
+                      {/* Online/Offline Status Indicator */}
+                      {otherUserStatus && (
+                        <div className="absolute bottom-0 right-0">
+                          <Circle 
+                            className={`h-4 w-4 ${
+                              otherUserStatus.isOnline 
+                                ? 'fill-green-500 text-green-500' 
+                                : 'fill-gray-400 text-gray-400'
+                            } border-2 border-white rounded-full`}
+                          />
+                        </div>
                       )}
                     </div>
                     <div>
                       <h3 className="text-xl font-bold text-gray-900">
                         {getConversationTitle()}
                       </h3>
-                      <p className="text-sm text-gray-600 font-medium">
-                        {getConversationSubtitle()}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm text-gray-600 font-medium">
+                          {getConversationSubtitle()}
+                        </p>
+                        {otherUserStatus && (
+                          <span className="text-xs text-gray-500">
+                            {otherUserStatus.isOnline 
+                              ? '• Online' 
+                              : `• Last seen ${formatLastSeen(otherUserStatus.lastSeen)}`
+                            }
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

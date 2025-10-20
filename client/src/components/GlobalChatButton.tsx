@@ -28,6 +28,8 @@ interface Conversation {
   adminName?: string;
   adminEmail?: string;
   adminCompany?: string;
+  productName?: string | null;
+  productImages?: string[] | null;
   product?: {
     id: string;
     name: string;
@@ -381,8 +383,12 @@ export default function GlobalChatButton({ className = '' }: GlobalChatButtonPro
                       className="p-3 border-b hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
                     >
                       <div className="flex items-start space-x-3">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                          <MessageCircle className="h-5 w-5 text-blue-600" />
+                        <div className="w-10 h-10 rounded-full overflow-hidden bg-blue-100 flex items-center justify-center">
+                          {conversation.productImages && conversation.productImages.length > 0 ? (
+                            <img src={(conversation.productImages[0] || '').startsWith('http') ? conversation.productImages[0] : `/uploads/${conversation.productImages[0]}`} alt={conversation.productName || 'Product'} className="w-full h-full object-cover" />
+                          ) : (
+                            <MessageCircle className="h-5 w-5 text-blue-600" />
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
@@ -400,7 +406,7 @@ export default function GlobalChatButton({ className = '' }: GlobalChatButtonPro
                           </p>
                           {conversation.productId && (
                             <p className="text-xs text-blue-600 truncate">
-                              Product Inquiry
+                              {conversation.productName || 'Product Inquiry'}
                             </p>
                           )}
                           <p className="text-xs text-gray-400">

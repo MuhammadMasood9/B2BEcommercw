@@ -105,29 +105,56 @@ export default function TradeShows() {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-white">
       <Header />
-      <main className="flex-1">
-        <div className="bg-gradient-to-r from-primary/10 to-primary/5 py-12 mb-8">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center gap-3 mb-4">
-              <Building2 className="w-10 h-10 text-primary" />
-              <h1 className="text-4xl font-bold">Trade Shows & Events</h1>
+      
+      {/* Hero Section with Gradient */}
+      <section className="relative py-16 bg-gradient-to-br from-purple-900 via-purple-800 to-purple-700 overflow-hidden">
+        {/* Background Elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-purple-400/20 to-purple-300/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-purple-500/20 to-purple-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center text-white">
+            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/30 rounded-full px-6 py-3 text-sm text-white/95 shadow-lg mb-6">
+              <Building2 className="w-4 h-4" />
+              <span>Trade Shows</span>
             </div>
-            <p className="text-lg text-muted-foreground mb-6">
-              Connect with suppliers and buyers at global trade shows
+            
+            <h1 className="text-4xl md:text-6xl font-bold mb-6">
+              Trade Shows
+              <span className="bg-gradient-to-r from-purple-200 via-white to-purple-200 bg-clip-text text-transparent block">
+                & Events
+              </span>
+            </h1>
+            
+            <p className="text-xl text-white/90 max-w-2xl mx-auto mb-8">
+              Connect with admins and buyers at global trade shows
             </p>
 
-            <div className="relative max-w-2xl">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
-              <Input
-                placeholder="Search by event name, location, or industry..."
-                className="pl-10 bg-background"
-                data-testid="input-search-events"
-              />
+            {/* Search Bar */}
+            <div className="max-w-2xl mx-auto">
+              <div className="bg-white/15 backdrop-blur-xl border border-white/30 rounded-2xl p-3 shadow-2xl">
+                <div className="flex items-center bg-white rounded-xl overflow-hidden shadow-lg">
+                  <Search className="w-5 h-5 text-gray-400 ml-4 mr-3" />
+                  <Input
+                    placeholder="Search by event name, location, or industry..."
+                    className="flex-1 border-0 focus-visible:ring-0 h-14 text-gray-900 placeholder:text-gray-500 text-lg"
+                    data-testid="input-search-events"
+                  />
+                  <Button size="lg" className="m-1 h-12 px-8 shadow-lg bg-purple-600 hover:bg-purple-700">
+                    Search
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
+      </section>
+
+      <main className="flex-1">
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
           <div className="mb-12">
@@ -141,7 +168,7 @@ export default function TradeShows() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
               {upcomingShows.filter(show => show.featured).map((show) => (
-                <Card key={show.id} className="overflow-hidden hover:shadow-lg transition-shadow" data-testid={`event-${show.id}`}>
+                <Card key={show.id} className="overflow-hidden bg-white border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-2" data-testid={`event-${show.id}`}>
                   <div className="aspect-video relative overflow-hidden">
                     <img 
                       src={show.image} 
@@ -198,7 +225,7 @@ export default function TradeShows() {
             <h2 className="text-2xl font-bold mb-6">Upcoming Events</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {upcomingShows.filter(show => !show.featured).map((show) => (
-                <Card key={show.id} className="hover:shadow-lg transition-shadow" data-testid={`event-${show.id}`}>
+                <Card key={show.id} className="bg-white border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-2" data-testid={`event-${show.id}`}>
                   <div className="aspect-video relative overflow-hidden">
                     <img 
                       src={show.image} 
@@ -244,7 +271,7 @@ export default function TradeShows() {
             <h2 className="text-2xl font-bold mb-6">Past Events</h2>
             <div className="space-y-4">
               {pastShows.map((show) => (
-                <Card key={show.id} data-testid={`past-event-${show.id}`}>
+                <Card key={show.id} className="bg-white border-gray-100 shadow-lg hover:shadow-xl transition-all" data-testid={`past-event-${show.id}`}>
                   <CardContent className="p-6">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div className="flex-1">

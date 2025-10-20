@@ -258,4 +258,40 @@ router.get('/admins', authMiddleware, async (req, res) => {
   }
 });
 
+// Update user online status
+router.post('/user/status', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { isOnline } = req.body;
+    
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    await storage.updateUserOnlineStatus(userId, isOnline);
+    res.json({ success: true, isOnline });
+  } catch (error) {
+    console.error('Error updating user status:', error);
+    res.status(500).json({ error: 'Failed to update user status' });
+  }
+});
+
+// Get user online status
+router.get('/user/:userId/status', authMiddleware, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    const status = await storage.getUserOnlineStatus(userId);
+    
+    if (!status) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json(status);
+  } catch (error) {
+    console.error('Error fetching user status:', error);
+    res.status(500).json({ error: 'Failed to fetch user status' });
+  }
+});
+
 export default router;

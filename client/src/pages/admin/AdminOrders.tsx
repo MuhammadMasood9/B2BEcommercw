@@ -61,7 +61,7 @@ export default function AdminOrders() {
   const queryClient = useQueryClient();
 
   // Fetch orders
-  const { data: orders = [], isLoading, error } = useQuery({
+  const { data: ordersData, isLoading, error } = useQuery({
     queryKey: ['/api/admin/orders', statusFilter, searchQuery],
     queryFn: async () => {
       try {
@@ -112,6 +112,9 @@ export default function AdminOrders() {
       }
     }
   });
+
+  // Ensure orders is always an array
+  const orders = Array.isArray(ordersData) ? ordersData : [];
 
   // Update order mutation
   const updateOrderMutation = useMutation({
@@ -198,10 +201,12 @@ export default function AdminOrders() {
   };
 
   const formatPrice = (price: number) => {
+    // Handle NaN, null, undefined, or invalid numbers
+    const validPrice = isNaN(price) || price === null || price === undefined ? 0 : price;
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD'
-    }).format(price);
+    }).format(validPrice);
   };
 
   const handleUpdateOrder = (order: any) => {
@@ -233,7 +238,10 @@ export default function AdminOrders() {
       shipped: orders.filter((o: any) => o.status === 'shipped').length,
       delivered: orders.filter((o: any) => o.status === 'delivered').length,
       cancelled: orders.filter((o: any) => o.status === 'cancelled').length,
-      totalValue: orders.reduce((sum: number, order: any) => sum + (order.totalAmount || 0), 0)
+      totalValue: orders.reduce((sum: number, order: any) => {
+        const amount = parseFloat(order.totalAmount) || 0;
+        return sum + amount;
+      }, 0)
     },
     inquiries: {
       total: inquiries.length,

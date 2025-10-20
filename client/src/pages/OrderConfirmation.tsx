@@ -134,40 +134,49 @@ export default function OrderConfirmation() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-white">
       <Header />
-      <main className="flex-1 bg-gray-50 dark:bg-gray-900">
-        {/* Success Header */}
-        <div className="bg-green-50 dark:bg-green-900/20 py-12">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <div className="flex justify-center mb-4">
-              <div className="p-4 bg-green-100 dark:bg-green-900 rounded-full">
-                <CheckCircle className="h-12 w-12 text-green-600 dark:text-green-400" />
-              </div>
-            </div>
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-              Order Confirmed!
-            </h1>
-            <p className="text-xl text-gray-600 dark:text-gray-400 mb-4">
-              Thank you for your order. We've received your order and will process it shortly.
-            </p>
-            <div className="flex items-center justify-center gap-4 text-sm text-gray-600 dark:text-gray-400">
-              <span>Order Number: <strong className="text-gray-900 dark:text-white">{order.orderNumber}</strong></span>
-              <span>•</span>
-              <span>Order Date: <strong className="text-gray-900 dark:text-white">{formatDate(order.createdAt)}</strong></span>
-            </div>
+      
+      {/* Hero Section with Gradient */}
+      <section className="relative py-20 bg-gradient-to-br from-green-900 via-green-800 to-green-700 overflow-hidden">
+        {/* Background Elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-green-400/20 to-green-300/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-green-500/20 to-green-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        </div>
+
+        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
+          <div className="inline-flex items-center justify-center w-24 h-24 bg-white/20 backdrop-blur-sm rounded-full mb-6">
+            <CheckCircle className="h-12 w-12 text-white" />
+          </div>
+          
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">
+            Order Confirmed!
+          </h1>
+          
+          <p className="text-xl text-white/90 mb-6">
+            Thank you for your order. We've received your order and will process it shortly.
+          </p>
+          
+          <div className="inline-flex flex-wrap items-center justify-center gap-4 text-sm text-white/80 bg-white/10 backdrop-blur-sm rounded-full px-6 py-3">
+            <span>Order Number: <strong className="text-white">{order.orderNumber}</strong></span>
+            <span>•</span>
+            <span>Order Date: <strong className="text-white">{formatDate(order.createdAt)}</strong></span>
           </div>
         </div>
+      </section>
+
+      <main className="flex-1">
 
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Order Details */}
             <div className="lg:col-span-2 space-y-6">
               {/* Order Status */}
-              <Card>
+              <Card className="bg-white border-gray-100 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Package className="h-5 w-5" />
+                    <Package className="h-5 w-5 text-blue-600" />
                     Order Status
                   </CardTitle>
                 </CardHeader>
@@ -190,9 +199,12 @@ export default function OrderConfirmation() {
               </Card>
 
               {/* Product Information */}
-              <Card>
+              <Card className="bg-white border-gray-100 shadow-lg">
                 <CardHeader>
-                  <CardTitle>Product Information</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <Package className="w-5 h-5 text-green-600" />
+                    Product Information
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="flex gap-4">
@@ -228,10 +240,10 @@ export default function OrderConfirmation() {
 
               {/* Shipping Information */}
               {order.shippingAddress && (
-                <Card>
+                <Card className="bg-white border-gray-100 shadow-lg">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <MapPin className="h-5 w-5" />
+                      <MapPin className="h-5 w-5 text-purple-600" />
                       Shipping Address
                     </CardTitle>
                   </CardHeader>
@@ -249,7 +261,7 @@ export default function OrderConfirmation() {
               )}
 
               {/* Next Steps */}
-              <Card>
+              <Card className="bg-gradient-to-br from-blue-50 to-purple-50 border-blue-100 shadow-lg">
                 <CardHeader>
                   <CardTitle>What's Next?</CardTitle>
                 </CardHeader>
@@ -296,7 +308,7 @@ export default function OrderConfirmation() {
             {/* Sidebar */}
             <div className="space-y-6">
               {/* Quick Actions */}
-              <Card>
+              <Card className="bg-white border-gray-100 shadow-lg">
                 <CardHeader>
                   <CardTitle>Quick Actions</CardTitle>
                 </CardHeader>
@@ -325,7 +337,7 @@ export default function OrderConfirmation() {
               </Card>
 
               {/* Support Information */}
-              <Card>
+              <Card className="bg-gradient-to-br from-green-50 to-blue-50 border-green-100 shadow-lg">
                 <CardHeader>
                   <CardTitle>Need Help?</CardTitle>
                 </CardHeader>
@@ -348,9 +360,12 @@ export default function OrderConfirmation() {
               </Card>
 
               {/* Order Summary */}
-              <Card>
+              <Card className="bg-white border-gray-100 shadow-lg">
                 <CardHeader>
-                  <CardTitle>Order Summary</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-blue-600" />
+                    Order Summary
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2 text-sm">
@@ -380,7 +395,7 @@ export default function OrderConfirmation() {
           {/* Bottom Actions */}
           <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/my-orders">
-              <Button size="lg">
+              <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white">
                 <Package className="h-5 w-5 mr-2" />
                 View My Orders
               </Button>

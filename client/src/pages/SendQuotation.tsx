@@ -44,20 +44,41 @@ export default function SendQuotation() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-white">
       <Header />
-      <main className="flex-1 bg-gray-50 dark:bg-gray-900">
-        <div className="gradient-blue text-white py-12">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h1 className="text-4xl font-bold mb-2">Send Quotation</h1>
-            <p className="text-gray-200">Respond to buyer request for quotation</p>
+      
+      {/* Hero Section with Gradient */}
+      <section className="relative py-16 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
+        {/* Background Elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center text-white">
+            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/30 rounded-full px-6 py-3 text-sm text-white/95 shadow-lg mb-6">
+              <Send className="w-4 h-4" />
+              <span>Send Quotation</span>
+            </div>
+            
+            <h1 className="text-4xl md:text-5xl font-bold mb-4">
+              Send Quotation
+            </h1>
+            
+            <p className="text-xl text-white/90">
+              Respond to buyer request for quotation
+            </p>
           </div>
         </div>
+      </section>
+
+      <main className="flex-1">
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
-              <Card className="p-6 glass-card mb-6">
+              <Card className="p-6 bg-white border-gray-100 shadow-lg mb-6">
                 <div className="mb-6 pb-6 border-b border-gray-200 dark:border-gray-700">
                   <h2 className="text-2xl font-bold mb-4">RFQ Details</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -252,7 +273,7 @@ export default function SendQuotation() {
             </div>
 
             <div className="lg:col-span-1">
-              <Card className="p-6 glass-card sticky top-24">
+              <Card className="p-6 bg-gradient-to-br from-white to-gray-50 border-gray-100 shadow-xl sticky top-24">
                 <h3 className="text-xl font-bold mb-4">Quotation Summary</h3>
                 
                 <div className="space-y-4 mb-6">
@@ -292,7 +313,7 @@ export default function SendQuotation() {
                 <div className="space-y-3">
                   <Button 
                     onClick={handleSubmit}
-                    className="w-full gradient-blue text-white" 
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg" 
                     size="lg"
                     data-testid="button-send-quotation"
                   >

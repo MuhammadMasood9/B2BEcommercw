@@ -13,9 +13,11 @@ export const users = pgTable("users", {
   lastName: text("last_name"),
   companyName: text("company_name"),
   phone: text("phone"),
-  role: text("role").notNull().default("buyer"), // buyer, admin
+  role: text("role").notNull().default("buyer"), // buyer, admin (supplier role replaced with admin)
   emailVerified: boolean("email_verified").default(false),
   isActive: boolean("is_active").default(true),
+  isOnline: boolean("is_online").default(false),
+  lastSeen: timestamp("last_seen"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

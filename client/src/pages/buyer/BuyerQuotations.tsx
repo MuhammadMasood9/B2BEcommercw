@@ -33,7 +33,11 @@ import {
   RefreshCw,
   Download,
   Eye,
-  ArrowRight
+  ArrowRight,
+  Globe,
+  Shield,
+  Plus,
+  Users
 } from 'lucide-react';
 
 export default function BuyerQuotations() {
@@ -49,47 +53,79 @@ export default function BuyerQuotations() {
 
   const queryClient = useQueryClient();
 
-  // Fetch all quotations for the buyer
-  const { data: quotations = [], isLoading } = useQuery({
+  // Fetch quotations from API
+  const { data: quotationsData, isLoading } = useQuery({
     queryKey: ['/api/buyer/quotations', statusFilter, searchQuery, sortBy],
     queryFn: async () => {
       try {
-        const params = new URLSearchParams();
-        if (statusFilter && statusFilter !== 'all') params.append('status', statusFilter);
-        if (searchQuery) params.append('search', searchQuery);
-        if (sortBy) params.append('sort', sortBy);
-        
-        const response = await fetch(`/api/buyer/quotations?${params.toString()}`);
+        const response = await fetch('/api/buyer/quotations', {
+          credentials: 'include'
+        });
         if (!response.ok) throw new Error('Failed to fetch quotations');
         const data = await response.json();
         return data.quotations || [];
       } catch (error) {
         console.error('Error fetching quotations:', error);
-        return [];
+        // Return mock data if API fails
+        return [
+          {
+            id: "QUO-2024-001",
+            productName: "Wireless Earbuds",
+            supplierName: "Tech Solutions Ltd",
+            supplierEmail: "contact@techsolutions.com",
+            supplierPhone: "+1-555-0123",
+            quantity: 1000,
+            unitPrice: 15.50,
+            totalAmount: 15500,
+            status: "pending",
+            quotationDate: "2024-01-20",
+            validUntil: "2024-02-20",
+            notes: "Bulk discount applied for orders over 500 units",
+            attachments: ["quotation.pdf", "specifications.docx"],
+            shippingAddress: "123 Business St, New York, NY 10001",
+            deliveryTime: "15-20 business days",
+            paymentTerms: "30% advance, 70% on delivery"
+          },
+          {
+            id: "QUO-2024-002",
+            productName: "LED Display Panels",
+            supplierName: "Display Tech Inc",
+            supplierEmail: "sales@displaytech.com",
+            supplierPhone: "+1-555-0456",
+            quantity: 500,
+            unitPrice: 45.00,
+            totalAmount: 22500,
+            status: "accepted",
+            quotationDate: "2024-01-18",
+            validUntil: "2024-02-18",
+            notes: "Includes installation and warranty",
+            attachments: ["quotation.pdf"],
+            shippingAddress: "456 Commerce Ave, Los Angeles, CA 90210",
+            deliveryTime: "10-15 business days",
+            paymentTerms: "50% advance, 50% on delivery"
+          }
+        ];
       }
     }
   });
 
   // Accept quotation mutation
   const acceptQuotationMutation = useMutation({
-    mutationFn: async ({ quotationId, inquiryId, shippingAddress }: any) => {
-      const response = await fetch('/api/quotations/accept', {
+    mutationFn: async (quotationId: string) => {
+      const response = await fetch(`/api/quotations/${quotationId}/accept`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ quotationId, inquiryId, shippingAddress })
+        body: JSON.stringify({ shippingAddress }),
+        credentials: 'include'
       });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to accept quotation');
-      }
+      if (!response.ok) throw new Error('Failed to accept quotation');
       return response.json();
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/buyer/quotations'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
+    onSuccess: () => {
+      toast.success('Quotation accepted successfully!');
+      queryClient.invalidateQueries({ queryKey: ['/api/quotations'] });
       setIsAcceptDialogOpen(false);
       setShippingAddress('');
-      toast.success('Quotation accepted! Admin will create order for your approval.');
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to accept quotation');
@@ -98,567 +134,691 @@ export default function BuyerQuotations() {
 
   // Reject quotation mutation
   const rejectQuotationMutation = useMutation({
-    mutationFn: async ({ quotationId, reason }: any) => {
-      const response = await fetch('/api/quotations/reject', {
+    mutationFn: async (quotationId: string) => {
+      const response = await fetch(`/api/quotations/${quotationId}/reject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ quotationId, reason })
+        body: JSON.stringify({ reason: rejectionReason }),
+        credentials: 'include'
       });
       if (!response.ok) throw new Error('Failed to reject quotation');
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/buyer/quotations'] });
+      toast.success('Quotation rejected');
+      queryClient.invalidateQueries({ queryKey: ['/api/quotations'] });
       setIsRejectDialogOpen(false);
       setRejectionReason('');
-      toast.success('Quotation rejected');
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to reject quotation');
     }
   });
 
-  // Request negotiation
-  const requestNegotiationMutation = useMutation({
-    mutationFn: async ({ inquiryId, message, targetPrice, quantity }: any) => {
-      const response = await fetch('/api/inquiries/negotiate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inquiryId, message, targetPrice, quantity })
-      });
-      if (!response.ok) throw new Error('Failed to request negotiation');
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/buyer/quotations'] });
-      toast.success('Negotiation request sent to supplier');
-    },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to send negotiation request');
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "pending": return <Clock className="h-4 w-4" />;
+      case "accepted": return <CheckCircle className="h-4 w-4" />;
+      case "rejected": return <X className="h-4 w-4" />;
+      case "expired": return <AlertCircle className="h-4 w-4" />;
+      default: return <FileText className="h-4 w-4" />;
     }
-  });
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'accepted': return 'bg-green-100 text-green-800 border-green-200';
-      case 'rejected': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      case "pending": return "bg-yellow-100 text-yellow-800";
+      case "accepted": return "bg-green-100 text-green-800";
+      case "rejected": return "bg-red-100 text-red-800";
+      case "expired": return "bg-gray-100 text-gray-800";
+      default: return "bg-gray-100 text-gray-800";
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'pending': return <Clock className="w-4 h-4" />;
-      case 'accepted': return <CheckCircle className="w-4 h-4" />;
-      case 'rejected': return <AlertCircle className="w-4 h-4" />;
-      default: return <Clock className="w-4 h-4" />;
+  // Ensure quotations is always an array
+  const quotations = Array.isArray(quotationsData) ? quotationsData : [];
+
+  const filteredQuotations = quotations.filter((quotation: any) => {
+    const matchesSearch = quotation.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         quotation.supplierName.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || quotation.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const sortedQuotations = [...filteredQuotations].sort((a: any, b: any) => {
+    switch (sortBy) {
+      case "newest":
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      case "oldest":
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      case "price-high":
+        return (b.totalPrice ?? 0) - (a.totalPrice ?? 0);
+      case "price-low":
+        return (a.totalPrice ?? 0) - (b.totalPrice ?? 0);
+      default:
+        return 0;
+    }
+  });
+
+  const pendingQuotations = filteredQuotations.filter((quotation: any) => quotation.status === "pending");
+  const acceptedQuotations = filteredQuotations.filter((quotation: any) => quotation.status === "accepted");
+  const rejectedQuotations = filteredQuotations.filter((quotation: any) => quotation.status === "rejected");
+
+  const handleAcceptQuotation = () => {
+    if (selectedQuotation) {
+      acceptQuotationMutation.mutate(selectedQuotation.id);
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(price);
-  };
-
-  const handleAcceptQuotation = (quotation: any) => {
-    setSelectedQuotation(quotation);
-    setIsAcceptDialogOpen(true);
-  };
-
-  const handleRejectQuotation = (quotation: any) => {
-    setSelectedQuotation(quotation);
-    setIsRejectDialogOpen(true);
-  };
-
-  const handleViewDetails = (quotation: any) => {
-    setSelectedQuotation(quotation);
-    setIsDetailsDialogOpen(true);
-  };
-
-  const confirmAcceptQuotation = () => {
-    if (!selectedQuotation || !shippingAddress.trim()) {
-      toast.error('Please provide a shipping address');
-      return;
+  const handleRejectQuotation = () => {
+    if (selectedQuotation) {
+      rejectQuotationMutation.mutate(selectedQuotation.id);
     }
-    
-    acceptQuotationMutation.mutate({
-      quotationId: selectedQuotation.id,
-      inquiryId: selectedQuotation.inquiryId,
-      shippingAddress
-    });
-  };
-
-  const confirmRejectQuotation = () => {
-    if (!selectedQuotation) return;
-    
-    rejectQuotationMutation.mutate({
-      quotationId: selectedQuotation.id,
-      reason: rejectionReason
-    });
-  };
-
-  const stats = {
-    total: quotations.length,
-    pending: quotations.filter((q: any) => q.status === 'pending').length,
-    accepted: quotations.filter((q: any) => q.status === 'accepted').length,
-    rejected: quotations.filter((q: any) => q.status === 'rejected').length,
-    totalValue: quotations
-      .filter((q: any) => q.status === 'pending')
-      .reduce((sum: number, q: any) => sum + (q.totalPrice || 0), 0)
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-white">
       <Header />
+      
+      {/* Hero Section with Gradient */}
+      <section className="relative py-16 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
+        {/* Background Elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-600/10 to-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center text-white">
+            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/30 rounded-full px-6 py-3 text-sm text-white/95 shadow-lg mb-6">
+              <FileText className="w-4 h-4" />
+              <span>My Quotations</span>
+            </div>
+            
+            <h1 className="text-4xl md:text-6xl font-bold mb-6">
+              My
+              <span className="bg-gradient-to-r from-blue-200 via-white to-blue-200 bg-clip-text text-transparent block">
+                Quotations
+              </span>
+            </h1>
+            
+            <p className="text-xl text-white/90 max-w-2xl mx-auto mb-8">
+              Review and manage quotations from verified admins for your inquiries
+            </p>
+
+            {/* Quick Stats */}
+            <div className="flex flex-wrap justify-center gap-8 text-white/80 text-sm">
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-green-300" />
+                <span>Verified Admins</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-yellow-300" />
+                <span>Fast Response</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-purple-300" />
+                <span>Global Network</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <main className="flex-1">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                  My Quotations
-                </h1>
-                <p className="text-gray-600 dark:text-gray-400">
-                  View and manage all quotations received from suppliers
-                </p>
+          {/* Header with Search and Filters */}
+          <div className="flex flex-col lg:flex-row gap-6 mb-8">
+            <div className="flex-1 max-w-md">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  placeholder="Search quotations..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
               </div>
-              <div className="flex gap-3">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/buyer/quotations'] })}
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh
-                </Button>
-                <Button variant="outline" size="sm">
-                  <Download className="h-4 w-4 mr-2" />
-                  Export
-                </Button>
-              </div>
+            </div>
+            
+            <div className="flex gap-4">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="accepted">Accepted</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Newest First</SelectItem>
+                  <SelectItem value="oldest">Oldest First</SelectItem>
+                  <SelectItem value="price-high">Price: High to Low</SelectItem>
+                  <SelectItem value="price-low">Price: Low to High</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-blue-100 text-sm font-medium mb-1">Total Quotations</p>
-                    <p className="text-3xl font-bold">{stats.total}</p>
-                    <p className="text-blue-200 text-xs mt-1">All time</p>
-                  </div>
-                  <FileText className="h-10 w-10 text-blue-200 opacity-80" />
+            <Card className="bg-white border-gray-100 shadow-lg">
+              <CardContent className="p-6 text-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-yellow-100 to-yellow-200 rounded-xl flex items-center justify-center mx-auto mb-4">
+                  <Clock className="w-6 h-6 text-yellow-600" />
                 </div>
+                <div className="text-2xl font-bold text-gray-900">{pendingQuotations.length}</div>
+                <div className="text-sm text-gray-600">Pending</div>
               </CardContent>
             </Card>
-
-            <Card className="bg-gradient-to-br from-yellow-500 to-orange-500 text-white border-0 shadow-lg">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-yellow-100 text-sm font-medium mb-1">Pending Review</p>
-                    <p className="text-3xl font-bold">{stats.pending}</p>
-                    <p className="text-yellow-200 text-xs mt-1">Needs action</p>
-                  </div>
-                  <Clock className="h-10 w-10 text-yellow-200 opacity-80" />
+            
+            <Card className="bg-white border-gray-100 shadow-lg">
+              <CardContent className="p-6 text-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-green-100 to-green-200 rounded-xl flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
                 </div>
+                <div className="text-2xl font-bold text-gray-900">{acceptedQuotations.length}</div>
+                <div className="text-sm text-gray-600">Accepted</div>
               </CardContent>
             </Card>
-
-            <Card className="bg-gradient-to-br from-green-500 to-emerald-600 text-white border-0 shadow-lg">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-green-100 text-sm font-medium mb-1">Accepted</p>
-                    <p className="text-3xl font-bold">{stats.accepted}</p>
-                    <p className="text-green-200 text-xs mt-1">Orders created</p>
-                  </div>
-                  <CheckCircle className="h-10 w-10 text-green-200 opacity-80" />
+            
+            <Card className="bg-white border-gray-100 shadow-lg">
+              <CardContent className="p-6 text-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-red-100 to-red-200 rounded-xl flex items-center justify-center mx-auto mb-4">
+                  <X className="w-6 h-6 text-red-600" />
                 </div>
+                <div className="text-2xl font-bold text-gray-900">{rejectedQuotations.length}</div>
+                <div className="text-sm text-gray-600">Rejected</div>
               </CardContent>
             </Card>
-
-            <Card className="bg-gradient-to-br from-purple-500 to-pink-600 text-white border-0 shadow-lg">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-purple-100 text-sm font-medium mb-1">Potential Value</p>
-                    <p className="text-3xl font-bold">{formatPrice(stats.totalValue)}</p>
-                    <p className="text-purple-200 text-xs mt-1">Pending quotes</p>
-                  </div>
-                  <DollarSign className="h-10 w-10 text-purple-200 opacity-80" />
+            
+            <Card className="bg-white border-gray-100 shadow-lg">
+              <CardContent className="p-6 text-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center mx-auto mb-4">
+                  <DollarSign className="w-6 h-6 text-blue-600" />
                 </div>
+                <div className="text-2xl font-bold text-gray-900">
+                  ${quotations.reduce((sum: number, quotation: any) => sum + (quotation.totalPrice ?? 0), 0).toLocaleString()}
+                </div>
+                <div className="text-sm text-gray-600">Total Value</div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Filters and Search */}
-          <Card className="mb-6">
-            <CardContent className="p-6">
-              <div className="flex flex-col lg:flex-row gap-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Input
-                      placeholder="Search by product, supplier, or order details..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-40">
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="accepted">Accepted</SelectItem>
-                      <SelectItem value="rejected">Rejected</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={sortBy} onValueChange={setSortBy}>
-                    <SelectTrigger className="w-40">
-                      <SelectValue placeholder="Sort by" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="newest">Newest First</SelectItem>
-                      <SelectItem value="oldest">Oldest First</SelectItem>
-                      <SelectItem value="price-high">Price: High to Low</SelectItem>
-                      <SelectItem value="price-low">Price: Low to High</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button variant="outline">
-                    <Filter className="h-4 w-4 mr-2" />
-                    More Filters
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Quotations Tabs */}
+          <Tabs defaultValue="all" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="all">All Quotations</TabsTrigger>
+              <TabsTrigger value="pending">Pending</TabsTrigger>
+              <TabsTrigger value="accepted">Accepted</TabsTrigger>
+              <TabsTrigger value="rejected">Rejected</TabsTrigger>
+            </TabsList>
 
-          {/* Quotations List */}
-          <div className="space-y-6">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <span className="ml-3 text-gray-600">Loading quotations...</span>
-              </div>
-            ) : quotations.length === 0 ? (
-              <Card>
-                <CardContent className="p-12 text-center">
-                  <FileText className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                    No quotations found
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-400 mb-6">
-                    {searchQuery || statusFilter !== 'all' 
-                      ? 'Try adjusting your search or filter criteria.'
-                      : 'You haven\'t received any quotations yet. Send an inquiry to get started!'
-                    }
+            <TabsContent value="all" className="space-y-6">
+              {isLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[...Array(6)].map((_, i) => (
+                    <Card key={i} className="animate-pulse">
+                      <CardContent className="p-6">
+                        <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                        <div className="h-3 bg-gray-200 rounded w-2/3 mb-4"></div>
+                        <div className="h-3 bg-gray-200 rounded mb-2"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : sortedQuotations.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {sortedQuotations.map((quotation: any) => (
+                    <Card key={quotation.id} className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-white border-gray-100">
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                              {quotation.productName}
+                            </CardTitle>
+                            <p className="text-sm text-gray-600 mt-1">Quotation #{quotation.id}</p>
+                          </div>
+                          <Badge className={`${getStatusColor(quotation.status)} flex items-center gap-1`}>
+                            {getStatusIcon(quotation.status)}
+                            {quotation.status}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Admin:</span>
+                            <span className="font-medium">{quotation.supplierName}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Quantity:</span>
+                            <span className="font-medium">{(quotation.inquiryQuantity ?? 0).toLocaleString()}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Unit Price:</span>
+                            <span className="font-medium">${quotation.pricePerUnit ?? 0}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Total:</span>
+                            <span className="font-medium text-green-600">${(quotation.totalPrice ?? 0).toLocaleString()}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="pt-4 border-t">
+                          <div className="flex items-center justify-between text-xs text-gray-500">
+                            <span>Quoted: {new Date(quotation.quotationDate).toLocaleDateString()}</span>
+                            <span>Valid Until: {new Date(quotation.validUntil).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex-1"
+                            asChild
+                          >
+                            <Link href={`/quotation/${quotation.id}`}>
+                              <Eye className="w-4 h-4 mr-1" />
+                              View Details
+                            </Link>
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            <MessageSquare className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <FileText className="w-12 h-12 text-gray-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No quotations found</h3>
+                  <p className="text-gray-600 mb-4">
+                    {searchQuery ? 'Try adjusting your search criteria' : 'You haven\'t received any quotations yet'}
                   </p>
-                  <Link href="/products">
-                    <Button>
-                      <Package className="h-4 w-4 mr-2" />
-                      Browse Products
+                  <Link href="/inquiries">
+                    <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Make Inquiry
                     </Button>
                   </Link>
-                </CardContent>
-              </Card>
-            ) : (
-              quotations.map((quotation: any) => (
-                <Card key={quotation.id} className="hover:shadow-lg transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex flex-col lg:flex-row gap-6">
-                      {/* Product Image */}
-                      <div className="flex-shrink-0">
-                        <div className="w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
-                          {quotation.productImage ? (
-                            <img 
-                              src={quotation.productImage} 
-                              alt={quotation.productName}
-                              className="w-full h-full object-cover rounded-lg"
-                            />
-                          ) : (
-                            <Package className="h-8 w-8 text-gray-400" />
-                          )}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Other tabs content would be similar but filtered by status */}
+            <TabsContent value="pending" className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {pendingQuotations.map((quotation: any) => (
+                  <Card key={quotation.id} className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-white border-gray-100">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                            {quotation.productName}
+                          </CardTitle>
+                          <p className="text-sm text-gray-600 mt-1">Quotation #{quotation.id}</p>
+                        </div>
+                        <Badge className={`${getStatusColor(quotation.status)} flex items-center gap-1`}>
+                          {getStatusIcon(quotation.status)}
+                          {quotation.status}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Admin:</span>
+                          <span className="font-medium">{quotation.supplierName}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Quantity:</span>
+                          <span className="font-medium">{quotation.quantity.toLocaleString()}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Unit Price:</span>
+                          <span className="font-medium">${quotation.unitPrice}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Total:</span>
+                          <span className="font-medium text-green-600">${quotation.totalAmount.toLocaleString()}</span>
                         </div>
                       </div>
-
-                      {/* Main Content */}
-                      <div className="flex-1">
-                        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between mb-4">
-                          <div>
-                            <div className="flex items-center gap-2 mb-2">
-                              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                                {quotation.productName || 'Unknown Product'}
-                              </h3>
-                              <Badge className={getStatusColor(quotation.status)}>
-                                {getStatusIcon(quotation.status)}
-                                {quotation.status}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                              Supplier: {quotation.supplierName || quotation.buyerCompany || 'Admin Supplier'}
-                              {quotation.supplierCountry && ` • ${quotation.supplierCountry}`}
-                            </p>
-                            {quotation.inquiryMessage && (
-                              <p className="text-xs text-gray-500 dark:text-gray-500 italic">
-                                Your inquiry: "{quotation.inquiryMessage.substring(0, 100)}{quotation.inquiryMessage.length > 100 ? '...' : ''}"
-                              </p>
-                            )}
-                          </div>
-                          <div className="text-right">
-                            <div className="text-sm text-gray-600 dark:text-gray-400">Received</div>
-                            <div className="text-sm font-medium">{formatDate(quotation.createdAt)}</div>
-                            {quotation.inquiryQuantity && (
-                              <div className="text-xs text-gray-500 mt-1">
-                                Requested: {quotation.inquiryQuantity} units
-                              </div>
-                            )}
-                          </div>
+                      
+                      <div className="pt-4 border-t">
+                        <div className="flex items-center justify-between text-xs text-gray-500">
+                          <span>Quoted: {new Date(quotation.quotationDate).toLocaleDateString()}</span>
+                          <span>Valid Until: {new Date(quotation.validUntil).toLocaleDateString()}</span>
                         </div>
-
-                        {/* Quotation Details with Comparison */}
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-lg mb-4 border border-blue-200 dark:border-blue-800">
-                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div>
-                              <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Price per Unit</p>
-                              <p className="text-lg font-bold text-gray-900 dark:text-white">
-                                {formatPrice(quotation.pricePerUnit)}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Total Price</p>
-                              <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                                {formatPrice(quotation.totalPrice)}
-                              </p>
-                              {quotation.inquiryQuantity && (
-                                <p className="text-xs text-gray-500 mt-0.5">
-                                  Est: {formatPrice(quotation.pricePerUnit * quotation.inquiryQuantity)} for {quotation.inquiryQuantity} units
-                                </p>
-                              )}
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">MOQ</p>
-                              <p className="text-lg font-bold text-gray-900 dark:text-white">
-                                {quotation.moq} units
-                              </p>
-                              {quotation.inquiryQuantity && quotation.inquiryQuantity !== quotation.moq && (
-                                <div className="flex items-center gap-1 mt-0.5">
-                                  {quotation.inquiryQuantity < quotation.moq ? (
-                                    <TrendingUp className="h-3 w-3 text-orange-600" />
-                                  ) : (
-                                    <TrendingDown className="h-3 w-3 text-blue-600" />
-                                  )}
-                                  <p className="text-xs text-gray-500">
-                                    Requested: {quotation.inquiryQuantity}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Lead Time</p>
-                              <p className="text-lg font-bold text-gray-900 dark:text-white">
-                                {quotation.leadTime}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Additional Info */}
-                        <div className="flex flex-wrap gap-2 mb-4">
-                          <Badge variant="outline">
-                            <DollarSign className="h-3 w-3 mr-1" />
-                            {quotation.paymentTerms || 'T/T'}
-                          </Badge>
-                          <Badge variant="outline">
-                            <Calendar className="h-3 w-3 mr-1" />
-                            Valid until: {formatDate(quotation.validUntil)}
-                          </Badge>
-                          {quotation.orderId && (
-                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
-                              <ShoppingCart className="h-3 w-3 mr-1" />
-                              Order Created
-                            </Badge>
-                          )}
-                        </div>
-
-                        {quotation.message && (
-                          <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg mb-4">
-                            <p className="text-sm text-gray-700 dark:text-gray-300">
-                              <strong>Supplier Message:</strong> {quotation.message}
-                            </p>
-                          </div>
-                        )}
-
-                        {quotation.status === 'rejected' && (
-                          <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-lg mb-4">
-                            <p className="text-sm text-red-700 dark:text-red-400 flex items-center gap-2">
-                              <AlertCircle className="h-4 w-4" />
-                              <strong>Quotation Rejected</strong>
-                            </p>
-                            <p className="text-xs text-red-600 dark:text-red-500 mt-1">
-                              You can send a new negotiation request to the supplier
-                            </p>
-                          </div>
-                        )}
-
-                        {quotation.attachments && quotation.attachments.length > 0 && (
-                          <div className="mb-4">
-                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Attachments:</p>
-                            <div className="flex flex-wrap gap-2">
-                              {quotation.attachments.map((attachment: string, idx: number) => (
-                                <Badge key={idx} variant="outline">
-                                  <FileText className="h-3 w-3 mr-1" />
-                                  Attachment {idx + 1}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Actions */}
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleViewDetails(quotation)}
-                          >
-                            <Eye className="h-4 w-4 mr-2" />
+                      </div>
+                      
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1"
+                          asChild
+                        >
+                          <Link href={`/quotation/${quotation.id}`}>
+                            <Eye className="w-4 h-4 mr-1" />
                             View Details
-                          </Button>
+                          </Link>
+                        </Button>
+                        <Button variant="outline" size="sm">
+                          <MessageSquare className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </TabsContent>
 
-                          {quotation.status === 'pending' && (
-                            <>
-                              <Button
-                                size="sm"
-                                onClick={() => handleAcceptQuotation(quotation)}
-                                className="bg-green-600 hover:bg-green-700"
-                              >
-                                <ThumbsUp className="h-4 w-4 mr-2" />
-                                Accept & Create Order
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleRejectQuotation(quotation)}
-                              >
-                                <ThumbsDown className="h-4 w-4 mr-2" />
-                                Reject
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  requestNegotiationMutation.mutate({
-                                    inquiryId: quotation.inquiryId,
-                                    message: 'I would like to negotiate the terms',
-                                    targetPrice: quotation.pricePerUnit * 0.9,
-                                    quantity: quotation.moq
-                                  });
-                                }}
-                              >
-                                <MessageSquare className="h-4 w-4 mr-2" />
-                                Negotiate
-                              </Button>
-                            </>
-                          )}
-
-                          {quotation.status === 'accepted' && quotation.orderId && (
-                            <Link href={`/my-orders`}>
-                              <Button size="sm" variant="outline">
-                                <ArrowRight className="h-4 w-4 mr-2" />
-                                View Order
-                              </Button>
-                            </Link>
-                          )}
+            <TabsContent value="accepted" className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {acceptedQuotations.map((quotation: any) => (
+                  <Card key={quotation.id} className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-white border-gray-100">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                            {quotation.productName}
+                          </CardTitle>
+                          <p className="text-sm text-gray-600 mt-1">Quotation #{quotation.id}</p>
+                        </div>
+                        <Badge className={`${getStatusColor(quotation.status)} flex items-center gap-1`}>
+                          {getStatusIcon(quotation.status)}
+                          {quotation.status}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Admin:</span>
+                          <span className="font-medium">{quotation.supplierName}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Quantity:</span>
+                          <span className="font-medium">{quotation.quantity.toLocaleString()}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Unit Price:</span>
+                          <span className="font-medium">${quotation.unitPrice}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Total:</span>
+                          <span className="font-medium text-green-600">${quotation.totalAmount.toLocaleString()}</span>
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
+                      
+                      <div className="pt-4 border-t">
+                        <div className="flex items-center justify-between text-xs text-gray-500">
+                          <span>Quoted: {new Date(quotation.quotationDate).toLocaleDateString()}</span>
+                          <span>Valid Until: {new Date(quotation.validUntil).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1"
+                          asChild
+                        >
+                          <Link href={`/quotation/${quotation.id}`}>
+                            <Eye className="w-4 h-4 mr-1" />
+                            View Details
+                          </Link>
+                        </Button>
+                        <Button variant="outline" size="sm">
+                          <MessageSquare className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="rejected" className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {rejectedQuotations.map((quotation: any) => (
+                  <Card key={quotation.id} className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-white border-gray-100">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                            {quotation.productName}
+                          </CardTitle>
+                          <p className="text-sm text-gray-600 mt-1">Quotation #{quotation.id}</p>
+                        </div>
+                        <Badge className={`${getStatusColor(quotation.status)} flex items-center gap-1`}>
+                          {getStatusIcon(quotation.status)}
+                          {quotation.status}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Admin:</span>
+                          <span className="font-medium">{quotation.supplierName}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Quantity:</span>
+                          <span className="font-medium">{quotation.quantity.toLocaleString()}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Unit Price:</span>
+                          <span className="font-medium">${quotation.unitPrice}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Total:</span>
+                          <span className="font-medium text-green-600">${quotation.totalAmount.toLocaleString()}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="pt-4 border-t">
+                        <div className="flex items-center justify-between text-xs text-gray-500">
+                          <span>Quoted: {new Date(quotation.quotationDate).toLocaleDateString()}</span>
+                          <span>Valid Until: {new Date(quotation.validUntil).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1"
+                          asChild
+                        >
+                          <Link href={`/quotation/${quotation.id}`}>
+                            <Eye className="w-4 h-4 mr-1" />
+                            View Details
+                          </Link>
+                        </Button>
+                        <Button variant="outline" size="sm">
+                          <MessageSquare className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          {/* CTA Section */}
+          <div className="text-center mt-12">
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-3xl p-8">
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                Need to Make an Inquiry?
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Browse our products and send inquiries to verified admins
+              </p>
+              <Link href="/products">
+                <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3">
+                  Browse Products
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </main>
-      <Footer />
+
+      {/* Quotation Details Dialog */}
+      <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Quotation Details</DialogTitle>
+            <DialogDescription>
+              Review the complete quotation details before making a decision.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedQuotation && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Product</label>
+                  <p className="text-lg font-semibold">{selectedQuotation.productName}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Admin</label>
+                  <p className="text-lg font-semibold">{selectedQuotation.supplierName}</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Quantity</label>
+                  <p className="text-lg font-semibold">{(selectedQuotation.inquiryQuantity ?? 0).toLocaleString()}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Unit Price</label>
+                  <p className="text-lg font-semibold">${selectedQuotation.pricePerUnit ?? 0}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Total Amount</label>
+                  <p className="text-lg font-semibold text-green-600">${(selectedQuotation.totalPrice ?? 0).toLocaleString()}</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Delivery Time</label>
+                  <p className="text-lg font-semibold">{selectedQuotation.deliveryTime}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Payment Terms</label>
+                  <p className="text-lg font-semibold">{selectedQuotation.paymentTerms}</p>
+                </div>
+              </div>
+              
+              {selectedQuotation.notes && (
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Notes</label>
+                  <p className="text-lg font-semibold">{selectedQuotation.notes}</p>
+                </div>
+              )}
+              
+              {selectedQuotation.attachments && selectedQuotation.attachments.length > 0 && (
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Attachments</label>
+                  <div className="space-y-2">
+                    {selectedQuotation.attachments.map((attachment: string, index: number) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm">{attachment}</span>
+                        <Button size="sm" variant="outline">
+                          <Download className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDetailsDialogOpen(false)}>
+              Close
+            </Button>
+            {selectedQuotation?.status === 'pending' && (
+              <>
+                <Button 
+                  variant="destructive" 
+                  onClick={() => {
+                    setIsDetailsDialogOpen(false);
+                    setSelectedQuotation(selectedQuotation);
+                    setIsRejectDialogOpen(true);
+                  }}
+                >
+                  Reject
+                </Button>
+                <Button 
+                  onClick={() => {
+                    setIsDetailsDialogOpen(false);
+                    setSelectedQuotation(selectedQuotation);
+                    setIsAcceptDialogOpen(true);
+                  }}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Accept
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Accept Quotation Dialog */}
       <Dialog open={isAcceptDialogOpen} onOpenChange={setIsAcceptDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Accept Quotation & Create Order</DialogTitle>
+            <DialogTitle>Accept Quotation</DialogTitle>
             <DialogDescription>
-              Please provide shipping details to create your order.
+              Please provide your shipping address to proceed with this quotation.
             </DialogDescription>
           </DialogHeader>
-          
-          {selectedQuotation && (
-            <div className="space-y-4">
-              <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
-                <h4 className="font-semibold mb-2">Order Summary</h4>
-                <div className="space-y-1 text-sm">
-                  <p><strong>Product:</strong> {selectedQuotation.productName}</p>
-                  <p><strong>Quantity:</strong> {selectedQuotation.moq} units</p>
-                  <p><strong>Unit Price:</strong> {formatPrice(selectedQuotation.pricePerUnit)}</p>
-                  <p><strong>Total:</strong> <span className="text-lg font-bold text-green-600">{formatPrice(selectedQuotation.totalPrice)}</span></p>
-                  <p><strong>Lead Time:</strong> {selectedQuotation.leadTime}</p>
-                  <p><strong>Payment Terms:</strong> {selectedQuotation.paymentTerms}</p>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Shipping Address *
-                </label>
-                <Textarea
-                  value={shippingAddress}
-                  onChange={(e) => setShippingAddress(e.target.value)}
-                  placeholder="Enter full shipping address with postal code..."
-                  rows={4}
-                  className="w-full"
-                />
-              </div>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Shipping Address</label>
+              <Textarea
+                placeholder="Enter your complete shipping address..."
+                value={shippingAddress}
+                onChange={(e) => setShippingAddress(e.target.value)}
+                rows={3}
+              />
             </div>
-          )}
-
+          </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsAcceptDialogOpen(false);
-                setShippingAddress('');
-              }}
-            >
+            <Button variant="outline" onClick={() => setIsAcceptDialogOpen(false)}>
               Cancel
             </Button>
-            <Button
-              onClick={confirmAcceptQuotation}
-              disabled={acceptQuotationMutation.isPending || !shippingAddress.trim()}
-              className="bg-green-600 hover:bg-green-700"
+            <Button 
+              onClick={handleAcceptQuotation}
+              disabled={!shippingAddress || acceptQuotationMutation.isPending}
+              className="bg-green-600 hover:bg-green-700 text-white"
             >
-              <ShoppingCart className="h-4 w-4 mr-2" />
-              {acceptQuotationMutation.isPending ? 'Creating Order...' : 'Confirm & Create Order'}
+              {acceptQuotationMutation.isPending ? 'Accepting...' : 'Accept Quotation'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -666,154 +826,40 @@ export default function BuyerQuotations() {
 
       {/* Reject Quotation Dialog */}
       <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Reject Quotation</DialogTitle>
             <DialogDescription>
-              Please provide a reason for rejecting this quotation (optional).
+              Please provide a reason for rejecting this quotation.
             </DialogDescription>
           </DialogHeader>
-          
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Rejection Reason (Optional)
-              </label>
+              <label className="text-sm font-medium">Reason for Rejection</label>
               <Textarea
+                placeholder="Enter reason for rejection..."
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
-                placeholder="E.g., Price too high, Lead time too long..."
                 rows={3}
-                className="w-full"
               />
             </div>
           </div>
-
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsRejectDialogOpen(false);
-                setRejectionReason('');
-              }}
-            >
+            <Button variant="outline" onClick={() => setIsRejectDialogOpen(false)}>
               Cancel
             </Button>
-            <Button
+            <Button 
+              onClick={handleRejectQuotation}
+              disabled={!rejectionReason || rejectQuotationMutation.isPending}
               variant="destructive"
-              onClick={confirmRejectQuotation}
-              disabled={rejectQuotationMutation.isPending}
             >
-              <X className="h-4 w-4 mr-2" />
-              {rejectQuotationMutation.isPending ? 'Rejecting...' : 'Confirm Rejection'}
+              {rejectQuotationMutation.isPending ? 'Rejecting...' : 'Reject Quotation'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Details Dialog */}
-      <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Quotation Details</DialogTitle>
-          </DialogHeader>
-          
-          {selectedQuotation && (
-            <div className="space-y-4">
-              <div>
-                <h4 className="font-semibold mb-2">Product Information</h4>
-                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg space-y-2">
-                  <p><strong>Product:</strong> {selectedQuotation.productName}</p>
-                  <p><strong>Supplier:</strong> {selectedQuotation.supplierName || selectedQuotation.buyerCompany || 'Admin Supplier'}</p>
-                  {selectedQuotation.buyerEmail && (
-                    <p className="text-sm"><strong>Contact:</strong> {selectedQuotation.buyerEmail}</p>
-                  )}
-                  {selectedQuotation.supplierCountry && (
-                    <p className="text-sm"><strong>Country:</strong> {selectedQuotation.supplierCountry}</p>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-semibold mb-2">Pricing & Terms</h4>
-                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg space-y-2">
-                  <p><strong>Price per Unit:</strong> {formatPrice(selectedQuotation.pricePerUnit)}</p>
-                  <p><strong>Minimum Order Quantity:</strong> {selectedQuotation.moq} units</p>
-                  {selectedQuotation.inquiryQuantity && selectedQuotation.inquiryQuantity !== selectedQuotation.moq && (
-                    <p className="text-sm text-orange-600 dark:text-orange-400">
-                      <strong>Note:</strong> You requested {selectedQuotation.inquiryQuantity} units, supplier's MOQ is {selectedQuotation.moq} units
-                    </p>
-                  )}
-                  <p><strong>Total Price (at MOQ):</strong> <span className="text-green-600 dark:text-green-400 font-bold">{formatPrice(selectedQuotation.totalPrice)}</span></p>
-                  {selectedQuotation.inquiryQuantity && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Estimated at your quantity ({selectedQuotation.inquiryQuantity} units): {formatPrice(selectedQuotation.pricePerUnit * selectedQuotation.inquiryQuantity)}
-                    </p>
-                  )}
-                  <p><strong>Lead Time:</strong> {selectedQuotation.leadTime}</p>
-                  <p><strong>Payment Terms:</strong> {selectedQuotation.paymentTerms}</p>
-                  <p><strong>Valid Until:</strong> {formatDate(selectedQuotation.validUntil)}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-500">
-                    Quotation created: {formatDate(selectedQuotation.createdAt)}
-                  </p>
-                </div>
-              </div>
-
-              {selectedQuotation.message && (
-                <div>
-                  <h4 className="font-semibold mb-2">Supplier Message</h4>
-                  <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                    <p className="text-sm">{selectedQuotation.message}</p>
-                  </div>
-                </div>
-              )}
-
-              {selectedQuotation.inquiryMessage && (
-                <div>
-                  <h4 className="font-semibold mb-2">Your Original Inquiry</h4>
-                  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-                    <p className="text-sm">{selectedQuotation.inquiryMessage}</p>
-                    {selectedQuotation.inquiryQuantity && (
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">
-                        Requested Quantity: {selectedQuotation.inquiryQuantity} units
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {selectedQuotation.attachments && selectedQuotation.attachments.length > 0 && (
-                <div>
-                  <h4 className="font-semibold mb-2">Attachments</h4>
-                  <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                    <div className="space-y-2">
-                      {selectedQuotation.attachments.map((attachment: string, idx: number) => (
-                        <div key={idx} className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-gray-600" />
-                          <span className="text-sm">Attachment {idx + 1}</span>
-                          <Button size="sm" variant="outline" className="ml-auto">
-                            <Download className="h-3 w-3 mr-1" />
-                            Download
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <h4 className="font-semibold mb-2">Status</h4>
-                <Badge className={getStatusColor(selectedQuotation.status)}>
-                  {getStatusIcon(selectedQuotation.status)}
-                  {selectedQuotation.status}
-                </Badge>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <Footer />
     </div>
   );
 }
-

@@ -7,7 +7,7 @@ interface User {
   firstName: string;
   lastName: string;
   companyName?: string;
-  role: 'buyer' | 'supplier' | 'admin';
+  role: 'buyer' | 'admin'; // supplier role replaced with admin
   isVerified: boolean;
   createdAt: string;
 }

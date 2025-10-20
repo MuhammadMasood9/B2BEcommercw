@@ -16,7 +16,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Upload, FileText, Loader2 } from "lucide-react";
+import { 
+  Upload, 
+  FileText, 
+  Loader2, 
+  ArrowRight,
+  Globe,
+  Shield,
+  Clock,
+  TrendingUp,
+  Users,
+  Package,
+  Calendar,
+  MapPin,
+  DollarSign
+} from "lucide-react";
 import { toast } from "react-hot-toast";
 
 export default function RFQCreate() {
@@ -35,6 +49,20 @@ export default function RFQCreate() {
     expectedDate: ''
   });
 
+  // Fetch categories for dropdown
+  const { data: categories = [] } = useQuery({
+    queryKey: ['/api/categories'],
+    queryFn: async () => {
+      try {
+        const response = await fetch('/api/categories');
+        if (!response.ok) throw new Error('Failed to fetch categories');
+        return await response.json();
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+        return [];
+      }
+    }
+  });
 
   // Create RFQ mutation
   const createRFQMutation = useMutation({
@@ -48,26 +76,30 @@ export default function RFQCreate() {
       formData.append('deliveryLocation', data.deliveryLocation);
       formData.append('status', data.status);
       formData.append('buyerId', data.buyerId);
+      formData.append('categoryId', data.categoryId);
+      formData.append('targetPrice', data.targetPrice);
+      formData.append('expectedDate', data.expectedDate);
       
-      if (data.categoryId) formData.append('categoryId', data.categoryId);
-      if (data.targetPrice) formData.append('targetPrice', data.targetPrice);
-      if (data.expectedDate) formData.append('expectedDate', data.expectedDate.toISOString());
-
-      // Add files
+      // Add files to FormData
       files.forEach((file, index) => {
-        formData.append(`attachments`, file);
+        formData.append(`files`, file);
       });
 
       const response = await fetch('/api/rfqs', {
         method: 'POST',
-        body: formData
+        body: formData,
+        credentials: 'include'
       });
-      if (!response.ok) throw new Error('Failed to create RFQ');
+
+      if (!response.ok) {
+        throw new Error('Failed to create RFQ');
+      }
+
       return response.json();
     },
     onSuccess: () => {
       toast.success('RFQ created successfully!');
-      setLocation('/buyer/rfqs');
+      setLocation('/my-rfqs');
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to create RFQ');
@@ -77,255 +109,256 @@ export default function RFQCreate() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.title || !formData.description || !formData.quantity || !formData.deliveryLocation) {
-      toast.error('Please fill in all required fields');
+    if (!user) {
+      toast.error('Please log in to create an RFQ');
       return;
     }
 
     createRFQMutation.mutate({
       ...formData,
-      buyerId: user?.id,
-      quantity: parseInt(formData.quantity),
-      targetPrice: formData.targetPrice ? formData.targetPrice.toString() : null,
-      expectedDate: formData.expectedDate ? new Date(formData.expectedDate) : null,
-      status: 'open'
+      buyerId: user.id,
+      status: 'active'
     });
   };
 
-  // Fetch categories for the dropdown
-  const { data: categories = [], isLoading: categoriesLoading } = useQuery({
-    queryKey: ['/api/categories'],
-    queryFn: async () => {
-      const response = await fetch('/api/categories?isActive=true');
-      if (!response.ok) throw new Error('Failed to fetch categories');
-      return response.json();
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setFiles(Array.from(e.target.files));
     }
-  });
-
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-white">
       <Header />
-      <main className="flex-1">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
-          <div className="mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-3xl font-bold mb-2">Post a Request for Quotation</h1>
-            <p className="text-sm sm:text-base text-muted-foreground">Get quotes from verified suppliers for your bulk order requirements</p>
+      
+      {/* Hero Section with Gradient */}
+      <section className="relative py-16 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
+        {/* Background Elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-600/10 to-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center text-white">
+            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/30 rounded-full px-6 py-3 text-sm text-white/95 shadow-lg mb-6">
+              <FileText className="w-4 h-4" />
+              <span>Request for Quotation</span>
+            </div>
+            
+            <h1 className="text-4xl md:text-6xl font-bold mb-6">
+              Create
+              <span className="bg-gradient-to-r from-blue-200 via-white to-blue-200 bg-clip-text text-transparent block">
+                RFQ
+              </span>
+            </h1>
+            
+            <p className="text-xl text-white/90 max-w-2xl mx-auto mb-8">
+              Get competitive quotes from verified admins worldwide for your business needs
+            </p>
+
+            {/* Quick Stats */}
+            <div className="flex flex-wrap justify-center gap-8 text-white/80 text-sm">
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-green-300" />
+                <span>Verified Admins</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-yellow-300" />
+                <span>24h Response</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-purple-300" />
+                <span>Global Reach</span>
+              </div>
+            </div>
           </div>
+        </div>
+      </section>
 
-          <Card>
-            <CardHeader className="px-4 sm:px-6">
-              <CardTitle className="text-lg sm:text-xl">RFQ Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6">
-              <form onSubmit={handleSubmit}>
-              <div>
-                <Label htmlFor="title" className="text-sm sm:text-base">RFQ Title *</Label>
-                <Input
-                  id="title"
-                  value={formData.title}
-                  onChange={(e) => handleInputChange('title', e.target.value)}
-                  placeholder="e.g., Looking for High-Quality Wireless Earbuds"
-                  className="mt-2 text-sm sm:text-base"
-                  data-testid="input-rfq-title"
-                  required
-                />
-              </div>
+      <main className="flex-1">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Basic Information */}
+            <Card className="bg-white border-gray-100 shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-blue-600" />
+                  Basic Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="title" className="text-sm font-medium">RFQ Title *</Label>
+                    <Input
+                      id="title"
+                      placeholder="e.g., Wireless Earbuds Bulk Order"
+                      value={formData.title}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      required
+                      className="h-12"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="category" className="text-sm font-medium">Category *</Label>
+                    <Select value={formData.categoryId} onValueChange={(value) => setFormData({ ...formData, categoryId: value })}>
+                      <SelectTrigger className="h-12">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((category: any) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
 
-              <div>
-                <Label htmlFor="category" className="text-sm sm:text-base">Product Category</Label>
-                <Select value={formData.categoryId} onValueChange={(value) => handleInputChange('categoryId', value)}>
-                  <SelectTrigger className="mt-2 text-sm sm:text-base" data-testid="select-category">
-                    <SelectValue placeholder={categoriesLoading ? "Loading categories..." : "Select a category (optional)"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category: any) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                    {categories.length === 0 && !categoriesLoading && (
-                      <SelectItem value="" disabled>
-                        No categories available
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="description" className="text-sm sm:text-base">Detailed Requirements *</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => handleInputChange('description', e.target.value)}
-                  placeholder="Describe your product requirements in detail: specifications, quality standards, packaging needs, etc."
-                  rows={5}
-                  className="mt-2 text-sm sm:text-base"
-                  data-testid="textarea-requirements"
-                  required
-                />
-                <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                  Be as specific as possible to get accurate quotations
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                <div>
-                  <Label htmlFor="quantity" className="text-sm sm:text-base">Quantity Needed *</Label>
-                  <Input
-                    id="quantity"
-                    type="number"
-                    value={formData.quantity}
-                    onChange={(e) => handleInputChange('quantity', e.target.value)}
-                    placeholder="e.g., 5000"
-                    className="mt-2 text-sm sm:text-base"
-                    data-testid="input-quantity"
-                    min="1"
+                <div className="space-y-2">
+                  <Label htmlFor="description" className="text-sm font-medium">Description *</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Describe your requirements in detail..."
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     required
+                    rows={4}
+                    className="resize-none"
                   />
                 </div>
-                <div>
-                  <Label htmlFor="target-price" className="text-sm sm:text-base">Target Price (Optional)</Label>
-                  <Input
-                    id="target-price"
-                    type="number"
-                    value={formData.targetPrice}
-                    onChange={(e) => handleInputChange('targetPrice', e.target.value)}
-                    placeholder="e.g., 15.50"
-                    className="mt-2 text-sm sm:text-base"
-                    data-testid="input-target-price"
-                    step="0.01"
-                    min="0"
-                  />
-                </div>
-              </div>
+              </CardContent>
+            </Card>
 
-              <div>
-                <Label className="text-sm sm:text-base">Upload Images/Documents (Optional)</Label>
-                <div 
-                  className="mt-2 border-2 border-dashed rounded-lg p-6 sm:p-8 text-center hover:bg-muted/50 transition-colors cursor-pointer"
-                  onClick={() => document.getElementById('file-upload')?.click()}
-                >
-                  <Upload className="w-10 h-10 sm:w-12 sm:h-12 text-muted-foreground mx-auto mb-3 sm:mb-4" />
-                  <p className="text-xs sm:text-sm text-muted-foreground mb-2">
-                    Click to upload or drag and drop
-                  </p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">
-                    Supports: JPG, PNG, PDF, DOC, DOCX (Max 10MB each)
-                  </p>
+            {/* Requirements */}
+            <Card className="bg-white border-gray-100 shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="w-5 h-5 text-green-600" />
+                  Requirements
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="quantity" className="text-sm font-medium">Quantity *</Label>
+                    <Input
+                      id="quantity"
+                      type="number"
+                      placeholder="e.g., 1000"
+                      value={formData.quantity}
+                      onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                      required
+                      className="h-12"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="targetPrice" className="text-sm font-medium">Target Price (USD)</Label>
+                    <Input
+                      id="targetPrice"
+                      type="number"
+                      placeholder="e.g., 50"
+                      value={formData.targetPrice}
+                      onChange={(e) => setFormData({ ...formData, targetPrice: e.target.value })}
+                      className="h-12"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="deliveryLocation" className="text-sm font-medium">Delivery Location *</Label>
+                    <Input
+                      id="deliveryLocation"
+                      placeholder="e.g., New York, USA"
+                      value={formData.deliveryLocation}
+                      onChange={(e) => setFormData({ ...formData, deliveryLocation: e.target.value })}
+                      required
+                      className="h-12"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="expectedDate" className="text-sm font-medium">Expected Delivery Date</Label>
+                    <Input
+                      id="expectedDate"
+                      type="date"
+                      value={formData.expectedDate}
+                      onChange={(e) => setFormData({ ...formData, expectedDate: e.target.value })}
+                      className="h-12"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Attachments */}
+            <Card className="bg-white border-gray-100 shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Upload className="w-5 h-5 text-purple-600" />
+                  Attachments (Optional)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors">
+                  <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-gray-900">Upload files</p>
+                    <p className="text-xs text-gray-500">PDF, DOC, DOCX, JPG, PNG up to 10MB</p>
+                  </div>
                   <Input
-                    id="file-upload"
                     type="file"
                     multiple
-                    accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
-                    className="hidden"
-                    onChange={(e) => {
-                      if (e.target.files) {
-                        const selectedFiles = Array.from(e.target.files);
-                        const validFiles = selectedFiles.filter(file => {
-                          const maxSize = 10 * 1024 * 1024; // 10MB
-                          if (file.size > maxSize) {
-                            toast.error(`File ${file.name} is too large. Maximum size is 10MB.`);
-                            return false;
-                          }
-                          return true;
-                        });
-                        setFiles(validFiles);
-                      }
-                    }}
-                    data-testid="input-file-upload"
+                    onChange={handleFileChange}
+                    className="mt-4"
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                   />
-                </div>
-                {files.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    <p className="text-xs font-medium text-gray-600">Uploaded files:</p>
-                    {files.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                        <div className="flex items-center gap-2 text-xs sm:text-sm">
-                          <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
-                          <span className="truncate">{file.name}</span>
-                          <span className="text-gray-500">({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                  {files.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      <p className="text-sm font-medium text-gray-900">Selected files:</p>
+                      {files.map((file, index) => (
+                        <div key={index} className="flex items-center gap-2 text-sm text-gray-600">
+                          <FileText className="w-4 h-4" />
+                          <span>{file.name}</span>
                         </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setFiles(files.filter((_, i) => i !== index));
-                          }}
-                          className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
-                        >
-                          ×
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                <div>
-                  <Label htmlFor="delivery-location" className="text-sm sm:text-base">Delivery Location *</Label>
-                  <Input
-                    id="delivery-location"
-                    value={formData.deliveryLocation}
-                    onChange={(e) => handleInputChange('deliveryLocation', e.target.value)}
-                    placeholder="City, Country"
-                    className="mt-2 text-sm sm:text-base"
-                    data-testid="input-location"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="delivery-date" className="text-sm sm:text-base">Expected Delivery Date</Label>
-                  <Input
-                    id="delivery-date"
-                    type="date"
-                    value={formData.expectedDate}
-                    onChange={(e) => handleInputChange('expectedDate', e.target.value)}
-                    className="mt-2 text-sm sm:text-base"
-                    data-testid="input-delivery-date"
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4 sm:pt-6 border-t">
-                <Button 
-                  type="submit" 
-                  size="lg" 
-                  className="flex-1 text-sm sm:text-base" 
-                  data-testid="button-post-rfq"
-                  disabled={createRFQMutation.isPending}
-                >
-                  {createRFQMutation.isPending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Creating RFQ...
-                    </>
-                  ) : (
-                    'Post RFQ'
+                      ))}
+                    </div>
                   )}
-                </Button>
-                <Button 
-                  type="button"
-                  size="lg" 
-                  variant="outline" 
-                  className="flex-1 text-sm sm:text-base" 
-                  data-testid="button-cancel"
-                  onClick={() => setLocation('/buyer/rfqs')}
-                >
-                  Cancel
-                </Button>
-              </div>
-              </form>
-            </CardContent>
-          </Card>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Submit Button */}
+            <div className="flex justify-center">
+              <Button
+                type="submit"
+                size="lg"
+                disabled={createRFQMutation.isPending}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-12 py-4 text-lg font-semibold"
+              >
+                {createRFQMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Creating RFQ...
+                  </>
+                ) : (
+                  <>
+                    Create RFQ
+                    <ArrowRight className="w-5 h-5 ml-2" />
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
         </div>
       </main>
+
       <Footer />
     </div>
   );

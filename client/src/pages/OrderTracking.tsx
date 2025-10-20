@@ -127,7 +127,7 @@ export default function OrderTracking() {
       { 
         id: 'confirmed', 
         label: 'Order Confirmed', 
-        description: 'Supplier has confirmed your order and will begin processing',
+        description: 'Admin has confirmed your order and will begin processing',
         icon: CheckCircle,
         date: new Date()
       },
@@ -493,7 +493,7 @@ export default function OrderTracking() {
                     </Button>
                     <Button variant="outline" className="w-full">
                       <MessageSquare className="h-4 w-4 mr-2" />
-                      Contact Supplier
+                      Contact Admin
                     </Button>
                   </div>
                 </CardContent>

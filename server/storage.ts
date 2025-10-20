@@ -153,6 +153,8 @@ export interface IStorage {
   getUsers(): Promise<User[]>;
   updateUser(id: string, user: Partial<InsertUser>): Promise<User | undefined>;
   deleteUser(id: string): Promise<boolean>;
+  updateUserOnlineStatus(userId: string, isOnline: boolean): Promise<void>;
+  getUserOnlineStatus(userId: string): Promise<{ isOnline: boolean; lastSeen: Date | null } | undefined>;
 }
 
 export class PostgresStorage implements IStorage {
@@ -204,6 +206,28 @@ export class PostgresStorage implements IStorage {
   async deleteUser(id: string): Promise<boolean> {
     const result = await db.delete(users).where(eq(users.id, id));
     return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async updateUserOnlineStatus(userId: string, isOnline: boolean): Promise<void> {
+    await db.update(users)
+      .set({ 
+        isOnline, 
+        lastSeen: new Date(),
+        updatedAt: new Date() 
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async getUserOnlineStatus(userId: string): Promise<{ isOnline: boolean; lastSeen: Date | null } | undefined> {
+    const [user] = await db.select({
+      isOnline: users.isOnline,
+      lastSeen: users.lastSeen
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+    
+    return user ? { isOnline: user.isOnline || false, lastSeen: user.lastSeen } : undefined;
   }
 
   // Buyer Profile operations
@@ -1221,10 +1245,14 @@ export class PostgresStorage implements IStorage {
       // Join with admin data
       adminName: users.firstName,
       adminEmail: users.email,
-      adminCompany: users.companyName
+      adminCompany: users.companyName,
+      productId: conversations.productId,
+      productName: products.name,
+      productImages: products.images
     })
     .from(conversations)
     .leftJoin(users, eq(conversations.unreadCountAdmin, users.id))
+    .leftJoin(products, eq(conversations.productId, products.id))
     .where(eq(conversations.buyerId, buyerId))
     .orderBy(desc(conversations.lastMessageAt));
 
@@ -1244,10 +1272,13 @@ export class PostgresStorage implements IStorage {
       // Join with buyer data
       buyerName: users.firstName,
       buyerEmail: users.email,
-      buyerCompany: users.companyName
+      buyerCompany: users.companyName,
+      productName: products.name,
+      productImages: products.images
     })
     .from(conversations)
     .leftJoin(users, eq(conversations.buyerId, users.id))
+    .leftJoin(products, eq(conversations.productId, products.id))
     .where(eq(conversations.unreadCountAdmin, adminId))
     .orderBy(desc(conversations.lastMessageAt));
 

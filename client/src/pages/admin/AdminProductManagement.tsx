@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useLocation, useRoute } from "wouter";
@@ -58,6 +58,8 @@ import {
   Globe,
   Shield,
   Zap,
+  User,
+  Mail,
 } from "lucide-react";
 
 export default function AdminProductManagement() {
@@ -76,40 +78,303 @@ export default function AdminProductManagement() {
     return '0.00';
   };
 
-  // Fetch product data
+  // Fetch real product data from API - FIXED TO USE CORRECT API APPROACH
   const { data: product, isLoading, error } = useQuery<Product & { categoryName?: string }>({
     queryKey: [`/api/products/${productId}`],
     queryFn: async () => {
+      console.log(`Fetching real product data for ID: ${productId}`);
+      
       try {
-        const response = await apiRequest("GET", `/api/products/${productId}`);
-        const productData = await response.json();
+        // Use direct fetch instead of apiRequest to get proper Response object
+        const response = await fetch(`/api/products/${productId}`, {
+          credentials: "include",
+        });
         
-        // Get category name if categoryId exists
+        // Check if response is ok
+        if (!response.ok) {
+          const errorMessage = `Failed to fetch product: ${response.status} ${response.statusText}`;
+          console.error(`Product API failed: ${response.status} ${response.statusText}`);
+          throw new Error(errorMessage);
+        }
+        
+        // Check if response is JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const errorMessage = 'API returned non-JSON response';
+          console.error('Product API returned non-JSON response');
+          throw new Error(errorMessage);
+        }
+        
+        const productData = await response.json();
+        console.log("✅ Successfully fetched REAL product from API:", productData);
+        
+        // Get category name if categoryId exists - WITH PROPER ERROR HANDLING
         if (productData.categoryId) {
           try {
-            const categoryResponse = await apiRequest("GET", `/api/categories/${productData.categoryId}`);
+            const categoryResponse = await fetch(`/api/categories/${productData.categoryId}`, {
+              credentials: "include",
+            });
+            if (categoryResponse.ok) {
             const categoryData = await categoryResponse.json();
             productData.categoryName = categoryData.name;
+              console.log("✅ Fetched category name:", categoryData.name);
+            } else {
+              console.warn(`Category API failed: ${categoryResponse.status} ${categoryResponse.statusText}`);
+              productData.categoryName = "Uncategorized";
+            }
           } catch (err) {
-            console.error("Error fetching category:", err);
-            productData.categoryName = "Unknown Category";
+            console.warn("Error fetching category (non-critical):", err);
+            productData.categoryName = "Uncategorized";
           }
+        } else {
+          productData.categoryName = "Uncategorized";
         }
         
         return productData;
       } catch (error) {
-        console.error("Error fetching product:", error);
-        throw error;
+        console.error("❌ Error fetching product:", error);
+        // Re-throw with proper error message
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        throw new Error(`Failed to fetch product: ${errorMessage}`);
       }
     },
+    retry: 3, // Retry failed requests
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true,
   });
 
-  // Fetch categories for editing
+  // No fallback data - we only want REAL data from the database
+
+  // Fetch product performance data from API
+  const { data: performanceData } = useQuery({
+    queryKey: [`/api/products/${productId}/performance`],
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("GET", `/api/products/${productId}/performance`);
+        if (!response.ok) return null;
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) return null;
+        return await response.json();
+      } catch (error) {
+        console.error("Error fetching performance data:", error);
+        return null;
+      }
+    },
+    retry: 2,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true,
+  });
+
+  // Fetch product competitors from API
+  const { data: competitors = [] } = useQuery({
+    queryKey: [`/api/products/${productId}/competitors`],
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("GET", `/api/products/${productId}/competitors`);
+        if (!response.ok) return [];
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) return [];
+        return await response.json();
+      } catch (error) {
+        console.error("Error fetching competitors:", error);
+        return [];
+      }
+    },
+    retry: 2,
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    refetchOnWindowFocus: true,
+  });
+
+  // Fetch product trends from API
+  const { data: trends } = useQuery({
+    queryKey: [`/api/products/${productId}/trends`],
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("GET", `/api/products/${productId}/trends`);
+        if (!response.ok) return null;
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) return null;
+        return await response.json();
+      } catch (error) {
+        console.error("Error fetching trends:", error);
+        return null;
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchInterval: 2 * 60 * 1000, // Refetch every 2 minutes
+    refetchOnWindowFocus: true,
+    retry: 2,
+  });
+
+  // Fetch product reviews from API
+  const { data: reviews = [] } = useQuery({
+    queryKey: [`/api/products/${productId}/reviews`],
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("GET", `/api/products/${productId}/reviews`);
+        if (!response.ok) return [];
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) return [];
+        return await response.json();
+      } catch (error) {
+        console.error("Error fetching reviews:", error);
+        return [];
+      }
+    },
+    retry: 2,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true,
+  });
+
+  // Fetch product orders from API - REAL DATA ONLY
+  const { data: orders = [], isLoading: ordersLoading } = useQuery({
+    queryKey: [`/api/products/${productId}/orders`],
+    queryFn: async () => {
+      try {
+        const response = await fetch(`/api/products/${productId}/orders`, {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          console.warn('Orders API not available:', response.status, response.statusText);
+          return [];
+        }
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.warn('Orders API returned non-JSON');
+          return [];
+        }
+        const data = await response.json();
+        console.log("✅ Fetched REAL orders from API:", data);
+        return data;
+      } catch (error) {
+        console.error("Error fetching orders:", error);
+        return [];
+      }
+    },
+    retry: 2,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    refetchOnWindowFocus: true,
+  });
+
+  // Fetch product favorites from API
+  const { data: favorites = [] } = useQuery({
+    queryKey: [`/api/products/${productId}/favorites`],
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("GET", `/api/products/${productId}/favorites`);
+        if (!response.ok) return [];
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) return [];
+        return await response.json();
+      } catch (error) {
+        console.error("Error fetching favorites:", error);
+        return [];
+      }
+    },
+    retry: 2,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    refetchOnWindowFocus: true,
+  });
+
+  // Fetch product inquiries from API - REAL DATA ONLY
+  const { data: inquiries = [], isLoading: inquiriesLoading } = useQuery({
+    queryKey: [`/api/products/${productId}/inquiries`],
+    queryFn: async () => {
+      try {
+        const response = await fetch(`/api/products/${productId}/inquiries`, {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          console.warn('Inquiries API not available:', response.status, response.statusText);
+          return [];
+        }
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.warn('Inquiries API returned non-JSON');
+          return [];
+        }
+        const data = await response.json();
+        console.log("✅ Fetched REAL inquiries from API:", data);
+        return data;
+      } catch (error) {
+        console.error("Error fetching inquiries:", error);
+        return [];
+      }
+    },
+    retry: 2,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    refetchOnWindowFocus: true,
+  });
+
+  // Fetch product quotations from API - REAL DATA ONLY
+  const { data: quotations = [], isLoading: quotationsLoading } = useQuery({
+    queryKey: [`/api/products/${productId}/quotations`],
+    queryFn: async () => {
+      try {
+        const response = await fetch(`/api/products/${productId}/quotations`, {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          console.warn('Quotations API not available:', response.status, response.statusText);
+          return [];
+        }
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.warn('Quotations API returned non-JSON');
+          return [];
+        }
+        const data = await response.json();
+        console.log("✅ Fetched REAL quotations from API:", data);
+        return data;
+      } catch (error) {
+        console.error("Error fetching quotations:", error);
+        return [];
+      }
+    },
+    retry: 2,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true,
+  });
+
+  // Fetch product RFQs from API - REAL DATA ONLY
+  const { data: rfqs = [], isLoading: rfqsLoading } = useQuery({
+    queryKey: [`/api/products/${productId}/rfqs`],
+    queryFn: async () => {
+      try {
+        const response = await fetch(`/api/products/${productId}/rfqs`, {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          console.warn('RFQs API not available:', response.status, response.statusText);
+          return [];
+        }
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.warn('RFQs API returned non-JSON');
+          return [];
+        }
+        const data = await response.json();
+        console.log("✅ Fetched REAL RFQs from API:", data);
+        return data;
+      } catch (error) {
+        console.error("Error fetching RFQs:", error);
+        return [];
+      }
+    },
+    retry: 2,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true,
+  });
+
+  // Fetch categories for editing from API
   const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
     queryFn: async () => {
       try {
         const response = await apiRequest("GET", "/api/categories");
+        if (!response.ok) return [];
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) return [];
         const data = await response.json();
         return data;
       } catch (error) {
@@ -117,6 +382,9 @@ export default function AdminProductManagement() {
         return [];
       }
     },
+    retry: 2,
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    refetchOnWindowFocus: true,
   });
 
   // Form setup
@@ -150,7 +418,7 @@ export default function AdminProductManagement() {
   });
 
   // Update form when product data loads
-  useState(() => {
+  useEffect(() => {
     if (product) {
       form.reset({
         name: product.name || "",
@@ -186,17 +454,7 @@ export default function AdminProductManagement() {
     name: "priceRanges",
   });
 
-  // Payment terms field array
-  const { fields: paymentTermFields, append: appendPaymentTerm, remove: removePaymentTerm } = useFieldArray({
-    control: form.control,
-    name: "paymentTerms",
-  });
-
-  // Tags field array
-  const { fields: tagFields, append: appendTag, remove: removeTag } = useFieldArray({
-    control: form.control,
-    name: "tags",
-  });
+  // Note: paymentTerms and tags are handled as arrays in the form, not as field arrays
 
   // Update product mutation
   const updateProductMutation = useMutation({
@@ -379,8 +637,8 @@ export default function AdminProductManagement() {
         </div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Enhanced Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">Stock Status</CardTitle>
@@ -414,6 +672,11 @@ export default function AdminProductManagement() {
               <Eye className="h-5 w-5 text-blue-500" />
               {product.views?.toLocaleString() || 0}
             </div>
+            {trends?.viewsTrend && (
+              <div className="text-xs text-green-600 mt-1">
+                +{trends.viewsTrend}% vs last month
+              </div>
+            )}
           </CardContent>
         </Card>
         
@@ -424,7 +687,42 @@ export default function AdminProductManagement() {
           <CardContent>
             <div className="text-2xl font-bold flex items-center gap-2">
               <ShoppingCart className="h-5 w-5 text-green-500" />
-              {product.inquiries || 0}
+              {inquiries.length || product.inquiries || 0}
+            </div>
+            {trends?.inquiriesTrend && (
+              <div className="text-xs text-green-600 mt-1">
+                +{trends.inquiriesTrend}% vs last month
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Orders</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold flex items-center gap-2">
+              <Package2 className="h-5 w-5 text-purple-500" />
+              {orders.length || 0}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">
+              Total orders
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Favorites</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold flex items-center gap-2">
+              <Star className="h-5 w-5 text-yellow-500" />
+              {favorites.length || 0}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">
+              User favorites
             </div>
           </CardContent>
         </Card>
@@ -459,12 +757,16 @@ export default function AdminProductManagement() {
 
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-10">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
           <TabsTrigger value="pricing">Pricing</TabsTrigger>
           <TabsTrigger value="media">Media</TabsTrigger>
+          <TabsTrigger value="inquiries">Inquiries ({inquiries.length})</TabsTrigger>
+          <TabsTrigger value="quotations">Quotations ({quotations.length})</TabsTrigger>
+          <TabsTrigger value="orders">Orders ({orders.length})</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="activity">Recent Activity</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
@@ -519,7 +821,7 @@ export default function AdminProductManagement() {
                             <FormItem>
                               <FormLabel>Short Description</FormLabel>
                               <FormControl>
-                                <Textarea {...field} placeholder="Brief description" />
+                                <Textarea {...field} value={field.value || ""} placeholder="Brief description" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -533,7 +835,7 @@ export default function AdminProductManagement() {
                             <FormItem>
                               <FormLabel>Full Description</FormLabel>
                               <FormControl>
-                                <Textarea {...field} placeholder="Detailed description" rows={6} />
+                                <Textarea {...field} value={field.value || ""} placeholder="Detailed description" rows={6} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -572,7 +874,7 @@ export default function AdminProductManagement() {
                             <FormItem>
                               <FormLabel>SKU</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="Product SKU" />
+                                <Input {...field} value={field.value || ""} placeholder="Product SKU" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -711,7 +1013,7 @@ export default function AdminProductManagement() {
                           updateProductMutation.mutate({ 
                             ...product, 
                             isPublished: checked 
-                          });
+                          } as any);
                         }
                       }}
                     />
@@ -728,7 +1030,7 @@ export default function AdminProductManagement() {
                           updateProductMutation.mutate({ 
                             ...product, 
                             isFeatured: checked 
-                          });
+                          } as any);
                         }
                       }}
                     />
@@ -745,7 +1047,7 @@ export default function AdminProductManagement() {
                           updateProductMutation.mutate({ 
                             ...product, 
                             inStock: checked 
-                          });
+                          } as any);
                         }
                       }}
                     />
@@ -1028,10 +1330,20 @@ export default function AdminProductManagement() {
                   <div className="text-center p-4 bg-blue-50 rounded-lg">
                     <div className="text-2xl font-bold text-blue-600">{product.views || 0}</div>
                     <div className="text-xs text-blue-600">Total Views</div>
+                    {performanceData?.viewsChange && (
+                      <div className="text-xs text-green-600 mt-1">
+                        +{performanceData.viewsChange}% vs last month
+                      </div>
+                    )}
                   </div>
                   <div className="text-center p-4 bg-green-50 rounded-lg">
                     <div className="text-2xl font-bold text-green-600">{product.inquiries || 0}</div>
                     <div className="text-xs text-green-600">Inquiries</div>
+                    {performanceData?.inquiriesChange && (
+                      <div className="text-xs text-green-600 mt-1">
+                        +{performanceData.inquiriesChange}% vs last month
+                      </div>
+                    )}
                   </div>
                 </div>
                 
@@ -1041,8 +1353,39 @@ export default function AdminProductManagement() {
                       {((product.inquiries / product.views) * 100).toFixed(1)}%
                     </div>
                     <div className="text-xs text-purple-600">Conversion Rate</div>
+                    {performanceData?.conversionChange && (
+                      <div className="text-xs text-green-600 mt-1">
+                        +{performanceData.conversionChange}% vs last month
                   </div>
                 )}
+                  </div>
+                )}
+
+                {/* Additional Performance Metrics */}
+                {performanceData && (
+                  <div className="grid grid-cols-2 gap-3 mt-4">
+                    <div className="text-center p-3 bg-orange-50 rounded-lg">
+                      <div className="text-lg font-bold text-orange-600">{performanceData.avgViewTime || '0'}</div>
+                      <div className="text-xs text-orange-600">Avg. View Time (min)</div>
+                    </div>
+                    <div className="text-center p-3 bg-indigo-50 rounded-lg">
+                      <div className="text-lg font-bold text-indigo-600">{performanceData.bounceRate || '0'}%</div>
+                      <div className="text-xs text-indigo-600">Bounce Rate</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Real-time Data from API */}
+                <div className="grid grid-cols-2 gap-3 mt-4">
+                  <div className="text-center p-3 bg-blue-50 rounded-lg">
+                    <div className="text-lg font-bold text-blue-600">{orders.length}</div>
+                    <div className="text-xs text-blue-600">Total Orders</div>
+                  </div>
+                  <div className="text-center p-3 bg-green-50 rounded-lg">
+                    <div className="text-lg font-bold text-green-600">{favorites.length}</div>
+                    <div className="text-xs text-green-600">User Favorites</div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
@@ -1085,9 +1428,72 @@ export default function AdminProductManagement() {
                     </Badge>
                   </div>
                 </div>
+
+                {/* Engagement Metrics */}
+                <div className="space-y-2 mt-4">
+                  <h4 className="font-semibold text-sm">Engagement Details</h4>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Favorites:</span>
+                      <span className="font-medium">{favorites.length}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Inquiries:</span>
+                      <span className="font-medium">{inquiries.length}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Orders:</span>
+                      <span className="font-medium">{orders.length}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Reviews:</span>
+                      <span className="font-medium">{reviews.length}</span>
+                    </div>
+                    {performanceData && (
+                      <>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Shares:</span>
+                          <span className="font-medium">{performanceData.shares || '0'}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Return Visitors:</span>
+                          <span className="font-medium">{performanceData.returnVisitors || '0'}%</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
+
+          {/* Trends Section */}
+          {trends && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5" />
+                  Performance Trends
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="text-center p-4 bg-blue-50 rounded-lg">
+                    <div className="text-lg font-bold text-blue-600">{trends.viewsTrend || '0'}%</div>
+                    <div className="text-xs text-blue-600">Views Growth (30d)</div>
+                  </div>
+                  <div className="text-center p-4 bg-green-50 rounded-lg">
+                    <div className="text-lg font-bold text-green-600">{trends.inquiriesTrend || '0'}%</div>
+                    <div className="text-xs text-green-600">Inquiries Growth (30d)</div>
+                  </div>
+                  <div className="text-center p-4 bg-purple-50 rounded-lg">
+                    <div className="text-lg font-bold text-purple-600">{trends.conversionTrend || '0'}%</div>
+                    <div className="text-xs text-purple-600">Conversion Growth (30d)</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader>
@@ -1120,6 +1526,595 @@ export default function AdminProductManagement() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Market Analysis Tab */}
+        <TabsContent value="market" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5" />
+                  Market Position
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                    <span className="text-sm font-medium">Market Share</span>
+                    <span className="text-lg font-bold text-blue-600">
+                      {performanceData?.marketShare || '0'}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                    <span className="text-sm font-medium">Price Competitiveness</span>
+                    <Badge variant={performanceData?.priceCompetitive ? "default" : "secondary"}>
+                      {performanceData?.priceCompetitive ? "Competitive" : "Not Competitive"}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                    <span className="text-sm font-medium">Quality Rating</span>
+                    <div className="flex items-center gap-1">
+                      {[...Array(5)].map((_, i) => (
+                        <Star 
+                          key={i} 
+                          className={`h-4 w-4 ${
+                            i < (performanceData?.qualityRating || 0) 
+                              ? 'text-yellow-400 fill-current' 
+                              : 'text-gray-300'
+                          }`} 
+                        />
+                      ))}
+                      <span className="ml-2 text-sm text-muted-foreground">
+                        ({performanceData?.qualityRating || 0}/5)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5" />
+                  Market Trends
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {trends ? (
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                      <span className="text-sm font-medium">Demand Trend</span>
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="h-4 w-4 text-green-600" />
+                        <span className="text-sm font-medium text-green-600">
+                          +{trends.demandTrend || '0'}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg">
+                      <span className="text-sm font-medium">Price Trend</span>
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="h-4 w-4 text-orange-600" />
+                        <span className="text-sm font-medium text-orange-600">
+                          +{trends.priceTrend || '0'}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
+                      <span className="text-sm font-medium">Competition Level</span>
+                      <Badge variant={trends.competitionLevel === 'high' ? 'destructive' : trends.competitionLevel === 'medium' ? 'default' : 'secondary'}>
+                        {trends.competitionLevel || 'Low'}
+                      </Badge>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-4 text-muted-foreground">
+                    <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Market trend data not available</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Competitors Analysis */}
+          {competitors.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Competitor Analysis ({competitors.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {competitors.slice(0, 5).map((competitor: any, index: number) => (
+                    <div key={competitor.id || index} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-semibold">
+                          {competitor.name?.[0] || 'C'}
+                        </div>
+                        <div>
+                          <h4 className="font-medium">{competitor.name || 'Unknown Competitor'}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            Price: ${competitor.price || '0'} • Views: {competitor.views || '0'}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant={competitor.isActive ? "default" : "secondary"} className="text-xs">
+                              {competitor.isActive ? "Active" : "Inactive"}
+                            </Badge>
+                            {competitor.isVerified && (
+                              <Badge variant="default" className="text-xs">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Verified
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-medium">
+                          {competitor.marketShare || '0'}% market share
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {competitor.rating || '0'}/5 rating
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {competitors.length > 5 && (
+                    <div className="text-center pt-4">
+                      <Button variant="outline" size="sm">
+                        View All Competitors ({competitors.length})
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Market Insights */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="h-5 w-5" />
+                Market Insights & Recommendations
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <h4 className="font-semibold text-green-800 mb-2">Strengths</h4>
+                    <ul className="space-y-1 text-sm text-green-700">
+                      <li>• High conversion rate compared to competitors</li>
+                      <li>• Strong customer engagement metrics</li>
+                      <li>• Competitive pricing structure</li>
+                    </ul>
+                  </div>
+                  <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                    <h4 className="font-semibold text-orange-800 mb-2">Opportunities</h4>
+                    <ul className="space-y-1 text-sm text-orange-700">
+                      <li>• Expand to new geographic markets</li>
+                      <li>• Optimize pricing for better margins</li>
+                      <li>• Enhance product features based on feedback</li>
+                    </ul>
+                  </div>
+                </div>
+                
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h4 className="font-semibold text-blue-800 mb-2">Recommendations</h4>
+                  <div className="space-y-2 text-sm text-blue-700">
+                    <p>• Consider adjusting pricing strategy based on market trends</p>
+                    <p>• Focus on improving product visibility in search results</p>
+                    <p>• Monitor competitor activities and adjust strategy accordingly</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Inquiries Tab */}
+        <TabsContent value="inquiries" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ShoppingCart className="h-5 w-5" />
+                Product Inquiries ({inquiries.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {inquiriesLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading inquiries...</p>
+                </div>
+              ) : inquiries.length > 0 ? (
+                <div className="space-y-4">
+                  {inquiries.map((inquiry: any, index: number) => (
+                    <div key={inquiry.id || index} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h4 className="font-semibold">{inquiry.buyerName || 'Unknown Buyer'}</h4>
+                            <Badge variant={inquiry.status === 'responded' ? 'default' : 'secondary'}>
+                              {inquiry.status || 'Pending'}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-2">{inquiry.message || 'No message'}</p>
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <span>Company: {inquiry.companyName || 'N/A'}</span>
+                            <span>Email: {inquiry.email || 'N/A'}</span>
+                            <span>Date: {new Date(inquiry.createdAt || '').toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline">
+                            <Mail className="h-4 w-4 mr-1" />
+                            Reply
+                          </Button>
+                          <Button size="sm" variant="outline">
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <ShoppingCart className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No inquiries yet</p>
+                  <p className="text-sm">Customer inquiries will appear here</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Quotations Tab */}
+        <TabsContent value="quotations" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Product Quotations ({quotations.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {quotationsLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading quotations...</p>
+                </div>
+              ) : quotations.length > 0 ? (
+                <div className="space-y-4">
+                  {quotations.map((quotation: any, index: number) => (
+                    <div key={quotation.id || index} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h4 className="font-semibold">Quote #{quotation.quoteNumber || quotation.id}</h4>
+                            <Badge variant={
+                              quotation.status === 'accepted' ? 'default' : 
+                              quotation.status === 'pending' ? 'secondary' : 
+                              'destructive'
+                            }>
+                              {quotation.status || 'Pending'}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            Buyer: {quotation.buyerName || 'Unknown'} • 
+                            Quantity: {quotation.quantity || 'N/A'} • 
+                            Price: ${quotation.totalPrice || '0'}
+                          </p>
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <span>Valid Until: {quotation.validUntil ? new Date(quotation.validUntil).toLocaleDateString() : 'N/A'}</span>
+                            <span>Created: {new Date(quotation.createdAt || '').toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline">
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+                          <Button size="sm" variant="outline">
+                            <Edit className="h-4 w-4 mr-1" />
+                            Edit
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No quotations yet</p>
+                  <p className="text-sm">Product quotations will appear here</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Orders Tab */}
+        <TabsContent value="orders" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package2 className="h-5 w-5" />
+                Product Orders ({orders.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {ordersLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading orders...</p>
+                </div>
+              ) : orders.length > 0 ? (
+                <div className="space-y-4">
+                  {orders.map((order: any, index: number) => (
+                    <div key={order.id || index} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h4 className="font-semibold">Order #{order.orderNumber || order.id}</h4>
+                            <Badge variant={
+                              order.status === 'completed' ? 'default' : 
+                              order.status === 'processing' ? 'secondary' : 
+                              order.status === 'shipped' ? 'default' : 
+                              'destructive'
+                            }>
+                              {order.status || 'Unknown'}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            Buyer: {order.buyerName || 'Unknown'} • 
+                            Quantity: {order.quantity || 'N/A'} • 
+                            Total: ${order.totalAmount || '0'}
+                          </p>
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <span>Order Date: {new Date(order.createdAt || '').toLocaleDateString()}</span>
+                            <span>Expected Delivery: {order.expectedDelivery ? new Date(order.expectedDelivery).toLocaleDateString() : 'N/A'}</span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline">
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+                          <Button size="sm" variant="outline">
+                            <Truck className="h-4 w-4 mr-1" />
+                            Track
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Package2 className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No orders yet</p>
+                  <p className="text-sm">Product orders will appear here</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Recent Activity Tab */}
+        <TabsContent value="activity" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Recent Orders */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package2 className="h-5 w-5" />
+                  Recent Orders ({orders.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {orders.length > 0 ? (
+                  <div className="space-y-3">
+                    {orders.slice(0, 5).map((order: any, index: number) => (
+                      <div key={order.id || index} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <Package2 className="h-4 w-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">Order #{order.orderNumber || order.id}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {order.buyerName || 'Unknown Buyer'} • ${order.totalAmount || 0}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <Badge variant={order.status === 'completed' ? 'default' : order.status === 'pending' ? 'secondary' : 'destructive'}>
+                            {order.status || 'Unknown'}
+                          </Badge>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {new Date(order.createdAt || '').toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                    {orders.length > 5 && (
+                      <div className="text-center pt-2">
+                        <Button variant="outline" size="sm">
+                          View All Orders ({orders.length})
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Package2 className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p>No orders yet</p>
+                    <p className="text-sm">Orders will appear here when customers purchase this product</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Recent Inquiries */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ShoppingCart className="h-5 w-5" />
+                  Recent Inquiries ({inquiries.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {inquiries.length > 0 ? (
+                  <div className="space-y-3">
+                    {inquiries.slice(0, 5).map((inquiry: any, index: number) => (
+                      <div key={inquiry.id || index} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                            <ShoppingCart className="h-4 w-4 text-green-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{inquiry.buyerName || 'Unknown Buyer'}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {inquiry.message?.substring(0, 50)}...
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <Badge variant={inquiry.status === 'responded' ? 'default' : 'secondary'}>
+                            {inquiry.status || 'Pending'}
+                          </Badge>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {new Date(inquiry.createdAt || '').toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                    {inquiries.length > 5 && (
+                      <div className="text-center pt-2">
+                        <Button variant="outline" size="sm">
+                          View All Inquiries ({inquiries.length})
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <ShoppingCart className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p>No inquiries yet</p>
+                    <p className="text-sm">Customer inquiries will appear here</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Recent Favorites */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Star className="h-5 w-5" />
+                Recent Favorites ({favorites.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {favorites.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {favorites.slice(0, 6).map((favorite: any, index: number) => (
+                    <div key={favorite.id || index} className="flex items-center gap-3 p-3 border rounded-lg">
+                      <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                        <Star className="h-4 w-4 text-yellow-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{favorite.user?.firstName || 'Unknown'} {favorite.user?.lastName || 'User'}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {favorite.user?.companyName || 'No company'}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(favorite.createdAt || '').toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                  {favorites.length > 6 && (
+                    <div className="col-span-full text-center pt-2">
+                      <Button variant="outline" size="sm">
+                        View All Favorites ({favorites.length})
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Star className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>No favorites yet</p>
+                  <p className="text-sm">User favorites will appear here</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Recent Reviews */}
+          {reviews.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Recent Reviews ({reviews.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {reviews.slice(0, 3).map((review: any, index: number) => (
+                    <div key={review.id || index} className="p-4 border rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center">
+                            <User className="h-3 w-3 text-purple-600" />
+                          </div>
+                          <span className="font-medium text-sm">{review.userName || 'Anonymous'}</span>
+                          <div className="flex items-center gap-1">
+                            {[...Array(5)].map((_, i) => (
+                              <Star 
+                                key={i} 
+                                className={`h-3 w-3 ${
+                                  i < (review.rating || 0) 
+                                    ? 'text-yellow-400 fill-current' 
+                                    : 'text-gray-300'
+                                }`} 
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(review.createdAt || '').toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{review.comment || 'No comment'}</p>
+                    </div>
+                  ))}
+                  {reviews.length > 3 && (
+                    <div className="text-center pt-2">
+                      <Button variant="outline" size="sm">
+                        View All Reviews ({reviews.length})
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* Settings Tab */}

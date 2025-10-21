@@ -1,29 +1,28 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { 
   MessageCircle, 
-  Search, 
-  Plus, 
   Bot,
+  Sparkles,
+  Zap,
   Shield,
   Clock,
-  CheckCircle,
-  ArrowLeft,
-  Phone,
-  Video
+  User,
+  ArrowRight,
+  Star,
+  CheckCircle
 } from 'lucide-react';
-import ImprovedChatInterface from '@/components/chat/ImprovedChatInterface';
 import Breadcrumb from '@/components/Breadcrumb';
 import { useToast } from '@/hooks/use-toast';
+import AIAssistant from '@/components/AIAssistant';
 
 export default function Chat() {
-  const [showChatInterface, setShowChatInterface] = useState(false);
-  const [selectedAdminId, setSelectedAdminId] = useState<string | null>(null);
+  const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
   const { toast } = useToast();
 
   // Get current user info
@@ -34,14 +33,22 @@ export default function Chat() {
 
   const user = (userData as any)?.user;
 
-  const handleStartChat = () => {
-    setSelectedAdminId('admin'); // Use generic admin ID
-    setShowChatInterface(true);
+  const handleOpenAIAssistant = () => {
+    setIsAIAssistantOpen(true);
+    setIsMinimized(false);
   };
 
-  const handleBackToList = () => {
-    setShowChatInterface(false);
-    setSelectedAdminId(null);
+  const handleCloseAIAssistant = () => {
+    setIsAIAssistantOpen(false);
+    setIsMinimized(false);
+  };
+
+  const handleMinimizeAIAssistant = () => {
+    setIsMinimized(true);
+  };
+
+  const handleMaximizeAIAssistant = () => {
+    setIsMinimized(false);
   };
 
   if (!user) {

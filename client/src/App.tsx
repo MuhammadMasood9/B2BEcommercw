@@ -49,6 +49,7 @@ import GetVerified from "@/pages/GetVerified";
 import Chat from "@/pages/Chat";
 import BuyerDashboard from "@/pages/buyer/BuyerDashboard";
 import BuyerInquiries from "@/pages/buyer/BuyerInquiries";
+import InquiryDetail from "@/pages/buyer/InquiryDetail";
 import BuyerQuotations from "@/pages/buyer/BuyerQuotations";
 import QuotationDetail from "@/pages/QuotationDetail";
 import BuyerRFQs from "@/pages/buyer/BuyerRFQs";
@@ -201,6 +202,11 @@ function PublicRouter() {
       <Route path="/buyer/inquiries">
         <ProtectedRoute requiredRole="buyer">
           <BuyerInquiries />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/inquiry/:id">
+        <ProtectedRoute requiredRole="buyer">
+          <InquiryDetail />
         </ProtectedRoute>
       </Route>
       <Route path="/buyer/quotations">

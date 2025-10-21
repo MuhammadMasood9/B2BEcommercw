@@ -408,10 +408,12 @@ export default function BuyerInquiries() {
                         variant="outline" 
                         size="sm" 
                         className="flex-1"
-                        onClick={() => setSelectedQuotation(inquiry)}
+                        asChild
                       >
-                        <Eye className="w-4 h-4 mr-1" />
-                        View Details
+                        <Link href={`/inquiry/${inquiry.id}`}>
+                          <Eye className="w-4 h-4 mr-1" />
+                          View Details
+                        </Link>
                       </Button>
                       <Button variant="outline" size="sm">
                         <MessageSquare className="w-4 h-4" />

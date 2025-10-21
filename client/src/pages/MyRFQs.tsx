@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   FileText, 
   Search, 
@@ -16,17 +17,23 @@ import {
   CheckCircle, 
   XCircle, 
   Clock,
-  TrendingUp,
   Globe,
   Shield,
   ArrowRight,
   Plus,
+  DollarSign,
+  Package,
+  Calendar,
+  MapPin,
   Users,
-  DollarSign
+  Filter,
+  TrendingUp,
+  MoreHorizontal
 } from "lucide-react";
 
 export default function MyRFQs() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState("newest");
 
   // Fetch user's RFQs from API
   const { data: rfqs = [], isLoading } = useQuery({
@@ -42,28 +49,19 @@ export default function MyRFQs() {
         return [
           {
             id: "RFQ-2024-001",
-            title: "Custom Metal Brackets - 10,000 units",
-            category: "Hardware & Machinery",
-            quantity: 10000,
-            targetPrice: "$2.50/piece",
-            quotationsReceived: 12,
-            status: "Active",
-            createdDate: "2024-01-20",
-            expiryDate: "2024-02-20",
-            description: "Need custom metal brackets for industrial equipment"
-          },
-          {
-            id: "RFQ-2024-002",
-            title: "LED Display Modules",
+            title: "masood",
             category: "Electronics",
-            quantity: 5000,
-            targetPrice: "$15.00/piece",
-            quotationsReceived: 8,
-            status: "Under Review",
-            createdDate: "2024-01-18",
-            expiryDate: "2024-02-18",
-            description: "High-quality LED display modules for outdoor signage"
-          },
+            quantity: 500,
+            targetPrice: 14.99,
+            quotationsReceived: 2,
+            status: "Closed",
+            createdDate: "2024-10-17",
+            expiryDate: "2024-10-17",
+            description: "adasdasd",
+            attachments: ["Doc 1"],
+            location: "karachi",
+            budget: 14.99
+          }
         ];
       }
     }
@@ -81,417 +79,313 @@ export default function MyRFQs() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Active": return "bg-green-100 text-green-800";
-      case "Under Review": return "bg-blue-100 text-blue-800";
-      case "Closed": return "bg-gray-100 text-gray-800";
-      case "Expired": return "bg-red-100 text-red-800";
-      default: return "bg-gray-100 text-gray-800";
+      case "Active": return "bg-green-100 text-green-800 border-green-200";
+      case "Under Review": return "bg-blue-100 text-blue-800 border-blue-200";
+      case "Closed": return "bg-gray-100 text-gray-800 border-gray-200";
+      case "Expired": return "bg-red-100 text-red-800 border-red-200";
+      default: return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
 
-  const filteredRFQs = rfqs.filter((rfq: any) =>
-    rfq.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    rfq.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredRFQs = rfqs.filter((rfq: any) => {
+    const matchesSearch = rfq.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         rfq.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         rfq.category.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    return matchesSearch;
+  });
 
-  const activeRFQs = filteredRFQs.filter((rfq: any) => rfq.status === "Active");
-  const underReviewRFQs = filteredRFQs.filter((rfq: any) => rfq.status === "Under Review");
-  const closedRFQs = filteredRFQs.filter((rfq: any) => rfq.status === "Closed");
+  const sortedRFQs = [...filteredRFQs].sort((a: any, b: any) => {
+    switch (sortBy) {
+      case "newest":
+        return new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime();
+      case "oldest":
+        return new Date(a.createdDate).getTime() - new Date(b.createdDate).getTime();
+      case "title":
+        return a.title.localeCompare(b.title);
+      case "quotations":
+        return b.quotationsReceived - a.quotationsReceived;
+      default:
+        return 0;
+    }
+  });
+
+  const stats = {
+    total: rfqs.length,
+    active: rfqs.filter((rfq: any) => rfq.status === "Active").length,
+    closed: rfqs.filter((rfq: any) => rfq.status === "Closed").length,
+    totalBudget: rfqs.reduce((sum: number, rfq: any) => sum + (rfq.budget || 0), 0)
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-white">
       <Header />
       
-      {/* Hero Section with Gradient */}
-      <section className="relative py-16 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
-        {/* Background Elements */}
-        <div className="absolute inset-0">
-          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-600/10 to-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
-        </div>
-
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center text-white">
-            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/30 rounded-full px-6 py-3 text-sm text-white/95 shadow-lg mb-6">
-              <FileText className="w-4 h-4" />
-              <span>My RFQs</span>
+      {/* Hero Section */}
+      <section className="bg-white py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex-1">
+              <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+                My RFQs
+              </h1>
+              <p className="text-lg text-gray-600 mb-8">
+                Manage your Request for Quotations and compare supplier responses
+              </p>
             </div>
-            
-            <h1 className="text-4xl md:text-6xl font-bold mb-6">
-              My
-              <span className="bg-gradient-to-r from-blue-200 via-white to-blue-200 bg-clip-text text-transparent block">
-                RFQs
-              </span>
-            </h1>
-            
-            <p className="text-xl text-white/90 max-w-2xl mx-auto mb-8">
-              Manage your Request for Quotations and track responses from admins
-            </p>
-
-            {/* Quick Stats */}
-            <div className="flex flex-wrap justify-center gap-8 text-white/80 text-sm">
-              <div className="flex items-center gap-2">
-                <Shield className="w-4 h-4 text-green-300" />
-                <span>Active RFQs</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-yellow-300" />
-                <span>Total Responses</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Globe className="w-4 h-4 text-purple-300" />
-                <span>Global Reach</span>
-              </div>
+            <div className="lg:ml-8">
+              <Link href="/rfq/create">
+                <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300">
+                  <Plus className="w-5 h-5 mr-2" />
+                  Create New RFQ
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
       </section>
 
       <main className="flex-1">
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Header with Search and Create Button */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-            <div className="flex-1 max-w-md">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  placeholder="Search your RFQs..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
+          {/* Search and Filter Bar */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+            <div className="flex flex-col lg:flex-row gap-4">
+              <div className="flex-1 max-w-md">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    placeholder="Search by title or category..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500 rounded-lg"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex gap-3">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="px-4 py-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-blue-500 bg-white h-12"
+                >
+                  <option value="all">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="closed">Closed</option>
+                  <option value="expired">Expired</option>
+                </select>
+                
+                <Button variant="outline" className="h-12 px-6 border-gray-200 hover:bg-gray-50 rounded-lg">
+                  <Filter className="w-4 h-4 mr-2" />
+                  More Filters
+                </Button>
               </div>
             </div>
-            
-            <Link href="/rfq/create">
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                <Plus className="w-4 h-4 mr-2" />
-                Create New RFQ
-              </Button>
-            </Link>
           </div>
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card className="bg-white border-gray-100 shadow-lg">
-              <CardContent className="p-6 text-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-green-100 to-green-200 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <Clock className="w-6 h-6 text-green-600" />
+            <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-blue-50 to-blue-100">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-blue-600 mb-1">Total RFQs</p>
+                    <p className="text-3xl font-bold text-blue-900">{stats.total}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                    <FileText className="w-6 h-6 text-white" />
+                  </div>
                 </div>
-                <div className="text-2xl font-bold text-gray-900">{activeRFQs.length}</div>
-                <div className="text-sm text-gray-600">Active RFQs</div>
               </CardContent>
             </Card>
-            
-            <Card className="bg-white border-gray-100 shadow-lg">
-              <CardContent className="p-6 text-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <Eye className="w-6 h-6 text-blue-600" />
+
+            <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-green-50 to-green-100">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-green-600 mb-1">Open</p>
+                    <p className="text-3xl font-bold text-green-900">{stats.active}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                    <TrendingUp className="w-6 h-6 text-white" />
+                  </div>
                 </div>
-                <div className="text-2xl font-bold text-gray-900">{underReviewRFQs.length}</div>
-                <div className="text-sm text-gray-600">Under Review</div>
               </CardContent>
             </Card>
-            
-            <Card className="bg-white border-gray-100 shadow-lg">
-              <CardContent className="p-6 text-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle className="w-6 h-6 text-gray-600" />
+
+            <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-gray-50 to-gray-100">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 mb-1">Closed</p>
+                    <p className="text-3xl font-bold text-gray-900">{stats.closed}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-gray-500 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                    <CheckCircle className="w-6 h-6 text-white" />
+                  </div>
                 </div>
-                <div className="text-2xl font-bold text-gray-900">{closedRFQs.length}</div>
-                <div className="text-sm text-gray-600">Closed</div>
               </CardContent>
             </Card>
-            
-            <Card className="bg-white border-gray-100 shadow-lg">
-              <CardContent className="p-6 text-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <MessageSquare className="w-6 h-6 text-purple-600" />
+
+            <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-purple-50 to-purple-100">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-purple-600 mb-1">Total Budget</p>
+                    <p className="text-3xl font-bold text-purple-900">${stats.totalBudget.toFixed(2)}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                    <DollarSign className="w-6 h-6 text-white" />
+                  </div>
                 </div>
-                <div className="text-2xl font-bold text-gray-900">
-                  {rfqs.reduce((sum: number, rfq: any) => sum + rfq.quotationsReceived, 0)}
-                </div>
-                <div className="text-sm text-gray-600">Total Responses</div>
               </CardContent>
             </Card>
           </div>
 
-          {/* RFQs Tabs */}
-          <Tabs defaultValue="all" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="all">All RFQs</TabsTrigger>
-              <TabsTrigger value="active">Active</TabsTrigger>
-              <TabsTrigger value="review">Under Review</TabsTrigger>
-              <TabsTrigger value="closed">Closed</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="all" className="space-y-6">
-              {isLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {[...Array(6)].map((_, i) => (
-                    <Card key={i} className="animate-pulse">
-                      <CardContent className="p-6">
-                        <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                        <div className="h-3 bg-gray-200 rounded w-2/3 mb-4"></div>
-                        <div className="h-3 bg-gray-200 rounded mb-2"></div>
-                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : filteredRFQs.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredRFQs.map((rfq: any) => (
-                    <Card key={rfq.id} className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-white border-gray-100">
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                              {rfq.title}
-                            </CardTitle>
-                            <p className="text-sm text-gray-600 mt-1">{rfq.category}</p>
-                          </div>
-                          <Badge className={`${getStatusColor(rfq.status)} flex items-center gap-1`}>
-                            {getStatusIcon(rfq.status)}
-                            {rfq.status}
-                          </Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-600">Quantity:</span>
-                            <span className="font-medium">{rfq.quantity.toLocaleString()}</span>
-                          </div>
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-600">Target Price:</span>
-                            <span className="font-medium">{rfq.targetPrice}</span>
-                          </div>
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-600">Responses:</span>
-                            <span className="font-medium text-blue-600">{rfq.quotationsReceived}</span>
-                          </div>
-                        </div>
-                        
-                        <div className="pt-4 border-t">
-                          <div className="flex items-center justify-between text-xs text-gray-500">
-                            <span>Created: {new Date(rfq.createdDate).toLocaleDateString()}</span>
-                            <span>Expires: {new Date(rfq.expiryDate).toLocaleDateString()}</span>
-                          </div>
-                        </div>
-                        
-                        <div className="flex gap-2">
-                          <Link href={`/rfq/${rfq.id}`} className="flex-1">
-                            <Button variant="outline" size="sm" className="w-full">
-                              <Eye className="w-4 h-4 mr-1" />
-                              View Details
-                            </Button>
-                          </Link>
-                          <Button variant="outline" size="sm">
-                            <MessageSquare className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <FileText className="w-12 h-12 text-gray-400" />
+          {/* RFQs List */}
+          <div className="space-y-6">
+            {isLoading ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {[...Array(4)].map((_, i) => (
+                  <Card key={i} className="border-0 shadow-lg">
+                    <CardContent className="p-6">
+                      <div className="animate-pulse">
+                        <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2 mb-2"></div>
+                        <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : sortedRFQs.length === 0 ? (
+              <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+                <CardContent className="p-12 text-center">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <FileText className="w-8 h-8 text-gray-400" />
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No RFQs found</h3>
-                  <p className="text-gray-600 mb-4">
-                    {searchQuery ? 'Try adjusting your search criteria' : 'Create your first RFQ to get started'}
-                  </p>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No RFQs Found</h3>
+                  <p className="text-gray-600 mb-6">Create your first RFQ to start getting quotes from suppliers.</p>
                   <Link href="/rfq/create">
-                    <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                    <Button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl">
                       <Plus className="w-4 h-4 mr-2" />
-                      Create RFQ
+                      Create New RFQ
                     </Button>
                   </Link>
-                </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="active" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {activeRFQs.map((rfq: any) => (
-                  <Card key={rfq.id} className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-white border-gray-100">
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {sortedRFQs.map((rfq: any) => (
+                  <Card key={rfq.id} className="group hover:shadow-xl transition-all duration-300 border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
-                          <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                          <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
                             {rfq.title}
-                          </CardTitle>
-                          <p className="text-sm text-gray-600 mt-1">{rfq.category}</p>
+                          </h3>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge className={`${getStatusColor(rfq.status)} border text-xs px-2 py-1`}>
+                              {getStatusIcon(rfq.status)}
+                              <span className="ml-1">{rfq.status}</span>
+                            </Badge>
+                            <Badge variant="outline" className="text-xs px-2 py-1">
+                              Premium
+                            </Badge>
+                          </div>
                         </div>
-                        <Badge className={`${getStatusColor(rfq.status)} flex items-center gap-1`}>
-                          {getStatusIcon(rfq.status)}
-                          {rfq.status}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">Quantity:</span>
-                          <span className="font-medium">{rfq.quantity.toLocaleString()}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">Target Price:</span>
-                          <span className="font-medium">{rfq.targetPrice}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">Responses:</span>
-                          <span className="font-medium text-blue-600">{rfq.quotationsReceived}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="pt-4 border-t">
-                        <div className="flex items-center justify-between text-xs text-gray-500">
-                          <span>Created: {new Date(rfq.createdDate).toLocaleDateString()}</span>
-                          <span>Expires: {new Date(rfq.expiryDate).toLocaleDateString()}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="flex gap-2">
-                        <Link href={`/rfq/${rfq.id}`} className="flex-1">
-                          <Button variant="outline" size="sm" className="w-full">
-                            <Eye className="w-4 h-4 mr-1" />
-                            View Details
-                          </Button>
-                        </Link>
-                        <Button variant="outline" size="sm">
-                          <MessageSquare className="w-4 h-4" />
+                        <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                          <MoreHorizontal className="w-4 h-4" />
                         </Button>
                       </div>
+                      
+                      <p className="text-gray-600 text-sm mb-4 line-clamp-2">{rfq.description}</p>
+                      
+                      {rfq.attachments && rfq.attachments.length > 0 && (
+                        <div className="mb-4">
+                          <p className="text-sm text-gray-500 mb-2">Attachments:</p>
+                          <div className="flex gap-2">
+                            {rfq.attachments.map((attachment: string, index: number) => (
+                              <Link key={index} href="#" className="text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1">
+                                <FileText className="w-3 h-3" />
+                                {attachment}
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Package className="w-4 h-4 text-gray-400" />
+                          <span>Quantity: {rfq.quantity} units</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <DollarSign className="w-4 h-4 text-gray-400" />
+                          <span>Target Price: ${rfq.targetPrice}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Calendar className="w-4 h-4 text-gray-400" />
+                          <span>Expected: {new Date(rfq.expiryDate).toLocaleDateString()}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <MapPin className="w-4 h-4 text-gray-400" />
+                          <span>Location: {rfq.location}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                        <div className="flex items-center gap-4 text-sm text-gray-500">
+                          <span>Created: {new Date(rfq.createdDate).toLocaleDateString()}</span>
+                          <div className="flex items-center gap-1">
+                            <Users className="w-4 h-4" />
+                            <span>Quotations: {rfq.quotationsReceived}</span>
+                          </div>
+                        </div>
+                        <Link href={`/rfq/${rfq.id}`}>
+                          <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
+                            View Details
+                            <ArrowRight className="w-4 h-4 ml-1" />
+                          </Button>
+                        </Link>
+                      </div>
+                      
+                      {rfq.quotationsReceived > 0 && (
+                        <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                          <div className="flex items-center gap-2 text-green-700 text-sm">
+                            <CheckCircle className="w-4 h-4" />
+                            <span>{rfq.quotationsReceived} quotations received from suppliers</span>
+                          </div>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 ))}
               </div>
-            </TabsContent>
+            )}
+          </div>
 
-            <TabsContent value="review" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {underReviewRFQs.map((rfq: any) => (
-                  <Card key={rfq.id} className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-white border-gray-100">
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                            {rfq.title}
-                          </CardTitle>
-                          <p className="text-sm text-gray-600 mt-1">{rfq.category}</p>
-                        </div>
-                        <Badge className={`${getStatusColor(rfq.status)} flex items-center gap-1`}>
-                          {getStatusIcon(rfq.status)}
-                          {rfq.status}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">Quantity:</span>
-                          <span className="font-medium">{rfq.quantity.toLocaleString()}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">Target Price:</span>
-                          <span className="font-medium">{rfq.targetPrice}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">Responses:</span>
-                          <span className="font-medium text-blue-600">{rfq.quotationsReceived}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="pt-4 border-t">
-                        <div className="flex items-center justify-between text-xs text-gray-500">
-                          <span>Created: {new Date(rfq.createdDate).toLocaleDateString()}</span>
-                          <span>Expires: {new Date(rfq.expiryDate).toLocaleDateString()}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="flex gap-2">
-                        <Link href={`/rfq/${rfq.id}`} className="flex-1">
-                          <Button variant="outline" size="sm" className="w-full">
-                            <Eye className="w-4 h-4 mr-1" />
-                            View Details
-                          </Button>
-                        </Link>
-                        <Button variant="outline" size="sm">
-                          <MessageSquare className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="closed" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {closedRFQs.map((rfq: any) => (
-                  <Card key={rfq.id} className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-white border-gray-100">
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                            {rfq.title}
-                          </CardTitle>
-                          <p className="text-sm text-gray-600 mt-1">{rfq.category}</p>
-                        </div>
-                        <Badge className={`${getStatusColor(rfq.status)} flex items-center gap-1`}>
-                          {getStatusIcon(rfq.status)}
-                          {rfq.status}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">Quantity:</span>
-                          <span className="font-medium">{rfq.quantity.toLocaleString()}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">Target Price:</span>
-                          <span className="font-medium">{rfq.targetPrice}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">Responses:</span>
-                          <span className="font-medium text-blue-600">{rfq.quotationsReceived}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="pt-4 border-t">
-                        <div className="flex items-center justify-between text-xs text-gray-500">
-                          <span>Created: {new Date(rfq.createdDate).toLocaleDateString()}</span>
-                          <span>Expires: {new Date(rfq.expiryDate).toLocaleDateString()}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="flex gap-2">
-                        <Link href={`/rfq/${rfq.id}`} className="flex-1">
-                          <Button variant="outline" size="sm" className="w-full">
-                            <Eye className="w-4 h-4 mr-1" />
-                            View Details
-                          </Button>
-                        </Link>
-                        <Button variant="outline" size="sm">
-                          <MessageSquare className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </TabsContent>
-          </Tabs>
+          {/* CTA Section */}
+          <div className="text-center mt-12">
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-3xl p-8">
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                Need to Create an RFQ?
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Get competitive quotes from verified suppliers worldwide
+              </p>
+              <Link href="/rfq/create">
+                <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create New RFQ
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </Link>
+            </div>
+          </div>
         </div>
       </main>
-
+      
       <Footer />
     </div>
   );

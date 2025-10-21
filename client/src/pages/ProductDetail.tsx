@@ -72,6 +72,7 @@ import { useProduct } from "@/contexts/ProductContext";
 export default function ProductDetail() {
   const { setLoading } = useLoading();
   const { isFavorite, toggleFavorite } = useFavorites();
+  const { addToCart } = useCart();
   const { toast } = useToast();
   const { user } = useAuth();
   const { setCurrentProduct } = useProduct();
@@ -307,7 +308,34 @@ export default function ProductDetail() {
       return;
     }
     
-    // Add to cart logic would go here
+    if (!product) return;
+
+    // Transform product data for cart
+    const priceRanges = product.priceRanges ? (typeof product.priceRanges === 'string' ? JSON.parse(product.priceRanges) : product.priceRanges) : [];
+    const minPrice = priceRanges.length > 0 ? Math.min(...priceRanges.map((r: any) => Number(r.pricePerUnit))) : 0;
+    const maxPrice = priceRanges.length > 0 ? Math.max(...priceRanges.map((r: any) => Number(r.pricePerUnit))) : 0;
+
+    addToCart({
+      productId: product.id,
+      name: product.name,
+      image: product.images?.[0] || '/placeholder-product.jpg',
+      priceRange: priceRanges.length > 0 ? `$${minPrice.toFixed(2)}-$${maxPrice.toFixed(2)} /piece` : 'Contact for price',
+      moq: product.minOrderQuantity || 1,
+      supplierName: 'Global Trade Hub Supplier',
+      supplierCountry: 'Global',
+      verified: true,
+      tradeAssurance: product.hasTradeAssurance || false,
+      readyToShip: product.inStock || false,
+      sampleAvailable: product.sampleAvailable || false,
+      customizationAvailable: product.customizationAvailable || false,
+      certifications: product.certifications || [],
+      leadTime: product.leadTime || '7-15 days',
+      port: product.port || 'Any port',
+      paymentTerms: product.paymentTerms || [],
+      inStock: product.inStock || false,
+      stockQuantity: product.stockQuantity || 0,
+    });
+
     toast({
       title: "Added to Cart",
       description: `${product.name} (${quantity} pieces) has been added to your cart.`,
@@ -860,58 +888,22 @@ export default function ProductDetail() {
                 </CardContent>
               </Card>
 
-              {/* Quick Actions */}
+              {/* Inquiry Form */}
               <Card className="bg-white border-gray-100 shadow-xl">
                 <CardHeader className="pb-4">
-                  <CardTitle className="text-lg">Quick Actions</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <Button variant="outline" className="w-full justify-start py-2 rounded border text-sm hover:bg-gray-50" onClick={() => window.location.href = '/products'}>
-                    <Eye className="w-4 h-4 mr-2" />
-                    View Similar Products
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start py-2 rounded border text-sm hover:bg-gray-50" onClick={handleDownloadCatalog}>
-                    <Download className="w-4 h-4 mr-2" />
-                    Download Catalog
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start py-2 rounded border text-sm hover:bg-gray-50" onClick={handleRequestQuote}>
-                    <FileText className="w-4 h-4 mr-2" />
-                    Request Quote
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start py-2 rounded border text-sm hover:bg-gray-50" onClick={handleScheduleMeeting}>
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Schedule Meeting
-                  </Button>
-                    </CardContent>
-                  </Card>
-
-              {/* Product Stats */}
-              <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200 shadow-xl">
-                <CardHeader className="pb-4">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <Target className="w-5 h-5 text-blue-600" />
-                    Product Stats
+                    <MessageSquare className="w-5 h-5 text-blue-600" />
+                    Send Inquiry to Admin
                   </CardTitle>
+                  <p className="text-sm text-gray-600">Get more information about this product from our admin team</p>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Views this month</span>
-                      <span className="font-semibold text-gray-900">{Math.floor(Math.random() * 2000) + 500}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Inquiries received</span>
-                      <span className="font-semibold text-gray-900">{Math.floor(Math.random() * 50) + 10}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Orders placed</span>
-                      <span className="font-semibold text-gray-900">{Math.floor(Math.random() * 20) + 5}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Success rate</span>
-                      <span className="font-semibold text-green-600">{Math.floor(Math.random() * 10) + 90}%</span>
-                    </div>
-                  </div>
+                <CardContent>
+                  <InquiryForm 
+                    productId={productId}
+                    productName={product?.name || "Product"}
+                    productPrice={product?.priceRanges ? (Array.isArray(product.priceRanges) && product.priceRanges.length > 0 ? `$${product.priceRanges[0].pricePerUnit}` : "Contact for price") : "Contact for price"}
+                    supplierName="Global Trade Hub Admin"
+                  />
                 </CardContent>
               </Card>
             </div>
@@ -928,7 +920,88 @@ export default function ProductDetail() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                 {transformedRelatedProducts.map((relatedProduct) => (
-                  <ProductCard key={relatedProduct.id} {...relatedProduct} />
+                  <ProductCard 
+                    key={relatedProduct.id} 
+                    {...relatedProduct}
+                    onAddToCart={() => {
+                      if (!user) {
+                        toast({
+                          title: "Please Sign In",
+                          description: "You need to be signed in to add items to cart.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      
+                      addToCart({
+                        productId: relatedProduct.id,
+                        name: relatedProduct.name,
+                        image: relatedProduct.image,
+                        priceRange: relatedProduct.priceRange,
+                        moq: relatedProduct.moq,
+                        supplierName: relatedProduct.supplierName,
+                        supplierCountry: relatedProduct.supplierCountry,
+                        verified: relatedProduct.verified,
+                        tradeAssurance: relatedProduct.tradeAssurance,
+                        readyToShip: false,
+                        sampleAvailable: false,
+                        customizationAvailable: false,
+                        certifications: [],
+                        leadTime: '7-15 days',
+                        port: 'Any port',
+                        paymentTerms: [],
+                        inStock: true,
+                        stockQuantity: 0,
+                      });
+
+                      toast({
+                        title: "Added to Cart",
+                        description: `${relatedProduct.name} has been added to your cart.`,
+                      });
+                    }}
+                    onContact={() => {
+                      if (!user) {
+                        toast({
+                          title: "Please Sign In",
+                          description: "You need to be signed in to contact suppliers.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      toast({
+                        title: "Contact Supplier",
+                        description: "Opening chat with supplier...",
+                      });
+                    }}
+                    onQuote={() => {
+                      if (!user) {
+                        toast({
+                          title: "Please Sign In",
+                          description: "You need to be signed in to request quotes.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      toast({
+                        title: "Quote Request",
+                        description: "Your quote request has been sent to the supplier.",
+                      });
+                    }}
+                    onSample={() => {
+                      if (!user) {
+                        toast({
+                          title: "Please Sign In",
+                          description: "You need to be signed in to request samples.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      toast({
+                        title: "Sample Request",
+                        description: "Your sample request has been sent to the supplier.",
+                      });
+                    }}
+                  />
                 ))}
               </div>
               

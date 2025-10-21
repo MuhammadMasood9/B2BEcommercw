@@ -23,6 +23,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { insertProductSchema, type Product, type Category } from "@shared/schema";
 import type { z } from "zod";
 import { ImageUpload } from "@/components/ImageUpload";
+import TagInput from "@/components/TagInput";
+import KeyValueInput from "@/components/KeyValueInput";
 import {
   Package,
   Plus,
@@ -57,106 +59,9 @@ import {
   CreditCard,
   Box,
   Settings,
+  Activity,
 } from "lucide-react";
 
-// Mock products data
-const mockProducts: (Product & { categoryName?: string })[] = [
-  {
-    id: "1",
-    name: "Industrial LED Flood Lights 100W",
-    slug: "industrial-led-flood-lights-100w",
-    shortDescription: "High-efficiency LED flood lights for industrial use",
-    description: "Premium quality LED flood lights with IP65 waterproof rating, suitable for outdoor and industrial applications. Features energy-saving technology and long lifespan.",
-    categoryId: "1",
-    specifications: {
-      "Power": "100W",
-      "Voltage": "AC 85-265V",
-      "Color Temperature": "6000K",
-      "Lumens": "10000lm",
-      "IP Rating": "IP65",
-      "Lifespan": "50,000 hours"
-    },
-    images: ["https://images.unsplash.com/photo-1565008576549-57569a49371d?w=400"],
-    videos: [],
-    minOrderQuantity: 50,
-    priceRanges: [
-      { minQty: 50, maxQty: 99, pricePerUnit: 45.00 },
-      { minQty: 100, maxQty: 499, pricePerUnit: 42.00 },
-      { minQty: 500, maxQty: null, pricePerUnit: 38.00 }
-    ],
-    sampleAvailable: true,
-    samplePrice: "55.00",
-    customizationAvailable: true,
-    leadTime: "15-20 days",
-    port: "Shanghai/Ningbo",
-    paymentTerms: ["T/T", "L/C", "Western Union"],
-    inStock: true,
-    stockQuantity: 5000,
-    isPublished: true,
-    isFeatured: true,
-    views: 1250,
-    inquiries: 45,
-    tags: ["LED", "Lighting", "Industrial", "Waterproof"],
-    sku: "LED-FL-100W-001",
-    metaData: null,
-    colors: ["White", "Black", "Silver"],
-    sizes: ["100W", "150W", "200W"],
-    keyFeatures: ["IP65 Waterproof", "Energy Efficient", "Long Lifespan", "Wide Beam Angle"],
-    certifications: ["ISO9001", "CE", "RoHS"],
-    hasTradeAssurance: true,
-    customizationDetails: "Logo printing, custom packaging, color customization available",
-    createdAt: new Date("2024-01-10"),
-    updatedAt: new Date("2024-01-10"),
-    categoryName: "Electronics",
-  },
-  {
-    id: "2",
-    name: "Office Ergonomic Chair Premium",
-    slug: "office-ergonomic-chair-premium",
-    shortDescription: "High-quality ergonomic office chair with lumbar support",
-    description: "Premium ergonomic office chair designed for maximum comfort and productivity. Features adjustable height, lumbar support, and breathable mesh back.",
-    categoryId: "4",
-    specifications: {
-      "Material": "Mesh + Steel Frame",
-      "Max Weight": "150kg",
-      "Adjustable": "Height, Armrest, Backrest",
-      "Wheels": "360° Silent Wheels",
-      "Warranty": "5 Years"
-    },
-    images: ["https://images.unsplash.com/photo-1580480055273-228ff5388ef8?w=400"],
-    videos: [],
-    minOrderQuantity: 20,
-    priceRanges: [
-      { minQty: 20, maxQty: 49, pricePerUnit: 180.00 },
-      { minQty: 50, maxQty: 99, pricePerUnit: 165.00 },
-      { minQty: 100, maxQty: null, pricePerUnit: 150.00 }
-    ],
-    sampleAvailable: true,
-    samplePrice: "200.00",
-    customizationAvailable: true,
-    leadTime: "25-30 days",
-    port: "Qingdao",
-    paymentTerms: ["T/T", "L/C"],
-    inStock: true,
-    stockQuantity: 800,
-    isPublished: true,
-    isFeatured: false,
-    views: 890,
-    inquiries: 32,
-    tags: ["Furniture", "Office", "Ergonomic", "Chair"],
-    sku: "CHAIR-ERG-001",
-    metaData: null,
-    colors: ["Black", "Gray", "Blue"],
-    sizes: ["Standard"],
-    keyFeatures: ["Lumbar Support", "Adjustable Height", "Breathable Mesh", "360° Swivel"],
-    certifications: ["ISO9001", "CE"],
-    hasTradeAssurance: false,
-    customizationDetails: "Custom upholstery colors available for bulk orders",
-    createdAt: new Date("2024-01-15"),
-    updatedAt: new Date("2024-01-15"),
-    categoryName: "Furniture",
-  },
-];
 
 export default function AdminProducts() {
   const [search, setSearch] = useState("");
@@ -170,26 +75,139 @@ export default function AdminProducts() {
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const { toast } = useToast();
 
-  // Fetch products from API (real data, not demo)
+  // Fetch products from API - REAL DATA ONLY
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: ["/api/products"],
     queryFn: async () => {
+      console.log("Fetching REAL products from database...");
+      
       try {
         const response = await fetch("/api/products", {
           credentials: "include",
         });
         if (!response.ok) {
+          console.error(`Products API failed: ${response.status} ${response.statusText}`);
           throw new Error(`HTTP error! status: ${response.status}`);
         }
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.error('Products API returned non-JSON response');
+          throw new Error('API returned non-JSON response');
+        }
+        
         const data = await response.json();
-        console.log("Fetched products from API:", data);
-        return data;
+        console.log("✅ Successfully fetched REAL products from API:", data);
+        
+        // Enhance products with category names
+        const enhancedProducts = await Promise.all(
+          data.map(async (product: Product & { categoryName?: string }) => {
+            if (product.categoryId) {
+              try {
+                const categoryResponse = await fetch(`/api/categories/${product.categoryId}`, {
+                  credentials: "include",
+                });
+                if (categoryResponse.ok) {
+                  const categoryData = await categoryResponse.json();
+                  product.categoryName = categoryData.name;
+                  console.log(`✅ Fetched category for product ${product.id}:`, categoryData.name);
+                } else {
+                  product.categoryName = "Uncategorized";
+                }
+              } catch (err) {
+                console.error("Error fetching category for product:", product.id, err);
+                product.categoryName = "Uncategorized";
+              }
+            } else {
+              product.categoryName = "Uncategorized";
+            }
+            
+            // Ensure priceRanges is properly formatted
+            if (!product.priceRanges || !Array.isArray(product.priceRanges) || product.priceRanges.length === 0) {
+              product.priceRanges = [{ minQty: 1, maxQty: 99, pricePerUnit: 0 }];
+            }
+            
+            return product;
+          })
+        );
+        
+        console.log("✅ Enhanced products with category names:", enhancedProducts);
+        return enhancedProducts;
       } catch (error) {
-        console.error("Error fetching products:", error);
-        // Return empty array instead of mock data to show real state
+        console.error("❌ Error fetching products:", error);
+        throw error; // Re-throw to trigger error state - NO FALLBACK
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchInterval: 30 * 1000, // Refetch every 30 seconds
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+  });
+
+  // Fetch dashboard analytics
+  const { data: dashboardAnalytics } = useQuery({
+    queryKey: ["/api/admin/dashboard-analytics"],
+    queryFn: async () => {
+      try {
+        const response = await fetch("/api/admin/dashboard-analytics", {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return await response.json();
+      } catch (error) {
+        console.error("Error fetching dashboard analytics:", error);
+        return null;
+      }
+    },
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    refetchInterval: 60 * 1000, // Refetch every minute
+    refetchOnWindowFocus: true,
+  });
+
+  // Fetch top performing products
+  const { data: topProducts = [] } = useQuery({
+    queryKey: ["/api/admin/top-products"],
+    queryFn: async () => {
+      try {
+        const response = await fetch("/api/admin/top-products", {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return await response.json();
+      } catch (error) {
+        console.error("Error fetching top products:", error);
         return [];
       }
     },
+    staleTime: 3 * 60 * 1000, // 3 minutes
+    refetchInterval: 2 * 60 * 1000, // Refetch every 2 minutes
+    refetchOnWindowFocus: true,
+  });
+
+  // Fetch recent activities
+  const { data: recentActivities = [] } = useQuery({
+    queryKey: ["/api/admin/recent-activities"],
+    queryFn: async () => {
+      try {
+        const response = await fetch("/api/admin/recent-activities", {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return await response.json();
+      } catch (error) {
+        console.error("Error fetching recent activities:", error);
+        return [];
+      }
+    },
+    staleTime: 1 * 60 * 1000, // 1 minute
+    refetchInterval: 30 * 1000, // Refetch every 30 seconds
+    refetchOnWindowFocus: true,
   });
 
   // Fetch categories for dropdown (real data)
@@ -452,7 +470,7 @@ export default function AdminProducts() {
 
   const inventoryStats = getInventoryStats();
 
-  // Calculate stats
+  // Calculate stats with enhanced metrics
   const stats = {
     total: products.length,
     published: products.filter(p => p.isPublished).length,
@@ -461,6 +479,13 @@ export default function AdminProducts() {
     outOfStock: products.filter(p => !p.inStock || p.stockQuantity === 0).length,
     totalViews: products.reduce((sum, p) => sum + (p.views || 0), 0),
     totalInquiries: products.reduce((sum, p) => sum + (p.inquiries || 0), 0),
+    avgViewsPerProduct: products.length > 0 ? Math.round(products.reduce((sum, p) => sum + (p.views || 0), 0) / products.length) : 0,
+    avgInquiriesPerProduct: products.length > 0 ? Math.round(products.reduce((sum, p) => sum + (p.inquiries || 0), 0) / products.length) : 0,
+    conversionRate: products.reduce((sum, p) => sum + (p.views || 0), 0) > 0 
+      ? ((products.reduce((sum, p) => sum + (p.inquiries || 0), 0) / products.reduce((sum, p) => sum + (p.views || 0), 0)) * 100).toFixed(1)
+      : '0.0',
+    lowStockProducts: products.filter(p => p.inStock && (p.stockQuantity || 0) > 0 && (p.stockQuantity || 0) < 10).length,
+    highPerformingProducts: products.filter(p => (p.views || 0) > 100 && (p.inquiries || 0) > 5).length,
   };
 
   return (
@@ -471,7 +496,10 @@ export default function AdminProducts() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Product Management</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold">Product Management</h1>
+           
+          </div>
           <p className="text-muted-foreground mt-2">Manage your B2B product catalog with pricing tiers and specifications</p>
         </div>
         <div className="flex gap-2">
@@ -627,8 +655,141 @@ export default function AdminProducts() {
         )}
       </Card>
 
+      {/* Dashboard Insights */}
+      {dashboardAnalytics && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Dashboard Insights
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg">
+                <div className="text-2xl font-bold text-blue-600">{dashboardAnalytics.totalRevenue || '0'}</div>
+                <div className="text-sm text-blue-600">Total Revenue (30d)</div>
+                <div className="text-xs text-green-600 mt-1">
+                  +{dashboardAnalytics.revenueGrowth || '0'}% vs last month
+                </div>
+              </div>
+              <div className="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg">
+                <div className="text-2xl font-bold text-green-600">{dashboardAnalytics.totalOrders || '0'}</div>
+                <div className="text-sm text-green-600">Total Orders (30d)</div>
+                <div className="text-xs text-green-600 mt-1">
+                  +{dashboardAnalytics.ordersGrowth || '0'}% vs last month
+                </div>
+              </div>
+              <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg">
+                <div className="text-2xl font-bold text-purple-600">{dashboardAnalytics.avgOrderValue || '0'}</div>
+                <div className="text-sm text-purple-600">Avg Order Value</div>
+                <div className="text-xs text-green-600 mt-1">
+                  +{dashboardAnalytics.aovGrowth || '0'}% vs last month
+                </div>
+              </div>
+              <div className="text-center p-4 bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg">
+                <div className="text-2xl font-bold text-orange-600">{dashboardAnalytics.conversionRate || '0'}%</div>
+                <div className="text-sm text-orange-600">Conversion Rate</div>
+                <div className="text-xs text-green-600 mt-1">
+                  +{dashboardAnalytics.conversionGrowth || '0'}% vs last month
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Top Performing Products */}
+      {topProducts.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Star className="h-5 w-5" />
+              Top Performing Products
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {topProducts.slice(0, 6).map((product: any, index: number) => (
+                <div key={product.id || index} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="w-8 h-8 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                    {index + 1}
+                  </div>
+                  {product.images?.[0] ? (
+                    <img
+                      src={product.images[0]}
+                      alt={product.name}
+                      className="h-10 w-10 rounded object-cover"
+                    />
+                  ) : (
+                    <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
+                      <Package className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-sm truncate">{product.name || 'Unknown Product'}</h4>
+                    <p className="text-xs text-muted-foreground">
+                      {product.views || 0} views • {product.inquiries || 0} inquiries
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant={product.isPublished ? "default" : "secondary"} className="text-xs">
+                        {product.isPublished ? "Published" : "Draft"}
+                      </Badge>
+                      {product.isFeatured && (
+                        <Badge variant="default" className="text-xs">
+                          <Star className="h-3 w-3 mr-1" />
+                          Featured
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-medium text-green-600">
+                      +{product.growth || '0'}%
+                    </div>
+                    <div className="text-xs text-muted-foreground">Growth</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Recent Activities */}
+      {recentActivities.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5" />
+              Recent Activities
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {recentActivities.slice(0, 5).map((activity: any, index: number) => (
+                <div key={activity.id || index} className="flex items-center gap-3 p-3 border rounded-lg">
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs">
+                    {activity.type?.[0] || 'A'}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{activity.description || 'Unknown activity'}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {activity.timestamp ? new Date(activity.timestamp).toLocaleString() : 'Unknown time'}
+                    </p>
+                  </div>
+                  <Badge variant={activity.severity === 'high' ? 'destructive' : activity.severity === 'medium' ? 'default' : 'secondary'} className="text-xs">
+                    {activity.severity || 'low'}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-9 gap-4">
         {/* Total Products - Blue */}
         <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
           <CardHeader className="pb-3">
@@ -696,6 +857,29 @@ export default function AdminProducts() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-white">{stats.totalInquiries}</div>
+            <div className="text-xs text-teal-100 mt-1">Avg: {stats.avgInquiriesPerProduct}/product</div>
+          </CardContent>
+        </Card>
+
+        {/* Conversion Rate - Indigo */}
+        <Card className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white border-0 shadow-lg">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-indigo-100">Conversion Rate</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-white">{stats.conversionRate}%</div>
+            <div className="text-xs text-indigo-100 mt-1">Views to Inquiries</div>
+          </CardContent>
+        </Card>
+
+        {/* High Performing - Emerald */}
+        <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-0 shadow-lg">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-emerald-100">High Performers</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-white">{stats.highPerformingProducts}</div>
+            <div className="text-xs text-emerald-100 mt-1">100+ views, 5+ inquiries</div>
           </CardContent>
         </Card>
       </div>
@@ -739,6 +923,75 @@ export default function AdminProducts() {
                   <SelectItem value="out-of-stock">Out of Stock</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Product Performance Insights */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" />
+            Product Performance Insights
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-3">
+              <h4 className="font-semibold text-sm">Top Categories by Performance</h4>
+              <div className="space-y-2">
+                {categories.slice(0, 3).map((category, index) => {
+                  const categoryProducts = products.filter(p => p.categoryId === category.id);
+                  const categoryViews = categoryProducts.reduce((sum, p) => sum + (p.views || 0), 0);
+                  const categoryInquiries = categoryProducts.reduce((sum, p) => sum + (p.inquiries || 0), 0);
+                  return (
+                    <div key={category.id} className="flex justify-between items-center p-2 bg-muted rounded">
+                      <span className="text-sm">{category.name}</span>
+                      <div className="text-right">
+                        <div className="text-xs font-medium">{categoryViews} views</div>
+                        <div className="text-xs text-muted-foreground">{categoryInquiries} inquiries</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="font-semibold text-sm">Performance Distribution</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center p-2 bg-green-50 rounded">
+                  <span className="text-sm text-green-700">High Performers</span>
+                  <Badge variant="default" className="bg-green-600">{stats.highPerformingProducts}</Badge>
+                </div>
+                <div className="flex justify-between items-center p-2 bg-yellow-50 rounded">
+                  <span className="text-sm text-yellow-700">Medium Performers</span>
+                  <Badge variant="secondary">{products.filter(p => (p.views || 0) > 50 && (p.views || 0) <= 100).length}</Badge>
+                </div>
+                <div className="flex justify-between items-center p-2 bg-red-50 rounded">
+                  <span className="text-sm text-red-700">Low Performers</span>
+                  <Badge variant="destructive">{products.filter(p => (p.views || 0) <= 50).length}</Badge>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="font-semibold text-sm">Quick Actions</h4>
+              <div className="space-y-2">
+                <Button variant="outline" size="sm" className="w-full justify-start">
+                  <Star className="h-4 w-4 mr-2" />
+                  Feature Top Products
+                </Button>
+                <Button variant="outline" size="sm" className="w-full justify-start">
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  Optimize Low Performers
+                </Button>
+                <Button variant="outline" size="sm" className="w-full justify-start">
+                  <Package className="h-4 w-4 mr-2" />
+                  Restock Low Inventory
+                </Button>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -961,10 +1214,7 @@ function ProductRow({ product, onEdit, onDelete, onToggleStatus, selectedProduct
               <Settings className="h-4 w-4 mr-2" />
               Manage Product
             </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Copy className="h-4 w-4 mr-2" />
-              Duplicate
-            </DropdownMenuItem>
+          
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-destructive"
@@ -1376,61 +1626,44 @@ function ProductForm({ product, categories, onSubmit, isLoading, onCancel }: Pro
         </div>
 
             {/* Colors */}
-            <div>
-              <Label>Available Colors</Label>
-              <FormDescription className="mb-2">Enter colors (comma-separated, e.g., Black, White, Blue)</FormDescription>
-              <Input
-                placeholder="e.g., Black, White, Red"
-                value={(form.watch("colors") || []).join(", ")}
-                onChange={(e) => {
-                  const colorsArray = e.target.value.split(",").map(c => c.trim()).filter(c => c);
-                  form.setValue("colors", colorsArray as any);
-                }}
-              />
-            </div>
+            <TagInput
+              label="Available Colors"
+              description="Enter colors for this product"
+              placeholder="Type color name and press Enter"
+              value={form.watch("colors") || []}
+              onChange={(colors) => form.setValue("colors", colors as any)}
+              maxTags={10}
+            />
 
             {/* Sizes */}
-            <div>
-              <Label>Available Sizes</Label>
-              <FormDescription className="mb-2">Enter sizes (comma-separated, e.g., S, M, L, XL or 250g, 500g, 1kg)</FormDescription>
-              <Input
-                placeholder="e.g., S, M, L, XL"
-                value={(form.watch("sizes") || []).join(", ")}
-                onChange={(e) => {
-                  const sizesArray = e.target.value.split(",").map(s => s.trim()).filter(s => s);
-                  form.setValue("sizes", sizesArray as any);
-                }}
-              />
-            </div>
+            <TagInput
+              label="Available Sizes"
+              description="Enter sizes for this product (e.g., S, M, L, XL or 250g, 500g, 1kg)"
+              placeholder="Type size and press Enter"
+              value={form.watch("sizes") || []}
+              onChange={(sizes) => form.setValue("sizes", sizes as any)}
+              maxTags={15}
+            />
 
             {/* Key Features */}
-            <div>
-              <Label>Key Features</Label>
-              <FormDescription className="mb-2">Enter key features (comma-separated)</FormDescription>
-              <Textarea
-                placeholder="e.g., Waterproof, Energy Efficient, Long Lifespan"
-                rows={3}
-                value={(form.watch("keyFeatures") || []).join(", ")}
-                onChange={(e) => {
-                  const featuresArray = e.target.value.split(",").map(f => f.trim()).filter(f => f);
-                  form.setValue("keyFeatures", featuresArray as any);
-                }}
-              />
-            </div>
+            <TagInput
+              label="Key Features"
+              description="Enter key features that highlight this product's benefits"
+              placeholder="Type feature and press Enter"
+              value={form.watch("keyFeatures") || []}
+              onChange={(features) => form.setValue("keyFeatures", features as any)}
+              maxTags={20}
+            />
 
             {/* Certifications */}
-            <div>
-              <Label>Certifications</Label>
-              <FormDescription className="mb-2">Enter certifications (comma-separated, e.g., ISO9001, CE, RoHS)</FormDescription>
-              <Input
-                placeholder="e.g., ISO9001, CE, RoHS, FDA"
-                value={(form.watch("certifications") || []).join(", ")}
-                onChange={(e) => {
-                  const certsArray = e.target.value.split(",").map(c => c.trim()).filter(c => c);
-                  form.setValue("certifications", certsArray as any);
-                }}
-              />
-            </div>
+            <TagInput
+              label="Certifications"
+              description="Enter product certifications and standards (e.g., ISO9001, CE, RoHS, FDA)"
+              placeholder="Type certification and press Enter"
+              value={form.watch("certifications") || []}
+              onChange={(certifications) => form.setValue("certifications", certifications as any)}
+              maxTags={10}
+            />
 
             {/* Customization Details */}
             <FormField
@@ -1473,31 +1706,23 @@ function ProductForm({ product, categories, onSubmit, isLoading, onCancel }: Pro
               )}
             />
 
-            <div>
-              <Label>Payment Terms</Label>
-              <FormDescription className="mb-2">Enter payment terms (comma-separated)</FormDescription>
-              <Input
-                placeholder="e.g., T/T, L/C, Western Union"
-                defaultValue={product?.paymentTerms?.join(", ") || ""}
-                onChange={(e) => {
-                  const terms = e.target.value.split(",").map(t => t.trim()).filter(Boolean);
-                  form.setValue("paymentTerms", terms);
-                }}
-              />
-            </div>
+            <TagInput
+              label="Payment Terms"
+              description="Enter payment terms accepted for this product"
+              placeholder="Type payment term and press Enter"
+              value={form.watch("paymentTerms") || []}
+              onChange={(paymentTerms) => form.setValue("paymentTerms", paymentTerms as any)}
+              maxTags={10}
+            />
 
-            <div>
-              <Label>Tags</Label>
-              <FormDescription className="mb-2">Enter tags (comma-separated)</FormDescription>
-              <Input
-                placeholder="e.g., LED, Lighting, Industrial"
-                defaultValue={product?.tags?.join(", ") || ""}
-                onChange={(e) => {
-                  const tags = e.target.value.split(",").map(t => t.trim()).filter(Boolean);
-                  form.setValue("tags", tags);
-                }}
-              />
-            </div>
+            <TagInput
+              label="Tags"
+              description="Enter tags to categorize and search for this product"
+              placeholder="Type tag and press Enter"
+              value={form.watch("tags") || []}
+              onChange={(tags) => form.setValue("tags", tags as any)}
+              maxTags={15}
+            />
           </TabsContent>
 
           {/* Media Tab */}
@@ -1608,23 +1833,19 @@ function ProductForm({ product, categories, onSubmit, isLoading, onCancel }: Pro
           />
         </div>
 
-            <div>
-              <Label>Specifications (JSON)</Label>
-              <FormDescription className="mb-2">Product technical specifications</FormDescription>
-              <Textarea
-                rows={6}
-                placeholder='{"Power": "100W", "Voltage": "AC 85-265V"}'
-                defaultValue={product?.specifications ? JSON.stringify(product.specifications, null, 2) : ""}
-                onChange={(e) => {
-                  try {
-                    const specs = JSON.parse(e.target.value);
-                    form.setValue("specifications", specs);
-                  } catch (err) {
-                    // Invalid JSON, ignore
-                  }
-                }}
-              />
-            </div>
+            <KeyValueInput
+              label="Specifications"
+              description="Enter product technical specifications as key-value pairs"
+              value={(() => {
+                const specs = form.watch("specifications");
+                if (specs && typeof specs === 'object' && !Array.isArray(specs)) {
+                  return specs as Record<string, string>;
+                }
+                return {};
+              })()}
+              onChange={(specifications) => form.setValue("specifications", specifications as any)}
+              maxPairs={20}
+            />
           </TabsContent>
         </Tabs>
 

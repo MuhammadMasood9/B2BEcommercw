@@ -51,86 +51,73 @@ export default function AdminProductDetail() {
   const [favoriteSearchQuery, setFavoriteSearchQuery] = useState("");
   const [favoriteFilter, setFavoriteFilter] = useState("all"); // all, recent, verified, unverified
 
-  // Mock product data
-  const mockProduct: Product & { categoryName?: string } = {
-    id: productId,
-    name: "Industrial LED Flood Lights 100W",
-    slug: "industrial-led-flood-lights-100w",
-    shortDescription: "High-efficiency LED flood lights for industrial use",
-    description: "Premium quality LED flood lights with IP65 waterproof rating, suitable for outdoor and industrial applications. Features energy-saving technology and long lifespan of up to 50,000 hours. Perfect for warehouses, parking lots, sports fields, and construction sites.",
-    categoryId: "1",
-    specifications: {
-      "Power": "100W",
-      "Voltage": "AC 85-265V",
-      "Color Temperature": "6000K",
-      "Lumens": "10000lm",
-      "IP Rating": "IP65",
-      "Lifespan": "50,000 hours",
-      "Beam Angle": "120°",
-      "Material": "Aluminum Alloy",
-      "Warranty": "3 Years"
-    },
-    images: [
-      "https://images.unsplash.com/photo-1565008576549-57569a49371d?w=800",
-      "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800",
-      "https://images.unsplash.com/photo-1545259742-24f9dbae58a7?w=800",
-    ],
-    videos: [],
-    minOrderQuantity: 50,
-    priceRanges: [
-      { minQty: 50, maxQty: 99, pricePerUnit: 45.00 },
-      { minQty: 100, maxQty: 499, pricePerUnit: 42.00 },
-      { minQty: 500, maxQty: null, pricePerUnit: 38.00 }
-    ],
-    sampleAvailable: true,
-    samplePrice: "55.00",
-    customizationAvailable: true,
-    leadTime: "15-20 days",
-    port: "Shanghai/Ningbo",
-    paymentTerms: ["T/T", "L/C", "Western Union"],
-    inStock: true,
-    stockQuantity: 5000,
-    isPublished: true,
-    isFeatured: true,
-    views: 1250,
-    inquiries: 45,
-    tags: ["LED", "Lighting", "Industrial", "Waterproof"],
-    sku: "LED-FL-100W-001",
-    metaData: null,
-    createdAt: new Date("2024-01-10"),
-    updatedAt: new Date("2024-01-10"),
-    categoryName: "Electronics",
-  };
 
-  // Fetch real product data from API
+  // Fetch real product data from API - FIXED TO USE CORRECT API APPROACH
   const { data: product, isLoading, error } = useQuery<Product & { categoryName?: string }>({
     queryKey: [`/api/products/${productId}`],
     queryFn: async () => {
+      console.log(`Fetching real product data for ID: ${productId}`);
+      
       try {
-        const response = await apiRequest("GET", `/api/products/${productId}`);
-        const productData = await response.json();
-        console.log("Fetched product from API:", productData);
+        // Use direct fetch instead of apiRequest to get proper Response object
+        const response = await fetch(`/api/products/${productId}`, {
+          credentials: "include",
+        });
         
-        // Get category name if categoryId exists
+        // Check if response is ok
+        if (!response.ok) {
+          const errorMessage = `Failed to fetch product: ${response.status} ${response.statusText}`;
+          console.error(`Product API failed: ${response.status} ${response.statusText}`);
+          throw new Error(errorMessage);
+        }
+        
+        // Check if response is JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const errorMessage = 'API returned non-JSON response';
+          console.error('Product API returned non-JSON response');
+          throw new Error(errorMessage);
+        }
+        
+        const productData = await response.json();
+        console.log("✅ Successfully fetched REAL product from API:", productData);
+        
+        // Get category name if categoryId exists - WITH PROPER ERROR HANDLING
         if (productData.categoryId) {
           try {
-            const categoryResponse = await apiRequest("GET", `/api/categories/${productData.categoryId}`);
-            const categoryData = await categoryResponse.json();
-            productData.categoryName = categoryData.name;
+            const categoryResponse = await fetch(`/api/categories/${productData.categoryId}`, {
+              credentials: "include",
+            });
+            if (categoryResponse.ok) {
+              const categoryData = await categoryResponse.json();
+              productData.categoryName = categoryData.name;
+              console.log("✅ Fetched category name:", categoryData.name);
+            } else {
+              console.warn(`Category API failed: ${categoryResponse.status} ${categoryResponse.statusText}`);
+              productData.categoryName = "Uncategorized";
+            }
           } catch (err) {
-            console.error("Error fetching category:", err);
-            productData.categoryName = "Unknown Category";
+            console.warn("Error fetching category (non-critical):", err);
+            productData.categoryName = "Uncategorized";
           }
+        } else {
+          productData.categoryName = "Uncategorized";
         }
         
         return productData;
       } catch (error) {
-        console.error("Error fetching product:", error);
-        // Return mock data as fallback for demo purposes
-        return mockProduct;
+        console.error("❌ Error fetching product:", error);
+        // Re-throw with proper error message
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        throw new Error(`Failed to fetch product: ${errorMessage}`);
       }
     },
+    retry: 3, // Retry failed requests
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true,
   });
+
+  // No fallback data - we only want REAL data from the database
 
   // Delete product mutation
   const deleteProductMutation = useMutation({
@@ -152,6 +139,270 @@ export default function AdminProductDetail() {
         variant: "destructive",
       });
     },
+  });
+
+  // Fetch favorites data from API - REAL DATA ONLY
+  const { data: favorites = [], isLoading: favoritesLoading } = useQuery({
+    queryKey: [`/api/products/${productId}/favorites`],
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("GET", `/api/products/${productId}/favorites`);
+        if (!response.ok) {
+          console.warn('Favorites API not available');
+          return [];
+        }
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.warn('Favorites API returned non-JSON');
+          return [];
+        }
+        const data = await response.json();
+        console.log("✅ Fetched REAL favorites from API:", data);
+        return data;
+      } catch (error) {
+        console.error("Error fetching favorites:", error);
+        return [];
+      }
+    },
+    retry: 2,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    refetchOnWindowFocus: true,
+  });
+
+  // Fetch related products from API - REAL DATA ONLY
+  const { data: relatedProducts = [] } = useQuery({
+    queryKey: [`/api/products/${productId}/related`],
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("GET", `/api/products/${productId}/related`);
+        if (!response.ok) {
+          console.warn('Related products API not available');
+          return [];
+        }
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.warn('Related products API returned non-JSON');
+          return [];
+        }
+        const data = await response.json();
+        console.log("✅ Fetched REAL related products from API:", data);
+        return data;
+      } catch (error) {
+        console.error("Error fetching related products:", error);
+        return [];
+      }
+    },
+    retry: 2,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true,
+  });
+
+  // Fetch product analytics from API - REAL DATA ONLY
+  const { data: analytics } = useQuery({
+    queryKey: [`/api/products/${productId}/analytics`],
+    queryFn: async () => {
+      try {
+        const response = await apiRequest("GET", `/api/products/${productId}/analytics`);
+        if (!response.ok) {
+          console.warn('Analytics API not available');
+          return null;
+        }
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.warn('Analytics API returned non-JSON');
+          return null;
+        }
+        const data = await response.json();
+        console.log("✅ Fetched REAL analytics from API:", data);
+        return data;
+      } catch (error) {
+        console.error("Error fetching analytics:", error);
+        return null;
+      }
+    },
+    retry: 2,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true,
+  });
+
+  // Fetch product inquiries from API - REAL DATA ONLY
+  const { data: inquiries = [], isLoading: inquiriesLoading } = useQuery({
+    queryKey: [`/api/products/${productId}/inquiries`],
+    queryFn: async () => {
+      try {
+        const response = await fetch(`/api/products/${productId}/inquiries`, {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          console.warn('Inquiries API not available:', response.status, response.statusText);
+          return [];
+        }
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.warn('Inquiries API returned non-JSON');
+          return [];
+        }
+        const data = await response.json();
+        console.log("✅ Fetched REAL inquiries from API:", data);
+        return data;
+      } catch (error) {
+        console.error("Error fetching inquiries:", error);
+        return [];
+      }
+    },
+    retry: 2,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    refetchOnWindowFocus: true,
+  });
+
+  // Fetch product quotations from API - REAL DATA ONLY
+  const { data: quotations = [], isLoading: quotationsLoading } = useQuery({
+    queryKey: [`/api/products/${productId}/quotations`],
+    queryFn: async () => {
+      try {
+        const response = await fetch(`/api/products/${productId}/quotations`, {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          console.warn('Quotations API not available:', response.status, response.statusText);
+          return [];
+        }
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.warn('Quotations API returned non-JSON');
+          return [];
+        }
+        const data = await response.json();
+        console.log("✅ Fetched REAL quotations from API:", data);
+        return data;
+      } catch (error) {
+        console.error("Error fetching quotations:", error);
+        return [];
+      }
+    },
+    retry: 2,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true,
+  });
+
+  // Fetch product orders from API - REAL DATA ONLY
+  const { data: orders = [], isLoading: ordersLoading } = useQuery({
+    queryKey: [`/api/products/${productId}/orders`],
+    queryFn: async () => {
+      try {
+        const response = await fetch(`/api/products/${productId}/orders`, {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          console.warn('Orders API not available:', response.status, response.statusText);
+          return [];
+        }
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.warn('Orders API returned non-JSON');
+          return [];
+        }
+        const data = await response.json();
+        console.log("✅ Fetched REAL orders from API:", data);
+        return data;
+      } catch (error) {
+        console.error("Error fetching orders:", error);
+        return [];
+      }
+    },
+    retry: 2,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    refetchOnWindowFocus: true,
+  });
+
+  // Fetch product reviews from API - REAL DATA ONLY
+  const { data: reviews = [], isLoading: reviewsLoading } = useQuery({
+    queryKey: [`/api/products/${productId}/reviews`],
+    queryFn: async () => {
+      try {
+        const response = await fetch(`/api/products/${productId}/reviews`, {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          console.warn('Reviews API not available:', response.status, response.statusText);
+          return [];
+        }
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.warn('Reviews API returned non-JSON');
+          return [];
+        }
+        const data = await response.json();
+        console.log("✅ Fetched REAL reviews from API:", data);
+        return data;
+      } catch (error) {
+        console.error("Error fetching reviews:", error);
+        return [];
+      }
+    },
+    retry: 2,
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    refetchOnWindowFocus: true,
+  });
+
+  // Fetch product RFQs from API - REAL DATA ONLY
+  const { data: rfqs = [], isLoading: rfqsLoading } = useQuery({
+    queryKey: [`/api/products/${productId}/rfqs`],
+    queryFn: async () => {
+      try {
+        const response = await fetch(`/api/products/${productId}/rfqs`, {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          console.warn('RFQs API not available:', response.status, response.statusText);
+          return [];
+        }
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.warn('RFQs API returned non-JSON');
+          return [];
+        }
+        const data = await response.json();
+        console.log("✅ Fetched REAL RFQs from API:", data);
+        return data;
+      } catch (error) {
+        console.error("Error fetching RFQs:", error);
+        return [];
+      }
+    },
+    retry: 2,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true,
+  });
+
+  // Fetch product performance metrics from API - REAL DATA ONLY
+  const { data: performanceMetrics } = useQuery({
+    queryKey: [`/api/products/${productId}/performance`],
+    queryFn: async () => {
+      try {
+        const response = await fetch(`/api/products/${productId}/performance`, {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          console.warn('Performance API not available:', response.status, response.statusText);
+          return null;
+        }
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.warn('Performance API returned non-JSON');
+          return null;
+        }
+        const data = await response.json();
+        console.log("✅ Fetched REAL performance metrics from API:", data);
+        return data;
+      } catch (error) {
+        console.error("Error fetching performance metrics:", error);
+        return null;
+      }
+    },
+    retry: 2,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true,
   });
 
   if (isLoading) {
@@ -184,89 +435,17 @@ export default function AdminProductDetail() {
   const priceRanges = (product.priceRanges as any[]) || [];
   const specifications = (product.specifications as Record<string, string>) || {};
 
-  // Mock favorite data - in real app, this would come from API
-  const mockFavorites = [
-    {
-      id: "1",
-      userId: "user1",
-      itemId: productId,
-      itemType: "product",
-      createdAt: new Date("2024-01-15"),
-      user: {
-        id: "user1",
-        firstName: "John",
-        lastName: "Smith",
-        companyName: "Tech Solutions Inc.",
-        email: "john.smith@techsolutions.com",
-        country: "United States",
-        isVerified: true,
-        lastActive: new Date("2024-01-20")
-      }
-    },
-    {
-      id: "2",
-      userId: "user2",
-      itemId: productId,
-      itemType: "product",
-      createdAt: new Date("2024-01-18"),
-      user: {
-        id: "user2",
-        firstName: "Maria",
-        lastName: "Garcia",
-        companyName: "Industrial Supplies Ltd.",
-        email: "maria.garcia@industrialsupplies.com",
-        country: "Spain",
-        isVerified: true,
-        lastActive: new Date("2024-01-19")
-      }
-    },
-    {
-      id: "3",
-      userId: "user3",
-      itemId: productId,
-      itemType: "product",
-      createdAt: new Date("2024-01-20"),
-      user: {
-        id: "user3",
-        firstName: "Ahmed",
-        lastName: "Hassan",
-        companyName: "Middle East Trading Co.",
-        email: "ahmed.hassan@metc.com",
-        country: "UAE",
-        isVerified: false,
-        lastActive: new Date("2024-01-21")
-      }
-    },
-    {
-      id: "4",
-      userId: "user4",
-      itemId: productId,
-      itemType: "product",
-      createdAt: new Date("2024-01-22"),
-      user: {
-        id: "user4",
-        firstName: "Li",
-        lastName: "Wei",
-        companyName: "China Manufacturing Group",
-        email: "li.wei@cmg.com",
-        country: "China",
-        isVerified: true,
-        lastActive: new Date("2024-01-23")
-      }
-    }
-  ];
-
   // Filter favorites based on search and filter criteria
-  const filteredFavorites = mockFavorites.filter(favorite => {
+  const filteredFavorites = favorites.filter((favorite: any) => {
     const matchesSearch = favoriteSearchQuery === "" || 
-      favorite.user.firstName.toLowerCase().includes(favoriteSearchQuery.toLowerCase()) ||
-      favorite.user.lastName.toLowerCase().includes(favoriteSearchQuery.toLowerCase()) ||
-      favorite.user.companyName.toLowerCase().includes(favoriteSearchQuery.toLowerCase()) ||
-      favorite.user.email.toLowerCase().includes(favoriteSearchQuery.toLowerCase());
+      favorite.user?.firstName?.toLowerCase().includes(favoriteSearchQuery.toLowerCase()) ||
+      favorite.user?.lastName?.toLowerCase().includes(favoriteSearchQuery.toLowerCase()) ||
+      favorite.user?.companyName?.toLowerCase().includes(favoriteSearchQuery.toLowerCase()) ||
+      favorite.user?.email?.toLowerCase().includes(favoriteSearchQuery.toLowerCase());
     
     const matchesFilter = favoriteFilter === "all" ||
-      (favoriteFilter === "verified" && favorite.user.isVerified) ||
-      (favoriteFilter === "unverified" && !favorite.user.isVerified) ||
+      (favoriteFilter === "verified" && favorite.user?.isVerified) ||
+      (favoriteFilter === "unverified" && !favorite.user?.isVerified) ||
       (favoriteFilter === "recent" && new Date(favorite.createdAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
     
     return matchesSearch && matchesFilter;
@@ -274,11 +453,11 @@ export default function AdminProductDetail() {
 
   // Favorite statistics
   const favoriteStats = {
-    total: mockFavorites.length,
-    verified: mockFavorites.filter(f => f.user.isVerified).length,
-    unverified: mockFavorites.filter(f => !f.user.isVerified).length,
-    recent: mockFavorites.filter(f => new Date(f.createdAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length,
-    countries: Array.from(new Set(mockFavorites.map(f => f.user.country))).length
+    total: favorites.length,
+    verified: favorites.filter((f: any) => f.user?.isVerified).length,
+    unverified: favorites.filter((f: any) => !f.user?.isVerified).length,
+    recent: favorites.filter((f: any) => new Date(f.createdAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length,
+    countries: Array.from(new Set(favorites.map((f: any) => f.user?.country).filter(Boolean))).length
   };
 
   return (
@@ -392,20 +571,141 @@ export default function AdminProductDetail() {
         </Card>
       </div>
 
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Images & Description */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Images Gallery */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ImageIcon className="h-5 w-5" />
-                Product Images ({product.images?.length || 0})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      {/* Enhanced Status Cards with Real Data */}
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Status</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              {product.isPublished ? (
+                <Badge variant="default" className="flex items-center gap-1">
+                  <CheckCircle className="h-3 w-3" />
+                  Published
+                </Badge>
+              ) : (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  <XCircle className="h-3 w-3" />
+                  Draft
+                </Badge>
+              )}
+              {product.isFeatured && (
+                <Badge variant="default" className="flex items-center gap-1">
+                  <Star className="h-3 w-3" />
+                  Featured
+                </Badge>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Views</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold flex items-center gap-2">
+              <Eye className="h-5 w-5 text-blue-500" />
+              {product.views?.toLocaleString() || 0}
+            </div>
+            {performanceMetrics?.viewsTrend && (
+              <div className="text-xs text-green-600 mt-1">
+                +{performanceMetrics.viewsTrend}% vs last month
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Inquiries</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5 text-green-500" />
+              {inquiries.length || product.inquiries || 0}
+            </div>
+            {performanceMetrics?.inquiriesTrend && (
+              <div className="text-xs text-green-600 mt-1">
+                +{performanceMetrics.inquiriesTrend}% vs last month
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Orders</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold flex items-center gap-2">
+              <Package className="h-5 w-5 text-purple-500" />
+              {orders.length || 0}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">
+              Total orders
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Quotations</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold flex items-center gap-2">
+              <FileText className="h-5 w-5 text-orange-500" />
+              {quotations.length || 0}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">
+              Active quotes
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Reviews</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold flex items-center gap-2">
+              <Star className="h-5 w-5 text-yellow-500" />
+              {reviews.length || 0}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">
+              Customer reviews
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Main Content with Tabs */}
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="inquiries">Inquiries ({inquiries.length})</TabsTrigger>
+          <TabsTrigger value="quotations">Quotations ({quotations.length})</TabsTrigger>
+          <TabsTrigger value="orders">Orders ({orders.length})</TabsTrigger>
+          <TabsTrigger value="reviews">Reviews ({reviews.length})</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+        </TabsList>
+
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left Column - Images & Description */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Images Gallery */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ImageIcon className="h-5 w-5" />
+                    Product Images ({product.images?.length || 0})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {product.images && product.images.length > 0 ? (
                   product.images.map((img, idx) => (
                     <div key={idx} className="group aspect-square rounded-lg overflow-hidden border relative">
@@ -777,6 +1077,31 @@ export default function AdminProductDetail() {
                   <div className="text-xs text-purple-600">Conversion Rate</div>
                 </div>
               )}
+
+              {/* Dynamic Analytics Data */}
+              {analytics && (
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-sm">Performance Metrics</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-2 bg-muted rounded text-center">
+                      <div className="text-lg font-bold text-orange-600">{analytics.avgViewTime || '0'}</div>
+                      <div className="text-xs text-muted-foreground">Avg. View Time (min)</div>
+                    </div>
+                    <div className="p-2 bg-muted rounded text-center">
+                      <div className="text-lg font-bold text-indigo-600">{analytics.bounceRate || '0'}%</div>
+                      <div className="text-xs text-muted-foreground">Bounce Rate</div>
+                    </div>
+                    <div className="p-2 bg-muted rounded text-center">
+                      <div className="text-lg font-bold text-pink-600">{analytics.favorites || '0'}</div>
+                      <div className="text-xs text-muted-foreground">Favorites</div>
+                    </div>
+                    <div className="p-2 bg-muted rounded text-center">
+                      <div className="text-lg font-bold text-teal-600">{analytics.shares || '0'}</div>
+                      <div className="text-xs text-muted-foreground">Shares</div>
+                    </div>
+                  </div>
+                </div>
+              )}
               
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between items-center p-2 bg-muted rounded">
@@ -800,6 +1125,68 @@ export default function AdminProductDetail() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Related Products */}
+          {relatedProducts.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  Related Products ({relatedProducts.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {relatedProducts.slice(0, 4).map((relatedProduct: any) => (
+                    <div key={relatedProduct.id} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                      {relatedProduct.images?.[0] ? (
+                        <img
+                          src={relatedProduct.images[0]}
+                          alt={relatedProduct.name}
+                          className="h-12 w-12 rounded object-cover"
+                        />
+                      ) : (
+                        <div className="h-12 w-12 rounded bg-muted flex items-center justify-center">
+                          <Package className="h-6 w-6 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-sm truncate">{relatedProduct.name}</h4>
+                        <p className="text-xs text-muted-foreground">
+                          {relatedProduct.views || 0} views • {relatedProduct.inquiries || 0} inquiries
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant={relatedProduct.isPublished ? "default" : "secondary"} className="text-xs">
+                            {relatedProduct.isPublished ? "Published" : "Draft"}
+                          </Badge>
+                          {relatedProduct.isFeatured && (
+                            <Badge variant="default" className="text-xs">
+                              <Star className="h-3 w-3 mr-1" />
+                              Featured
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => window.location.href = `/admin/products/${relatedProduct.id}`}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                {relatedProducts.length > 4 && (
+                  <div className="mt-4 text-center">
+                    <Button variant="outline" size="sm">
+                      View All Related Products ({relatedProducts.length})
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Metadata */}
           <Card>
@@ -843,8 +1230,357 @@ export default function AdminProductDetail() {
               ) : null}
             </CardContent>
           </Card>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Inquiries Tab */}
+      <TabsContent value="inquiries" className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5" />
+              Product Inquiries ({inquiries.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {inquiriesLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Loading inquiries...</p>
+              </div>
+            ) : inquiries.length > 0 ? (
+              <div className="space-y-4">
+                {inquiries.map((inquiry: any, index: number) => (
+                  <div key={inquiry.id || index} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="font-semibold">{inquiry.buyerName || 'Unknown Buyer'}</h4>
+                          <Badge variant={inquiry.status === 'responded' ? 'default' : 'secondary'}>
+                            {inquiry.status || 'Pending'}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-2">{inquiry.message || 'No message'}</p>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <span>Company: {inquiry.companyName || 'N/A'}</span>
+                          <span>Email: {inquiry.email || 'N/A'}</span>
+                          <span>Date: {new Date(inquiry.createdAt || '').toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline">
+                          <Mail className="h-4 w-4 mr-1" />
+                          Reply
+                        </Button>
+                        <Button size="sm" variant="outline">
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <ShoppingCart className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p>No inquiries yet</p>
+                <p className="text-sm">Customer inquiries will appear here</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      {/* Quotations Tab */}
+      <TabsContent value="quotations" className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Product Quotations ({quotations.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {quotationsLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Loading quotations...</p>
+              </div>
+            ) : quotations.length > 0 ? (
+              <div className="space-y-4">
+                {quotations.map((quotation: any, index: number) => (
+                  <div key={quotation.id || index} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="font-semibold">Quote #{quotation.quoteNumber || quotation.id}</h4>
+                          <Badge variant={
+                            quotation.status === 'accepted' ? 'default' : 
+                            quotation.status === 'pending' ? 'secondary' : 
+                            'destructive'
+                          }>
+                            {quotation.status || 'Pending'}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Buyer: {quotation.buyerName || 'Unknown'} • 
+                          Quantity: {quotation.quantity || 'N/A'} • 
+                          Price: ${quotation.totalPrice || '0'}
+                        </p>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <span>Valid Until: {quotation.validUntil ? new Date(quotation.validUntil).toLocaleDateString() : 'N/A'}</span>
+                          <span>Created: {new Date(quotation.createdAt || '').toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline">
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                        <Button size="sm" variant="outline">
+                          <Edit className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p>No quotations yet</p>
+                <p className="text-sm">Product quotations will appear here</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      {/* Orders Tab */}
+      <TabsContent value="orders" className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Product Orders ({orders.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {ordersLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Loading orders...</p>
+              </div>
+            ) : orders.length > 0 ? (
+              <div className="space-y-4">
+                {orders.map((order: any, index: number) => (
+                  <div key={order.id || index} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="font-semibold">Order #{order.orderNumber || order.id}</h4>
+                          <Badge variant={
+                            order.status === 'completed' ? 'default' : 
+                            order.status === 'processing' ? 'secondary' : 
+                            order.status === 'shipped' ? 'default' : 
+                            'destructive'
+                          }>
+                            {order.status || 'Unknown'}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Buyer: {order.buyerName || 'Unknown'} • 
+                          Quantity: {order.quantity || 'N/A'} • 
+                          Total: ${order.totalAmount || '0'}
+                        </p>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <span>Order Date: {new Date(order.createdAt || '').toLocaleDateString()}</span>
+                          <span>Expected Delivery: {order.expectedDelivery ? new Date(order.expectedDelivery).toLocaleDateString() : 'N/A'}</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline">
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                        <Button size="sm" variant="outline">
+                          <Truck className="h-4 w-4 mr-1" />
+                          Track
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Package className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p>No orders yet</p>
+                <p className="text-sm">Product orders will appear here</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      {/* Reviews Tab */}
+      <TabsContent value="reviews" className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Star className="h-5 w-5" />
+              Product Reviews ({reviews.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {reviewsLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Loading reviews...</p>
+              </div>
+            ) : reviews.length > 0 ? (
+              <div className="space-y-4">
+                {reviews.map((review: any, index: number) => (
+                  <div key={review.id || index} className="p-4 border rounded-lg">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                          {review.userName?.[0] || 'U'}
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-sm">{review.userName || 'Anonymous'}</h4>
+                          <div className="flex items-center gap-1">
+                            {[...Array(5)].map((_, i) => (
+                              <Star 
+                                key={i} 
+                                className={`h-3 w-3 ${
+                                  i < (review.rating || 0) 
+                                    ? 'text-yellow-400 fill-current' 
+                                    : 'text-gray-300'
+                                }`} 
+                              />
+                            ))}
+                            <span className="text-xs text-muted-foreground ml-1">
+                              ({review.rating || 0}/5)
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(review.createdAt || '').toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{review.comment || 'No comment'}</p>
+                    {review.images && review.images.length > 0 && (
+                      <div className="flex gap-2 mt-2">
+                        {review.images.slice(0, 3).map((img: string, idx: number) => (
+                          <img key={idx} src={img} alt={`Review image ${idx + 1}`} className="h-16 w-16 object-cover rounded" />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Star className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p>No reviews yet</p>
+                <p className="text-sm">Customer reviews will appear here</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      {/* Analytics Tab */}
+      <TabsContent value="analytics" className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Performance Overview</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Conversion Rate:</span>
+                <span className="text-sm font-medium">
+                  {product.views && product.inquiries ? 
+                    ((product.inquiries / product.views) * 100).toFixed(1) : 0}%
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Avg. Rating:</span>
+                <span className="text-sm font-medium">
+                  {reviews.length > 0 ? 
+                    (reviews.reduce((sum: number, r: any) => sum + (r.rating || 0), 0) / reviews.length).toFixed(1) : 
+                    'N/A'
+                  }
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">Total Revenue:</span>
+                <span className="text-sm font-medium">
+                  ${orders.reduce((sum: number, o: any) => sum + (parseFloat(o.totalAmount) || 0), 0).toFixed(2)}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Recent Activity</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {[
+                { type: 'inquiry', count: inquiries.length, label: 'New Inquiries' },
+                { type: 'order', count: orders.length, label: 'Orders' },
+                { type: 'review', count: reviews.length, label: 'Reviews' },
+                { type: 'quotation', count: quotations.length, label: 'Quotations' }
+              ].map((item, idx) => (
+                <div key={idx} className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">{item.label}:</span>
+                  <span className="font-medium">{item.count}</span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Performance Metrics</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {performanceMetrics ? (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Views Trend:</span>
+                    <span className={`text-sm font-medium ${performanceMetrics.viewsTrend > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {performanceMetrics.viewsTrend > 0 ? '+' : ''}{performanceMetrics.viewsTrend || 0}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Inquiries Trend:</span>
+                    <span className={`text-sm font-medium ${performanceMetrics.inquiriesTrend > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {performanceMetrics.inquiriesTrend > 0 ? '+' : ''}{performanceMetrics.inquiriesTrend || 0}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Conversion Trend:</span>
+                    <span className={`text-sm font-medium ${performanceMetrics.conversionTrend > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {performanceMetrics.conversionTrend > 0 ? '+' : ''}{performanceMetrics.conversionTrend || 0}%
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center">Performance data not available</p>
+              )}
+            </CardContent>
+          </Card>
         </div>
-      </div>
+      </TabsContent>
+      </Tabs>
 
       {/* Favorite Management Section */}
       <div className="space-y-6">
@@ -909,10 +1645,10 @@ export default function AdminProductDetail() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2">
-                        {Array.from(new Set(mockFavorites.map(f => f.user.country))).slice(0, 3).map((country, idx) => {
-                          const count = mockFavorites.filter(f => f.user.country === country).length;
+                        {Array.from(new Set(favorites.map((f: any) => f.user?.country).filter(Boolean))).slice(0, 3).map((country: any, idx: number) => {
+                          const count = favorites.filter((f: any) => f.user?.country === country).length;
                           return (
-                            <div key={country} className="flex justify-between items-center">
+                            <div key={country || idx} className="flex justify-between items-center">
                               <span className="text-sm">{country}</span>
                               <Badge variant="secondary">{count}</Badge>
                             </div>
@@ -928,16 +1664,16 @@ export default function AdminProductDetail() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2">
-                        {mockFavorites
-                          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                        {favorites
+                          .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                           .slice(0, 3)
-                          .map((favorite) => (
+                          .map((favorite: any) => (
                             <div key={favorite.id} className="flex items-center gap-2 text-sm">
                               <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-semibold">
-                                {favorite.user.firstName[0]}
+                                {favorite.user?.firstName?.[0] || 'U'}
                               </div>
                               <span className="text-muted-foreground">
-                                {favorite.user.firstName} favorited this product
+                                {favorite.user?.firstName || 'Unknown'} favorited this product
                               </span>
                               <span className="text-xs text-muted-foreground ml-auto">
                                 {new Date(favorite.createdAt).toLocaleDateString()}
@@ -983,31 +1719,36 @@ export default function AdminProductDetail() {
 
                 {/* Favorites List */}
                 <div className="space-y-3">
-                  {filteredFavorites.length > 0 ? (
-                    filteredFavorites.map((favorite) => (
+                  {favoritesLoading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                      <p className="text-muted-foreground">Loading favorites...</p>
+                    </div>
+                  ) : filteredFavorites.length > 0 ? (
+                    filteredFavorites.map((favorite: any) => (
                       <div key={favorite.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                         <div className="flex items-center gap-4">
                           <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
-                            {favorite.user.firstName[0]}{favorite.user.lastName[0]}
+                            {favorite.user?.firstName?.[0] || 'U'}{favorite.user?.lastName?.[0] || ''}
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
                               <h4 className="font-semibold">
-                                {favorite.user.firstName} {favorite.user.lastName}
+                                {favorite.user?.firstName || 'Unknown'} {favorite.user?.lastName || 'User'}
                               </h4>
-                              {favorite.user.isVerified && (
+                              {favorite.user?.isVerified && (
                                 <Badge variant="default" className="flex items-center gap-1">
                                   <UserCheck className="h-3 w-3" />
                                   Verified
                                 </Badge>
                               )}
                             </div>
-                            <p className="text-sm text-muted-foreground">{favorite.user.companyName}</p>
-                            <p className="text-xs text-muted-foreground">{favorite.user.email}</p>
+                            <p className="text-sm text-muted-foreground">{favorite.user?.companyName || 'No company'}</p>
+                            <p className="text-xs text-muted-foreground">{favorite.user?.email || 'No email'}</p>
                             <div className="flex items-center gap-4 mt-1">
                               <span className="text-xs text-muted-foreground flex items-center gap-1">
                                 <MapPin className="h-3 w-3" />
-                                {favorite.user.country}
+                                {favorite.user?.country || 'Unknown'}
                               </span>
                               <span className="text-xs text-muted-foreground flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
@@ -1015,7 +1756,7 @@ export default function AdminProductDetail() {
                               </span>
                               <span className="text-xs text-muted-foreground flex items-center gap-1">
                                 <BarChart3 className="h-3 w-3" />
-                                Last active {new Date(favorite.user.lastActive).toLocaleDateString()}
+                                Last active {favorite.user?.lastActive ? new Date(favorite.user.lastActive).toLocaleDateString() : 'Unknown'}
                               </span>
                             </div>
                           </div>
@@ -1053,7 +1794,7 @@ export default function AdminProductDetail() {
                 {filteredFavorites.length > 0 && (
                   <div className="flex items-center justify-between pt-4 border-t">
                     <p className="text-sm text-muted-foreground">
-                      Showing {filteredFavorites.length} of {mockFavorites.length} favorites
+                      Showing {filteredFavorites.length} of {favorites.length} favorites
                     </p>
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm" disabled>
@@ -1077,7 +1818,9 @@ export default function AdminProductDetail() {
                       <div className="h-32 flex items-center justify-center text-muted-foreground">
                         <div className="text-center">
                           <BarChart3 className="h-8 w-8 mx-auto mb-2" />
-                          <p className="text-sm">Chart visualization would go here</p>
+                          <p className="text-sm">
+                            {analytics?.favoritesOverTime ? 'Chart data available' : 'Chart visualization would go here'}
+                          </p>
                         </div>
                       </div>
                     </CardContent>
@@ -1089,28 +1832,99 @@ export default function AdminProductDetail() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-2">
-                        {Array.from(new Set(mockFavorites.map(f => f.user.country))).map((country) => {
-                          const count = mockFavorites.filter(f => f.user.country === country).length;
-                          const percentage = (count / mockFavorites.length) * 100;
-                          return (
-                            <div key={country} className="space-y-1">
-                              <div className="flex justify-between text-sm">
-                                <span>{country}</span>
-                                <span>{count} ({percentage.toFixed(1)}%)</span>
+                        {favorites.length > 0 ? (
+                          Array.from(new Set(favorites.map((f: any) => f.user?.country).filter(Boolean))).map((country: any) => {
+                            const count = favorites.filter((f: any) => f.user?.country === country).length;
+                            const percentage = (count / favorites.length) * 100;
+                            return (
+                              <div key={country || 'unknown'} className="space-y-1">
+                                <div className="flex justify-between text-sm">
+                                  <span>{country}</span>
+                                  <span>{count} ({percentage.toFixed(1)}%)</span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                  <div 
+                                    className="bg-blue-600 h-2 rounded-full" 
+                                    style={{ width: `${percentage}%` }}
+                                  ></div>
+                                </div>
                               </div>
-                              <div className="w-full bg-gray-200 rounded-full h-2">
-                                <div 
-                                  className="bg-blue-600 h-2 rounded-full" 
-                                  style={{ width: `${percentage}%` }}
-                                ></div>
-                              </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          })
+                        ) : (
+                          <div className="text-center py-4 text-muted-foreground">
+                            <p className="text-sm">No geographic data available</p>
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
                 </div>
+
+                {/* Additional Analytics */}
+                {analytics && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-sm">Engagement Metrics</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Avg. Session Duration:</span>
+                          <span className="text-sm font-medium">{analytics.avgSessionDuration || '0'} min</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Page Views per Session:</span>
+                          <span className="text-sm font-medium">{analytics.pageViewsPerSession || '0'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Return Visitor Rate:</span>
+                          <span className="text-sm font-medium">{analytics.returnVisitorRate || '0'}%</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-sm">Conversion Funnel</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Views to Inquiries:</span>
+                          <span className="text-sm font-medium">{analytics.viewsToInquiries || '0'}%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Inquiries to Orders:</span>
+                          <span className="text-sm font-medium">{analytics.inquiriesToOrders || '0'}%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Overall Conversion:</span>
+                          <span className="text-sm font-medium">{analytics.overallConversion || '0'}%</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-sm">Performance Trends</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Views (7d):</span>
+                          <span className="text-sm font-medium text-green-600">+{analytics.viewsChange7d || '0'}%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Inquiries (7d):</span>
+                          <span className="text-sm font-medium text-green-600">+{analytics.inquiriesChange7d || '0'}%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Favorites (7d):</span>
+                          <span className="text-sm font-medium text-green-600">+{analytics.favoritesChange7d || '0'}%</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
               </TabsContent>
 
               <TabsContent value="actions" className="space-y-6">

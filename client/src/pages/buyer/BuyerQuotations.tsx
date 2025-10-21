@@ -48,8 +48,15 @@ export default function BuyerQuotations() {
   const [isAcceptDialogOpen, setIsAcceptDialogOpen] = useState(false);
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [isCounterOfferDialogOpen, setIsCounterOfferDialogOpen] = useState(false);
   const [shippingAddress, setShippingAddress] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
+  const [counterOffer, setCounterOffer] = useState({
+    quantity: '',
+    targetPrice: '',
+    message: '',
+    requirements: ''
+  });
 
   const queryClient = useQueryClient();
 
@@ -59,52 +66,19 @@ export default function BuyerQuotations() {
     queryFn: async () => {
       try {
         const response = await fetch('/api/buyer/quotations', {
-          credentials: 'include'
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          }
         });
         if (!response.ok) throw new Error('Failed to fetch quotations');
         const data = await response.json();
+        console.log('Fetched quotations:', data);
         return data.quotations || [];
       } catch (error) {
         console.error('Error fetching quotations:', error);
-        // Return mock data if API fails
-        return [
-          {
-            id: "QUO-2024-001",
-            productName: "Wireless Earbuds",
-            supplierName: "Tech Solutions Ltd",
-            supplierEmail: "contact@techsolutions.com",
-            supplierPhone: "+1-555-0123",
-            quantity: 1000,
-            unitPrice: 15.50,
-            totalAmount: 15500,
-            status: "pending",
-            quotationDate: "2024-01-20",
-            validUntil: "2024-02-20",
-            notes: "Bulk discount applied for orders over 500 units",
-            attachments: ["quotation.pdf", "specifications.docx"],
-            shippingAddress: "123 Business St, New York, NY 10001",
-            deliveryTime: "15-20 business days",
-            paymentTerms: "30% advance, 70% on delivery"
-          },
-          {
-            id: "QUO-2024-002",
-            productName: "LED Display Panels",
-            supplierName: "Display Tech Inc",
-            supplierEmail: "sales@displaytech.com",
-            supplierPhone: "+1-555-0456",
-            quantity: 500,
-            unitPrice: 45.00,
-            totalAmount: 22500,
-            status: "accepted",
-            quotationDate: "2024-01-18",
-            validUntil: "2024-02-18",
-            notes: "Includes installation and warranty",
-            attachments: ["quotation.pdf"],
-            shippingAddress: "456 Commerce Ave, Los Angeles, CA 90210",
-            deliveryTime: "10-15 business days",
-            paymentTerms: "50% advance, 50% on delivery"
-          }
-        ];
+        // Return empty array if API fails
+        return [];
       }
     }
   });
@@ -155,12 +129,43 @@ export default function BuyerQuotations() {
     }
   });
 
+  // Send counter-offer mutation
+  const counterOfferMutation = useMutation({
+    mutationFn: async ({ quotationId, counterOfferData }: { quotationId: string, counterOfferData: any }) => {
+      const response = await fetch(`/api/inquiries/${selectedQuotation?.inquiryId}/counter-offer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          quantity: parseInt(counterOfferData.quantity),
+          targetPrice: parseFloat(counterOfferData.targetPrice),
+          message: counterOfferData.message,
+          requirements: counterOfferData.requirements
+        }),
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to send counter-offer');
+      return response.json();
+    },
+    onSuccess: () => {
+      toast.success('Counter-offer sent successfully!');
+      queryClient.invalidateQueries({ queryKey: ['/api/buyer/quotations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/inquiries'] });
+      setIsCounterOfferDialogOpen(false);
+      setCounterOffer({ quantity: '', targetPrice: '', message: '', requirements: '' });
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to send counter-offer');
+    }
+  });
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "pending": return <Clock className="h-4 w-4" />;
       case "accepted": return <CheckCircle className="h-4 w-4" />;
       case "rejected": return <X className="h-4 w-4" />;
       case "expired": return <AlertCircle className="h-4 w-4" />;
+      case "negotiating": return <MessageSquare className="h-4 w-4" />;
+      case "counter_offered": return <TrendingUp className="h-4 w-4" />;
       default: return <FileText className="h-4 w-4" />;
     }
   };
@@ -171,6 +176,8 @@ export default function BuyerQuotations() {
       case "accepted": return "bg-green-100 text-green-800";
       case "rejected": return "bg-red-100 text-red-800";
       case "expired": return "bg-gray-100 text-gray-800";
+      case "negotiating": return "bg-blue-100 text-blue-800";
+      case "counter_offered": return "bg-purple-100 text-purple-800";
       default: return "bg-gray-100 text-gray-800";
     }
   };
@@ -179,8 +186,9 @@ export default function BuyerQuotations() {
   const quotations = Array.isArray(quotationsData) ? quotationsData : [];
 
   const filteredQuotations = quotations.filter((quotation: any) => {
-    const matchesSearch = quotation.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         quotation.supplierName.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = (quotation.productName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (quotation.supplierName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (quotation.adminName || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || quotation.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -188,13 +196,15 @@ export default function BuyerQuotations() {
   const sortedQuotations = [...filteredQuotations].sort((a: any, b: any) => {
     switch (sortBy) {
       case "newest":
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        return new Date(b.createdAt || b.quotationDate || b.created_at || 0).getTime() - 
+               new Date(a.createdAt || a.quotationDate || a.created_at || 0).getTime();
       case "oldest":
-        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        return new Date(a.createdAt || a.quotationDate || a.created_at || 0).getTime() - 
+               new Date(b.createdAt || b.quotationDate || b.created_at || 0).getTime();
       case "price-high":
-        return (b.totalPrice ?? 0) - (a.totalPrice ?? 0);
+        return (b.totalPrice || b.totalAmount || 0) - (a.totalPrice || a.totalAmount || 0);
       case "price-low":
-        return (a.totalPrice ?? 0) - (b.totalPrice ?? 0);
+        return (a.totalPrice || a.totalAmount || 0) - (b.totalPrice || b.totalAmount || 0);
       default:
         return 0;
     }
@@ -203,6 +213,9 @@ export default function BuyerQuotations() {
   const pendingQuotations = filteredQuotations.filter((quotation: any) => quotation.status === "pending");
   const acceptedQuotations = filteredQuotations.filter((quotation: any) => quotation.status === "accepted");
   const rejectedQuotations = filteredQuotations.filter((quotation: any) => quotation.status === "rejected");
+  const negotiatingQuotations = filteredQuotations.filter((quotation: any) => 
+    quotation.status === "negotiating" || quotation.status === "counter_offered"
+  );
 
   const handleAcceptQuotation = () => {
     if (selectedQuotation) {
@@ -213,6 +226,15 @@ export default function BuyerQuotations() {
   const handleRejectQuotation = () => {
     if (selectedQuotation) {
       rejectQuotationMutation.mutate(selectedQuotation.id);
+    }
+  };
+
+  const handleCounterOffer = () => {
+    if (selectedQuotation && counterOffer.quantity && counterOffer.targetPrice) {
+      counterOfferMutation.mutate({ 
+        quotationId: selectedQuotation.id, 
+        counterOfferData: counterOffer 
+      });
     }
   };
 
@@ -290,6 +312,8 @@ export default function BuyerQuotations() {
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="negotiating">Negotiating</SelectItem>
+                  <SelectItem value="counter_offered">Counter Offered</SelectItem>
                   <SelectItem value="accepted">Accepted</SelectItem>
                   <SelectItem value="rejected">Rejected</SelectItem>
                 </SelectContent>
@@ -310,7 +334,7 @@ export default function BuyerQuotations() {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
             <Card className="bg-white border-gray-100 shadow-lg">
               <CardContent className="p-6 text-center">
                 <div className="w-12 h-12 bg-gradient-to-br from-yellow-100 to-yellow-200 rounded-xl flex items-center justify-center mx-auto mb-4">
@@ -318,6 +342,16 @@ export default function BuyerQuotations() {
                 </div>
                 <div className="text-2xl font-bold text-gray-900">{pendingQuotations.length}</div>
                 <div className="text-sm text-gray-600">Pending</div>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-white border-gray-100 shadow-lg">
+              <CardContent className="p-6 text-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center mx-auto mb-4">
+                  <MessageSquare className="w-6 h-6 text-blue-600" />
+                </div>
+                <div className="text-2xl font-bold text-gray-900">{negotiatingQuotations.length}</div>
+                <div className="text-sm text-gray-600">Negotiating</div>
               </CardContent>
             </Card>
             
@@ -343,11 +377,11 @@ export default function BuyerQuotations() {
             
             <Card className="bg-white border-gray-100 shadow-lg">
               <CardContent className="p-6 text-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <DollarSign className="w-6 h-6 text-blue-600" />
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl flex items-center justify-center mx-auto mb-4">
+                  <DollarSign className="w-6 h-6 text-purple-600" />
                 </div>
                 <div className="text-2xl font-bold text-gray-900">
-                  ${quotations.reduce((sum: number, quotation: any) => sum + (quotation.totalPrice ?? 0), 0).toLocaleString()}
+                  ${quotations.reduce((sum: number, quotation: any) => sum + (quotation.totalPrice || quotation.totalAmount || 0), 0).toLocaleString()}
                 </div>
                 <div className="text-sm text-gray-600">Total Value</div>
               </CardContent>
@@ -356,9 +390,10 @@ export default function BuyerQuotations() {
 
           {/* Quotations Tabs */}
           <Tabs defaultValue="all" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="all">All Quotations</TabsTrigger>
               <TabsTrigger value="pending">Pending</TabsTrigger>
+              <TabsTrigger value="negotiating">Negotiating</TabsTrigger>
               <TabsTrigger value="accepted">Accepted</TabsTrigger>
               <TabsTrigger value="rejected">Rejected</TabsTrigger>
             </TabsList>
@@ -399,26 +434,26 @@ export default function BuyerQuotations() {
                         <div className="space-y-2">
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-gray-600">Admin:</span>
-                            <span className="font-medium">{quotation.supplierName}</span>
+                            <span className="font-medium">{quotation.supplierName || quotation.adminName || 'Admin'}</span>
                           </div>
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-gray-600">Quantity:</span>
-                            <span className="font-medium">{(quotation.inquiryQuantity ?? 0).toLocaleString()}</span>
+                            <span className="font-medium">{(quotation.inquiryQuantity || quotation.quantity || 0).toLocaleString()}</span>
                           </div>
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-gray-600">Unit Price:</span>
-                            <span className="font-medium">${quotation.pricePerUnit ?? 0}</span>
+                            <span className="font-medium">${quotation.pricePerUnit || quotation.unitPrice || 0}</span>
                           </div>
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-gray-600">Total:</span>
-                            <span className="font-medium text-green-600">${(quotation.totalPrice ?? 0).toLocaleString()}</span>
+                            <span className="font-medium text-green-600">${(quotation.totalPrice || quotation.totalAmount || 0).toLocaleString()}</span>
                           </div>
                         </div>
                         
                         <div className="pt-4 border-t">
                           <div className="flex items-center justify-between text-xs text-gray-500">
-                            <span>Quoted: {new Date(quotation.quotationDate).toLocaleDateString()}</span>
-                            <span>Valid Until: {new Date(quotation.validUntil).toLocaleDateString()}</span>
+                            <span>Quoted: {new Date(quotation.quotationDate || quotation.createdAt || quotation.created_at || new Date()).toLocaleDateString()}</span>
+                            <span>Valid Until: {new Date(quotation.validUntil || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)).toLocaleDateString()}</span>
                           </div>
                         </div>
                         
@@ -434,6 +469,18 @@ export default function BuyerQuotations() {
                               View Details
                             </Link>
                           </Button>
+                          {quotation.status === 'pending' && (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => {
+                                setSelectedQuotation(quotation);
+                                setIsCounterOfferDialogOpen(true);
+                              }}
+                            >
+                              <TrendingUp className="w-4 h-4" />
+                            </Button>
+                          )}
                           <Button variant="outline" size="sm">
                             <MessageSquare className="w-4 h-4" />
                           </Button>
@@ -461,7 +508,6 @@ export default function BuyerQuotations() {
               )}
             </TabsContent>
 
-            {/* Other tabs content would be similar but filtered by status */}
             <TabsContent value="pending" className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {pendingQuotations.map((quotation: any) => (
@@ -484,19 +530,173 @@ export default function BuyerQuotations() {
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-600">Admin:</span>
-                          <span className="font-medium">{quotation.supplierName}</span>
+                          <span className="font-medium">{quotation.supplierName || quotation.adminName || 'Admin'}</span>
                         </div>
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-600">Quantity:</span>
-                          <span className="font-medium">{quotation.quantity.toLocaleString()}</span>
+                          <span className="font-medium">{(quotation.inquiryQuantity || quotation.quantity || 0).toLocaleString()}</span>
                         </div>
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-600">Unit Price:</span>
-                          <span className="font-medium">${quotation.unitPrice}</span>
+                          <span className="font-medium">${quotation.pricePerUnit || quotation.unitPrice || 0}</span>
                         </div>
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-600">Total:</span>
-                          <span className="font-medium text-green-600">${quotation.totalAmount.toLocaleString()}</span>
+                          <span className="font-medium text-green-600">${(quotation.totalPrice || quotation.totalAmount || 0).toLocaleString()}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="pt-4 border-t">
+                        <div className="flex items-center justify-between text-xs text-gray-500">
+                          <span>Quoted: {new Date(quotation.quotationDate || quotation.createdAt || quotation.created_at).toLocaleDateString()}</span>
+                          <span>Valid Until: {new Date(quotation.validUntil).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1"
+                          asChild
+                        >
+                          <Link href={`/quotation/${quotation.id}`}>
+                            <Eye className="w-4 h-4 mr-1" />
+                            View Details
+                          </Link>
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            setSelectedQuotation(quotation);
+                            setIsCounterOfferDialogOpen(true);
+                          }}
+                        >
+                          <TrendingUp className="w-4 h-4" />
+                        </Button>
+                        <Button variant="outline" size="sm">
+                          <MessageSquare className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="negotiating" className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {negotiatingQuotations.map((quotation: any) => (
+                  <Card key={quotation.id} className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-white border-gray-100">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                            {quotation.productName}
+                          </CardTitle>
+                          <p className="text-sm text-gray-600 mt-1">Quotation #{quotation.id}</p>
+                        </div>
+                        <Badge className={`${getStatusColor(quotation.status)} flex items-center gap-1`}>
+                          {getStatusIcon(quotation.status)}
+                          {quotation.status === 'negotiating' ? 'Negotiating' : 'Counter Offered'}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Admin:</span>
+                          <span className="font-medium">{quotation.supplierName || quotation.adminName || 'Admin'}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Quantity:</span>
+                          <span className="font-medium">{(quotation.inquiryQuantity || quotation.quantity || 0).toLocaleString()}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Unit Price:</span>
+                          <span className="font-medium">${quotation.pricePerUnit || quotation.unitPrice || 0}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Total:</span>
+                          <span className="font-medium text-green-600">${(quotation.totalPrice || quotation.totalAmount || 0).toLocaleString()}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="pt-4 border-t">
+                        <div className="flex items-center justify-between text-xs text-gray-500">
+                          <span>Quoted: {new Date(quotation.quotationDate || quotation.createdAt || quotation.created_at).toLocaleDateString()}</span>
+                          <span>Valid Until: {new Date(quotation.validUntil).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex-1"
+                          asChild
+                        >
+                          <Link href={`/quotation/${quotation.id}`}>
+                            <Eye className="w-4 h-4 mr-1" />
+                            View Details
+                          </Link>
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            setSelectedQuotation(quotation);
+                            setIsCounterOfferDialogOpen(true);
+                          }}
+                        >
+                          <TrendingUp className="w-4 h-4" />
+                        </Button>
+                        <Button variant="outline" size="sm">
+                          <MessageSquare className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="accepted" className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {pendingQuotations.map((quotation: any) => (
+                  <Card key={quotation.id} className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-white border-gray-100">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                            {quotation.productName}
+                          </CardTitle>
+                          <p className="text-sm text-gray-600 mt-1">Quotation #{quotation.id}</p>
+                        </div>
+                        <Badge className={`${getStatusColor(quotation.status)} flex items-center gap-1`}>
+                          {getStatusIcon(quotation.status)}
+                          {quotation.status}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Admin:</span>
+                          <span className="font-medium">{quotation.supplierName || quotation.adminName || 'Admin'}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Quantity:</span>
+                          <span className="font-medium">{(quotation.quantity || 0).toLocaleString()}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Unit Price:</span>
+                          <span className="font-medium">${quotation.unitPrice || 0}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">Total:</span>
+                          <span className="font-medium text-green-600">${(quotation.totalAmount || 0).toLocaleString()}</span>
                         </div>
                       </div>
                       
@@ -551,19 +751,19 @@ export default function BuyerQuotations() {
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-600">Admin:</span>
-                          <span className="font-medium">{quotation.supplierName}</span>
+                          <span className="font-medium">{quotation.supplierName || quotation.adminName || 'Admin'}</span>
                         </div>
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-600">Quantity:</span>
-                          <span className="font-medium">{quotation.quantity.toLocaleString()}</span>
+                          <span className="font-medium">{(quotation.quantity || 0).toLocaleString()}</span>
                         </div>
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-600">Unit Price:</span>
-                          <span className="font-medium">${quotation.unitPrice}</span>
+                          <span className="font-medium">${quotation.unitPrice || 0}</span>
                         </div>
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-600">Total:</span>
-                          <span className="font-medium text-green-600">${quotation.totalAmount.toLocaleString()}</span>
+                          <span className="font-medium text-green-600">${(quotation.totalAmount || 0).toLocaleString()}</span>
                         </div>
                       </div>
                       
@@ -618,19 +818,19 @@ export default function BuyerQuotations() {
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-600">Admin:</span>
-                          <span className="font-medium">{quotation.supplierName}</span>
+                          <span className="font-medium">{quotation.supplierName || quotation.adminName || 'Admin'}</span>
                         </div>
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-600">Quantity:</span>
-                          <span className="font-medium">{quotation.quantity.toLocaleString()}</span>
+                          <span className="font-medium">{(quotation.quantity || 0).toLocaleString()}</span>
                         </div>
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-600">Unit Price:</span>
-                          <span className="font-medium">${quotation.unitPrice}</span>
+                          <span className="font-medium">${quotation.unitPrice || 0}</span>
                         </div>
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-600">Total:</span>
-                          <span className="font-medium text-green-600">${quotation.totalAmount.toLocaleString()}</span>
+                          <span className="font-medium text-green-600">${(quotation.totalAmount || 0).toLocaleString()}</span>
                         </div>
                       </div>
                       
@@ -854,6 +1054,101 @@ export default function BuyerQuotations() {
               variant="destructive"
             >
               {rejectQuotationMutation.isPending ? 'Rejecting...' : 'Reject Quotation'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Counter Offer Dialog */}
+      <Dialog open={isCounterOfferDialogOpen} onOpenChange={setIsCounterOfferDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Send Counter Offer</DialogTitle>
+            <DialogDescription>
+              Send a counter-offer to negotiate the terms of this quotation.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedQuotation && (
+            <div className="space-y-6">
+              {/* Current Quotation Details */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="font-semibold text-gray-900 mb-3">Current Quotation</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">Product:</span>
+                    <span className="ml-2 font-medium">{selectedQuotation.productName}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Admin:</span>
+                    <span className="ml-2 font-medium">{selectedQuotation.supplierName || selectedQuotation.adminName}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Quantity:</span>
+                    <span className="ml-2 font-medium">{(selectedQuotation.inquiryQuantity || selectedQuotation.quantity || 0).toLocaleString()}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Unit Price:</span>
+                    <span className="ml-2 font-medium">${selectedQuotation.pricePerUnit || selectedQuotation.unitPrice || 0}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Counter Offer Form */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">Quantity</label>
+                    <Input
+                      type="number"
+                      placeholder="Enter desired quantity"
+                      value={counterOffer.quantity}
+                      onChange={(e) => setCounterOffer({...counterOffer, quantity: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Target Price per Unit ($)</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="Enter your target price"
+                      value={counterOffer.targetPrice}
+                      onChange={(e) => setCounterOffer({...counterOffer, targetPrice: e.target.value})}
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium">Message to Admin</label>
+                  <Textarea
+                    placeholder="Explain your counter-offer and any specific requirements..."
+                    value={counterOffer.message}
+                    onChange={(e) => setCounterOffer({...counterOffer, message: e.target.value})}
+                    rows={3}
+                  />
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium">Additional Requirements</label>
+                  <Textarea
+                    placeholder="Any specific requirements or modifications needed..."
+                    value={counterOffer.requirements}
+                    onChange={(e) => setCounterOffer({...counterOffer, requirements: e.target.value})}
+                    rows={2}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCounterOfferDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCounterOffer}
+              disabled={!counterOffer.quantity || !counterOffer.targetPrice || counterOfferMutation.isPending}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {counterOfferMutation.isPending ? 'Sending...' : 'Send Counter Offer'}
             </Button>
           </DialogFooter>
         </DialogContent>

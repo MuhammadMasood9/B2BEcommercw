@@ -35,7 +35,8 @@ import {
   ShoppingCart,
   TrendingUp,
   ArrowRight,
-  ShoppingBag
+  ShoppingBag,
+  Globe
 } from 'lucide-react';
 
 function AdminQuotations() {
@@ -74,7 +75,7 @@ function AdminQuotations() {
     }
   });
 
-  // Fetch quotations
+  // Fetch quotations with enhanced product data
   const { data: quotations = [], isLoading, error } = useQuery({
     queryKey: ['/api/admin/quotations', statusFilter, searchQuery],
     queryFn: async () => {
@@ -87,12 +88,60 @@ function AdminQuotations() {
           throw new Error('Failed to fetch quotations');
         }
         const data = await response.json();
-        return data.quotations || [];
+        const quotations = data.quotations || [];
+        
+        // Enhance quotations with product data
+        const enhancedQuotations = await Promise.all(
+          quotations.map(async (quotation: any) => {
+            try {
+              // Fetch product details
+              const productResponse = await fetch(`/api/products/${quotation.productId}`);
+              if (productResponse.ok) {
+                const productData = await productResponse.json();
+                quotation.product = productData;
+                quotation.productName = productData.name;
+                quotation.productImages = productData.images;
+                quotation.productCategory = productData.categoryName;
+                quotation.productViews = productData.views || 0;
+                quotation.productInquiries = productData.inquiries || 0;
+                quotation.productStock = productData.stockQuantity || 0;
+                quotation.productPrice = productData.priceRanges?.[0]?.pricePerUnit || 0;
+                quotation.productMOQ = productData.minOrderQuantity || 1;
+                quotation.productLeadTime = productData.leadTime;
+                quotation.productPaymentTerms = productData.paymentTerms;
+                quotation.productSpecifications = productData.specifications;
+              }
+              
+              // Fetch buyer details
+              const buyerResponse = await fetch(`/api/users/${quotation.buyerId}`);
+              if (buyerResponse.ok) {
+                const buyerData = await buyerResponse.json();
+                quotation.buyer = buyerData;
+                quotation.buyerName = buyerData.firstName + ' ' + buyerData.lastName;
+                quotation.buyerCompany = buyerData.companyName;
+                quotation.buyerEmail = buyerData.email;
+                quotation.buyerPhone = buyerData.phone;
+                quotation.buyerCountry = buyerData.country;
+                quotation.buyerVerified = buyerData.isVerified;
+              }
+              
+              return quotation;
+            } catch (err) {
+              console.error('Error enhancing quotation:', err);
+              return quotation;
+            }
+          })
+        );
+        
+        return enhancedQuotations;
       } catch (error) {
         console.error('Error fetching quotations:', error);
         return [];
       }
-    }
+    },
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    refetchInterval: 30 * 1000, // Refetch every 30 seconds
+    refetchOnWindowFocus: true,
   });
 
   // Update quotation mutation
@@ -369,9 +418,19 @@ function AdminQuotations() {
                   <div className="flex flex-col lg:flex-row gap-6">
                     {/* Product Info */}
                     <div className="flex-shrink-0">
-                      <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
-                        <Package className="h-8 w-8 text-gray-400" />
-                      </div>
+                      {quotation.productImages && quotation.productImages.length > 0 ? (
+                        <div className="w-20 h-20 rounded-lg overflow-hidden border">
+                          <img 
+                            src={quotation.productImages[0]} 
+                            alt={quotation.productName}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
+                          <Package className="h-8 w-8 text-gray-400" />
+                        </div>
+                      )}
                     </div>
 
                     {/* Main Content */}
@@ -382,46 +441,103 @@ function AdminQuotations() {
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                               {quotation.productName || 'Unknown Product'}
                             </h3>
-                                  <Badge className={getStatusColor(quotation.status)}>
-                                    {getStatusIcon(quotation.status)}
-                                    {quotation.status}
-                                  </Badge>
-                                  {quotation.status === 'accepted' && quotation.orderId && (
-                                    <Badge variant="outline" className="ml-2 bg-green-50 text-green-700 border-green-300">
-                                      <CheckCircle className="h-3 w-3 mr-1" />
-                                      Order Created
-                                    </Badge>
-                                  )}
-                                </div>
+                            <Badge className={getStatusColor(quotation.status)}>
+                              {getStatusIcon(quotation.status)}
+                              {quotation.status}
+                            </Badge>
+                            {quotation.status === 'accepted' && quotation.orderId && (
+                              <Badge variant="outline" className="ml-2 bg-green-50 text-green-700 border-green-300">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Order Created
+                              </Badge>
+                            )}
+                            {quotation.productCategory && (
+                              <Badge variant="secondary" className="ml-2">
+                                {quotation.productCategory}
+                              </Badge>
+                            )}
+                          </div>
+                          
+                          {/* Product Performance Indicators */}
+                          <div className="flex items-center gap-4 mb-3 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <Eye className="h-3 w-3" />
+                              <span>{quotation.productViews || 0} views</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <ShoppingCart className="h-3 w-3" />
+                              <span>{quotation.productInquiries || 0} inquiries</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Package className="h-3 w-3" />
+                              <span>{quotation.productStock || 0} in stock</span>
+                            </div>
+                            {quotation.buyerVerified && (
+                              <div className="flex items-center gap-1 text-green-600">
+                                <CheckCircle className="h-3 w-3" />
+                                <span>Verified Buyer</span>
+                              </div>
+                            )}
+                          </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                   <div>
-                                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-1">
-                                      <User className="h-4 w-4" />
-                                      <span>{quotation.buyerName || 'Unknown Buyer'}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-1">
-                                      <Building className="h-4 w-4" />
-                                      <span>{quotation.buyerCompany || 'Unknown Company'}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                                      <Mail className="h-4 w-4" />
-                                      <span>{quotation.buyerEmail || 'No email'}</span>
+                                    <h4 className="font-semibold text-sm mb-2 text-gray-700 dark:text-gray-300">Buyer Information</h4>
+                                    <div className="space-y-2">
+                                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                        <User className="h-4 w-4" />
+                                        <span>{quotation.buyerName || 'Unknown Buyer'}</span>
+                                        {quotation.buyerVerified && (
+                                          <Badge variant="default" className="text-xs">
+                                            <CheckCircle className="h-3 w-3 mr-1" />
+                                            Verified
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                        <Building className="h-4 w-4" />
+                                        <span>{quotation.buyerCompany || 'Unknown Company'}</span>
+                                      </div>
+                                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                        <Mail className="h-4 w-4" />
+                                        <span>{quotation.buyerEmail || 'No email'}</span>
+                                      </div>
+                                      {quotation.buyerPhone && (
+                                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                          <Phone className="h-4 w-4" />
+                                          <span>{quotation.buyerPhone}</span>
+                                        </div>
+                                      )}
+                                      {quotation.buyerCountry && (
+                                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                          <Globe className="h-4 w-4" />
+                                          <span>{quotation.buyerCountry}</span>
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
 
                                   <div>
-                                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-1">
-                                      <DollarSign className="h-4 w-4" />
-                                      <span>Price: {formatPrice(quotation.pricePerUnit)}/unit</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-1">
-                                      <Package className="h-4 w-4" />
-                                      <span>MOQ: {quotation.moq} units</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                                      <Calendar className="h-4 w-4" />
-                                      <span>Created: {formatDate(quotation.createdAt)}</span>
+                                    <h4 className="font-semibold text-sm mb-2 text-gray-700 dark:text-gray-300">Quotation Details</h4>
+                                    <div className="space-y-2">
+                                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                        <DollarSign className="h-4 w-4" />
+                                        <span>Price: {formatPrice(quotation.pricePerUnit || quotation.productPrice)}/unit</span>
+                                      </div>
+                                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                        <Package className="h-4 w-4" />
+                                        <span>MOQ: {quotation.moq || quotation.productMOQ} units</span>
+                                      </div>
+                                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                        <Calendar className="h-4 w-4" />
+                                        <span>Created: {formatDate(quotation.createdAt)}</span>
+                                      </div>
+                                      {quotation.productLeadTime && (
+                                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                          <Truck className="h-4 w-4" />
+                                          <span>Lead Time: {quotation.productLeadTime}</span>
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
                                 </div>

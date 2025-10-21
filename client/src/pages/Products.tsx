@@ -11,6 +11,9 @@ import { Slider } from "@/components/ui/slider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useLoading } from "@/contexts/LoadingContext";
+import { useCart } from "@/contexts/CartContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import type { Product, Category } from "@shared/schema";
 import {
   Select,
@@ -30,12 +33,18 @@ import {
   Clock,
   Globe,
   TrendingUp,
-  Zap
+  Zap,
+  ShoppingCart,
+  Plus,
+  Minus
 } from "lucide-react";
 import { Link } from "wouter";
 
 export default function Products() {
   const { setLoading } = useLoading();
+  const { addToCart, isInCart, getCartItem } = useCart();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [priceRange, setPriceRange] = useState([0, 1000]);
   const [moqRange, setMoqRange] = useState([0, 10000]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -144,6 +153,43 @@ export default function Products() {
     views: (product as any).views || 0,
     inquiries: (product as any).inquiries || 0
   });
+
+  const handleAddToCart = (product: Product) => {
+    if (!user) {
+      toast({
+        title: "Please Sign In",
+        description: "You need to be signed in to add items to cart.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const transformedProduct = transformProductForCard(product);
+    const priceRanges = product.priceRanges ? (typeof product.priceRanges === 'string' ? JSON.parse(product.priceRanges) : product.priceRanges) : [];
+    const minPrice = priceRanges.length > 0 ? Math.min(...priceRanges.map((r: any) => Number(r.pricePerUnit))) : 0;
+    const maxPrice = priceRanges.length > 0 ? Math.max(...priceRanges.map((r: any) => Number(r.pricePerUnit))) : 0;
+
+    addToCart({
+      productId: product.id,
+      name: product.name,
+      image: transformedProduct.image,
+      priceRange: priceRanges.length > 0 ? `$${minPrice.toFixed(2)}-$${maxPrice.toFixed(2)} /piece` : 'Contact for price',
+      moq: product.minOrderQuantity || 1,
+      supplierName: transformedProduct.supplierName,
+      supplierCountry: transformedProduct.supplierCountry,
+      verified: true,
+      tradeAssurance: product.hasTradeAssurance || false,
+      readyToShip: product.inStock || false,
+      sampleAvailable: product.sampleAvailable || false,
+      customizationAvailable: product.customizationAvailable || false,
+      certifications: product.certifications || [],
+      leadTime: product.leadTime || '7-15 days',
+      port: product.port || 'Any port',
+      paymentTerms: product.paymentTerms || [],
+      inStock: product.inStock || false,
+      stockQuantity: product.stockQuantity || 0,
+    });
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-white">
@@ -443,14 +489,77 @@ export default function Products() {
                   ))}
                 </div>
               ) : sortedProducts.length > 0 ? (
-                <div className={`grid gap-6 ${
+                <div className={`grid gap-8 ${
                   viewMode === "grid" 
-                    ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" 
+                    ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3" 
                     : "grid-cols-1"
                 }`}>
-                  {sortedProducts.map((product) => (
-                    <ProductCard key={product.id} {...transformProductForCard(product)} />
-                ))}
+                  {sortedProducts.map((product) => {
+                    const transformedProduct = transformProductForCard(product);
+                    const cartItem = getCartItem(product.id);
+                    const isInCartItem = isInCart(product.id);
+                    
+                    return (
+                      <div key={product.id} className="relative h-full">
+                        <ProductCard 
+                          {...transformedProduct}
+                          onAddToCart={() => handleAddToCart(product)}
+                          onContact={() => {
+                            if (!user) {
+                              toast({
+                                title: "Please Sign In",
+                                description: "You need to be signed in to contact suppliers.",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+                            toast({
+                              title: "Contact Supplier",
+                              description: "Opening chat with supplier...",
+                            });
+                          }}
+                          onQuote={() => {
+                            if (!user) {
+                              toast({
+                                title: "Please Sign In",
+                                description: "You need to be signed in to request quotes.",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+                            toast({
+                              title: "Quote Request",
+                              description: "Your quote request has been sent to the supplier.",
+                            });
+                          }}
+                          onSample={() => {
+                            if (!user) {
+                              toast({
+                                title: "Please Sign In",
+                                description: "You need to be signed in to request samples.",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+                            toast({
+                              title: "Sample Request",
+                              description: "Your sample request has been sent to the supplier.",
+                            });
+                          }}
+                        />
+                        
+                        {/* Add to Cart Button Overlay */}
+                        {isInCartItem && (
+                          <div className="absolute top-2 left-2 z-10">
+                            <Badge className="bg-green-600 text-white border-0 text-xs px-2 py-1">
+                              <ShoppingCart className="w-3 h-3 mr-1" />
+                              In Cart ({cartItem?.quantity || 1})
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
               </div>
               ) : (
                 <div className="text-center py-12">

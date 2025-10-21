@@ -40,40 +40,39 @@ export default function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-800/50 shadow-sm">
+    <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-lg shadow-black/5">
       {/* Top Utility Bar */}
-      <div className="bg-card border-b border-border hidden md:block">
+      <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 border-b border-gray-200 dark:border-gray-700 hidden md:block">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-10">
-            <div className="flex items-center gap-4 lg:gap-6 text-sm">
+          <div className="flex items-center justify-between h-11">
+            <div className="flex items-center gap-8 text-sm">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-1 lg:gap-2 text-muted-foreground hover:text-foreground transition-colors hover-elevate px-2 py-1 rounded-md text-xs lg:text-sm" data-testid="button-language">
-                    <Globe className="w-3 h-3 lg:w-4 lg:h-4" />
-                    <span className="hidden lg:inline">English - USD</span>
-                    <span className="lg:hidden">EN-USD</span>
-                    <ChevronDown className="w-3 h-3 ml-0.5 lg:ml-1" />
+                  <button className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all duration-200 hover:bg-white/50 dark:hover:bg-gray-800/50 px-4 py-2 rounded-lg text-sm font-medium" data-testid="button-language">
+                    <Globe className="w-4 h-4" />
+                    <span>English - USD</span>
+                    <ChevronDown className="w-3 h-3 ml-1" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  <DropdownMenuItem>English - USD</DropdownMenuItem>
+                <DropdownMenuContent align="start" className="w-48">
+                  <DropdownMenuItem className="font-medium">English - USD</DropdownMenuItem>
                   <DropdownMenuItem>中文 - CNY</DropdownMenuItem>
                   <DropdownMenuItem>Español - EUR</DropdownMenuItem>
                   <DropdownMenuItem>Français - EUR</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            <div className="flex items-center gap-3 lg:gap-6 text-xs lg:text-sm">
+            <div className="flex items-center gap-8 text-sm">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors hover-elevate px-2 py-1 rounded-md text-xs lg:text-sm" data-testid="button-buyer-center">
+                  <button className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 hover:bg-white/50 dark:hover:bg-gray-800/50 px-4 py-2 rounded-lg font-medium" data-testid="button-buyer-center">
                     <span>Buyer Center</span>
-                    <ChevronDown className="w-3 h-3 ml-0.5" />
+                    <ChevronDown className="w-3 h-3 ml-1" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
+                <DropdownMenuContent align="start" className="w-56">
                   <DropdownMenuItem asChild>
-                    <Link href="/buyer/dashboard">Dashboard</Link>
+                    <Link href="/buyer/dashboard" className="font-medium">Dashboard</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/buyer/inquiries">My Inquiries</Link>
@@ -92,16 +91,16 @@ export default function Header() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Link href="/help" className="text-muted-foreground hover:text-primary transition-colors hover-elevate px-2 py-1 rounded-md" data-testid="link-help">
+              <Link href="/help" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 hover:bg-white/50 dark:hover:bg-gray-800/50 px-4 py-2 rounded-lg font-medium" data-testid="link-help">
                 Help
               </Link>
-              <Link href="/chat" className="text-muted-foreground hover:text-primary transition-colors hover-elevate px-2 py-1 rounded-md" data-testid="link-chat">
+              <Link href="/chat" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 hover:bg-white/50 dark:hover:bg-gray-800/50 px-4 py-2 rounded-lg font-medium" data-testid="link-chat">
                 Chat
               </Link>
-              <Link href="/login" className="text-muted-foreground hover:text-primary transition-colors hover-elevate px-2 py-1 rounded-md" data-testid="link-signin">
+              <Link href="/login" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 hover:bg-white/50 dark:hover:bg-gray-800/50 px-4 py-2 rounded-lg font-medium" data-testid="link-signin">
                 Sign In
               </Link>
-              <Button size="sm" className="h-7 text-xs" data-testid="link-join" asChild>
+              <Button size="sm" className="h-8 px-4 text-sm font-semibold bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-200" data-testid="link-join" asChild>
                 <Link href="/signup">Join Free</Link>
               </Button>
             </div>
@@ -111,36 +110,36 @@ export default function Header() {
 
       {/* Main Header */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 lg:h-20 gap-4">
+        <div className="flex items-center justify-between h-20 lg:h-24 gap-8">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 flex-shrink-0 group" data-testid="link-home">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
-              <span className="text-white font-bold text-xl">G</span>
+          <Link href="/" className="flex items-center gap-4 flex-shrink-0 group" data-testid="link-home">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 rounded-2xl flex items-center justify-center shadow-xl group-hover:shadow-2xl transition-all duration-300 group-hover:scale-105">
+              <span className="text-white font-bold text-2xl">G</span>
             </div>
             <div className="hidden sm:block">
-              <div className="text-xl lg:text-2xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">Global Trade Hub</div>
-              <div className="text-xs text-muted-foreground">B2B Marketplace</div>
+              <div className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-800 dark:from-white dark:via-blue-200 dark:to-indigo-200 bg-clip-text text-transparent">Global Trade Hub</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">B2B Marketplace</div>
             </div>
           </Link>
 
           {/* Enhanced Search Bar */}
-          <div className="flex-1 max-w-3xl mx-2 sm:mx-4 hidden sm:block">
-            <div className={`relative transition-all duration-200 ${isSearchFocused ? 'scale-[1.02]' : ''}`}>
-              <div className="relative flex items-center bg-gray-50 dark:bg-gray-800/50 border-2 border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden hover:border-primary/50 dark:hover:border-primary/50 transition-all duration-200 hover-elevate">
-                <div className="flex items-center pl-3 sm:pl-4 pr-1 sm:pr-2">
-                  <Search className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 dark:text-gray-500" />
+          <div className="flex-1 max-w-4xl mx-6 hidden sm:block">
+            <div className={`relative transition-all duration-300 ${isSearchFocused ? 'scale-[1.02]' : ''}`}>
+              <div className="relative flex items-center bg-white dark:bg-gray-800/90 border-2 border-gray-200/60 dark:border-gray-700/60 rounded-2xl overflow-hidden hover:border-blue-400/60 dark:hover:border-blue-500/60 transition-all duration-300 shadow-lg hover:shadow-xl">
+                <div className="flex items-center pl-4 pr-2">
+                  <Search className="w-5 h-5 text-gray-400 dark:text-gray-500" />
                 </div>
                 <Input
-                  placeholder="Search products..."
-                  className="flex-1 border-0 focus-visible:ring-0 h-10 sm:h-12 bg-transparent text-sm sm:text-base placeholder:text-gray-400 dark:placeholder:text-gray-500 px-1 sm:px-2"
+                  placeholder="Search products, suppliers, categories..."
+                  className="flex-1 border-0 focus-visible:ring-0 h-14 bg-transparent text-base placeholder:text-gray-500 dark:placeholder:text-gray-400 px-2 font-medium"
                   data-testid="input-search"
                   onFocus={() => setIsSearchFocused(true)}
                   onBlur={() => setIsSearchFocused(false)}
                 />
-                <div className="hidden md:block h-8 w-px bg-gray-200 dark:bg-gray-700 mx-2" />
+                <div className="hidden md:block h-8 w-px bg-gray-200 dark:bg-gray-700 mx-3" />
                 <div className="hidden md:block">
                   <Select defaultValue="all">
-                    <SelectTrigger className="w-32 lg:w-40 border-0 rounded-none focus:ring-0 bg-transparent hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors h-10 sm:h-12 text-sm" data-testid="select-category">
+                    <SelectTrigger className="w-40 lg:w-48 border-0 rounded-none focus:ring-0 bg-transparent hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors h-14 text-sm font-medium" data-testid="select-category">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -156,29 +155,29 @@ export default function Header() {
                   </Select>
                 </div>
                 <Button 
-                  className="h-10 sm:h-12 px-4 sm:px-8 rounded-none rounded-r-xl m-0 shadow-none" 
+                  className="h-14 px-8 rounded-none rounded-r-2xl m-0 shadow-none bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold" 
                   data-testid="button-search"
                 >
-                  <Search className="w-4 h-4 sm:w-5 sm:h-5 sm:mr-2" />
-                  <span className="font-semibold hidden sm:inline">Search</span>
+                  <Search className="w-5 h-5 mr-2" />
+                  <span className="hidden sm:inline">Search</span>
                 </Button>
               </div>
             </div>
           </div>
 
           {/* User Actions */}
-          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+          <div className="flex items-center gap-3 flex-shrink-0">
             {/* Mobile Search Button */}
-            <Button variant="ghost" size="icon" className="sm:hidden h-10 w-10">
+            <Button variant="ghost" size="icon" className="sm:hidden h-11 w-11 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800">
               <Search className="w-5 h-5" />
             </Button>
             
             {/* Favorites */}
             <Link href="/favorites" data-testid="link-favorites">
-              <Button variant="ghost" size="icon" className="relative h-10 w-10">
+              <Button variant="ghost" size="icon" className="relative h-11 w-11 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200">
                 <Heart className="w-5 h-5" />
                 {favoriteCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-medium" data-testid="text-favorites-count">
+                  <span className="absolute -top-1 -right-1 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold shadow-lg" data-testid="text-favorites-count">
                     {favoriteCount}
                   </span>
                 )}
@@ -212,9 +211,6 @@ export default function Header() {
                     </Link>
                     <Link href="/favorites" className="block py-3 text-lg font-medium hover:text-primary transition-colors">
                       Favorites
-                    </Link>
-                    <Link href="/find-suppliers" className="block py-3 text-lg font-medium hover:text-primary transition-colors">
-                      Suppliers
                     </Link>
                   
                     <Link href="/ready-to-ship" className="block py-3 text-lg font-medium hover:text-primary transition-colors">
@@ -314,16 +310,6 @@ export default function Header() {
                     </>
                   )}
                   
-                  {user?.role === 'supplier' && (
-                    <>
-                      <Link href="/dashboard/supplier">
-                        <DropdownMenuItem>
-                          <User className="w-4 h-4 mr-2" />
-                          Supplier Dashboard
-                        </DropdownMenuItem>
-                      </Link>
-                    </>
-                  )}
                   
                   <Link href="/favorites">
                     <DropdownMenuItem>
@@ -371,66 +357,52 @@ export default function Header() {
       </div>
 
       {/* Navigation Bar */}
-      <div className="border-t border-border bg-background/50 backdrop-blur-sm">
+      <div className="bg-gradient-to-r from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 border-t border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="hidden lg:flex items-center gap-8 h-12">
+          <nav className="hidden lg:flex items-center gap-2 h-14">
             <Link 
               href="/categories" 
-              className={`text-sm font-medium transition-colors hover:text-primary relative py-3 ${
+              className={`text-sm font-semibold transition-all duration-200 hover:text-blue-600 dark:hover:text-blue-400 relative py-4 px-6 rounded-xl ${
                 isActivePath("/categories") 
-                  ? "text-primary" 
-                  : "text-foreground"
+                  ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20" 
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50"
               }`}
               data-testid="link-categories"
             >
               Categories
-              {isActivePath("/categories") && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
-              )}
             </Link>
             <Link 
               href="/products" 
-              className={`text-sm font-medium transition-colors hover:text-primary relative py-3 ${
+              className={`text-sm font-semibold transition-all duration-200 hover:text-blue-600 dark:hover:text-blue-400 relative py-4 px-6 rounded-xl ${
                 isActivePath("/products") 
-                  ? "text-primary" 
-                  : "text-foreground"
+                  ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20" 
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50"
               }`}
               data-testid="link-products"
             >
               Products
-              {isActivePath("/products") && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
-              )}
             </Link>
-           
             <Link 
               href="/ready-to-ship" 
-              className={`text-sm font-medium transition-colors hover:text-primary relative py-3 ${
+              className={`text-sm font-semibold transition-all duration-200 hover:text-blue-600 dark:hover:text-blue-400 relative py-4 px-6 rounded-xl ${
                 isActivePath("/ready-to-ship") 
-                  ? "text-primary" 
-                  : "text-foreground"
+                  ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20" 
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50"
               }`}
               data-testid="link-ready-ship"
             >
               Ready to Ship
-              {isActivePath("/ready-to-ship") && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
-              )}
             </Link>
-          
             <Link 
               href="/buyer-protection" 
-              className={`text-sm font-medium transition-colors hover:text-primary relative py-3 ${
+              className={`text-sm font-semibold transition-all duration-200 hover:text-blue-600 dark:hover:text-blue-400 relative py-4 px-6 rounded-xl ${
                 isActivePath("/buyer-protection") 
-                  ? "text-primary" 
-                  : "text-foreground"
+                  ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20" 
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50"
               }`}
               data-testid="link-buyer-protection"
             >
               Buyer Protection
-              {isActivePath("/buyer-protection") && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
-              )}
             </Link>
           </nav>
         </div>

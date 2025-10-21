@@ -15,7 +15,8 @@ import {
   Mail,
   Heart,
   Share2,
-  MoreHorizontal
+  MoreHorizontal,
+  ShoppingCart
 } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,9 +57,10 @@ interface ProductCardProps {
   isFavorited?: boolean;
   onFavorite?: (id: string) => void;
   onShare?: (id: string) => void;
-  onContact?: (id: string) => void;
-  onQuote?: (id: string) => void;
-  onSample?: (id: string) => void;
+  onContact?: () => void;
+  onQuote?: () => void;
+  onSample?: () => void;
+  onAddToCart?: () => void;
   viewMode?: 'grid' | 'list';
 }
 
@@ -94,6 +96,7 @@ export default function ProductCard({
   onContact,
   onQuote,
   onSample,
+  onAddToCart,
   viewMode = 'grid'
 }: ProductCardProps) {
   const { isFavorite, toggleFavorite } = useFavorites();
@@ -120,15 +123,19 @@ export default function ProductCard({
   };
 
   const handleContact = () => {
-    onContact?.(id);
+    onContact?.();
   };
 
   const handleQuote = () => {
-    onQuote?.(id);
+    onQuote?.();
   };
 
   const handleSample = () => {
-    onSample?.(id);
+    onSample?.();
+  };
+
+  const handleAddToCart = () => {
+    onAddToCart?.();
   };
 
   const getSupplierTypeColor = (type?: string) => {
@@ -201,6 +208,14 @@ export default function ProductCard({
                   className={`h-8 w-8 p-0 ${isFavorite(id) ? 'text-red-500' : 'text-gray-400'}`}
                 >
                   <Heart className={`h-4 w-4 ${isFavorite(id) ? 'fill-current' : ''}`} />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleAddToCart}
+                  className="h-8 w-8 p-0 text-gray-400"
+                >
+                  <ShoppingCart className="h-4 w-4" />
                 </Button>
                 <Button variant="ghost" size="sm" onClick={handleShare} className="h-8 w-8 p-0">
                   <Share2 className="h-4 w-4" />
@@ -279,9 +294,9 @@ export default function ProductCard({
   }
 
   return (
-    <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300 h-full flex flex-col" data-testid={`card-product-${id}`}>
-      <Link href={`/product/${id}`}>
-        <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+    <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300 h-full flex flex-col min-h-[400px] p-0" data-testid={`card-product-${id}`}>
+      <Link href={`/product/${id}`} className="block">
+        <div className="relative aspect-[4/3] overflow-hidden bg-muted h-48 w-full">
           <img 
             src={image} 
             alt={name} 
@@ -332,6 +347,17 @@ export default function ProductCard({
               className={`h-7 w-7 p-0 ${isFavorite(id) ? 'text-red-500' : 'text-gray-600'}`}
             >
               <Heart className={`h-3 w-3 ${isFavorite(id) ? 'fill-current' : ''}`} />
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={(e) => {
+                e.preventDefault();
+                handleAddToCart();
+              }}
+              className="h-7 w-7 p-0 text-gray-600"
+            >
+              <ShoppingCart className="h-3 w-3" />
             </Button>
             <Button
               variant="secondary"
@@ -445,7 +471,7 @@ export default function ProductCard({
         </div>
       </CardContent>
       
-      <CardFooter className="p-4 pt-0 mt-auto">
+      <CardFooter className="p-4 pt-0 mt-auto flex-shrink-0">
         <div className="flex gap-2 w-full">
           <Button 
             variant="outline" 

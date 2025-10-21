@@ -4,7 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -24,13 +25,17 @@ import {
   Calendar,
   Package,
   TrendingUp,
-  Loader2
+  Loader2,
+  Shield,
+  Globe,
+  MessageSquare
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 export default function BuyerRFQs() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('newest');
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -128,290 +133,475 @@ export default function BuyerRFQs() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-white">
       <Header />
+      
+      {/* Hero Section with Gradient */}
+      <section className="relative py-16 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
+        {/* Background Elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-600/10 to-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center text-white">
+            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/30 rounded-full px-6 py-3 text-sm text-white/95 shadow-lg mb-6">
+              <FileText className="w-4 h-4" />
+              <span>My RFQs</span>
+            </div>
+            
+            <h1 className="text-4xl md:text-6xl font-bold mb-6">
+              My
+              <span className="bg-gradient-to-r from-blue-200 via-white to-blue-200 bg-clip-text text-transparent block">
+                RFQs
+              </span>
+            </h1>
+            
+            <p className="text-xl text-white/90 max-w-2xl mx-auto mb-8">
+              Manage your Request for Quotations and compare supplier responses
+            </p>
+
+            {/* Quick Stats */}
+            <div className="flex flex-wrap justify-center gap-8 text-white/80 text-sm">
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-green-300" />
+                <span>Verified Suppliers</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-yellow-300" />
+                <span>Fast Response</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-purple-300" />
+                <span>Global Network</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <main className="flex-1">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Header */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                My RFQs
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400">
-                Manage your Request for Quotations and compare supplier responses
-              </p>
+
+          {/* Header with Search and Filters */}
+          <div className="flex flex-col lg:flex-row gap-6 mb-8">
+            <div className="flex-1 max-w-md">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Input
+                  placeholder="Search inquiries..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
             </div>
-            <Link href="/rfq/create">
-              <Button className="mt-4 lg:mt-0">
-                <Plus className="h-4 w-4 mr-2" />
-                Create New RFQ
-              </Button>
-            </Link>
+            
+            <div className="flex gap-4">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="open">Open</SelectItem>
+                  <SelectItem value="closed">Closed</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Newest First</SelectItem>
+                  <SelectItem value="oldest">Oldest First</SelectItem>
+                  <SelectItem value="title">Title A-Z</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Total RFQs</p>
-                    <p className="text-2xl font-bold text-blue-900 dark:text-white">{stats.total}</p>
-                  </div>
-                  <FileText className="h-8 w-8 text-blue-600" />
+            <Card className="bg-white border-gray-100 shadow-lg">
+              <CardContent className="p-6 text-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-yellow-100 to-yellow-200 rounded-xl flex items-center justify-center mx-auto mb-4">
+                  <Clock className="w-6 h-6 text-yellow-600" />
                 </div>
+                <div className="text-2xl font-bold text-gray-900">{stats.open}</div>
+                <div className="text-sm text-gray-600">Open</div>
               </CardContent>
             </Card>
-
-            <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border-green-200">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-green-600 dark:text-green-400">Open</p>
-                    <p className="text-2xl font-bold text-green-900 dark:text-white">{stats.open}</p>
-                  </div>
-                  <TrendingUp className="h-8 w-8 text-green-600" />
+            
+            <Card className="bg-white border-gray-100 shadow-lg">
+              <CardContent className="p-6 text-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-green-100 to-green-200 rounded-xl flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
                 </div>
+                <div className="text-2xl font-bold text-gray-900">{stats.closed}</div>
+                <div className="text-sm text-gray-600">Closed</div>
               </CardContent>
             </Card>
-
-            <Card className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900/20 dark:to-gray-800/20 border-gray-200">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Closed</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.closed}</p>
-                  </div>
-                  <CheckCircle className="h-8 w-8 text-gray-600" />
+            
+            <Card className="bg-white border-gray-100 shadow-lg">
+              <CardContent className="p-6 text-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-red-100 to-red-200 rounded-xl flex items-center justify-center mx-auto mb-4">
+                  <AlertCircle className="w-6 h-6 text-red-600" />
                 </div>
+                <div className="text-2xl font-bold text-gray-900">0</div>
+                <div className="text-sm text-gray-600">Expired</div>
               </CardContent>
             </Card>
-
-            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border-purple-200">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-purple-600 dark:text-purple-400">Total Budget</p>
-                    <p className="text-2xl font-bold text-purple-900 dark:text-white">{formatPrice(stats.totalValue)}</p>
-                  </div>
-                  <DollarSign className="h-8 w-8 text-purple-600" />
+            
+            <Card className="bg-white border-gray-100 shadow-lg">
+              <CardContent className="p-6 text-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center mx-auto mb-4">
+                  <DollarSign className="w-6 h-6 text-blue-600" />
                 </div>
+                <div className="text-2xl font-bold text-gray-900">{formatPrice(stats.totalValue)}</div>
+                <div className="text-sm text-gray-600">Total Value</div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Filters and Search */}
-          <Card className="mb-6">
-            <CardContent className="p-6">
-              <div className="flex flex-col lg:flex-row gap-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Input
-                      placeholder="Search by title or category..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-40">
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="open">Open</SelectItem>
-                      <SelectItem value="closed">Closed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button variant="outline">
-                    <Filter className="h-4 w-4 mr-2" />
-                    More Filters
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
-          {/* RFQs List */}
-          <div className="space-y-6">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <span className="ml-3 text-gray-600">Loading RFQs...</span>
-              </div>
-            ) : filteredRFQs.length === 0 ? (
-              <Card>
-                <CardContent className="p-12 text-center">
-                  <FileText className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                    No RFQs found
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-400 mb-6">
-                    {searchQuery || statusFilter !== 'all' 
-                      ? 'Try adjusting your search or filter criteria.'
-                      : 'Create your first RFQ to start receiving quotations from suppliers.'
-                    }
-                  </p>
-                  <Link href="/rfq/create">
-                    <Button>
-                      Create RFQ
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            ) : (
-              filteredRFQs.map((rfq: any) => {
-                const StatusIcon = getStatusIcon(rfq.status);
-                const quotationCount = rfq.quotationsCount || 0;
-                return (
-                  <Card key={rfq.id} className="hover:shadow-lg transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between mb-4">
-                        <div className="flex-1">
-                          <div className="flex items-start justify-between mb-2">
-                            <div>
-                              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+          {/* RFQs Tabs */}
+          <Tabs defaultValue="all" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="all">All RFQs</TabsTrigger>
+              <TabsTrigger value="open">Open</TabsTrigger>
+              <TabsTrigger value="closed">Closed</TabsTrigger>
+              <TabsTrigger value="expired">Expired</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="all" className="space-y-6">
+              {isLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[...Array(6)].map((_, i) => (
+                    <Card key={i} className="animate-pulse">
+                      <CardContent className="p-6">
+                        <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                        <div className="h-3 bg-gray-200 rounded w-2/3 mb-4"></div>
+                        <div className="h-3 bg-gray-200 rounded mb-2"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : filteredRFQs.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredRFQs.map((rfq: any) => {
+                    const StatusIcon = getStatusIcon(rfq.status);
+                    const quotationCount = rfq.quotationsCount || 0;
+                    return (
+                      <Card key={rfq.id} className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-white border-gray-100">
+                        <CardHeader>
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
                                 {rfq.title}
-                              </h3>
-                              <div className="flex gap-2">
-                                <Badge className={getStatusColor(rfq.status)}>
-                                  <StatusIcon className="w-3 h-3 mr-1" />
-                                  {rfq.status?.charAt(0).toUpperCase() + rfq.status?.slice(1)}
-                                </Badge>
-                                {rfq.categoryId && (
-                                  <Badge variant="outline" className="text-blue-600 border-blue-200">
-                                    {getCategoryName(rfq.categoryId)}
-                                  </Badge>
-                                )}
-                              </div>
+                              </CardTitle>
+                              <p className="text-sm text-gray-600 mt-1">RFQ #{rfq.id}</p>
+                            </div>
+                            <Badge className={`${getStatusColor(rfq.status)} flex items-center gap-1`}>
+                              <StatusIcon className="w-3 h-3 mr-1" />
+                              {rfq.status?.charAt(0).toUpperCase() + rfq.status?.slice(1)}
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <p className="text-sm text-gray-600 line-clamp-2">{rfq.description}</p>
+                          
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">Category:</span>
+                              <span className="font-medium">{getCategoryName(rfq.categoryId)}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">Quantity:</span>
+                              <span className="font-medium">{rfq.quantity?.toLocaleString() || 'N/A'} units</span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">Target Price:</span>
+                              <span className="font-medium">{formatPrice(parseFloat(rfq.targetPrice))}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">Quotations:</span>
+                              <span className="font-medium text-green-600">{quotationCount}</span>
                             </div>
                           </div>
-                          <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
-                            {rfq.description}
-                          </p>
-                          {rfq.attachments && rfq.attachments.length > 0 && (
-                            <div className="mb-4">
-                              <p className="text-xs font-medium text-gray-600 mb-2">Attachments:</p>
-                              <div className="flex flex-wrap gap-2">
-                                {rfq.attachments.map((attachment: string, index: number) => (
-                                  <a 
-                                    key={index}
-                                    href={attachment} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-600 text-xs rounded hover:bg-blue-100"
-                                  >
-                                    <FileText className="w-3 h-3" />
-                                    Doc {index + 1}
-                                  </a>
-                                ))}
-                              </div>
+                          
+                          <div className="pt-4 border-t">
+                            <div className="flex items-center justify-between text-xs text-gray-500">
+                              <span>Created: {formatDate(rfq.createdAt)}</span>
+                              <span>Expected: {formatDate(rfq.expectedDate)}</span>
                             </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* RFQ Details */}
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                        <div className="flex items-center gap-2 text-sm">
-                          <Package className="h-4 w-4 text-gray-400" />
-                          <span className="text-gray-600">Quantity:</span>
-                          <span className="font-medium">{rfq.quantity?.toLocaleString() || 'N/A'} units</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <DollarSign className="h-4 w-4 text-gray-400" />
-                          <span className="text-gray-600">Target Price:</span>
-                          <span className="font-medium">{formatPrice(parseFloat(rfq.targetPrice))}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Calendar className="h-4 w-4 text-gray-400" />
-                          <span className="text-gray-600">Expected:</span>
-                          <span className="font-medium">{formatDate(rfq.expectedDate)}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Users className="h-4 w-4 text-gray-400" />
-                          <span className="text-gray-600">Quotations:</span>
-                          <span className="font-medium text-blue-600">{quotationCount}</span>
-                        </div>
-                      </div>
-
-                      {/* Statistics */}
-                      <div className="flex items-center gap-6 text-sm text-gray-600 mb-4">
-                        <span>Location: {rfq.deliveryLocation || 'N/A'}</span>
-                        <span>Created: {formatDate(rfq.createdAt)}</span>
-                      </div>
-
-                      {/* Quotation Badge */}
-                      {quotationCount > 0 && (
-                        <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 rounded-lg">
-                          <p className="text-sm text-green-800 dark:text-green-200 font-medium">
-                            ✓ {quotationCount} quotation{quotationCount > 1 ? 's' : ''} received from admin
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Actions */}
-                      <div className="flex flex-wrap gap-2">
-                        <Link href={`/rfq/${rfq.id}`}>
-                          <Button variant="outline" size="sm">
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Details
-                          </Button>
-                        </Link>
-                        {quotationCount > 0 && (
-                          <Link href={`/rfq/${rfq.id}`}>
-                            <Button size="sm" className="bg-green-600 hover:bg-green-700">
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              View Quotations ({quotationCount})
+                          </div>
+                          
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="flex-1"
+                              asChild
+                            >
+                              <Link href={`/rfq/${rfq.id}`}>
+                                <Eye className="w-4 h-4 mr-1" />
+                                View Details
+                              </Link>
                             </Button>
-                          </Link>
-                        )}
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="text-red-600 hover:text-red-700"
-                          onClick={() => {
-                            if (confirm('Are you sure you want to delete this RFQ?')) {
-                              deleteRFQMutation.mutate(rfq.id);
-                            }
-                          }}
-                          disabled={deleteRFQMutation.isPending}
-                        >
-                          {deleteRFQMutation.isPending ? (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-4 w-4 mr-2" />
-                          )}
-                          Delete
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })
-            )}
-          </div>
+                            <Button variant="outline" size="sm">
+                              <MessageSquare className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <FileText className="w-12 h-12 text-gray-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No RFQs found</h3>
+                  <p className="text-gray-600 mb-4">
+                    {searchQuery ? 'Try adjusting your search criteria' : 'You haven\'t created any RFQs yet'}
+                  </p>
+                  <Link href="/rfq/create">
+                    <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create New RFQ
+                    </Button>
+                  </Link>
+                </div>
+              )}
+            </TabsContent>
 
-          {/* Pagination */}
-          {filteredRFQs.length > 0 && (
-            <div className="mt-8 flex justify-center">
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" disabled>
-                  Previous
-                </Button>
-                <Button variant="default" size="sm">1</Button>
-                <Button variant="outline" size="sm">2</Button>
-                <Button variant="outline" size="sm">3</Button>
-                <Button variant="outline" size="sm">
-                  Next
-                </Button>
+            {/* Other tabs content would be similar but filtered by status */}
+            <TabsContent value="open" className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredRFQs.filter((rfq: any) => rfq.status === "open").map((rfq: any) => {
+                  const StatusIcon = getStatusIcon(rfq.status);
+                  const quotationCount = rfq.quotationsCount || 0;
+                  return (
+                    <Card key={rfq.id} className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-white border-gray-100">
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                              {rfq.title}
+                            </CardTitle>
+                            <p className="text-sm text-gray-600 mt-1">RFQ #{rfq.id}</p>
+                          </div>
+                          <Badge className={`${getStatusColor(rfq.status)} flex items-center gap-1`}>
+                            <StatusIcon className="w-3 h-3 mr-1" />
+                            {rfq.status?.charAt(0).toUpperCase() + rfq.status?.slice(1)}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <p className="text-sm text-gray-600 line-clamp-2">{rfq.description}</p>
+                        
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Category:</span>
+                            <span className="font-medium">{getCategoryName(rfq.categoryId)}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Quantity:</span>
+                            <span className="font-medium">{rfq.quantity?.toLocaleString() || 'N/A'} units</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Target Price:</span>
+                            <span className="font-medium">{formatPrice(parseFloat(rfq.targetPrice))}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Quotations:</span>
+                            <span className="font-medium text-green-600">{quotationCount}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="pt-4 border-t">
+                          <div className="flex items-center justify-between text-xs text-gray-500">
+                            <span>Created: {formatDate(rfq.createdAt)}</span>
+                            <span>Expected: {formatDate(rfq.expectedDate)}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex-1"
+                            asChild
+                          >
+                            <Link href={`/rfq/${rfq.id}`}>
+                              <Eye className="w-4 h-4 mr-1" />
+                              View Details
+                            </Link>
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            <MessageSquare className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
-            </div>
-          )}
+            </TabsContent>
+
+            <TabsContent value="closed" className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredRFQs.filter((rfq: any) => rfq.status === "closed").map((rfq: any) => {
+                  const StatusIcon = getStatusIcon(rfq.status);
+                  const quotationCount = rfq.quotationsCount || 0;
+                  return (
+                    <Card key={rfq.id} className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-white border-gray-100">
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                              {rfq.title}
+                            </CardTitle>
+                            <p className="text-sm text-gray-600 mt-1">RFQ #{rfq.id}</p>
+                          </div>
+                          <Badge className={`${getStatusColor(rfq.status)} flex items-center gap-1`}>
+                            <StatusIcon className="w-3 h-3 mr-1" />
+                            {rfq.status?.charAt(0).toUpperCase() + rfq.status?.slice(1)}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <p className="text-sm text-gray-600 line-clamp-2">{rfq.description}</p>
+                        
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Category:</span>
+                            <span className="font-medium">{getCategoryName(rfq.categoryId)}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Quantity:</span>
+                            <span className="font-medium">{rfq.quantity?.toLocaleString() || 'N/A'} units</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Target Price:</span>
+                            <span className="font-medium">{formatPrice(parseFloat(rfq.targetPrice))}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Quotations:</span>
+                            <span className="font-medium text-green-600">{quotationCount}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="pt-4 border-t">
+                          <div className="flex items-center justify-between text-xs text-gray-500">
+                            <span>Created: {formatDate(rfq.createdAt)}</span>
+                            <span>Expected: {formatDate(rfq.expectedDate)}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex-1"
+                            asChild
+                          >
+                            <Link href={`/rfq/${rfq.id}`}>
+                              <Eye className="w-4 h-4 mr-1" />
+                              View Details
+                            </Link>
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            <MessageSquare className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="expired" className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredRFQs.filter((rfq: any) => rfq.status === "expired").map((rfq: any) => {
+                  const StatusIcon = getStatusIcon(rfq.status);
+                  const quotationCount = rfq.quotationsCount || 0;
+                  return (
+                    <Card key={rfq.id} className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-white border-gray-100">
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                              {rfq.title}
+                            </CardTitle>
+                            <p className="text-sm text-gray-600 mt-1">RFQ #{rfq.id}</p>
+                          </div>
+                          <Badge className={`${getStatusColor(rfq.status)} flex items-center gap-1`}>
+                            <StatusIcon className="w-3 h-3 mr-1" />
+                            {rfq.status?.charAt(0).toUpperCase() + rfq.status?.slice(1)}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <p className="text-sm text-gray-600 line-clamp-2">{rfq.description}</p>
+                        
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Category:</span>
+                            <span className="font-medium">{getCategoryName(rfq.categoryId)}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Quantity:</span>
+                            <span className="font-medium">{rfq.quantity?.toLocaleString() || 'N/A'} units</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Target Price:</span>
+                            <span className="font-medium">{formatPrice(parseFloat(rfq.targetPrice))}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Quotations:</span>
+                            <span className="font-medium text-green-600">{quotationCount}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="pt-4 border-t">
+                          <div className="flex items-center justify-between text-xs text-gray-500">
+                            <span>Created: {formatDate(rfq.createdAt)}</span>
+                            <span>Expected: {formatDate(rfq.expectedDate)}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex-1"
+                            asChild
+                          >
+                            <Link href={`/rfq/${rfq.id}`}>
+                              <Eye className="w-4 h-4 mr-1" />
+                              View Details
+                            </Link>
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            <MessageSquare className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </TabsContent>
+          </Tabs>
+
         </div>
       </main>
       <Footer />

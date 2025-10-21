@@ -174,17 +174,36 @@ export default function OrderTracking() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-white">
       <Header />
-      <main className="flex-1 bg-gray-50 dark:bg-gray-900">
-        {/* Header Section */}
-        <div className="gradient-blue text-white py-12">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h1 className="text-4xl font-bold mb-4">Track Your Order</h1>
-            <p className="text-xl text-gray-200 mb-8">
+      
+      {/* Hero Section with Gradient */}
+      <section className="relative py-16 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
+        {/* Background Elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-600/10 to-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center text-white">
+            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/30 rounded-full px-6 py-3 text-sm text-white/95 shadow-lg mb-6">
+              <Package className="w-4 h-4" />
+              <span>Order Tracking</span>
+            </div>
+            
+            <h1 className="text-4xl md:text-6xl font-bold mb-6">
+              Track Your
+              <span className="bg-gradient-to-r from-blue-200 via-white to-blue-200 bg-clip-text text-transparent block">
+                Order
+              </span>
+            </h1>
+            
+            <p className="text-xl text-white/90 max-w-2xl mx-auto mb-8">
               Enter your order number or tracking number to get real-time updates
             </p>
-            
+
             {/* Search Form */}
             <div className="max-w-md mx-auto">
               <div className="flex gap-2">
@@ -212,39 +231,66 @@ export default function OrderTracking() {
                 </Button>
               </div>
             </div>
+
+            {/* Quick Stats */}
+            <div className="flex flex-wrap justify-center gap-8 text-white/80 text-sm mt-8">
+              <div className="flex items-center gap-2">
+                <Package className="w-4 h-4 text-green-300" />
+                <span>Real-time Updates</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Truck className="w-4 h-4 text-yellow-300" />
+                <span>Live Tracking</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-purple-300" />
+                <span>Secure Delivery</span>
+              </div>
+            </div>
           </div>
         </div>
+      </section>
 
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1">
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {!searchQuery ? (
             /* No Search State */
             <div className="text-center py-12">
-              <Package className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
+              <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Package className="w-12 h-12 text-gray-400" />
+              </div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">
                 Track Your Order
               </h2>
-              <p className="text-gray-600 dark:text-gray-400 mb-8">
-                Enter your order number or tracking number above to get started
+              <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
+                Enter your order number or tracking number above to get started with real-time tracking
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-2xl mx-auto">
-                <Card>
-                  <CardContent className="p-6 text-center">
-                    <FileText className="h-8 w-8 mx-auto text-blue-600 mb-2" />
-                    <h3 className="font-semibold mb-1">Order Number</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                <Card className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-white border-gray-100">
+                  <CardContent className="p-8 text-center">
+                    <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
+                      <FileText className="w-8 h-8 text-blue-600" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Order Number</h3>
                     <p className="text-sm text-gray-600">Found in your order confirmation email</p>
                   </CardContent>
                 </Card>
-                <Card>
-                  <CardContent className="p-6 text-center">
-                    <Truck className="h-8 w-8 mx-auto text-green-600 mb-2" />
-                    <h3 className="font-semibold mb-1">Tracking Number</h3>
+                <Card className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-white border-gray-100">
+                  <CardContent className="p-8 text-center">
+                    <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-green-200 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
+                      <Truck className="w-8 h-8 text-green-600" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Tracking Number</h3>
                     <p className="text-sm text-gray-600">Provided when your order ships</p>
                   </CardContent>
                 </Card>
-                <Card>
-                  <CardContent className="p-6 text-center">
-                    <Clock className="h-8 w-8 mx-auto text-purple-600 mb-2" />
-                    <h3 className="font-semibold mb-1">Real-time Updates</h3>
+                <Card className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-white border-gray-100">
+                  <CardContent className="p-8 text-center">
+                    <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
+                      <Clock className="w-8 h-8 text-purple-600" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Real-time Updates</h3>
                     <p className="text-sm text-gray-600">Get instant status updates</p>
                   </CardContent>
                 </Card>
@@ -252,21 +298,23 @@ export default function OrderTracking() {
             </div>
           ) : error ? (
             /* Error State */
-            <Card>
+            <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
               <CardContent className="p-12 text-center">
-                <AlertCircle className="h-16 w-16 mx-auto text-red-400 mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <AlertCircle className="w-12 h-12 text-red-500" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">
                   Order Not Found
                 </h3>
-                <p className="text-gray-600 dark:text-gray-400 mb-6">
+                <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
                   We couldn't find an order with that number. Please check your order number and try again.
                 </p>
-                <div className="flex gap-2 justify-center">
-                  <Button onClick={() => setSearchQuery("")} variant="outline">
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <Button onClick={() => setSearchQuery("")} variant="outline" size="lg" className="px-8 py-3">
                     Try Another Number
                   </Button>
                   <Link href="/my-orders">
-                    <Button>
+                    <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3">
                       <Package className="h-4 w-4 mr-2" />
                       View My Orders
                     </Button>
@@ -278,14 +326,14 @@ export default function OrderTracking() {
             /* Order Found */
             <div className="space-y-8">
               {/* Order Overview */}
-              <Card>
+              <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     <span className="flex items-center gap-2">
                       <Package className="h-5 w-5" />
                       Order Details
                     </span>
-                    <Badge className={getStatusColor(order.status)}>
+                    <Badge className={`${getStatusColor(order.status)} flex items-center gap-1`}>
                       {getStatusIcon(order.status)}
                       {order.status}
                     </Badge>
@@ -294,7 +342,7 @@ export default function OrderTracking() {
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
                         {order.productName || 'Unknown Product'}
                       </h3>
                       <div className="space-y-2 text-sm">
@@ -335,14 +383,14 @@ export default function OrderTracking() {
               </Card>
 
               {/* Enhanced Tracking Timeline with Progress Bar */}
-              <Card>
+              <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-2">
                       <Truck className="h-5 w-5" />
                       Order Progress
                     </CardTitle>
-                    <Badge className={getStatusColor(order.status)}>
+                    <Badge className={`${getStatusColor(order.status)} flex items-center gap-1`}>
                       {getStatusIcon(order.status)}
                       {order.status}
                     </Badge>
@@ -387,8 +435,8 @@ export default function OrderTracking() {
                             <div className="flex-1 min-w-0 pb-6">
                               <div className="flex items-center justify-between mb-1">
                                 <h4 className={`font-semibold ${
-                                  step.current ? 'text-blue-600 dark:text-blue-400' : 
-                                  step.completed ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'
+                                  step.current ? 'text-blue-600' : 
+                                  step.completed ? 'text-gray-900' : 'text-gray-500'
                                 }`}>
                                   {step.label}
                                 </h4>
@@ -405,12 +453,12 @@ export default function OrderTracking() {
                                 )}
                               </div>
                               <p className={`text-sm ${
-                                step.completed ? 'text-gray-600 dark:text-gray-400' : 'text-gray-500 dark:text-gray-500'
+                                step.completed ? 'text-gray-600' : 'text-gray-500'
                               }`}>
                                 {step.description}
                               </p>
                               {step.current && (
-                                <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-xs text-blue-700 dark:text-blue-400 flex items-start gap-1">
+                                <div className="mt-2 p-2 bg-blue-50 rounded text-xs text-blue-700 flex items-start gap-1">
                                   <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
                                   <span>This is the current status of your order. We'll update you when it moves to the next stage.</span>
                                 </div>
@@ -426,7 +474,7 @@ export default function OrderTracking() {
 
               {/* Shipping Information */}
               {order.shippingAddress && (
-                <Card>
+                <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <MapPin className="h-5 w-5" />
@@ -434,7 +482,7 @@ export default function OrderTracking() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                    <div className="bg-gray-50 p-4 rounded-lg">
                       <p className="text-sm">
                         {typeof order.shippingAddress === 'string' 
                           ? order.shippingAddress 
@@ -448,7 +496,7 @@ export default function OrderTracking() {
 
               {/* External Tracking */}
               {order.trackingNumber && (
-                <Card>
+                <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <ExternalLink className="h-5 w-5" />
@@ -458,7 +506,7 @@ export default function OrderTracking() {
                   <CardContent>
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">Tracking Number</p>
+                        <p className="text-sm text-gray-600">Tracking Number</p>
                         <p className="font-mono text-lg">{order.trackingNumber}</p>
                       </div>
                       <Button variant="outline">
@@ -471,7 +519,7 @@ export default function OrderTracking() {
               )}
 
               {/* Enhanced Actions */}
-              <Card>
+              <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
                 <CardHeader>
                   <CardTitle>Quick Actions</CardTitle>
                 </CardHeader>
@@ -500,15 +548,15 @@ export default function OrderTracking() {
               </Card>
 
               {/* Help Section */}
-              <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200">
+              <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 border-0 shadow-lg">
                 <CardContent className="p-6">
                   <div className="flex items-start gap-4">
-                    <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
-                      <Info className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                    <div className="p-3 bg-blue-100 rounded-full">
+                      <Info className="h-6 w-6 text-blue-600" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Need Help?</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                      <h3 className="font-semibold text-gray-900 mb-2">Need Help?</h3>
+                      <p className="text-sm text-gray-600 mb-3">
                         If you have any questions about your order or need assistance, our support team is here to help.
                       </p>
                       <div className="flex flex-wrap gap-2">

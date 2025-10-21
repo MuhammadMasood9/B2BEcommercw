@@ -19,7 +19,8 @@ import {
   TrendingUp,
   ArrowRight,
   HeadphonesIcon,
-  Star
+  Star,
+  ShoppingCart
 } from "lucide-react";
 
 export default function BuyerProtection() {
@@ -131,8 +132,6 @@ export default function BuyerProtection() {
       icon: CheckCircle
     },
   ];
-
-  const ShoppingCart = Package;
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-white">

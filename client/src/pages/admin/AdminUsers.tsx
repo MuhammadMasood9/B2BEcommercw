@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient, apiRequest, getQueryFn } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -51,83 +51,12 @@ import { Separator } from "@/components/ui/separator";
 import Breadcrumb from "@/components/Breadcrumb";
 import type { z } from "zod";
 
-// Mock users data for demonstration
-const mockUsers: User[] = [
-  {
-    id: "1",
-    email: "admin@b2bmarketplace.com",
-    firstName: "Admin",
-    lastName: "User",
-    companyName: "B2B Marketplace",
-    phone: "+1-555-0123",
-    role: "admin",
-    emailVerified: true,
-    isActive: true,
-    createdAt: new Date("2024-01-15"),
-    updatedAt: new Date("2024-01-15"),
-    password: "hashed_password"
-  },
-  {
-    id: "2",
-    email: "john.doe@techcorp.com",
-    firstName: "John",
-    lastName: "Doe",
-    companyName: "TechCorp Industries",
-    phone: "+1-555-0124",
-    role: "buyer",
-    emailVerified: true,
-    isActive: true,
-    createdAt: new Date("2024-02-20"),
-    updatedAt: new Date("2024-02-20"),
-    password: "hashed_password"
-  },
-  {
-    id: "3",
-    email: "sarah.smith@globalmfg.com",
-    firstName: "Sarah",
-    lastName: "Smith",
-    companyName: "Global Manufacturing Ltd",
-    phone: "+1-555-0125",
-    role: "supplier",
-    emailVerified: true,
-    isActive: true,
-    createdAt: new Date("2024-03-10"),
-    updatedAt: new Date("2024-03-10"),
-    password: "hashed_password"
-  },
-  {
-    id: "4",
-    email: "mike.johnson@startup.com",
-    firstName: "Mike",
-    lastName: "Johnson",
-    companyName: "Startup Solutions",
-    phone: "+1-555-0126",
-    role: "buyer",
-    emailVerified: false,
-    isActive: true,
-    createdAt: new Date("2024-04-05"),
-    updatedAt: new Date("2024-04-05"),
-    password: "hashed_password"
-  },
-  {
-    id: "5",
-    email: "lisa.wang@premium.com",
-    firstName: "Lisa",
-    lastName: "Wang",
-    companyName: "Premium Supplies Ltd",
-    phone: "+1-555-0127",
-    role: "supplier",
-    emailVerified: true,
-    isActive: false,
-    createdAt: new Date("2024-05-12"),
-    updatedAt: new Date("2024-05-12"),
-    password: "hashed_password"
-  }
-];
+// User type without password for display
+type UserDisplay = Omit<User, 'password'>;
 
 export default function AdminUsers() {
   const [search, setSearch] = useState("");
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserDisplay | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [filterRole, setFilterRole] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -137,87 +66,108 @@ export default function AdminUsers() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  // Simulate API call with mock data
-  const { data: users = mockUsers, isLoading } = useQuery<User[]>({
+  // Fetch users from API
+  const { data: users = [], isLoading, error } = useQuery<UserDisplay[]>({
     queryKey: ["/api/users"],
-    queryFn: async () => {
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API delay
-      return mockUsers;
-    }
+    queryFn: getQueryFn({ on401: "throw" }),
+    retry: 2,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   // Create User Mutation
   const createUserMutation = useMutation({
     mutationFn: async (userData: Omit<User, 'id'>) => {
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-      return { ...userData, id: Date.now().toString() };
+      return await apiRequest("POST", "/api/users", userData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       toast({ title: "Success", description: "User created successfully" });
       setIsDialogOpen(false);
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to create user", variant: "destructive" });
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to create user", variant: "destructive" });
     },
   });
 
   // Update User Mutation
   const updateUserMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<User> }) => {
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-      return { ...data, id, updatedAt: new Date() };
+      return await apiRequest("PATCH", `/api/users/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       toast({ title: "Success", description: "User updated successfully" });
       setIsDialogOpen(false);
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to update user", variant: "destructive" });
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to update user", variant: "destructive" });
     },
   });
 
   // Delete User Mutation
   const deleteUserMutation = useMutation({
     mutationFn: async (id: string) => {
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API call
+      return await apiRequest("DELETE", `/api/users/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       toast({ title: "Success", description: "User deleted successfully" });
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to delete user", variant: "destructive" });
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to delete user", variant: "destructive" });
     },
   });
 
   // Toggle User Status Mutation
   const toggleUserStatusMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API call
+      return await apiRequest("PATCH", `/api/users/${id}`, { isActive });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       toast({ title: "Success", description: "User status updated successfully" });
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to update user status", variant: "destructive" });
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to update user status", variant: "destructive" });
     },
   });
 
   // Bulk Actions Mutation
   const bulkActionMutation = useMutation({
     mutationFn: async ({ action, userIds }: { action: string; userIds: string[] }) => {
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-      console.log(`Bulk action: ${action} on users:`, userIds);
+      // For now, we'll process each user individually
+      // In a real implementation, you might want a bulk API endpoint
+      const promises = userIds.map(async (userId) => {
+        switch (action) {
+          case "activate":
+            return apiRequest("PATCH", `/api/users/${userId}`, { isActive: true });
+          case "deactivate":
+            return apiRequest("PATCH", `/api/users/${userId}`, { isActive: false });
+          case "verify":
+            return apiRequest("PATCH", `/api/users/${userId}`, { emailVerified: true });
+          case "delete":
+            return apiRequest("DELETE", `/api/users/${userId}`);
+          default:
+            throw new Error(`Unknown action: ${action}`);
+        }
+      });
+      
+      await Promise.all(promises);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       setSelectedUsers([]);
       toast({ title: "Success", description: "Bulk action completed successfully" });
     },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to perform bulk action", variant: "destructive" });
+    },
   });
+
+  // Helper function to get display role (suppliers are treated as admins)
+  const getDisplayRole = (role: string) => {
+    return role === 'supplier' ? 'admin' : role;
+  };
 
   // Filter and sort users
   const filteredAndSortedUsers = users?.filter(user => {
@@ -227,7 +177,8 @@ export default function AdminUsers() {
       user.lastName?.toLowerCase().includes(search.toLowerCase()) ||
       user.companyName?.toLowerCase().includes(search.toLowerCase());
     
-    const matchesRole = filterRole === "all" || user.role === filterRole;
+    const displayRole = getDisplayRole(user.role);
+    const matchesRole = filterRole === "all" || displayRole === filterRole;
     const matchesStatus = filterStatus === "all" || 
       (filterStatus === "active" && user.isActive) ||
       (filterStatus === "inactive" && !user.isActive) ||
@@ -299,18 +250,18 @@ export default function AdminUsers() {
   };
 
   const getRoleBadgeVariant = (role: string) => {
-    switch (role) {
+    const displayRole = getDisplayRole(role);
+    switch (displayRole) {
       case 'admin': return 'destructive';
-      case 'supplier': return 'default';
       case 'buyer': return 'secondary';
       default: return 'outline';
     }
   };
 
   const getRoleIcon = (role: string) => {
-    switch (role) {
+    const displayRole = getDisplayRole(role);
+    switch (displayRole) {
       case 'admin': return Shield;
-      case 'supplier': return Building;
       case 'buyer': return UserCheck;
       default: return UserCheck;
     }
@@ -367,7 +318,9 @@ export default function AdminUsers() {
             <UserCheck className="h-6 w-6 text-blue-200" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-white">{users.length}</div>
+            <div className="text-3xl font-bold text-white">
+              {isLoading ? "..." : users.length}
+            </div>
             <p className="text-sm text-blue-100 mt-1">All registered users</p>
           </CardContent>
         </Card>
@@ -379,7 +332,9 @@ export default function AdminUsers() {
             <CheckCircle className="h-6 w-6 text-green-200" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-white">{users.filter(u => u.isActive).length}</div>
+            <div className="text-3xl font-bold text-white">
+              {isLoading ? "..." : users.filter(u => u.isActive).length}
+            </div>
             <p className="text-sm text-green-100 mt-1">Currently active</p>
           </CardContent>
         </Card>
@@ -391,20 +346,24 @@ export default function AdminUsers() {
             <CheckCircle className="h-6 w-6 text-purple-200" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-white">{users.filter(u => u.emailVerified).length}</div>
+            <div className="text-3xl font-bold text-white">
+              {isLoading ? "..." : users.filter(u => u.emailVerified).length}
+            </div>
             <p className="text-sm text-purple-100 mt-1">Email verified</p>
           </CardContent>
         </Card>
         
-        {/* Suppliers - Orange */}
+        {/* Admins (including suppliers) - Orange */}
         <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-orange-100">Suppliers</CardTitle>
-            <Building className="h-6 w-6 text-orange-200" />
+            <CardTitle className="text-sm font-medium text-orange-100">Admins</CardTitle>
+            <Shield className="h-6 w-6 text-orange-200" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-white">{users.filter(u => u.role === 'supplier').length}</div>
-            <p className="text-sm text-orange-100 mt-1">Registered suppliers</p>
+            <div className="text-3xl font-bold text-white">
+              {isLoading ? "..." : users.filter(u => u.role === 'admin' || u.role === 'supplier').length}
+            </div>
+            <p className="text-sm text-orange-100 mt-1">Admin users (including suppliers)</p>
           </CardContent>
         </Card>
       </div>
@@ -430,9 +389,8 @@ export default function AdminUsers() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Roles</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="admin">Admin (including suppliers)</SelectItem>
                   <SelectItem value="buyer">Buyer</SelectItem>
-                  <SelectItem value="supplier">Supplier</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -516,7 +474,19 @@ export default function AdminUsers() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8">Loading...</div>
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading users...</p>
+            </div>
+          ) : error ? (
+            <div className="text-center py-8 text-red-600">
+              <AlertCircle className="h-16 w-16 mx-auto mb-4 opacity-50" />
+              <h3 className="text-lg font-semibold mb-2">Error loading users</h3>
+              <p className="text-sm mb-4">{error.message || "Failed to fetch users"}</p>
+              <Button onClick={() => window.location.reload()} variant="outline">
+                Try Again
+              </Button>
+            </div>
           ) : filteredAndSortedUsers && filteredAndSortedUsers.length > 0 ? (
             <Table>
               <TableHeader>
@@ -582,7 +552,10 @@ export default function AdminUsers() {
                       </TableCell>
                       <TableCell>
                         <Badge variant={getRoleBadgeVariant(user.role)} data-testid={`badge-role-${user.id}`}>
-                          {user.role}
+                          {getDisplayRole(user.role)}
+                          {user.role === 'supplier' && (
+                            <span className="text-xs ml-1">(supplier)</span>
+                          )}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -685,7 +658,7 @@ function UserForm({
   onCreate, 
   onUpdate 
 }: { 
-  user: User | null; 
+  user: UserDisplay | null; 
   onSuccess: () => void;
   onCreate: (data: Omit<User, 'id'>) => void;
   onUpdate: (data: Partial<User>) => void;
@@ -821,16 +794,16 @@ function UserForm({
                           Buyer - Can purchase products and create RFQs
                         </div>
                       </SelectItem>
-                      <SelectItem value="supplier">
-                        <div className="flex items-center gap-2">
-                          <Building className="w-4 h-4" />
-                          Supplier - Can sell products and respond to RFQs
-                        </div>
-                      </SelectItem>
                       <SelectItem value="admin">
                         <div className="flex items-center gap-2">
                           <Shield className="w-4 h-4" />
-                          Admin - Full system access
+                          Admin - Full system access (suppliers are treated as admins)
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="supplier">
+                        <div className="flex items-center gap-2">
+                          <Building className="w-4 h-4" />
+                          Supplier - Will be treated as admin with full access
                         </div>
                       </SelectItem>
                     </SelectContent>

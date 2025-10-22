@@ -65,7 +65,7 @@ import {
   RotateCcw,
   RefreshCw
 } from "lucide-react";
-import InquiryForm from "@/components/InquiryForm";
+import InquiryDialog from "@/components/InquiryDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProduct } from "@/contexts/ProductContext";
 
@@ -81,6 +81,7 @@ export default function ProductDetail() {
   const [quantity, setQuantity] = useState(100);
   const [selectedImage, setSelectedImage] = useState(0);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [isInquiryDialogOpen, setIsInquiryDialogOpen] = useState(false);
 
   // Fetch product from API
   const { data: product, isLoading: isProductLoading } = useQuery<Product>({
@@ -351,11 +352,7 @@ export default function ProductDetail() {
       });
       return;
     }
-    
-    toast({
-      title: "Inquiry Sent",
-      description: "Your inquiry has been sent to the admin. You'll receive a response within 24 hours.",
-    });
+    setIsInquiryDialogOpen(true);
   };
 
   // Transform related products for ProductCard
@@ -898,12 +895,14 @@ export default function ProductDetail() {
                   <p className="text-sm text-gray-600">Get more information about this product from our admin team</p>
                 </CardHeader>
                 <CardContent>
-                  <InquiryForm 
-                    productId={productId}
-                    productName={product?.name || "Product"}
-                    productPrice={product?.priceRanges ? (Array.isArray(product.priceRanges) && product.priceRanges.length > 0 ? `$${product.priceRanges[0].pricePerUnit}` : "Contact for price") : "Contact for price"}
-                    supplierName="Global Trade Hub Admin"
-                  />
+                  <Button 
+                    onClick={handleSendInquiry}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                    size="lg"
+                  >
+                    <MessageSquare className="w-5 h-5 mr-2" />
+                    Send Inquiry to Admin
+                  </Button>
                 </CardContent>
               </Card>
             </div>
@@ -1017,6 +1016,25 @@ export default function ProductDetail() {
           )}
         </div>
       </main>
+
+      {/* Inquiry Dialog */}
+      {product && (
+        <InquiryDialog
+          isOpen={isInquiryDialogOpen}
+          onClose={() => setIsInquiryDialogOpen(false)}
+          product={{
+            id: productId,
+            name: product.name,
+            priceRange: product.priceRanges ? (Array.isArray(product.priceRanges) && product.priceRanges.length > 0 ? `$${product.priceRanges[0].pricePerUnit}` : "Contact for price") : "Contact for price",
+            moq: 1,
+            supplierName: "Global Trade Hub Admin",
+            supplierCountry: "USA",
+            leadTime: product.leadTime || undefined,
+            paymentTerms: product.paymentTerms || undefined,
+            image: product.images?.[0]
+          }}
+        />
+      )}
 
       <Footer />
     </div>

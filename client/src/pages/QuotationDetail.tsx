@@ -7,7 +7,7 @@ import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { 
@@ -31,7 +31,15 @@ import {
   Loader2,
   AlertCircle,
   Check,
-  X
+  X,
+  History,
+  GitCommit,
+  TrendingUp,
+  Edit,
+  Eye,
+  Timer,
+  Target,
+  XCircle as XCircleIcon
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { format } from "date-fns";
@@ -44,7 +52,10 @@ export default function QuotationDetail() {
   
   const [isAcceptDialogOpen, setIsAcceptDialogOpen] = useState(false);
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+  const [isNegotiationHistoryOpen, setIsNegotiationHistoryOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  const [shippingAddress, setShippingAddress] = useState("");
+  const [negotiationHistory, setNegotiationHistory] = useState<any[]>([]);
 
   // Fetch quotation details
   const { data: quotation, isLoading, error } = useQuery({
@@ -68,28 +79,31 @@ export default function QuotationDetail() {
   // Accept quotation mutation
   const acceptQuotationMutation = useMutation({
     mutationFn: async (quotationId: string) => {
-      const response = await fetch(`/api/quotations/${quotationId}/accept`, {
+      const response = await fetch(`/api/inquiry-quotations/${quotationId}/accept`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shippingAddress }),
         credentials: 'include'
       });
       if (!response.ok) throw new Error('Failed to accept quotation');
       return response.json();
     },
     onSuccess: () => {
-      toast.success('Quotation accepted successfully!');
+      toast.success('Quotation accepted successfully! Order has been created.');
       queryClient.invalidateQueries({ queryKey: ['quotation', params?.id] });
       queryClient.invalidateQueries({ queryKey: ['/api/buyer/quotations'] });
+      setIsAcceptDialogOpen(false);
+      setShippingAddress('');
     },
-    onError: () => {
-      toast.error('Failed to accept quotation');
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to accept quotation');
     }
   });
 
   // Reject quotation mutation
   const rejectQuotationMutation = useMutation({
     mutationFn: async ({ quotationId, reason }: { quotationId: string; reason: string }) => {
-      const response = await fetch(`/api/quotations/${quotationId}/reject`, {
+      const response = await fetch(`/api/inquiry-quotations/${quotationId}/reject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -105,13 +119,31 @@ export default function QuotationDetail() {
       queryClient.invalidateQueries({ queryKey: ['quotation', params?.id] });
       queryClient.invalidateQueries({ queryKey: ['/api/buyer/quotations'] });
     },
-    onError: () => {
-      toast.error('Failed to reject quotation');
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to reject quotation');
+    }
+  });
+
+  // Fetch negotiation history
+  const fetchNegotiationHistory = useMutation({
+    mutationFn: async (inquiryId: string) => {
+      const response = await fetch(`/api/inquiries/${inquiryId}/revisions`, {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch negotiation history');
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setNegotiationHistory(data.revisions || []);
+      setIsNegotiationHistoryOpen(true);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to fetch negotiation history');
     }
   });
 
   const handleAccept = () => {
-    if (quotation?.id) {
+    if (quotation?.id && shippingAddress.trim()) {
       acceptQuotationMutation.mutate(quotation.id);
     }
   };
@@ -122,11 +154,24 @@ export default function QuotationDetail() {
     }
   };
 
+  const handleViewNegotiationHistory = () => {
+    if (quotation?.inquiryId) {
+      fetchNegotiationHistory.mutate(quotation.inquiryId);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'accepted': return 'bg-green-100 text-green-800';
       case 'rejected': return 'bg-red-100 text-red-800';
       case 'expired': return 'bg-gray-100 text-gray-800';
+      case 'negotiating': return 'bg-blue-100 text-blue-800';
+      case 'counter_offered': return 'bg-purple-100 text-purple-800';
+      case 'revised': return 'bg-indigo-100 text-indigo-800';
+      case 'under_review': return 'bg-orange-100 text-orange-800';
+      case 'awaiting_response': return 'bg-cyan-100 text-cyan-800';
+      case 'final_offer': return 'bg-pink-100 text-pink-800';
+      case 'cancelled': return 'bg-gray-100 text-gray-600';
       default: return 'bg-yellow-100 text-yellow-800';
     }
   };
@@ -136,6 +181,13 @@ export default function QuotationDetail() {
       case 'accepted': return <CheckCircle className="w-4 h-4" />;
       case 'rejected': return <XCircle className="w-4 h-4" />;
       case 'expired': return <AlertCircle className="w-4 h-4" />;
+      case 'negotiating': return <MessageSquare className="w-4 h-4" />;
+      case 'counter_offered': return <TrendingUp className="w-4 h-4" />;
+      case 'revised': return <Edit className="w-4 h-4" />;
+      case 'under_review': return <Eye className="w-4 h-4" />;
+      case 'awaiting_response': return <Timer className="w-4 h-4" />;
+      case 'final_offer': return <Target className="w-4 h-4" />;
+      case 'cancelled': return <XCircleIcon className="w-4 h-4" />;
       default: return <Clock className="w-4 h-4" />;
     }
   };
@@ -182,7 +234,7 @@ export default function QuotationDetail() {
       <main className="flex-1">
         {/* Hero Section */}
         <section className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-16">
-          <div className="container mx-auto px-4">
+          <div className="max-w-7xl mx-auto px-4">
             <div className="flex items-center gap-4 mb-6">
               <Button
                 variant="outline"
@@ -216,7 +268,7 @@ export default function QuotationDetail() {
           </div>
         </section>
 
-        <div className="container mx-auto px-4 py-8">
+        <div className="max-w-7xl mx-auto px-4 py-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
@@ -313,6 +365,43 @@ export default function QuotationDetail() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Negotiation History */}
+              {quotation.inquiryId && (
+                <Card className="bg-white border-gray-100 shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <History className="w-5 h-5 text-purple-600" />
+                      Negotiation History
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <p className="text-gray-600">
+                        View the complete timeline of negotiations and revisions for this quotation.
+                      </p>
+                      <Button 
+                        onClick={handleViewNegotiationHistory}
+                        variant="outline"
+                        className="w-full"
+                        disabled={fetchNegotiationHistory.isPending}
+                      >
+                        {fetchNegotiationHistory.isPending ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Loading History...
+                          </>
+                        ) : (
+                          <>
+                            <History className="w-4 h-4 mr-2" />
+                            View Negotiation History
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
 
             {/* Sidebar */}
@@ -390,27 +479,59 @@ export default function QuotationDetail() {
 
       {/* Accept Dialog */}
       <Dialog open={isAcceptDialogOpen} onOpenChange={setIsAcceptDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Accept Quotation</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+              Accept Quotation
+            </DialogTitle>
+            <DialogDescription>
+              Please provide your shipping address to proceed with this quotation.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-gray-600">
-              Are you sure you want to accept this quotation? This action will create an order and notify the admin.
-            </p>
-            <div className="bg-green-50 p-4 rounded-lg">
-              <p className="text-sm text-green-800">
-                <strong>Total Amount:</strong> ${(quotation?.totalPrice ?? 0).toLocaleString()}
-              </p>
+            {quotation && (
+              <div className="bg-green-50 p-4 rounded-lg">
+                <h4 className="font-semibold text-green-800 mb-2">Quotation Summary</h4>
+                <div className="space-y-1 text-sm text-green-700">
+                  <p><strong>Product:</strong> {quotation.productName}</p>
+                  <p><strong>Quantity:</strong> {(quotation.inquiryQuantity || quotation.quantity || 0).toLocaleString()} units</p>
+                  <p><strong>Total Amount:</strong> ${(quotation.totalPrice || quotation.totalAmount || 0).toLocaleString()}</p>
+                </div>
+              </div>
+            )}
+            <div>
+              <Label htmlFor="shipping-address">Shipping Address</Label>
+              <Textarea
+                id="shipping-address"
+                placeholder="Enter your complete shipping address..."
+                value={shippingAddress}
+                onChange={(e) => setShippingAddress(e.target.value)}
+                rows={3}
+                className="mt-2"
+              />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAcceptDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleAccept} className="bg-green-600 hover:bg-green-700">
-              <CheckCircle className="w-4 h-4 mr-2" />
-              Accept Quotation
+            <Button 
+              onClick={handleAccept}
+              disabled={!shippingAddress.trim() || acceptQuotationMutation.isPending}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              {acceptQuotationMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Accepting...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Accept Quotation
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -448,6 +569,96 @@ export default function QuotationDetail() {
             >
               <XCircle className="w-4 h-4 mr-2" />
               Reject Quotation
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Negotiation History Dialog */}
+      <Dialog open={isNegotiationHistoryOpen} onOpenChange={setIsNegotiationHistoryOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="w-5 h-5 text-purple-600" />
+              Negotiation History
+            </DialogTitle>
+            <DialogDescription>
+              Complete timeline of negotiations and revisions for this quotation.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {negotiationHistory.length > 0 ? (
+              <div className="space-y-4">
+                {negotiationHistory.map((revision: any, index: number) => (
+                  <div key={revision.id} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <GitCommit className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-gray-900">Revision #{revision.revisionNumber || index + 1}</h4>
+                          <p className="text-sm text-gray-600">
+                            {new Date(revision.createdAt).toLocaleDateString()} at {new Date(revision.createdAt).toLocaleTimeString()}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge className={getStatusColor(revision.status)}>
+                        {getStatusIcon(revision.status)}
+                        <span className="ml-1">{revision.status}</span>
+                      </Badge>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
+                      <div>
+                        <span className="text-sm text-gray-600">Quantity:</span>
+                        <span className="ml-2 font-medium">{revision.quantity?.toLocaleString()}</span>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-600">Target Price:</span>
+                        <span className="ml-2 font-medium">${revision.targetPrice || 'Not specified'}</span>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-600">Created By:</span>
+                        <span className="ml-2 font-medium">{revision.createdBy === 'admin' ? 'Admin' : 'Buyer'}</span>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-600">Status:</span>
+                        <span className="ml-2 font-medium">{revision.status}</span>
+                      </div>
+                    </div>
+                    
+                    {revision.message && (
+                      <div className="bg-gray-50 p-3 rounded-lg">
+                        <p className="text-sm text-gray-700">
+                          <strong>Message:</strong> {revision.message}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {revision.requirements && (
+                      <div className="bg-blue-50 p-3 rounded-lg mt-2">
+                        <p className="text-sm text-blue-700">
+                          <strong>Requirements:</strong> {revision.requirements}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <History className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No Negotiation History</h3>
+                <p className="text-gray-600">This quotation hasn't been negotiated yet.</p>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsNegotiationHistoryOpen(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

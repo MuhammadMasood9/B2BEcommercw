@@ -81,6 +81,9 @@ export default function Header() {
                     <Link href="/buyer/quotations">My Quotations</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
+                    <Link href="/buyer/orders">My Orders</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
                     <Link href="/buyer/rfqs">My RFQs</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>

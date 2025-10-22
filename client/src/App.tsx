@@ -56,8 +56,6 @@ import BuyerRFQs from "@/pages/buyer/BuyerRFQs";
 import AdminInquiries from "@/pages/admin/AdminInquiries";
 import AdminQuotations from "@/pages/admin/AdminQuotations";
 import AdminRFQs from "@/pages/admin/AdminRFQs";
-// import AdminOrders from "@/pages/admin/AdminOrders";
-import AdminOrders from "@/pages/admin/AdminOrders";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminProducts from "@/pages/admin/AdminProducts";
 import AdminProductDetail from "@/pages/admin/AdminProductDetail";
@@ -65,6 +63,10 @@ import AdminProductManagement from "@/pages/admin/AdminProductManagement";
 import AdminBulkUpload from "@/pages/admin/AdminBulkUpload";
 import AdminCategories from "@/pages/admin/AdminCategories";
 import AdminCustomers from "@/pages/admin/AdminCustomers";
+import AdminOrders from "@/pages/admin/AdminOrders";
+import AdminOrderManagement from "@/pages/admin/AdminOrderManagement";
+import BuyerOrderManagement from "@/pages/buyer/BuyerOrderManagement";
+import OrderDetail from "@/pages/buyer/OrderDetail";
 import AdminUsers from "@/pages/admin/AdminUsers";
 import AdminUserDetails from "@/pages/admin/AdminUserDetails";
 import AdminUserImportExport from "@/pages/admin/AdminUserImportExport";
@@ -114,6 +116,11 @@ function AdminRouter() {
           <AdminInquiries />
         </ProtectedRoute>
       </Route>
+      <Route path="/admin/order-management">
+        <ProtectedRoute requiredRole="admin">
+          <AdminOrderManagement userRole="admin" />
+        </ProtectedRoute>
+      </Route>
       <Route path="/admin/quotations">
         <ProtectedRoute requiredRole="admin">
           <AdminQuotations />
@@ -132,11 +139,6 @@ function AdminRouter() {
       <Route path="/admin/customers">
         <ProtectedRoute requiredRole="admin">
           <AdminCustomers />
-        </ProtectedRoute>
-      </Route>
-      <Route path="/admin/orders">
-        <ProtectedRoute requiredRole="admin">
-          <AdminOrders />
         </ProtectedRoute>
       </Route>
       <Route path="/admin/users">
@@ -212,6 +214,16 @@ function PublicRouter() {
       <Route path="/buyer/quotations">
         <ProtectedRoute requiredRole="buyer">
           <BuyerQuotations />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/buyer/orders">
+        <ProtectedRoute requiredRole="buyer">
+          <BuyerOrderManagement />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/order/:id">
+        <ProtectedRoute requiredRole="buyer">
+          <OrderDetail />
         </ProtectedRoute>
       </Route>
       <Route path="/quotation/:id">

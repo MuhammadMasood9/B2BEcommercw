@@ -458,6 +458,210 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+// Bulk upload with Excel/JSON and actual image files
+app.post("/api/products/bulk-excel", upload.array('images', 100), async (req, res) => {
+  try {
+    const { products } = req.body;
+    const imageFiles = req.files as Express.Multer.File[];
+    
+    if (!products) {
+      return res.status(400).json({ error: "Products data is required" });
+    }
+    
+    let productsData;
+    try {
+      productsData = JSON.parse(products);
+    } catch (error) {
+      return res.status(400).json({ error: "Invalid products JSON format" });
+    }
+    
+    if (!Array.isArray(productsData)) {
+      return res.status(400).json({ error: "Products must be an array" });
+    }
+    
+    const validatedProducts = [];
+    const errors = [];
+    
+    for (let i = 0; i < productsData.length; i++) {
+      const p = productsData[i];
+      try {
+        // Process arrays from Excel/JSON
+        const tags = p.tags ? (Array.isArray(p.tags) ? p.tags : p.tags.split(',').map((tag: string) => tag.trim()).filter(Boolean)) : [];
+        const paymentTerms = p.paymentTerms ? (Array.isArray(p.paymentTerms) ? p.paymentTerms : p.paymentTerms.split(',').map((term: string) => term.trim()).filter(Boolean)) : [];
+        const colors = p.colors ? (Array.isArray(p.colors) ? p.colors : p.colors.split(',').map((color: string) => color.trim()).filter(Boolean)) : [];
+        const sizes = p.sizes ? (Array.isArray(p.sizes) ? p.sizes : p.sizes.split(',').map((size: string) => size.trim()).filter(Boolean)) : [];
+        const keyFeatures = p.keyFeatures ? (Array.isArray(p.keyFeatures) ? p.keyFeatures : p.keyFeatures.split(',').map((feature: string) => feature.trim()).filter(Boolean)) : [];
+        const certifications = p.certifications ? (Array.isArray(p.certifications) ? p.certifications : p.certifications.split(',').map((cert: string) => cert.trim()).filter(Boolean)) : [];
+        
+        // Process specifications JSON
+        let specifications = null;
+        if (p.specifications) {
+          try {
+            specifications = typeof p.specifications === 'string' ? JSON.parse(p.specifications) : p.specifications;
+          } catch (e) {
+            console.warn(`Invalid specifications JSON for product ${i + 1}:`, p.specifications);
+          }
+        }
+        
+        // Process price tiers from Excel/JSON
+        const priceRanges: Array<{minQty: number, maxQty: number | null, pricePerUnit: number}> = [];
+        if (p.priceTiers && Array.isArray(p.priceTiers)) {
+          p.priceTiers.forEach((tier: any) => {
+            if (tier.minQty && tier.pricePerUnit) {
+              priceRanges.push({
+                minQty: parseInt(tier.minQty),
+                maxQty: tier.maxQty ? parseInt(tier.maxQty) : null,
+                pricePerUnit: parseFloat(tier.pricePerUnit)
+              });
+            }
+          });
+        }
+        
+        // Process images from Excel/JSON (both filenames and embedded image data)
+        const productImages = [];
+        const imageFields = ['mainImage', 'image1', 'image2', 'image3', 'image4', 'image5'];
+        
+        // Collect image filenames from Excel/JSON
+        const excelImageFilenames: string[] = [];
+        imageFields.forEach(field => {
+          if (p[field] && p[field].trim()) {
+            let filename = p[field].trim();
+            // Remove "FILE:" prefix if present (to prevent Google Sheets from treating as images)
+            if (filename.startsWith('FILE: ')) {
+              filename = filename.substring(6);
+            }
+            excelImageFilenames.push(filename);
+          }
+        });
+        
+        // Process images array - can contain both filenames and base64 data
+        if (p.images && Array.isArray(p.images)) {
+          p.images.forEach((imageData: string) => {
+            if (imageData && imageData.trim()) {
+              // Check if it's base64 image data
+              if (imageData.startsWith('data:image/')) {
+                // Extract base64 data and save as file
+                const base64Data = imageData.split(',')[1];
+                const buffer = Buffer.from(base64Data, 'base64');
+                
+                // Generate unique filename
+                const timestamp = Date.now();
+                const randomSuffix = Math.random().toString(36).substring(2, 8);
+                const filename = `excel-image-${timestamp}-${randomSuffix}.jpg`;
+                const filePath = require('path').join(process.cwd(), 'public', 'uploads', filename);
+                
+                try {
+                  require('fs').writeFileSync(filePath, buffer);
+                  productImages.push(`/uploads/${filename}`);
+                  console.log(`Saved embedded image: ${filename}`);
+                } catch (error: any) {
+                  console.error(`Failed to save embedded image: ${error.message}`);
+                }
+              } else {
+                // It's a filename
+                let filename = imageData.trim();
+                if (filename.startsWith('FILE: ')) {
+                  filename = filename.substring(6);
+                }
+                excelImageFilenames.push(filename);
+              }
+            }
+          });
+        }
+        
+        // Match uploaded files with Excel/JSON filenames
+        if (imageFiles && imageFiles.length > 0 && excelImageFilenames.length > 0) {
+          excelImageFilenames.forEach(filename => {
+            const matchingFile = imageFiles.find(file => file.originalname === filename);
+            if (matchingFile) {
+              productImages.push(`/uploads/${matchingFile.filename}`);
+            }
+          });
+        }
+        
+        // If no uploaded files match, check if images exist in uploads directory
+        if (productImages.length === 0 && excelImageFilenames.length > 0) {
+          const fs = require('fs');
+          const path = require('path');
+          const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+          
+          excelImageFilenames.forEach(filename => {
+            const filePath = path.join(uploadsDir, filename);
+            if (fs.existsSync(filePath)) {
+              productImages.push(`/uploads/${filename}`);
+            }
+          });
+        }
+        
+        // If no Excel/JSON image fields specified, fall back to even distribution
+        if (productImages.length === 0 && imageFiles && imageFiles.length > 0) {
+          const imagesPerProduct = Math.ceil(imageFiles.length / productsData.length);
+          const startIndex = i * imagesPerProduct;
+          const endIndex = Math.min(startIndex + imagesPerProduct, imageFiles.length);
+          
+          for (let j = startIndex; j < endIndex; j++) {
+            if (imageFiles[j]) {
+              productImages.push(`/uploads/${imageFiles[j].filename}`);
+            }
+          }
+        }
+        
+        const productData = {
+          name: p.name,
+          slug: (p.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          shortDescription: p.shortDescription,
+          description: p.description,
+          categoryId: p.categoryId,
+          specifications,
+          images: productImages,
+          videos: [],
+          minOrderQuantity: parseInt(p.minOrderQuantity || '1'),
+          priceRanges: priceRanges.length > 0 ? priceRanges : null,
+          sampleAvailable: p.sampleAvailable === 'true' || p.sampleAvailable === true,
+          samplePrice: p.samplePrice ? parseFloat(p.samplePrice) : null,
+          customizationAvailable: p.customizationAvailable === 'true' || p.customizationAvailable === true,
+          customizationDetails: p.customizationDetails,
+          leadTime: p.leadTime,
+          port: p.port,
+          paymentTerms,
+          inStock: p.inStock === 'true' || p.inStock === true,
+          stockQuantity: parseInt(p.stockQuantity || '0'),
+          isPublished: p.isPublished === 'true' || p.isPublished === true,
+          isFeatured: p.isFeatured === 'true' || p.isFeatured === true,
+          colors,
+          sizes,
+          keyFeatures,
+          certifications,
+          tags,
+          hasTradeAssurance: p.hasTradeAssurance === 'true' || p.hasTradeAssurance === true,
+          sku: p.sku,
+          metaData: null,
+        };
+        
+        const validated = insertProductSchema.parse(productData);
+        validatedProducts.push(validated);
+      } catch (error: any) {
+        errors.push({ row: i + 1, error: error.message });
+      }
+    }
+    
+    if (errors.length > 0) {
+      return res.status(400).json({ 
+        error: "Validation errors in Excel/JSON data", 
+        errors,
+        validCount: validatedProducts.length,
+        errorCount: errors.length
+      });
+    }
+    
+    const createdProducts = await storage.bulkCreateProducts(validatedProducts);
+    res.status(201).json({ count: createdProducts.length, products: createdProducts });
+  } catch (error: any) {
+    console.error('Excel/JSON bulk upload error:', error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
   // ==================== CATEGORIES ====================
   
   app.get("/api/categories", async (req, res) => {
@@ -1140,6 +1344,262 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(quotation);
     } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Accept inquiry quotation
+  app.post("/api/inquiry-quotations/:id/accept", async (req, res) => {
+    try {
+      console.log('=== ACCEPT INQUIRY QUOTATION API HIT ===');
+      console.log('Quotation ID:', req.params.id);
+      console.log('Request body:', req.body);
+      
+      const { shippingAddress } = req.body;
+      const quotationId = req.params.id;
+
+      // IMPORTANT: Get buyer ID from authenticated session
+      // @ts-ignore - req.user is added by auth middleware
+      const buyerId = req.user?.id;
+      
+      if (!buyerId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      if (!shippingAddress) {
+        return res.status(400).json({ error: "Shipping address is required" });
+      }
+
+      // Get the inquiry quotation
+      const quotation = await storage.getInquiryQuotationWithDetails(quotationId);
+      if (!quotation) {
+        return res.status(404).json({ error: "Quotation not found" });
+      }
+
+      // Check if this quotation belongs to the authenticated buyer
+      if (quotation.buyerId && quotation.buyerId.toString() !== buyerId.toString()) {
+        return res.status(403).json({ error: "You don't have permission to accept this quotation" });
+      }
+
+      if (quotation.status !== 'pending') {
+        return res.status(400).json({ error: "Only pending quotations can be accepted" });
+      }
+
+      // Update quotation status to accepted
+      await storage.updateInquiryQuotation(quotationId, { 
+        status: 'accepted'
+      });
+
+      // Update inquiry status to closed
+      await storage.updateInquiry(quotation.inquiryId, { status: 'closed' });
+
+      // Create order
+      const order = await storage.createOrder({
+        orderNumber: `INQ-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        buyerId: buyerId,
+        inquiryId: quotation.inquiryId,
+        quotationId: quotationId,
+        productId: quotation.productId,
+        quantity: quotation.inquiryQuantity || quotation.quantity || 1,
+        unitPrice: quotation.pricePerUnit || '0',
+        totalAmount: quotation.totalPrice || '0',
+        items: JSON.stringify([{
+          productId: quotation.productId,
+          productName: quotation.productName,
+          quantity: quotation.inquiryQuantity || quotation.quantity || 1,
+          unitPrice: quotation.pricePerUnit || '0',
+          totalPrice: quotation.totalPrice || '0'
+        }]),
+        shippingAddress: JSON.stringify(shippingAddress),
+        status: 'pending',
+        notes: `Order created from quotation. Admin: ${quotation.supplierName || 'Admin'}. Message: ${quotation.message || ''}`
+      });
+
+      res.json({ 
+        success: true, 
+        message: 'Quotation accepted and order created successfully!',
+        orderId: order.id
+      });
+    } catch (error: any) {
+      console.error('Error accepting inquiry quotation:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Reject inquiry quotation
+  app.post("/api/inquiry-quotations/:id/reject", async (req, res) => {
+    try {
+      console.log('=== REJECT INQUIRY QUOTATION API HIT ===');
+      console.log('Quotation ID:', req.params.id);
+      console.log('Request body:', req.body);
+      
+      const { reason } = req.body;
+      const quotationId = req.params.id;
+
+      // IMPORTANT: Get buyer ID from authenticated session
+      // @ts-ignore - req.user is added by auth middleware
+      const buyerId = req.user?.id;
+      
+      if (!buyerId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      // Get the inquiry quotation
+      const quotation = await storage.getInquiryQuotationWithDetails(quotationId);
+      if (!quotation) {
+        return res.status(404).json({ error: "Quotation not found" });
+      }
+
+      // Check if this quotation belongs to the authenticated buyer
+      if (quotation.buyerId && quotation.buyerId.toString() !== buyerId.toString()) {
+        return res.status(403).json({ error: "You don't have permission to reject this quotation" });
+      }
+
+      if (quotation.status !== 'pending') {
+        return res.status(400).json({ error: "Only pending quotations can be rejected" });
+      }
+
+      // Update quotation status to rejected
+      await storage.updateInquiryQuotation(quotationId, { 
+        status: 'rejected',
+        message: reason ? `Rejected: ${reason}` : quotation.message
+      });
+
+      res.json({ 
+        success: true, 
+        message: 'Quotation rejected successfully' 
+      });
+    } catch (error: any) {
+      console.error('Error rejecting inquiry quotation:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get all orders for buyer (centralized view) - ONLY their own orders
+  app.get("/api/buyer/orders", async (req, res) => {
+    try {
+      const { status, search, sort } = req.query;
+      // IMPORTANT: Get buyer ID from authenticated session
+      // @ts-ignore - req.user is added by auth middleware
+      const buyerId = req.user?.id;
+      
+      if (!buyerId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      // Get all orders
+      let orders = await storage.getOrders();
+      
+      // FILTER: Only show orders for THIS buyer
+      orders = orders.filter((order: any) => order.buyerId && order.buyerId.toString() === buyerId.toString());
+      
+      // Filter by status if provided
+      if (status && status !== 'all') {
+        orders = orders.filter((order: any) => order.status === status);
+      }
+      
+      // Search filter
+      if (search) {
+        const searchLower = (search as string).toLowerCase();
+        orders = orders.filter((order: any) =>
+          order.orderNumber?.toLowerCase().includes(searchLower) ||
+          order.items?.some((item: any) => item.productName?.toLowerCase().includes(searchLower)) ||
+          order.supplierName?.toLowerCase().includes(searchLower)
+        );
+      }
+      
+      // Sort
+      if (sort) {
+        switch(sort) {
+          case 'newest':
+            orders.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            break;
+          case 'oldest':
+            orders.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+            break;
+          case 'amount-high':
+            orders.sort((a: any, b: any) => parseFloat(b.totalAmount || '0') - parseFloat(a.totalAmount || '0'));
+            break;
+          case 'amount-low':
+            orders.sort((a: any, b: any) => parseFloat(a.totalAmount || '0') - parseFloat(b.totalAmount || '0'));
+            break;
+        }
+      }
+      
+      res.json({ orders });
+    } catch (error: any) {
+      console.error('Error fetching buyer orders:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get specific order for buyer (with permission check)
+  app.get("/api/buyer/orders/:id", async (req, res) => {
+    try {
+      // IMPORTANT: Get buyer ID from authenticated session
+      // @ts-ignore - req.user is added by auth middleware
+      const buyerId = req.user?.id;
+      
+      if (!buyerId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const order = await storage.getOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+
+      // Check if this order belongs to the authenticated buyer
+      if (order.buyerId && order.buyerId.toString() !== buyerId.toString()) {
+        return res.status(403).json({ error: "You don't have permission to view this order" });
+      }
+
+      res.json(order);
+    } catch (error: any) {
+      console.error('Error fetching buyer order:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Cancel order for buyer
+  app.patch("/api/buyer/orders/:id/cancel", async (req, res) => {
+    try {
+      // IMPORTANT: Get buyer ID from authenticated session
+      // @ts-ignore - req.user is added by auth middleware
+      const buyerId = req.user?.id;
+      
+      if (!buyerId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const order = await storage.getOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+
+      // Check if this order belongs to the authenticated buyer
+      if (order.buyerId && order.buyerId.toString() !== buyerId.toString()) {
+        return res.status(403).json({ error: "You don't have permission to cancel this order" });
+      }
+
+      if (!order.status || !['pending', 'confirmed'].includes(order.status)) {
+        return res.status(400).json({ error: "Only pending or confirmed orders can be cancelled" });
+      }
+
+      const { reason } = req.body;
+      
+      // Update order status to cancelled
+      await storage.updateOrder(req.params.id, { 
+        status: 'cancelled',
+        notes: (order.notes || '') + `\n\nOrder cancelled by buyer. Reason: ${reason || 'No reason provided'}`
+      });
+
+      res.json({ 
+        message: 'Order cancelled successfully',
+        order: await storage.getOrder(req.params.id)
+      });
+    } catch (error: any) {
+      console.error('Error cancelling buyer order:', error);
       res.status(500).json({ error: error.message });
     }
   });

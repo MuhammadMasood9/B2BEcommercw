@@ -70,6 +70,11 @@ const adminMenuItems = [
     icon: ShoppingCart,
   },
   {
+    title: "Order Management",
+    url: "/admin/order-management",
+    icon: ShoppingCart,
+  },
+  {
     title: "Customers",
     url: "/admin/customers",
     icon: Users,

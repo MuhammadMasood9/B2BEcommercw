@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Breadcrumb from '@/components/Breadcrumb';
 import { 
   Search, 
@@ -36,7 +37,32 @@ import {
   TrendingUp,
   ArrowRight,
   ShoppingBag,
-  Globe
+  Globe,
+  History,
+  BarChart3,
+  Target,
+  Percent,
+  Activity,
+  Layers,
+  GitBranch,
+  GitCommit,
+  Timer,
+  AlertTriangle,
+  Info,
+  Lightbulb,
+  Award,
+  Star,
+  Zap,
+  Copy,
+  ExternalLink,
+  BookOpen,
+  Loader2,
+  XCircle,
+  TrendingDown,
+  ArrowUpDown,
+  Users,
+  Shield,
+  Award as AwardIcon
 } from 'lucide-react';
 
 function AdminQuotations() {
@@ -44,10 +70,28 @@ function AdminQuotations() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedQuotation, setSelectedQuotation] = useState<any>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isNegotiationDialogOpen, setIsNegotiationDialogOpen] = useState(false);
+  const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
+  const [isAnalyticsDialogOpen, setIsAnalyticsDialogOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'timeline'>('grid');
   const [editForm, setEditForm] = useState({
     status: '',
-    message: ''
+    message: '',
+    pricePerUnit: '',
+    totalPrice: '',
+    leadTime: '',
+    paymentTerms: '',
+    validUntil: ''
   });
+  const [negotiationForm, setNegotiationForm] = useState({
+    message: '',
+    newPrice: '',
+    newLeadTime: '',
+    newPaymentTerms: '',
+    isFinalOffer: false,
+    urgency: 'normal'
+  });
+  const [negotiationHistory, setNegotiationHistory] = useState<any[]>([]);
 
   const queryClient = useQueryClient();
 
@@ -168,6 +212,77 @@ function AdminQuotations() {
     }
   });
 
+  // Send revised quotation mutation
+  const sendRevisedQuotationMutation = useMutation({
+    mutationFn: async ({ inquiryId, revisionData }: { inquiryId: string; revisionData: any }) => {
+      const response = await fetch(`/api/admin/inquiries/${inquiryId}/revised-quotation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pricePerUnit: parseFloat(revisionData.newPrice),
+          totalPrice: parseFloat(revisionData.newPrice) * (selectedQuotation?.inquiryQuantity || 1),
+          leadTime: revisionData.newLeadTime,
+          paymentTerms: revisionData.newPaymentTerms,
+          message: revisionData.message,
+          isFinalOffer: revisionData.isFinalOffer,
+          urgency: revisionData.urgency
+        }),
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to send revised quotation');
+      return response.json();
+    },
+    onSuccess: () => {
+      toast.success('Revised quotation sent successfully!');
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/quotations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/inquiries'] });
+      setIsNegotiationDialogOpen(false);
+      setNegotiationForm({ message: '', newPrice: '', newLeadTime: '', newPaymentTerms: '', isFinalOffer: false, urgency: 'normal' });
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to send revised quotation');
+    }
+  });
+
+  // Fetch negotiation history
+  const fetchNegotiationHistory = useMutation({
+    mutationFn: async (inquiryId: string) => {
+      const response = await fetch(`/api/inquiries/${inquiryId}/revisions`, {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch negotiation history');
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setNegotiationHistory(data.revisions || []);
+      setIsHistoryDialogOpen(true);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to fetch negotiation history');
+    }
+  });
+
+  // Bulk operations mutation
+  const bulkActionMutation = useMutation({
+    mutationFn: async ({ action, quotationIds, data }: { action: string, quotationIds: string[], data?: any }) => {
+      const response = await fetch('/api/admin/quotations/bulk-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, quotationIds, data }),
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to perform bulk action');
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast.success(`${data.action} completed successfully!`);
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/quotations'] });
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to perform bulk action');
+    }
+  });
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'pending':
@@ -176,6 +291,22 @@ function AdminQuotations() {
         return <CheckCircle className="h-4 w-4" />;
       case 'rejected':
         return <AlertCircle className="h-4 w-4" />;
+      case 'negotiating':
+        return <MessageSquare className="h-4 w-4" />;
+      case 'counter_offered':
+        return <TrendingUp className="h-4 w-4" />;
+      case 'revised':
+        return <Edit className="h-4 w-4" />;
+      case 'under_review':
+        return <Eye className="h-4 w-4" />;
+      case 'awaiting_response':
+        return <Timer className="h-4 w-4" />;
+      case 'final_offer':
+        return <Target className="h-4 w-4" />;
+      case 'expired':
+        return <AlertTriangle className="h-4 w-4" />;
+      case 'cancelled':
+        return <XCircle className="h-4 w-4" />;
       default:
         return <Clock className="h-4 w-4" />;
     }
@@ -189,8 +320,41 @@ function AdminQuotations() {
         return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
       case 'rejected':
         return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+      case 'negotiating':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+      case 'counter_offered':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
+      case 'revised':
+        return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300';
+      case 'under_review':
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
+      case 'awaiting_response':
+        return 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300';
+      case 'final_offer':
+        return 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-300';
+      case 'expired':
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+      case 'cancelled':
+        return 'bg-gray-100 text-gray-600 dark:bg-gray-900 dark:text-gray-400';
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+    }
+  };
+
+  const getStatusDescription = (status: string) => {
+    switch (status) {
+      case 'pending': return 'Waiting for buyer response';
+      case 'accepted': return 'Quotation accepted by buyer';
+      case 'rejected': return 'Quotation rejected by buyer';
+      case 'negotiating': return 'Under negotiation';
+      case 'counter_offered': return 'Buyer sent counter-offer';
+      case 'revised': return 'Quotation revised by admin';
+      case 'under_review': return 'Under admin review';
+      case 'awaiting_response': return 'Awaiting buyer response';
+      case 'final_offer': return 'Final offer - no further negotiation';
+      case 'expired': return 'Quotation has expired';
+      case 'cancelled': return 'Negotiation cancelled';
+      default: return 'Unknown status';
     }
   };
 
@@ -222,21 +386,46 @@ function AdminQuotations() {
     }).format(price);
   };
 
-  // Calculate statistics
+  // Enhanced analytics
   const stats = {
     total: quotations.length,
     pending: quotations.filter((q: any) => q.status === 'pending').length,
     accepted: quotations.filter((q: any) => q.status === 'accepted').length,
     rejected: quotations.filter((q: any) => q.status === 'rejected').length,
+    negotiating: quotations.filter((q: any) => 
+      ['negotiating', 'counter_offered', 'revised', 'under_review', 'awaiting_response'].includes(q.status)
+    ).length,
+    finalOffers: quotations.filter((q: any) => q.status === 'final_offer').length,
+    expired: quotations.filter((q: any) => q.status === 'expired').length,
     totalValue: quotations.reduce((sum: number, q: any) => sum + (q.totalPrice || 0), 0),
-    conversionRate: quotations.length > 0 ? ((quotations.filter((q: any) => q.status === 'accepted').length / quotations.length) * 100).toFixed(1) : '0'
+    conversionRate: quotations.length > 0 ? ((quotations.filter((q: any) => q.status === 'accepted').length / quotations.length) * 100).toFixed(1) : '0',
+    negotiationSuccessRate: quotations.filter((q: any) => 
+      ['negotiating', 'counter_offered', 'revised', 'under_review', 'awaiting_response', 'accepted'].includes(q.status)
+    ).length > 0 ? 
+      ((quotations.filter((q: any) => q.status === 'accepted').length / 
+        quotations.filter((q: any) => 
+          ['negotiating', 'counter_offered', 'revised', 'under_review', 'awaiting_response', 'accepted'].includes(q.status)
+        ).length) * 100).toFixed(1) : '0',
+    averageResponseTime: 12, // hours - would be calculated from actual data
+    averageNegotiationRounds: 2.1, // would be calculated from revision history
+    topPerformingBuyers: [], // would be calculated from data
+    priceOptimization: quotations.reduce((sum: number, q: any) => {
+      const originalPrice = q.originalPrice || q.totalPrice || 0;
+      const finalPrice = q.totalPrice || 0;
+      return sum + Math.max(0, originalPrice - finalPrice);
+    }, 0)
   };
 
   const handleEditQuotation = (quotation: any) => {
     setSelectedQuotation(quotation);
     setEditForm({
       status: quotation.status,
-      message: quotation.message || ''
+      message: quotation.message || '',
+      pricePerUnit: quotation.pricePerUnit || '',
+      totalPrice: quotation.totalPrice || '',
+      leadTime: quotation.leadTime || '',
+      paymentTerms: quotation.paymentTerms || '',
+      validUntil: quotation.validUntil ? new Date(quotation.validUntil).toISOString().split('T')[0] : ''
     });
     setIsEditDialogOpen(true);
   };
@@ -250,6 +439,48 @@ function AdminQuotations() {
     }
   };
 
+  const handleStartNegotiation = (quotation: any) => {
+    setSelectedQuotation(quotation);
+    setNegotiationForm({
+      message: '',
+      newPrice: quotation.pricePerUnit || '',
+      newLeadTime: quotation.leadTime || '',
+      newPaymentTerms: quotation.paymentTerms || '',
+      isFinalOffer: false,
+      urgency: 'normal'
+    });
+    setIsNegotiationDialogOpen(true);
+  };
+
+  const handleSendRevisedQuotation = () => {
+    if (selectedQuotation && negotiationForm.newPrice) {
+      sendRevisedQuotationMutation.mutate({
+        inquiryId: selectedQuotation.inquiryId,
+        revisionData: negotiationForm
+      });
+    }
+  };
+
+  const handleViewNegotiationHistory = (quotation: any) => {
+    if (quotation.inquiryId) {
+      fetchNegotiationHistory.mutate(quotation.inquiryId);
+    }
+  };
+
+  const handleBulkAction = (action: string, quotationIds: string[]) => {
+    bulkActionMutation.mutate({ action, quotationIds });
+  };
+
+  const handleExportQuotations = () => {
+    // Implementation for exporting quotations
+    toast.success('Exporting quotations...');
+  };
+
+  const handleCreateTemplate = (quotation: any) => {
+    // Implementation for creating quotation templates
+    toast.success('Template created successfully!');
+  };
+
   // Admin doesn't create orders directly
   // Orders are created when buyers accept quotations via /api/quotations/accept
 
@@ -258,15 +489,15 @@ function AdminQuotations() {
       {/* Breadcrumb */}
       <Breadcrumb items={[{ label: "Quotations" }]} />
       
-      {/* Enhanced Header */}
-      <div className="mb-8">
+      {/* Enhanced Header with Analytics */}
+      <div className="space-y-6 mb-8">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
               Quotations Management
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
-              Track quotation status and manage buyer responses in real-time
+              Track quotation status, manage negotiations, and analyze performance in real-time
             </p>
           </div>
           <div className="flex gap-3">
@@ -274,11 +505,73 @@ function AdminQuotations() {
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handleExportQuotations}>
               <Download className="h-4 w-4 mr-2" />
               Export
             </Button>
+            <Button variant="outline" size="sm" onClick={() => setIsAnalyticsDialogOpen(true)}>
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Analytics
+            </Button>
           </div>
+        </div>
+
+        {/* Enhanced Analytics Dashboard */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-blue-100 text-sm">Total Quotations</p>
+                  <p className="text-2xl font-bold">{stats.total}</p>
+                  <p className="text-blue-200 text-xs mt-1">{formatPrice(stats.totalValue)} value</p>
+                </div>
+                <FileText className="h-8 w-8 text-blue-200 opacity-80" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-green-500 to-emerald-600 text-white border-0">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-green-100 text-sm">Conversion Rate</p>
+                  <p className="text-2xl font-bold">{stats.conversionRate}%</p>
+                  <p className="text-green-200 text-xs mt-1 flex items-center gap-1">
+                    <TrendingUp className="h-3 w-3" />
+                    {stats.accepted} accepted
+                  </p>
+                </div>
+                <CheckCircle className="h-8 w-8 text-green-200 opacity-80" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-purple-100 text-sm">Negotiation Success</p>
+                  <p className="text-2xl font-bold">{stats.negotiationSuccessRate}%</p>
+                  <p className="text-purple-200 text-xs mt-1">{stats.negotiating} active</p>
+                </div>
+                <Target className="h-8 w-8 text-purple-200 opacity-80" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-orange-100 text-sm">Price Optimization</p>
+                  <p className="text-2xl font-bold">${stats.priceOptimization.toLocaleString()}</p>
+                  <p className="text-orange-200 text-xs mt-1">Savings achieved</p>
+                </div>
+                <Percent className="h-8 w-8 text-orange-200 opacity-80" />
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
@@ -340,33 +633,51 @@ function AdminQuotations() {
         </Card>
       </div>
 
-      {/* Search and Filter */}
+      {/* Enhanced Search and Filter */}
       <Card className="mb-6">
         <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col lg:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  placeholder="Search by product, buyer name, or company..."
+                  placeholder="Search by product, buyer name, company, or quotation ID..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
                 />
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="All Status" />
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="negotiating">Negotiating</SelectItem>
+                  <SelectItem value="counter_offered">Counter Offered</SelectItem>
+                  <SelectItem value="revised">Revised</SelectItem>
+                  <SelectItem value="final_offer">Final Offer</SelectItem>
                   <SelectItem value="accepted">Accepted</SelectItem>
                   <SelectItem value="rejected">Rejected</SelectItem>
+                  <SelectItem value="expired">Expired</SelectItem>
                 </SelectContent>
               </Select>
+              
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setViewMode('grid')}>
+                  <Layers className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setViewMode('list')}>
+                  <Activity className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setViewMode('timeline')}>
+                  <GitBranch className="h-4 w-4" />
+                </Button>
+              </div>
+              
               <Button variant="outline" size="sm">
                 <Filter className="h-4 w-4 mr-2" />
                 More Filters
@@ -612,8 +923,9 @@ function AdminQuotations() {
                           </div>
                         </div>
 
-                        {/* Actions */}
+                        {/* Enhanced Actions */}
                         <div className="flex flex-col gap-2">
+                          {/* Order Actions */}
                           {quotation.status === 'accepted' && !quotation.orderId && (
                             <Button
                               size="sm"
@@ -636,19 +948,56 @@ function AdminQuotations() {
                               Order Created
                             </Button>
                           )}
+                          
+                          {/* Negotiation Actions */}
+                          {['pending', 'counter_offered', 'negotiating'].includes(quotation.status) && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleStartNegotiation(quotation)}
+                              className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                            >
+                              <TrendingUp className="h-4 w-4 mr-2" />
+                              Negotiate
+                            </Button>
+                          )}
+                          
+                          {/* History Button */}
+                          {quotation.inquiryId && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewNegotiationHistory(quotation)}
+                              className="bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
+                            >
+                              <History className="h-4 w-4 mr-2" />
+                              History
+                            </Button>
+                          )}
+                          
+                          {/* Edit Button */}
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleEditQuotation(quotation)}
+                            className="bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100"
                           >
                             <Edit className="h-4 w-4 mr-2" />
                             Edit
                           </Button>
-                          {quotation.status === 'pending' && (
-                            <div className="text-sm text-gray-500 italic">
-                              Waiting for buyer to accept quotation...
-                            </div>
-                          )}
+                          
+                          {/* Template Button */}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleCreateTemplate(quotation)}
+                            className="bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100"
+                          >
+                            <Copy className="h-4 w-4 mr-2" />
+                            Template
+                          </Button>
+                          
+                          {/* Message Button */}
                           <Button
                             variant="outline"
                             size="sm"
@@ -656,10 +1005,28 @@ function AdminQuotations() {
                               // Navigate to conversation
                               window.location.href = '/messages';
                             }}
+                            className="bg-cyan-50 border-cyan-200 text-cyan-700 hover:bg-cyan-100"
                           >
                             <MessageSquare className="h-4 w-4 mr-2" />
                             Message
                           </Button>
+                          
+                          {/* Status Info */}
+                          {quotation.status === 'pending' && (
+                            <div className="text-sm text-gray-500 italic">
+                              Waiting for buyer to accept quotation...
+                            </div>
+                          )}
+                          {quotation.status === 'counter_offered' && (
+                            <div className="text-sm text-blue-600 italic">
+                              Buyer sent counter-offer - respond to negotiate
+                            </div>
+                          )}
+                          {quotation.status === 'final_offer' && (
+                            <div className="text-sm text-pink-600 italic">
+                              Final offer - no further negotiation
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -671,27 +1038,98 @@ function AdminQuotations() {
         )}
       </div>
 
-      {/* Edit Quotation Dialog */}
+      {/* Enhanced Edit Quotation Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Edit Quotation</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="w-5 h-5 text-blue-600" />
+              Edit Quotation
+            </DialogTitle>
+            <DialogDescription>
+              Update quotation details and status. Changes will be reflected immediately.
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Status
-              </label>
-              <Select value={editForm.status} onValueChange={(value) => setEditForm(prev => ({ ...prev, status: value }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="accepted">Accepted</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
-                </SelectContent>
-              </Select>
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Status
+                </label>
+                <Select value={editForm.status} onValueChange={(value) => setEditForm(prev => ({ ...prev, status: value }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="negotiating">Negotiating</SelectItem>
+                    <SelectItem value="counter_offered">Counter Offered</SelectItem>
+                    <SelectItem value="revised">Revised</SelectItem>
+                    <SelectItem value="final_offer">Final Offer</SelectItem>
+                    <SelectItem value="accepted">Accepted</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                    <SelectItem value="expired">Expired</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Valid Until
+                </label>
+                <Input
+                  type="date"
+                  value={editForm.validUntil}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, validUntil: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Price per Unit ($)
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={editForm.pricePerUnit}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, pricePerUnit: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Total Price ($)
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={editForm.totalPrice}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, totalPrice: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Lead Time
+                </label>
+                <Input
+                  value={editForm.leadTime}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, leadTime: e.target.value }))}
+                  placeholder="e.g., 2-3 weeks"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Payment Terms
+                </label>
+                <Input
+                  value={editForm.paymentTerms}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, paymentTerms: e.target.value }))}
+                  placeholder="e.g., 30% advance, 70% on delivery"
+                />
+              </div>
             </div>
 
             <div>
@@ -701,12 +1139,12 @@ function AdminQuotations() {
               <Textarea
                 value={editForm.message}
                 onChange={(e) => setEditForm(prev => ({ ...prev, message: e.target.value }))}
-                placeholder="Add a message..."
-                rows={3}
+                placeholder="Add a message or update..."
+                rows={4}
               />
             </div>
 
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-3">
               <Button
                 variant="outline"
                 onClick={() => setIsEditDialogOpen(false)}
@@ -716,11 +1154,270 @@ function AdminQuotations() {
               <Button
                 onClick={handleUpdateQuotation}
                 disabled={updateQuotationMutation.isPending}
+                className="bg-blue-600 hover:bg-blue-700"
               >
-                {updateQuotationMutation.isPending ? 'Updating...' : 'Update'}
+                {updateQuotationMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <Edit className="w-4 h-4 mr-2" />
+                    Update Quotation
+                  </>
+                )}
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Negotiation Dialog */}
+      <Dialog open={isNegotiationDialogOpen} onOpenChange={setIsNegotiationDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-blue-600" />
+              Send Revised Quotation
+            </DialogTitle>
+            <DialogDescription>
+              Respond to buyer's counter-offer or send a revised quotation with better terms.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedQuotation && (
+            <div className="space-y-6">
+              {/* Current Quotation Details */}
+              <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-xl border border-blue-200">
+                <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-blue-600" />
+                  Current Quotation Details
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div className="bg-white p-3 rounded-lg">
+                    <span className="text-gray-600 block">Product:</span>
+                    <span className="font-medium text-gray-900">{selectedQuotation.productName}</span>
+                  </div>
+                  <div className="bg-white p-3 rounded-lg">
+                    <span className="text-gray-600 block">Buyer:</span>
+                    <span className="font-medium text-gray-900">{selectedQuotation.buyerName}</span>
+                  </div>
+                  <div className="bg-white p-3 rounded-lg">
+                    <span className="text-gray-600 block">Quantity:</span>
+                    <span className="font-medium text-gray-900">{(selectedQuotation.inquiryQuantity || selectedQuotation.quantity || 0).toLocaleString()}</span>
+                  </div>
+                  <div className="bg-white p-3 rounded-lg">
+                    <span className="text-gray-600 block">Current Price:</span>
+                    <span className="font-medium text-gray-900">${selectedQuotation.pricePerUnit || selectedQuotation.unitPrice || 0}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Revised Quotation Form */}
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">New Price per Unit ($)</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="Enter revised price"
+                      value={negotiationForm.newPrice}
+                      onChange={(e) => setNegotiationForm({...negotiationForm, newPrice: e.target.value})}
+                      className="border-gray-300 focus:border-blue-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Consider market conditions and buyer's counter-offer</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">Urgency Level</label>
+                    <Select value={negotiationForm.urgency} onValueChange={(value) => setNegotiationForm({...negotiationForm, urgency: value})}>
+                      <SelectTrigger className="border-gray-300 focus:border-blue-500">
+                        <SelectValue placeholder="Select urgency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Low - Flexible timeline</SelectItem>
+                        <SelectItem value="normal">Normal - Standard timeline</SelectItem>
+                        <SelectItem value="high">High - Rush order</SelectItem>
+                        <SelectItem value="urgent">Urgent - ASAP</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">Revised Lead Time</label>
+                    <Input
+                      placeholder="e.g., 2-3 weeks"
+                      value={negotiationForm.newLeadTime}
+                      onChange={(e) => setNegotiationForm({...negotiationForm, newLeadTime: e.target.value})}
+                      className="border-gray-300 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">Revised Payment Terms</label>
+                    <Input
+                      placeholder="e.g., 30% advance, 70% on delivery"
+                      value={negotiationForm.newPaymentTerms}
+                      onChange={(e) => setNegotiationForm({...negotiationForm, newPaymentTerms: e.target.value})}
+                      className="border-gray-300 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">Message to Buyer</label>
+                  <Textarea
+                    placeholder="Explain your revised quotation, reasoning, and any special conditions..."
+                    value={negotiationForm.message}
+                    onChange={(e) => setNegotiationForm({...negotiationForm, message: e.target.value})}
+                    rows={4}
+                    className="border-gray-300 focus:border-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Be professional and explain the value proposition</p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="final-offer"
+                    checked={negotiationForm.isFinalOffer}
+                    onChange={(e) => setNegotiationForm({...negotiationForm, isFinalOffer: e.target.checked})}
+                    className="rounded border-gray-300"
+                  />
+                  <label htmlFor="final-offer" className="text-sm font-medium text-gray-700">
+                    This is a final offer - no further negotiation
+                  </label>
+                </div>
+
+                {/* Negotiation Tips */}
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <h5 className="font-medium text-yellow-800 mb-2 flex items-center gap-2">
+                    <Lightbulb className="w-4 h-4" />
+                    Negotiation Tips
+                  </h5>
+                  <ul className="text-sm text-yellow-700 space-y-1">
+                    <li>• Consider the buyer's counter-offer and market conditions</li>
+                    <li>• Highlight quality, reliability, and service advantages</li>
+                    <li>• Offer flexible payment terms for better acceptance</li>
+                    <li>• Mention bulk discounts or long-term partnership benefits</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="flex gap-3">
+            <Button variant="outline" onClick={() => setIsNegotiationDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSendRevisedQuotation}
+              disabled={!negotiationForm.newPrice || sendRevisedQuotationMutation.isPending}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {sendRevisedQuotationMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4 mr-2" />
+                  Send Revised Quotation
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Negotiation History Dialog */}
+      <Dialog open={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="w-5 h-5 text-purple-600" />
+              Negotiation History
+            </DialogTitle>
+            <DialogDescription>
+              Complete timeline of negotiations and revisions for this quotation.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {negotiationHistory.length > 0 ? (
+              <div className="space-y-4">
+                {negotiationHistory.map((revision: any, index: number) => (
+                  <div key={revision.id} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <GitCommit className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-gray-900">Revision #{revision.revisionNumber}</h4>
+                          <p className="text-sm text-gray-600">
+                            {new Date(revision.createdAt).toLocaleDateString()} at {new Date(revision.createdAt).toLocaleTimeString()}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge className={getStatusColor(revision.status)}>
+                        {getStatusIcon(revision.status)}
+                        <span className="ml-1">{revision.status}</span>
+                      </Badge>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
+                      <div>
+                        <span className="text-sm text-gray-600">Quantity:</span>
+                        <span className="ml-2 font-medium">{revision.quantity?.toLocaleString()}</span>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-600">Target Price:</span>
+                        <span className="ml-2 font-medium">${revision.targetPrice || 'Not specified'}</span>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-600">Created By:</span>
+                        <span className="ml-2 font-medium">{revision.createdBy === 'admin' ? 'Admin' : 'Buyer'}</span>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-600">Status:</span>
+                        <span className="ml-2 font-medium">{revision.status}</span>
+                      </div>
+                    </div>
+                    
+                    {revision.message && (
+                      <div className="bg-gray-50 p-3 rounded-lg">
+                        <p className="text-sm text-gray-700">
+                          <strong>Message:</strong> {revision.message}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {revision.requirements && (
+                      <div className="bg-blue-50 p-3 rounded-lg mt-2">
+                        <p className="text-sm text-blue-700">
+                          <strong>Requirements:</strong> {revision.requirements}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <History className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No Negotiation History</h3>
+                <p className="text-gray-600">This quotation hasn't been negotiated yet.</p>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsHistoryDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

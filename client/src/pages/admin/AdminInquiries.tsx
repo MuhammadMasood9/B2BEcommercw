@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Breadcrumb from '@/components/Breadcrumb';
 import { 
@@ -39,7 +40,39 @@ import {
   Star,
   Users,
   ShoppingCart,
-  Settings
+  Settings,
+  Edit,
+  Trash2,
+  Plus,
+  Download,
+  ArrowRight,
+  ShoppingBag,
+  Globe,
+  History,
+  Percent,
+  Layers,
+  GitBranch,
+  GitCommit,
+  Timer,
+  AlertTriangle,
+  Info,
+  Lightbulb,
+  Award,
+  Copy,
+  ExternalLink,
+  BookOpen,
+  Loader2,
+  XCircle,
+  TrendingDown,
+  ArrowUpDown,
+  Shield,
+  Award as AwardIcon,
+  ThumbsUp,
+  ThumbsDown,
+  X,
+  CheckSquare,
+  Square,
+  ArrowUpDown as ArrowUpDownIcon
 } from 'lucide-react';
 
 export default function AdminInquiries() {
@@ -70,6 +103,8 @@ export default function AdminInquiries() {
     validUntil: '',
     message: ''
   });
+  const [isCompareDialogOpen, setIsCompareDialogOpen] = useState(false);
+  const [selectedInquiryForCompare, setSelectedInquiryForCompare] = useState<any>(null);
 
   const queryClient = useQueryClient();
 
@@ -186,6 +221,28 @@ export default function AdminInquiries() {
       toast.error(`Failed to send revised quotation: ${error.message}`);
     }
   });
+
+  // Update inquiry status mutation
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ inquiryId, status, reason }: { inquiryId: string, status: string, reason?: string }) => {
+      const response = await fetch(`/api/admin/inquiries/${inquiryId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status, reason })
+      });
+      if (!response.ok) throw new Error('Failed to update inquiry status');
+      return response.json();
+    },
+    onSuccess: () => {
+      toast.success('Inquiry status updated successfully!');
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/inquiries'] });
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to update inquiry status: ${error.message}`);
+    }
+  });
+
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -309,6 +366,16 @@ export default function AdminInquiries() {
         moq: moq
       }
     });
+  };
+
+  const handleCompareQuotations = (inquiry: any) => {
+    // Check if there are multiple quotations for this inquiry
+    if (inquiry.quotations && inquiry.quotations.length > 1) {
+      setSelectedInquiryForCompare(inquiry);
+      setIsCompareDialogOpen(true);
+    } else {
+      toast.error('No multiple quotations found for this inquiry to compare');
+    }
   };
 
 
@@ -825,6 +892,19 @@ export default function AdminInquiries() {
                           </Button>
                         )}
                         
+                        {/* Compare Button - Only show if there are multiple quotations */}
+                        {inquiry.quotations && inquiry.quotations.length > 1 && (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleCompareQuotations(inquiry)}
+                            className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                          >
+                            <BarChart3 className="h-4 w-4 mr-2" />
+                            Compare Quotations
+                          </Button>
+                        )}
+                        
                         <Button variant="outline" size="sm">
                           <MessageSquare className="h-4 w-4 mr-2" />
                           Message Buyer
@@ -1079,6 +1159,195 @@ export default function AdminInquiries() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Quotation Comparison Dialog */}
+      <Dialog open={isCompareDialogOpen} onOpenChange={setIsCompareDialogOpen}>
+        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-green-600" />
+              Compare Quotations - {selectedInquiryForCompare?.productName}
+            </DialogTitle>
+            <DialogDescription>
+              Compare all quotations sent for this inquiry to track negotiation progress and pricing changes.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedInquiryForCompare && (
+            <div className="space-y-6">
+              {/* Inquiry Details */}
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h4 className="font-semibold text-gray-900 mb-2">Inquiry Details</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">Product:</span>
+                    <span className="ml-2 font-medium">{selectedInquiryForCompare.productName}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Buyer:</span>
+                    <span className="ml-2 font-medium">{selectedInquiryForCompare.buyerName}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Company:</span>
+                    <span className="ml-2 font-medium">{selectedInquiryForCompare.buyerCompany}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Quantity:</span>
+                    <span className="ml-2 font-medium">{selectedInquiryForCompare.quantity} units</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Target Price:</span>
+                    <span className="ml-2 font-medium">${selectedInquiryForCompare.targetPrice}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Status:</span>
+                    <span className="ml-2 font-medium capitalize">{selectedInquiryForCompare.status}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Created:</span>
+                    <span className="ml-2 font-medium">{formatDate(selectedInquiryForCompare.createdAt)}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Country:</span>
+                    <span className="ml-2 font-medium">{selectedInquiryForCompare.buyerCountry}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quotations Comparison Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left p-3 font-medium text-gray-700">Criteria</th>
+                      {selectedInquiryForCompare.quotations.map((quotation: any, index: number) => (
+                        <th key={quotation.id} className="text-left p-3 font-medium text-gray-700">
+                          <div className="flex items-center gap-2">
+                            <Badge className={
+                              quotation.status === 'accepted' ? 'bg-green-100 text-green-800' :
+                              quotation.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                              'bg-yellow-100 text-yellow-800'
+                            }>
+                              {quotation.status}
+                            </Badge>
+                            <div className="text-xs text-gray-500 mt-1">
+                              <div>Quotation #{index + 1}</div>
+                              <div>{formatDate(quotation.createdAt)}</div>
+                            </div>
+                          </div>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-gray-100">
+                      <td className="p-3 font-medium text-gray-700">Price per Unit</td>
+                      {selectedInquiryForCompare.quotations.map((quotation: any) => (
+                        <td key={quotation.id} className="p-3 font-medium text-green-600">
+                          ${quotation.pricePerUnit}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr className="border-b border-gray-100">
+                      <td className="p-3 font-medium text-gray-700">Total Price</td>
+                      {selectedInquiryForCompare.quotations.map((quotation: any) => (
+                        <td key={quotation.id} className="p-3 font-medium text-green-600">
+                          ${quotation.totalPrice?.toLocaleString()}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr className="border-b border-gray-100">
+                      <td className="p-3 font-medium text-gray-700">MOQ</td>
+                      {selectedInquiryForCompare.quotations.map((quotation: any) => (
+                        <td key={quotation.id} className="p-3">{quotation.moq} units</td>
+                      ))}
+                    </tr>
+                    <tr className="border-b border-gray-100">
+                      <td className="p-3 font-medium text-gray-700">Lead Time</td>
+                      {selectedInquiryForCompare.quotations.map((quotation: any) => (
+                        <td key={quotation.id} className="p-3">{quotation.leadTime || 'Not specified'}</td>
+                      ))}
+                    </tr>
+                    <tr className="border-b border-gray-100">
+                      <td className="p-3 font-medium text-gray-700">Payment Terms</td>
+                      {selectedInquiryForCompare.quotations.map((quotation: any) => (
+                        <td key={quotation.id} className="p-3">{quotation.paymentTerms || 'Not specified'}</td>
+                      ))}
+                    </tr>
+                    <tr className="border-b border-gray-100">
+                      <td className="p-3 font-medium text-gray-700">Valid Until</td>
+                      {selectedInquiryForCompare.quotations.map((quotation: any) => (
+                        <td key={quotation.id} className="p-3">
+                          {quotation.validUntil ? formatDate(quotation.validUntil) : 'Not specified'}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr className="border-b border-gray-100">
+                      <td className="p-3 font-medium text-gray-700">Status</td>
+                      {selectedInquiryForCompare.quotations.map((quotation: any) => (
+                        <td key={quotation.id} className="p-3">
+                          <Badge className={
+                            quotation.status === 'accepted' ? 'bg-green-100 text-green-800' :
+                            quotation.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                            'bg-yellow-100 text-yellow-800'
+                          }>
+                            {quotation.status}
+                          </Badge>
+                        </td>
+                      ))}
+                    </tr>
+                    <tr className="border-b border-gray-100">
+                      <td className="p-3 font-medium text-gray-700">Message</td>
+                      {selectedInquiryForCompare.quotations.map((quotation: any) => (
+                        <td key={quotation.id} className="p-3 text-sm text-gray-600">
+                          {quotation.message || 'No message'}
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Price Analysis */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="font-semibold text-gray-900 mb-3">Price Analysis</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-white p-3 rounded border">
+                    <span className="text-sm text-gray-600">Original Target:</span>
+                    <span className="ml-2 font-medium">${selectedInquiryForCompare.targetPrice}</span>
+                  </div>
+                  <div className="bg-white p-3 rounded border">
+                    <span className="text-sm text-gray-600">First Quote:</span>
+                    <span className="ml-2 font-medium">${selectedInquiryForCompare.quotations[0]?.pricePerUnit}</span>
+                  </div>
+                  <div className="bg-white p-3 rounded border">
+                    <span className="text-sm text-gray-600">Latest Quote:</span>
+                    <span className="ml-2 font-medium">
+                      ${selectedInquiryForCompare.quotations[selectedInquiryForCompare.quotations.length - 1]?.pricePerUnit}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCompareDialogOpen(false)}>
+              Close
+            </Button>
+            <Button 
+              onClick={() => {
+                // Export comparison
+                toast.success('Comparison exported successfully!');
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export Comparison
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

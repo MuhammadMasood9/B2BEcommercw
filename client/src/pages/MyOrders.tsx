@@ -9,7 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { 
   Package, 
   Search, 
@@ -43,8 +42,6 @@ import {
 
 export default function MyOrders() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedOrder, setSelectedOrder] = useState<any>(null);
-  const [isOrderDetailOpen, setIsOrderDetailOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
   const queryClient = useQueryClient();
 
@@ -61,7 +58,6 @@ export default function MyOrders() {
     onSuccess: () => {
       toast.success('Order accepted successfully!');
       queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
-      setIsOrderDetailOpen(false);
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to accept order');
@@ -81,7 +77,6 @@ export default function MyOrders() {
     onSuccess: () => {
       toast.success('Order rejected');
       queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
-      setIsOrderDetailOpen(false);
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to reject order');
@@ -370,13 +365,12 @@ export default function MyOrders() {
                             variant="outline" 
                             size="sm" 
                             className="flex-1"
-                            onClick={() => {
-                              setSelectedOrder(order);
-                              setIsOrderDetailOpen(true);
-                            }}
+                            asChild
                           >
-                            <Eye className="w-4 h-4 mr-1" />
-                            View Details
+                            <Link href={`/order/${order.id}`}>
+                              <Eye className="w-4 h-4 mr-1" />
+                              View Details
+                            </Link>
                           </Button>
                           <Button variant="outline" size="sm">
                             <MessageSquare className="w-4 h-4" />
@@ -456,13 +450,12 @@ export default function MyOrders() {
                                 variant="outline"
                                 size="sm"
                           className="flex-1"
-                          onClick={() => {
-                            setSelectedOrder(order);
-                            setIsOrderDetailOpen(true);
-                          }}
+                          asChild
                         >
-                          <Eye className="w-4 h-4 mr-1" />
-                          View Details
+                          <Link href={`/order/${order.id}`}>
+                            <Eye className="w-4 h-4 mr-1" />
+                            View Details
+                          </Link>
                         </Button>
                                 <Button variant="outline" size="sm">
                           <MessageSquare className="w-4 h-4" />
@@ -525,13 +518,12 @@ export default function MyOrders() {
                           variant="outline" 
                           size="sm" 
                           className="flex-1"
-                          onClick={() => {
-                            setSelectedOrder(order);
-                            setIsOrderDetailOpen(true);
-                          }}
+                          asChild
                         >
-                          <Eye className="w-4 h-4 mr-1" />
-                          View Details
+                          <Link href={`/order/${order.id}`}>
+                            <Eye className="w-4 h-4 mr-1" />
+                            View Details
+                          </Link>
                         </Button>
                         <Button variant="outline" size="sm">
                           <MessageSquare className="w-4 h-4" />
@@ -593,13 +585,12 @@ export default function MyOrders() {
                           variant="outline" 
                           size="sm" 
                           className="flex-1"
-                          onClick={() => {
-                            setSelectedOrder(order);
-                            setIsOrderDetailOpen(true);
-                          }}
+                          asChild
                         >
-                          <Eye className="w-4 h-4 mr-1" />
-                          View Details
+                          <Link href={`/order/${order.id}`}>
+                            <Eye className="w-4 h-4 mr-1" />
+                            View Details
+                          </Link>
                         </Button>
                         <Button variant="outline" size="sm">
                           <MessageSquare className="w-4 h-4" />
@@ -661,13 +652,12 @@ export default function MyOrders() {
                           variant="outline" 
                           size="sm" 
                           className="flex-1"
-                          onClick={() => {
-                            setSelectedOrder(order);
-                            setIsOrderDetailOpen(true);
-                          }}
+                          asChild
                         >
-                          <Eye className="w-4 h-4 mr-1" />
-                          View Details
+                          <Link href={`/order/${order.id}`}>
+                            <Eye className="w-4 h-4 mr-1" />
+                            View Details
+                          </Link>
                         </Button>
                         <Button variant="outline" size="sm">
                           <MessageSquare className="w-4 h-4" />

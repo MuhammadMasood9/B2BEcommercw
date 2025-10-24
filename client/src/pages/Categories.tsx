@@ -32,7 +32,10 @@ import {
   Shield,
   Star,
   Users,
-  Package2
+  Package2,
+  Eye,
+  Folder,
+  Layers
 } from "lucide-react";
 
 const categoryIcons: { [key: string]: any } = {
@@ -58,8 +61,8 @@ const categoryIcons: { [key: string]: any } = {
 export default function Categories() {
   const { setLoading } = useLoading();
 
-  // Fetch categories from API
-  const { data: apiCategories = [], isLoading: isCategoriesLoading } = useQuery<Category[]>({
+  // Fetch categories from API with comprehensive data
+  const { data: apiCategories = [], isLoading: isCategoriesLoading } = useQuery({
     queryKey: ["/api/categories"],
     queryFn: async () => {
       try {
@@ -70,6 +73,7 @@ export default function Categories() {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
+        console.log("Fetched categories with comprehensive data:", data);
         return Array.isArray(data) ? data : [];
       } catch (error) {
         console.error("Error fetching categories:", error);
@@ -152,23 +156,56 @@ export default function Categories() {
                 </Card>
               ))
             ) : (
-              apiCategories.map((category) => {
+              apiCategories.map((category: any) => {
                 const IconComponent = getCategoryIcon(category.name);
-                const productCount = Math.floor(Math.random() * 10000) + 1000; // Mock data
-                const supplierCount = Math.floor(Math.random() * 1000) + 100; // Mock data
+                
+                // Use dynamic data from API
+                const productCount = category.productCount || 0;
+                const subcategoryCount = category.subcategoryCount || 0;
+                const totalViews = category.totalViews || 0;
+                const trend = category.trend || 'low';
+                
+                // Get category image or use fallback
+                const getCategoryImage = (categoryName: string) => {
+                  const imageMap: { [key: string]: string } = {
+                    'Electronics': 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400&h=400&fit=crop&auto=format',
+                    'Machinery': 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=400&h=400&fit=crop&auto=format',
+                    'Fashion': 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=400&fit=crop&auto=format',
+                    'Premium': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=400&fit=crop&auto=format',
+                    'Standard': 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=400&h=400&fit=crop&auto=format'
+                  };
+                  return imageMap[categoryName] || `https://images.unsplash.com/photo-${1500000000000 + Math.floor(Math.random() * 1000000000)}?w=400&h=400&fit=crop&auto=format`;
+                };
+                
+                const categoryImage = category.imageUrl ? 
+                  (category.imageUrl.startsWith('/uploads/') ? category.imageUrl : `/uploads/${category.imageUrl}`) : 
+                  getCategoryImage(category.name);
                 
                 return (
-                  <Link key={category.id} href={`/products?category=${category.id}`}>
+                  <Link key={category.id} href={`/category/${category.slug}`}>
                     <Card className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 cursor-pointer bg-white border-gray-100 hover:border-blue-200">
                       <CardContent className="p-6 text-center">
                         <div className="relative mb-4">
-                          <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300">
-                            <IconComponent className="w-8 h-8 text-blue-600" />
+                          <div className="w-16 h-16 rounded-2xl overflow-hidden mx-auto group-hover:scale-110 transition-transform duration-300 bg-gray-100">
+                            <img 
+                              src={categoryImage} 
+                              alt={category.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.src = getCategoryImage(category.name);
+                              }}
+                            />
                           </div>
                           <div className="absolute -top-2 -right-2">
-                            <Badge className="bg-green-500 text-white text-xs">
+                            <Badge className={`text-white text-xs ${
+                              trend === 'high' ? 'bg-green-500' : 
+                              trend === 'medium' ? 'bg-yellow-500' : 
+                              'bg-gray-500'
+                            }`}>
                               <TrendingUp className="w-3 h-3 mr-1" />
-                              Hot
+                              {trend === 'high' ? 'Hot' : 
+                               trend === 'medium' ? 'Trending' : 
+                               'New'}
                             </Badge>
                           </div>
                         </div>
@@ -177,16 +214,29 @@ export default function Categories() {
                           {category.name}
                         </h3>
                         
-                        <div className="space-y-1 text-sm text-gray-500">
-                          <div className="flex items-center justify-center gap-1">
-                            <Package className="w-3 h-3" />
-                            <span>{productCount.toLocaleString()}+ products</span>
-                          </div>
-                          <div className="flex items-center justify-center gap-1">
-                            <Shield className="w-3 h-3" />
-                            <span>{supplierCount}+ admins</span>
-                          </div>
-                        </div>
+                         <div className="space-y-1 text-sm text-gray-500">
+                           <div className="flex items-center justify-center gap-1">
+                             <Package className="w-3 h-3 text-blue-500" />
+                             <span className="font-semibold">{productCount.toLocaleString()}+</span>
+                             <span>products</span>
+                           </div>
+                           <div className="flex items-center justify-center gap-1">
+                             <Folder className="w-3 h-3 text-purple-500" />
+                             <span className="font-semibold">{subcategoryCount}+</span>
+                             <span>subcategories</span>
+                           </div>
+                           <div className="flex items-center justify-center gap-1">
+                             <Shield className="w-3 h-3 text-green-500" />
+                             <span>Verified Supplier</span>
+                           </div>
+                           {totalViews > 0 && (
+                             <div className="flex items-center justify-center gap-1">
+                               <Eye className="w-3 h-3 text-orange-500" />
+                               <span className="font-semibold">{totalViews}</span>
+                               <span>views</span>
+                             </div>
+                           )}
+                         </div>
                       </CardContent>
                     </Card>
                   </Link>
@@ -207,29 +257,70 @@ export default function Categories() {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {apiCategories.slice(0, 3).map((category, index) => {
+              {apiCategories.slice(0, 3).map((category: any, index) => {
                 const IconComponent = getCategoryIcon(category.name);
-                const productCount = Math.floor(Math.random() * 10000) + 1000;
-                const supplierCount = Math.floor(Math.random() * 1000) + 100;
+                const productCount = category.productCount || 0;
+                const subcategoryCount = category.subcategoryCount || 0;
+                const totalViews = category.totalViews || 0;
+                
+                // Get category image or use fallback
+                const getCategoryImage = (categoryName: string) => {
+                  const imageMap: { [key: string]: string } = {
+                    'Electronics': 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400&h=400&fit=crop&auto=format',
+                    'Machinery': 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=400&h=400&fit=crop&auto=format',
+                    'Fashion': 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=400&fit=crop&auto=format',
+                    'Premium': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=400&fit=crop&auto=format',
+                    'Standard': 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=400&h=400&fit=crop&auto=format'
+                  };
+                  return imageMap[categoryName] || `https://images.unsplash.com/photo-${1500000000000 + Math.floor(Math.random() * 1000000000)}?w=400&h=400&fit=crop&auto=format`;
+                };
+                
+                const categoryImage = category.imageUrl ? 
+                  (category.imageUrl.startsWith('/uploads/') ? category.imageUrl : `/uploads/${category.imageUrl}`) : 
+                  getCategoryImage(category.name);
                 
                 return (
-                  <div key={category.id} className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center">
-                        <IconComponent className="w-6 h-6 text-blue-600" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-gray-900">{category.name}</h4>
-                        <div className="flex items-center gap-4 text-sm text-gray-500">
-                          <span>{productCount.toLocaleString()}+ products</span>
-                          <span>{supplierCount}+ admins</span>
+                  <Link key={category.id} href={`/category/${category.slug}`}>
+                    <div className="bg-white rounded-2xl p-4 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100">
+                          <img 
+                            src={categoryImage} 
+                            alt={category.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.src = getCategoryImage(category.name);
+                            }}
+                          />
                         </div>
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900 mb-2">{category.name}</h4>
+                          <div className="space-y-1 text-sm text-gray-500">
+                            <div className="flex items-center gap-2">
+                              <Package className="w-4 h-4 text-blue-500" />
+                              <span className="font-semibold">{productCount.toLocaleString()}+</span>
+                              <span>products</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Folder className="w-4 h-4 text-purple-500" />
+                              <span className="font-semibold">{subcategoryCount}+</span>
+                              <span>subcategories</span>
+                            </div>
+                            {totalViews > 0 && (
+                              <div className="flex items-center gap-2">
+                                <Eye className="w-4 h-4 text-green-500" />
+                                <span className="font-semibold">{totalViews}</span>
+                                <span>views</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <Badge className="bg-green-500 text-white">
+                          #{index + 1}
+                        </Badge>
                       </div>
-                      <Badge className="bg-green-500 text-white">
-                        #{index + 1}
-                      </Badge>
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>

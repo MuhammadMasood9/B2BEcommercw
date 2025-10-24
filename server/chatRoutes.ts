@@ -1,8 +1,27 @@
 import { Router } from 'express';
 import { storage } from './storage';
 import { authMiddleware } from './auth';
+import { db } from './db';
+import { notifications, users } from '../shared/schema';
+import { eq } from 'drizzle-orm';
 
 const router = Router();
+
+// Helper function to create notification
+async function createNotification(data: {
+  userId: string;
+  type: 'info' | 'success' | 'error' | 'warning';
+  title: string;
+  message: string;
+  relatedId?: string;
+  relatedType?: string;
+}) {
+  try {
+    await db.insert(notifications).values(data);
+  } catch (error) {
+    console.error('Error creating notification:', error);
+  }
+}
 
 // Get all conversations for a user
 router.get('/conversations', authMiddleware, async (req, res) => {
@@ -67,7 +86,8 @@ router.get('/conversations/admin/all', authMiddleware, async (req, res) => {
       return res.status(403).json({ error: 'Only admins can access all conversations' });
     }
 
-    const conversations = await storage.getAllConversationsForAdmin();
+    // For FloatingChat, we want to show ALL conversations, not just those assigned to this specific admin
+    const conversations = await storage.getAllConversationsForAdmin(); // Call without adminId to get all conversations
     res.json({ conversations });
   } catch (error) {
     console.error('Error fetching all conversations for admin:', error);
@@ -118,7 +138,9 @@ router.post('/conversations', authMiddleware, async (req, res) => {
     let actualBuyerId, actualAdminId;
     if (req.user?.role === 'buyer') {
       actualBuyerId = userId;
-      actualAdminId = adminId || 'admin';
+      // Get the first admin user ID from the database
+      const adminUsers = await db.select({ id: users.id }).from(users).where(eq(users.role, 'admin')).limit(1);
+      actualAdminId = adminUsers[0]?.id || userId; // Fallback to current user if no admin found
     } else if (req.user?.role === 'admin') {
       // If admin is creating conversation, they become the admin and buyerId comes from request
       actualBuyerId = buyerId || userId; // Use provided buyerId or fallback to current user
@@ -192,6 +214,18 @@ router.post('/conversations/:conversationId/messages', authMiddleware, async (re
 
     // Update conversation last message time
     await storage.updateConversationLastMessage(conversationId);
+
+    // Create notification for receiver
+    if (receiverId) {
+      await createNotification({
+        userId: receiverId,
+        type: 'info',
+        title: 'New Message',
+        message: `You have a new message in conversation ${conversationId}`,
+        relatedId: conversationId,
+        relatedType: 'chat'
+      });
+    }
 
     res.status(201).json({ message });
   } catch (error) {

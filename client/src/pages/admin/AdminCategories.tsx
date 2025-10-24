@@ -324,8 +324,7 @@ export default function AdminCategories() {
     queryKey: ["/api/categories"],
     queryFn: async () => {
       try {
-        const response = await apiRequest("GET", "/api/categories");
-        const data = await response.json();
+        const data = await apiRequest("GET", "/api/categories");
         console.log("Fetched categories from API:", data);
         
         // Ensure the response is an array, or default to an empty array
@@ -347,11 +346,9 @@ export default function AdminCategories() {
   const saveCategoryMutation = useMutation({
     mutationFn: async (data: z.infer<typeof insertCategorySchema>) => {
       if (selectedCategory) {
-        const response = await apiRequest("PUT", `/api/categories/${selectedCategory.id}`, data);
-        return await response.json();
+        return await apiRequest("PUT", `/api/categories/${selectedCategory.id}`, data);
       } else {
-        const response = await apiRequest("POST", "/api/categories", data);
-        return await response.json();
+        return await apiRequest("POST", "/api/categories", data);
       }
     },
     onSuccess: () => {
@@ -375,8 +372,7 @@ export default function AdminCategories() {
   // Delete category mutation
   const deleteCategoryMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await apiRequest("DELETE", `/api/categories/${id}`);
-      return await response.json();
+      return await apiRequest("DELETE", `/api/categories/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
@@ -397,8 +393,7 @@ export default function AdminCategories() {
   // Toggle category status
   const toggleStatusMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
-      const response = await apiRequest("PATCH", `/api/categories/${id}/status`, { isActive });
-      return await response.json();
+      return await apiRequest("PATCH", `/api/categories/${id}/status`, { isActive });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/categories"] });
@@ -419,8 +414,7 @@ export default function AdminCategories() {
   // Toggle category featured status
   const toggleFeaturedMutation = useMutation({
     mutationFn: async ({ id, isFeatured }: { id: string; isFeatured: boolean }) => {
-      const response = await apiRequest("PATCH", `/api/categories/${id}/featured`, { isFeatured });
-      return await response.json();
+      return await apiRequest("PATCH", `/api/categories/${id}/featured`, { isFeatured });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/categories"] });

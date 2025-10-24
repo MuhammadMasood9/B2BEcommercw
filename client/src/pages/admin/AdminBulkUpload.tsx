@@ -150,6 +150,7 @@ export default function AdminBulkUpload() {
       const processedProducts = jsonData.map((row: any, index: number) => {
         // Debug: Log the raw row data for troubleshooting
         console.log(`Processing product ${index + 1}:`, row);
+        console.log(`  samplePrice from Excel: ${row.samplePrice} (type: ${typeof row.samplePrice})`);
         
         // Process arrays from Excel
         const processArray = (value: any) => {
@@ -185,24 +186,47 @@ export default function AdminBulkUpload() {
           }
         }
         
-        // Process images - try to match with extracted images
+        // Process images - distribute extracted images more intelligently
         const imageData: string[] = [];
         const imageFields = ['mainImage', 'image1', 'image2', 'image3', 'image4', 'image5'];
         
         console.log(`Image fields for product ${index + 1}:`, imageFields.map(field => ({ field, value: row[field], type: typeof row[field] })));
         
-        // For now, distribute extracted images evenly among products
-        const imagesPerProduct = Math.ceil(Object.keys(extractedImages).length / jsonData.length);
-        const startImageIndex = index * imagesPerProduct;
-        const endImageIndex = Math.min(startImageIndex + imagesPerProduct, Object.keys(extractedImages).length);
+        // Get all available extracted images
+        const availableImages = Object.values(extractedImages).filter(img => img);
+        console.log(`Available extracted images: ${availableImages.length}`);
         
-        for (let i = startImageIndex; i < endImageIndex; i++) {
-          const imageKey = `image_${i}`;
-          if (extractedImages[imageKey]) {
-            imageData.push(extractedImages[imageKey]);
-            console.log(`Assigned image ${imageKey} to product ${index + 1}`);
+        // Distribute images more intelligently based on product index
+        // Each product gets at least 1 image, and we distribute the rest
+        const totalImages = availableImages.length;
+        const totalProducts = jsonData.length;
+        
+        if (totalImages > 0) {
+          // Calculate how many images this product should get
+          let imagesForThisProduct = 1; // Each product gets at least 1 image
+          
+          // If we have more images than products, distribute the extra images
+          if (totalImages > totalProducts) {
+            const extraImages = totalImages - totalProducts;
+            // Give extra images to products in order
+            if (index < extraImages) {
+              imagesForThisProduct = 2; // This product gets 2 images
+            }
+          }
+          
+          // Assign images to this product
+          const startIndex = index * imagesForThisProduct;
+          const endIndex = Math.min(startIndex + imagesForThisProduct, totalImages);
+          
+          for (let i = startIndex; i < endIndex; i++) {
+            if (availableImages[i] && !imageData.includes(availableImages[i])) {
+              imageData.push(availableImages[i]);
+              console.log(`Assigned image ${i + 1} to product ${index + 1} (${row.name})`);
+            }
           }
         }
+        
+        console.log(`Product ${index + 1} (${row.name}) got ${imageData.length} images`);
         
         return {
           id: index + 1,
@@ -213,7 +237,7 @@ export default function AdminBulkUpload() {
           categoryId: row.categoryId || '',
           minOrderQuantity: parseInt(row.minOrderQuantity || '1'),
           sampleAvailable: row.sampleAvailable === 'TRUE' || row.sampleAvailable === true,
-          samplePrice: row.samplePrice ? parseFloat(row.samplePrice) : 0,
+          samplePrice: row.samplePrice ? row.samplePrice.toString() : '0',
           customizationAvailable: row.customizationAvailable === 'TRUE' || row.customizationAvailable === true,
           customizationDetails: row.customizationDetails || '',
           leadTime: row.leadTime || '',
@@ -234,6 +258,13 @@ export default function AdminBulkUpload() {
           images: imageData, // Store actual image data
           imageData // Keep track of extracted image data
         };
+      });
+      
+      // Debug: Log processed products
+      console.log('🔍 Processed products:');
+      processedProducts.forEach((product, index) => {
+        console.log(`Product ${index + 1}: ${product.name}`);
+        console.log(`  samplePrice: ${product.samplePrice} (type: ${typeof product.samplePrice})`);
       });
       
       setProducts(processedProducts);
@@ -329,21 +360,143 @@ export default function AdminBulkUpload() {
     try {
       const formData = new FormData();
       
-      // Prepare products data with extracted image data
-      const productsWithImages = products.map(product => ({
-        ...product,
-        images: product.imageData || [], // Use extracted image data
-        imageData: undefined // Remove this field from the payload
-      }));
+      // Convert base64 images to File objects and collect all image files
+      const allImageFiles: File[] = [];
+      const imageFileMap: { [key: string]: number } = {}; // Maps image data to file index
       
-      formData.append('products', JSON.stringify(productsWithImages));
+      // Process each product's images
+      console.log(`🔄 Processing ${products.length} products for image conversion`);
+      
+      products.forEach((product, productIndex) => {
+        console.log(`📦 Processing product ${productIndex + 1}: ${product.name}`);
+        console.log(`🖼️ Product has ${product.imageData ? product.imageData.length : 0} images in imageData`);
+        
+        if (product.imageData && Array.isArray(product.imageData)) {
+          product.imageData.forEach((imageData: string, imageIndex: number) => {
+            console.log(`📸 Processing image ${imageIndex + 1} for product ${productIndex + 1}: ${imageData.substring(0, 50)}...`);
+            
+            if (imageData && imageData.startsWith('data:image')) {
+              try {
+                // Convert base64 to File object
+                const base64Data = imageData.split(',')[1];
+                const mimeType = imageData.split(';')[0].split(':')[1];
+                
+                // Ensure we have a valid MIME type
+                let validMimeType = mimeType;
+                let extension = 'jpg';
+                
+                if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') {
+                  validMimeType = 'image/jpeg';
+                  extension = 'jpg';
+                } else if (mimeType === 'image/png') {
+                  validMimeType = 'image/png';
+                  extension = 'png';
+                } else if (mimeType === 'image/gif') {
+                  validMimeType = 'image/gif';
+                  extension = 'gif';
+                } else if (mimeType === 'image/webp') {
+                  validMimeType = 'image/webp';
+                  extension = 'webp';
+                } else {
+                  // Default to JPEG if unknown type
+                  validMimeType = 'image/jpeg';
+                  extension = 'jpg';
+                  console.warn(`Unknown MIME type ${mimeType}, defaulting to image/jpeg`);
+                }
+                
+                // Create a unique filename
+                const filename = `product-${productIndex + 1}-image-${imageIndex + 1}.${extension}`;
+                
+                // Convert base64 to binary
+                const binaryString = atob(base64Data);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                  bytes[i] = binaryString.charCodeAt(i);
+                }
+                
+                // Create File object with correct MIME type
+                const file = new File([bytes], filename, { type: validMimeType });
+                allImageFiles.push(file);
+                
+                // Map this image data to the file index
+                imageFileMap[imageData] = allImageFiles.length - 1;
+                
+                console.log(`✅ Converted image ${imageIndex + 1} for product ${productIndex + 1} to file: ${filename} (${file.size} bytes, ${validMimeType})`);
+              } catch (error) {
+                console.error(`❌ Failed to convert image ${imageIndex + 1} for product ${productIndex + 1}:`, error);
+              }
+            } else {
+              console.log(`⚠️ Image ${imageIndex + 1} for product ${productIndex + 1} is not base64 data: ${imageData.substring(0, 50)}...`);
+            }
+          });
+        } else {
+          console.log(`⚠️ Product ${productIndex + 1} has no imageData or imageData is not an array`);
+        }
+      });
+      
+      // Prepare products data with image filenames instead of base64 data
+      const productsWithImageFilenames = products.map((product, productIndex) => {
+        const imageFilenames: string[] = [];
+        
+        if (product.imageData && Array.isArray(product.imageData)) {
+          product.imageData.forEach((imageData: string, imageIndex: number) => {
+            if (imageData && imageData.startsWith('data:image')) {
+              const fileIndex = imageFileMap[imageData];
+              if (fileIndex !== undefined) {
+                const filename = allImageFiles[fileIndex].name;
+                imageFilenames.push(filename);
+              }
+            }
+          });
+        }
+        
+        return {
+          ...product,
+          images: imageFilenames, // Use filenames instead of base64 data
+          imageData: undefined, // Remove this field from the payload
+          samplePrice: String(product.samplePrice) // Explicitly ensure samplePrice is a string
+        };
+      });
+      
+      // Debug: Log the final product data before sending
+      console.log('🔍 Final products data before sending:');
+      productsWithImageFilenames.forEach((product, index) => {
+        console.log(`Product ${index + 1}: ${product.name}`);
+        console.log(`  samplePrice: ${product.samplePrice} (type: ${typeof product.samplePrice})`);
+        console.log(`  sampleAvailable: ${product.sampleAvailable} (type: ${typeof product.sampleAvailable})`);
+      });
+      
+      // Add products data to FormData with custom replacer to preserve string types
+      const jsonString = JSON.stringify(productsWithImageFilenames, (key, value) => {
+        // Ensure samplePrice is always a string
+        if (key === 'samplePrice') {
+          return String(value);
+        }
+        return value;
+      });
+      
+      // Debug: Log the JSON string to see if samplePrice is preserved as string
+      console.log('🔍 JSON string samplePrice check:');
+      const jsonObj = JSON.parse(jsonString);
+      jsonObj.forEach((product: any, index: number) => {
+        console.log(`Product ${index + 1}: samplePrice = "${product.samplePrice}" (type: ${typeof product.samplePrice})`);
+      });
+      
+      formData.append('products', jsonString);
+      
+      // Add all image files to FormData
+      allImageFiles.forEach((file, index) => {
+        formData.append('images', file);
+        console.log(`Added image file ${index + 1}: ${file.name} (${file.size} bytes)`);
+      });
       
       // Log what we're sending
-      console.log('Products with images:', productsWithImages.map(p => ({ 
+      console.log('Products with image filenames:', productsWithImageFilenames.map(p => ({ 
         name: p.name, 
         images: p.images,
         imageCount: p.images.length 
       })));
+      console.log(`Total image files: ${allImageFiles.length}`);
       
       uploadMutation.mutate(formData);
     } catch (error: any) {

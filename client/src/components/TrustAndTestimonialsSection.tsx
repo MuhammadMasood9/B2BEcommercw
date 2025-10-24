@@ -242,7 +242,7 @@ export default function TrustAndTestimonialsSection() {
                 Start Sourcing Now
               </Button>
               <Button size="lg" variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50 px-8 py-3">
-                Become a Supplier
+                Contact Admin
               </Button>
             </div>
           </div>

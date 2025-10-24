@@ -15,7 +15,8 @@ import {
   type Message, type InsertMessage, messages,
   type Review, type InsertReview, reviews,
   type Favorite, type InsertFavorite, favorites,
-  type Customer, type InsertCustomer, customers
+  type Customer, type InsertCustomer, customers,
+  type Notification, notifications
 } from "@shared/schema";
 import bcrypt from "bcryptjs";
 
@@ -147,6 +148,15 @@ export interface IStorage {
     pendingInquiries: number;
     unreadMessages: number;
     favoriteProducts: number;
+    totalQuotations: number;
+    totalOrders: number;
+    totalSpent: number;
+    recentInquiries: any[];
+    recentRFQs: any[];
+    recentQuotations: any[];
+    recentOrders: any[];
+    recentConversations: any[];
+    recentNotifications: any[];
   }>;
   
   // Users
@@ -924,6 +934,7 @@ export class PostgresStorage implements IStorage {
   }
 
   async getBuyerDashboardStats(buyerId: string) {
+    // Get basic counts
     const [activeRfqCount] = await db.select({ count: drizzleSql<number>`count(*)::int` })
       .from(rfqs)
       .where(and(eq(rfqs.buyerId, buyerId), eq(rfqs.status, 'open')));
@@ -942,11 +953,63 @@ export class PostgresStorage implements IStorage {
       .from(favorites)
       .where(and(eq(favorites.userId, buyerId), eq(favorites.itemType, 'product')));
     
+    // Get total quotations count
+    const quotations = await this.getInquiryQuotations();
+    const buyerQuotations = quotations.filter((q: any) => q.buyerId && q.buyerId.toString() === buyerId.toString());
+    
+    // Get total orders count and total spent
+    const orders = await this.getOrders({ buyerId });
+    const totalSpent = orders.reduce((sum: number, order: any) => sum + (order.totalAmount || 0), 0);
+    
+    // Get recent data (last 5 of each)
+    const recentInquiries = await db.select({
+      id: inquiries.id,
+      productName: products.name,
+      quantity: inquiries.quantity,
+      status: inquiries.status,
+      createdAt: inquiries.createdAt,
+      estimatedValue: inquiries.targetPrice
+    })
+    .from(inquiries)
+    .leftJoin(products, eq(inquiries.productId, products.id))
+    .where(eq(inquiries.buyerId, buyerId))
+    .orderBy(desc(inquiries.createdAt))
+    .limit(5);
+    
+    const recentRFQs = await db.select()
+      .from(rfqs)
+      .where(eq(rfqs.buyerId, buyerId))
+      .orderBy(desc(rfqs.createdAt))
+      .limit(5);
+    
+    const recentQuotations = buyerQuotations.slice(0, 5);
+    
+    const recentOrders = orders.slice(0, 5);
+    
+    const recentConversations = await this.getBuyerConversations(buyerId);
+    const recentConversationsLimited = recentConversations.slice(0, 5);
+    
+    // Get recent notifications
+    const recentNotifications = await db.select()
+      .from(notifications)
+      .where(eq(notifications.userId, buyerId))
+      .orderBy(desc(notifications.createdAt))
+      .limit(5);
+    
     return {
       activeRfqs: activeRfqCount.count || 0,
       pendingInquiries: pendingInquiryCount.count || 0,
       unreadMessages: unreadMessageCount.total || 0,
-      favoriteProducts: favoriteProductCount.count || 0
+      favoriteProducts: favoriteProductCount.count || 0,
+      totalQuotations: buyerQuotations.length,
+      totalOrders: orders.length,
+      totalSpent: totalSpent,
+      recentInquiries: recentInquiries,
+      recentRFQs: recentRFQs,
+      recentQuotations: recentQuotations,
+      recentOrders: recentOrders,
+      recentConversations: recentConversationsLimited,
+      recentNotifications: recentNotifications
     };
   }
 
@@ -1285,7 +1348,13 @@ export class PostgresStorage implements IStorage {
     return results;
   }
 
-  async getAllConversationsForAdmin() {
+  async getAllConversationsForAdmin(adminId?: string) {
+    let whereCondition = sql`1=1`; // Default condition
+    
+    if (adminId) {
+      whereCondition = eq(conversations.unreadCountAdmin, adminId);
+    }
+
     const results = await db.select({
       id: conversations.id,
       buyerId: conversations.buyerId,
@@ -1308,6 +1377,7 @@ export class PostgresStorage implements IStorage {
     .from(conversations)
     .leftJoin(users, eq(conversations.buyerId, users.id))
     .leftJoin(products, eq(conversations.productId, products.id))
+    .where(whereCondition)
     .orderBy(desc(conversations.lastMessageAt));
 
     return results;
@@ -1401,10 +1471,12 @@ export class PostgresStorage implements IStorage {
     const [conversation] = await db.insert(conversations)
       .values({
         buyerId: data.buyerId,
-        unreadCountAdmin: data.adminId, // Map adminId to unreadCountAdmin column
+        unreadCountAdmin: data.adminId, // Store adminId in unreadCountAdmin column (legacy schema)
         lastMessage: data.subject || '',
         lastMessageAt: new Date(),
-        productId: data.productId
+        productId: data.productId,
+        unreadCountBuyer: 0, // Initialize unread count for buyer
+        unreadCountSupplier: 0 // Initialize unread count for supplier
       })
       .returning();
 

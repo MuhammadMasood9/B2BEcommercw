@@ -1,11 +1,14 @@
 import { Search, ShoppingCart, User, Globe, Menu, ChevronDown, LogOut, Settings, Bell, Heart, Package, FileText, MessageSquare, Truck, FileSearch, Star, ArrowRight, Plus } from "lucide-react";
 import CartWidget from "@/components/CartWidget";
+import SearchSuggestions from "@/components/SearchSuggestions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link, useLocation } from "wouter";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFavorites } from "@/contexts/FavoriteContext";
+import { useSearch } from "@/contexts/SearchContext";
+import { useQuery } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select,
@@ -32,6 +35,39 @@ export default function Header() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
   const { favoriteCount } = useFavorites();
+  const { 
+    searchQuery, 
+    setSearchQuery, 
+    selectedCategory,
+    setSelectedCategory,
+    showSuggestions, 
+    setShowSuggestions,
+    performSearch 
+  } = useSearch();
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  // Fetch categories for dynamic dropdown
+  const { data: categories = [] } = useQuery({
+    queryKey: ['/api/categories'],
+    queryFn: async () => {
+      const response = await fetch('/api/categories');
+      if (!response.ok) throw new Error('Failed to fetch categories');
+      const data = await response.json();
+      return data.slice(0, 10); // Show first 10 categories
+    }
+  });
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [setShowSuggestions]);
 
   const isActivePath = (path: string) => {
     if (path === "/" && location === "/") return true;
@@ -127,37 +163,51 @@ export default function Header() {
 
           {/* Enhanced Search Bar */}
           <div className="flex-1 max-w-4xl mx-6 hidden sm:block">
-            <div className={`relative transition-all duration-300 ${isSearchFocused ? 'scale-[1.02]' : ''}`}>
+            <div className={`relative transition-all duration-300 ${isSearchFocused ? 'scale-[1.02]' : ''}`} ref={searchRef}>
               <div className="relative flex items-center bg-white dark:bg-gray-800/90 border-2 border-gray-200/60 dark:border-gray-700/60 rounded-2xl overflow-hidden hover:border-blue-400/60 dark:hover:border-blue-500/60 transition-all duration-300 shadow-lg hover:shadow-xl">
                 <div className="flex items-center pl-4 pr-2">
                   <Search className="w-5 h-5 text-gray-400 dark:text-gray-500" />
                 </div>
                 <Input
                   placeholder="Search products, suppliers, categories..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setShowSuggestions(e.target.value.length >= 2);
+                  }}
                   className="flex-1 border-0 focus-visible:ring-0 h-14 bg-transparent text-base placeholder:text-gray-500 dark:placeholder:text-gray-400 px-2 font-medium"
                   data-testid="input-search"
-                  onFocus={() => setIsSearchFocused(true)}
+                  onFocus={() => {
+                    setIsSearchFocused(true);
+                    if (searchQuery.length >= 2) {
+                      setShowSuggestions(true);
+                    }
+                  }}
                   onBlur={() => setIsSearchFocused(false)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      performSearch(searchQuery, selectedCategory);
+                    }
+                  }}
                 />
                 <div className="hidden md:block h-8 w-px bg-gray-200 dark:bg-gray-700 mx-3" />
                 <div className="hidden md:block">
-                  <Select defaultValue="all">
+                  <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                     <SelectTrigger className="w-40 lg:w-48 border-0 rounded-none focus:ring-0 bg-transparent hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors h-14 text-sm font-medium" data-testid="select-category">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Categories</SelectItem>
-                      <SelectItem value="electronics">Electronics</SelectItem>
-                      <SelectItem value="fashion">Fashion</SelectItem>
-                      <SelectItem value="machinery">Machinery</SelectItem>
-                      <SelectItem value="automotive">Automotive</SelectItem>
-                      <SelectItem value="home">Home & Garden</SelectItem>
-                      <SelectItem value="lighting">Lighting</SelectItem>
-                      <SelectItem value="packaging">Packaging</SelectItem>
+                      {categories.map((category: any) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <Button 
+                  onClick={() => performSearch(searchQuery, selectedCategory)}
                   className="h-14 px-8 rounded-none rounded-r-2xl m-0 shadow-none bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold" 
                   data-testid="button-search"
                 >
@@ -165,6 +215,9 @@ export default function Header() {
                   <span className="hidden sm:inline">Search</span>
                 </Button>
               </div>
+              
+              {/* Search Suggestions */}
+              <SearchSuggestions />
             </div>
           </div>
 
@@ -268,7 +321,7 @@ export default function Header() {
                   
                   {user?.role === 'buyer' && (
                     <>
-                      <Link href="/dashboard/buyer">
+                      <Link href="/buyer/dashboard">
                         <DropdownMenuItem>
                           <User className="w-4 h-4 mr-2" />
                           Buyer Dashboard

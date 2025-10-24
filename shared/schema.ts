@@ -424,3 +424,49 @@ export const sessions = pgTable("session", {
 });
 
 export type Session = typeof sessions.$inferSelect;
+
+// ==================== NOTIFICATIONS ====================
+
+export const notifications = pgTable("notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  type: text("type").notNull(), // 'info', 'success', 'error', 'warning'
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  read: boolean("read").default(false),
+  relatedId: varchar("related_id"), // ID of related entity (inquiry, quotation, etc.)
+  relatedType: text("related_type"), // Type of related entity
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type Notification = typeof notifications.$inferSelect;
+
+// ==================== ACTIVITY LOGS ====================
+
+export const activity_logs = pgTable("activity_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  adminId: varchar("admin_id").notNull(),
+  adminName: text("admin_name").notNull(),
+  action: text("action").notNull(),
+  description: text("description").notNull(),
+  entityType: text("entity_type").notNull(), // 'inquiry', 'quotation', 'order', 'product', 'user', 'category', 'chat', 'system'
+  entityId: varchar("entity_id"),
+  entityName: text("entity_name"),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertActivityLogSchema = createInsertSchema(activity_logs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
+export type ActivityLog = typeof activity_logs.$inferSelect;

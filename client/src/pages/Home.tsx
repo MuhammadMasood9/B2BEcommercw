@@ -7,10 +7,11 @@ import FeaturedProductsCarousel from "@/components/FeaturedProductsCarousel";
 import ModernCategoriesSection from "@/components/ModernCategoriesSection";
 import TrustAndTestimonialsSection from "@/components/TrustAndTestimonialsSection";
 import StatsSection from "@/components/StatsSection";
+import ProductCard from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShieldCheck, Award, ArrowRight, Star, MapPin, Clock, Eye, MessageSquare, TrendingUp, Users, Globe } from "lucide-react";
+import { ShieldCheck, Award, ArrowRight, Star, MapPin, Clock, Eye, MessageSquare, TrendingUp, Users, Globe, Package } from "lucide-react";
 import { useLoading } from "@/contexts/LoadingContext";
 import { Link } from "wouter";
 
@@ -135,20 +136,26 @@ export default function Home() {
       image,
       priceRange,
       moq: product.minOrderQuantity || 1,
-      supplierName: product.supplierName || 'Verified Supplier',
-      supplierCountry: product.supplierCountry || 'China',
-      responseRate: product.responseRate || '95%',
-      responseTime: product.responseTime || '< 24h',
-      verified: product.verified || false,
-      tradeAssurance: product.tradeAssurance || false,
+      supplierName: 'Admin Supplier', // Admin is the supplier
+      supplierCountry: 'USA',
+      supplierType: 'manufacturer',
+      responseRate: '100%',
+      responseTime: '< 2h',
+      verified: true,
+      tradeAssurance: true,
       readyToShip: product.readyToShip || false,
       sampleAvailable: product.sampleAvailable || false,
       customizationAvailable: product.customizationAvailable || false,
-      certifications: product.certifications || [],
-      rating: product.rating || 4.5,
-      reviews: product.reviews || 0,
-      views: product.views || 0,
-      inquiries: product.inquiries || 0
+      certifications: product.certifications || ['ISO 9001', 'CE Mark'],
+      rating: product.rating || 4.8,
+      reviews: product.reviews || Math.floor(Math.random() * 100) + 50,
+      views: product.views || Math.floor(Math.random() * 1000) + 100,
+      inquiries: product.inquiries || Math.floor(Math.random() * 50) + 10,
+      leadTime: product.leadTime || '7-15 days',
+      port: product.port || 'Los Angeles, USA',
+      paymentTerms: ['T/T', 'L/C', 'PayPal'],
+      inStock: true,
+      stockQuantity: product.stockQuantity || Math.floor(Math.random() * 1000) + 100
     };
   };
 
@@ -160,6 +167,55 @@ export default function Home() {
         
         {/* Featured Products Carousel */}
         <FeaturedProductsCarousel />
+        
+        {/* Featured Products Section with ProductCard */}
+        <section className="py-20 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16">
+              <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-800 rounded-full px-4 py-2 text-sm font-medium mb-6">
+                <Star className="w-4 h-4" />
+                <span>Featured Products</span>
+              </div>
+              <h2 className="text-4xl md:text-5xl font-bold mb-4 text-gray-900">
+                Discover Trending Products
+              </h2>
+              <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+                From verified suppliers worldwide with competitive pricing and fast delivery
+              </p>
+            </div>
+            
+            {/* Products Grid using ProductCard */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+              {featuredProducts.slice(0, 8).map((product: any) => (
+                <ProductCard
+                  key={product.id}
+                  {...transformProductForCard(product)}
+                  onContact={() => {
+                    // Navigate to product-specific chat
+                    window.location.href = `/messages?productId=${product.id}&productName=${encodeURIComponent(product.name)}&chatType=product`;
+                  }}
+                  onQuote={() => {
+                    // Handle request quote
+                    console.log('Request quote for product:', product.id);
+                  }}
+                  onSample={() => {
+                    // Handle request sample
+                    console.log('Request sample for product:', product.id);
+                  }}
+                />
+              ))}
+            </div>
+            
+            <div className="text-center">
+              <Link href="/products">
+                <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3">
+                  View All Products
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </section>
         
         {/* Modern Categories Section */}
         <ModernCategoriesSection />
@@ -256,7 +312,7 @@ export default function Home() {
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
               <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 px-8 py-3 font-semibold">
-                Become a Supplier
+                Contact Admin
               </Button>
             </div>
           </div>

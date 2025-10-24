@@ -63,11 +63,13 @@ export default function Favorites() {
   );
 
   const sortedProducts = [...filteredProducts].sort((a, b) => {
+    const priceA = (a as any).price || (a as any).minPrice || 0;
+    const priceB = (b as any).price || (b as any).minPrice || 0;
     switch (sortBy) {
       case 'price-low':
-        return (a.price || 0) - (b.price || 0);
+        return priceA - priceB;
       case 'price-high':
-        return (b.price || 0) - (a.price || 0);
+        return priceB - priceA;
       case 'name':
         return a.name.localeCompare(b.name);
       case 'recent':
@@ -86,17 +88,37 @@ export default function Favorites() {
 
   // Transform product data for ProductCard
   const transformProductForCard = (product: Product) => {
+    const productPrice = (product as any).price || (product as any).minPrice || 0;
+    const productMoq = (product as any).moq || (product as any).minOrderQuantity || 1;
+    
+    // Get images
+    let images = [];
+    if (product.images) {
+      try {
+        images = Array.isArray(product.images) 
+          ? product.images 
+          : (typeof product.images === 'string' ? JSON.parse(product.images) : []);
+      } catch (error) {
+        console.error('Error parsing images:', error);
+        images = [];
+      }
+    }
+    const firstImage = images.length > 0 ? images[0] : 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop';
+    
     return {
-      ...product,
-      minPrice: (product as any).minPrice || product.price,
-      maxPrice: (product as any).maxPrice || product.price,
-      rating: (product as any).rating || 4.5,
-      reviewCount: (product as any).reviewCount || 0,
-      supplierName: (product as any).supplierName || 'Admin Supplier',
-      supplierCountry: (product as any).supplierCountry || 'Global',
-      moq: (product as any).moq || product.moq,
-      isVerified: true,
-      isTradeAssurance: true
+      id: product.id,
+      image: firstImage,
+      name: product.name,
+      priceRange: `$${productPrice.toFixed(2)} /piece`,
+      moq: productMoq,
+      supplierName: 'Admin Supplier',
+      supplierCountry: 'Global',
+      responseRate: '95%',
+      verified: true,
+      tradeAssurance: true,
+      onContact: () => console.log('Contact supplier for product:', product.id),
+      onQuote: () => console.log('Request quote for product:', product.id),
+      onSample: () => console.log('Request sample for product:', product.id)
     };
   };
 
@@ -241,7 +263,7 @@ export default function Favorites() {
             }>
               {sortedProducts.map((product) => (
                 <div key={product.id} className="relative group">
-                  <ProductCard product={transformProductForCard(product)} />
+                  <ProductCard {...transformProductForCard(product)} />
                   <Button
                     variant="destructive"
                     size="icon"

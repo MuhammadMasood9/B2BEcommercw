@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { db } from "./db";
 import { authRoutes } from "./authRoutes";
+import { authMiddleware } from "./auth";
 import categoryRoutes from "./categoryRoutes";
 import uploadRoutes from "./uploadRoutes";
 import chatRoutes from "./chatRoutes";
@@ -12,12 +13,13 @@ import {
   insertUserSchema, insertBuyerProfileSchema,
   insertRfqSchema, insertQuotationSchema, insertInquirySchema,
   insertConversationSchema, insertMessageSchema, insertReviewSchema,
-  insertFavoriteSchema,
-  users, products, categories, orders, inquiries, quotations
+  insertFavoriteSchema, insertNotificationSchema, insertActivityLogSchema,
+  users, products, categories, orders, inquiries, quotations, notifications, activity_logs, conversations
 } from "@shared/schema";
-import { sql, eq, and, gte, desc } from "drizzle-orm";
+import { sql, eq, and, gte, desc, or, ilike } from "drizzle-orm";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  console.log('=== ROUTES LOADING - UPDATED VERSION ===');
   
   // ==================== AUTHENTICATION ROUTES ====================
   
@@ -470,13 +472,38 @@ app.post("/api/products/bulk-excel", upload.array('images', 100), async (req, re
     
     let productsData;
     try {
-      productsData = JSON.parse(products);
+      // Use custom reviver to preserve string types for decimal fields
+      productsData = JSON.parse(products, (key, value) => {
+        // Ensure samplePrice stays as string (decimal fields should be strings)
+        if (key === 'samplePrice' && typeof value === 'number') {
+          console.log(`🔄 Converting samplePrice from number ${value} to string "${value.toString()}"`);
+          return value.toString();
+        }
+        return value;
+      });
     } catch (error) {
       return res.status(400).json({ error: "Invalid products JSON format" });
     }
     
     if (!Array.isArray(productsData)) {
       return res.status(400).json({ error: "Products must be an array" });
+    }
+    
+    console.log(`📦 Received ${productsData.length} products for bulk upload`);
+    console.log(`📁 Received ${imageFiles ? imageFiles.length : 0} image files`);
+    
+    // Debug: Log samplePrice types after JSON parsing
+    console.log('🔍 Server-side samplePrice check after JSON.parse:');
+    productsData.forEach((product: any, index: number) => {
+      console.log(`Product ${index + 1}: ${product.name}`);
+      console.log(`  samplePrice: ${product.samplePrice} (type: ${typeof product.samplePrice})`);
+    });
+    
+    // Debug: Log file details
+    if (imageFiles && imageFiles.length > 0) {
+      imageFiles.forEach((file, index) => {
+        console.log(`📄 File ${index + 1}: ${file.originalname}, MIME: ${file.mimetype}, Size: ${file.size} bytes`);
+      });
     }
     
     const validatedProducts = [];
@@ -536,26 +563,44 @@ app.post("/api/products/bulk-excel", upload.array('images', 100), async (req, re
         
         // Process images array - can contain both filenames and base64 data
         if (p.images && Array.isArray(p.images)) {
-          p.images.forEach((imageData: string) => {
+          console.log(`🖼️ Processing ${p.images.length} images for product: ${p.name}`);
+          
+          p.images.forEach((imageData: string, imageIndex: number) => {
             if (imageData && imageData.trim()) {
+              console.log(`📸 Processing image ${imageIndex + 1} for product ${p.name}: ${imageData.substring(0, 50)}...`);
+              console.log(`🔍 Image data type: ${typeof imageData}, length: ${imageData.length}`);
+              console.log(`🔍 Starts with data:image: ${imageData.startsWith('data:image')}`);
+              
               // Check if it's base64 image data
-              if (imageData.startsWith('data:image/')) {
-                // Extract base64 data and save as file
-                const base64Data = imageData.split(',')[1];
-                const buffer = Buffer.from(base64Data, 'base64');
-                
-                // Generate unique filename
-                const timestamp = Date.now();
-                const randomSuffix = Math.random().toString(36).substring(2, 8);
-                const filename = `excel-image-${timestamp}-${randomSuffix}.jpg`;
-                const filePath = require('path').join(process.cwd(), 'public', 'uploads', filename);
-                
+              if (imageData.startsWith('data:image')) {
                 try {
+                  // Extract base64 data and save as file
+                  const base64Data = imageData.split(',')[1];
+                  if (!base64Data) {
+                    console.error(`No base64 data found in image ${imageIndex + 1} for product ${p.name}`);
+                    return;
+                  }
+                  
+                  const buffer = Buffer.from(base64Data, 'base64');
+                  console.log(`Converted base64 to buffer: ${buffer.length} bytes`);
+                  
+                  // Generate unique filename
+                  const timestamp = Date.now();
+                  const randomSuffix = Math.random().toString(36).substring(2, 8);
+                  const filename = `excel-image-${timestamp}-${randomSuffix}.jpg`;
+                  const filePath = require('path').join(process.cwd(), 'public', 'uploads', filename);
+                  
+                  // Ensure uploads directory exists
+                  const uploadsDir = require('path').join(process.cwd(), 'public', 'uploads');
+                  if (!require('fs').existsSync(uploadsDir)) {
+                    require('fs').mkdirSync(uploadsDir, { recursive: true });
+                  }
+                  
                   require('fs').writeFileSync(filePath, buffer);
                   productImages.push(`/uploads/${filename}`);
-                  console.log(`Saved embedded image: ${filename}`);
+                  console.log(`✅ Saved embedded image: ${filename} (${buffer.length} bytes)`);
                 } catch (error: any) {
-                  console.error(`Failed to save embedded image: ${error.message}`);
+                  console.error(`❌ Failed to save embedded image ${imageIndex + 1} for product ${p.name}: ${error.message}`);
                 }
               } else {
                 // It's a filename
@@ -564,6 +609,7 @@ app.post("/api/products/bulk-excel", upload.array('images', 100), async (req, re
                   filename = filename.substring(6);
                 }
                 excelImageFilenames.push(filename);
+                console.log(`Added filename: ${filename}`);
               }
             }
           });
@@ -618,7 +664,7 @@ app.post("/api/products/bulk-excel", upload.array('images', 100), async (req, re
           minOrderQuantity: parseInt(p.minOrderQuantity || '1'),
           priceRanges: priceRanges.length > 0 ? priceRanges : null,
           sampleAvailable: p.sampleAvailable === 'true' || p.sampleAvailable === true,
-          samplePrice: p.samplePrice ? parseFloat(p.samplePrice) : null,
+          samplePrice: p.samplePrice ? p.samplePrice.toString() : null,
           customizationAvailable: p.customizationAvailable === 'true' || p.customizationAvailable === true,
           customizationDetails: p.customizationDetails,
           leadTime: p.leadTime,
@@ -637,6 +683,13 @@ app.post("/api/products/bulk-excel", upload.array('images', 100), async (req, re
           sku: p.sku,
           metaData: null,
         };
+        
+        console.log(`💾 Final product data for ${p.name}:`);
+        console.log(`📁 Images array:`, productImages);
+        console.log(`📊 Images count: ${productImages.length}`);
+        console.log(`🔍 First image: ${productImages[0] || 'No images'}`);
+        console.log(`💰 samplePrice before processing: ${p.samplePrice} (type: ${typeof p.samplePrice})`);
+        console.log(`💰 samplePrice after processing: ${productData.samplePrice} (type: ${typeof productData.samplePrice})`);
         
         const validated = insertProductSchema.parse(productData);
         validatedProducts.push(validated);
@@ -658,36 +711,198 @@ app.post("/api/products/bulk-excel", upload.array('images', 100), async (req, re
     res.status(201).json({ count: createdProducts.length, products: createdProducts });
   } catch (error: any) {
     console.error('Excel/JSON bulk upload error:', error);
-    res.status(400).json({ error: error.message });
-  }
-});
+      res.status(400).json({ error: error.message });
+    }
+  });
 
   // ==================== CATEGORIES ====================
   
   app.get("/api/categories", async (req, res) => {
     try {
+      console.log('=== CATEGORIES API CALLED ===');
       const { parentId, isActive, featured } = req.query;
       const filters: any = {};
       if (parentId !== undefined) filters.parentId = parentId === 'null' ? null : parentId as string;
       if (isActive !== undefined) filters.isActive = isActive === 'true';
       if (featured === 'true') filters.featured = true;
       
+      console.log('Filters:', filters);
       const categories = await storage.getCategories(filters);
+      console.log('Raw categories from storage:', categories);
       
-      // Add product count to each category
+      // Add comprehensive data to each category
       const categoriesWithCount = await Promise.all(
         categories.map(async (category) => {
           const products = await storage.getProducts({ categoryId: category.id, isPublished: true });
-          return {
+          const subcategories = await storage.getCategories({ parentId: category.id, isActive: true });
+          
+          // Calculate trend based on product views and inquiries
+          const totalViews = products.reduce((sum, product) => sum + (product.views || 0), 0);
+          const totalInquiries = products.reduce((sum, product) => sum + (product.inquiries || 0), 0);
+          const trendScore = totalViews + (totalInquiries * 10); // Weight inquiries more
+          
+          const result = {
             ...category,
-            productCount: products.length
+            productCount: products.length,
+            subcategoryCount: subcategories.length,
+            totalViews,
+            totalInquiries,
+            trendScore,
+            trend: trendScore > 100 ? 'high' : trendScore > 50 ? 'medium' : 'low',
+            // Ensure imageUrl is properly formatted
+            imageUrl: category.imageUrl || null
           };
+          console.log(`Category: ${category.name}, Products: ${products.length}, Subcategories: ${subcategories.length}, Trend: ${result.trend}`);
+          return result;
         })
       );
       
+      console.log('Sending categories with counts:', categoriesWithCount);
       res.json(categoriesWithCount);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Category statistics endpoint
+  app.get("/api/categories/stats", async (req, res) => {
+    try {
+      const categories = await storage.getCategories({ isActive: true });
+      
+      const stats = await Promise.all(
+        categories.map(async (category) => {
+          const products = await storage.getProducts({ categoryId: category.id, isPublished: true });
+          const subcategories = await storage.getCategories({ parentId: category.id, isActive: true });
+          
+          const result = {
+            categoryId: category.id,
+            categoryName: category.name,
+            productCount: products.length,
+            subcategoryCount: subcategories.length,
+            supplierCount: 1 // Admin is the only supplier
+          };
+          console.log(`Stats for ${category.name}:`, result);
+          return result;
+        })
+      );
+      
+      console.log('Sending category stats:', stats);
+      res.json(stats);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Search suggestions endpoint
+  app.get("/api/search/suggestions", async (req, res) => {
+    try {
+      const { q } = req.query;
+      if (!q || typeof q !== 'string' || q.length < 2) {
+        return res.json([]);
+      }
+
+      const searchTerm = q.toLowerCase();
+      const suggestions = [];
+
+      // Search products
+      const productResults = await db
+        .select({
+          id: products.id,
+          name: products.name,
+          images: products.images,
+          priceRanges: products.priceRanges,
+          categoryId: products.categoryId,
+          categoryName: categories.name
+        })
+        .from(products)
+        .leftJoin(categories, eq(products.categoryId, categories.id))
+        .where(and(
+          eq(products.isPublished, true),
+          or(
+            ilike(products.name, `%${searchTerm}%`),
+            ilike(products.description, `%${searchTerm}%`)
+          )
+        ))
+        .limit(5);
+
+      // Add product suggestions
+      for (const product of productResults) {
+        let images = [];
+        if (product.images) {
+          try {
+            images = typeof product.images === 'string' 
+              ? JSON.parse(product.images) 
+              : product.images;
+          } catch (error) {
+            images = [];
+          }
+        }
+        
+        let priceRanges = [];
+        if (product.priceRanges) {
+          try {
+            priceRanges = typeof product.priceRanges === 'string' 
+              ? JSON.parse(product.priceRanges) 
+              : product.priceRanges;
+          } catch (error) {
+            priceRanges = [];
+          }
+        }
+        
+        const minPrice = priceRanges.length > 0 
+          ? Math.min(...priceRanges.map((r: any) => r.pricePerUnit))
+          : 0;
+        
+        suggestions.push({
+          id: product.id,
+          name: product.name,
+          image: images.length > 0 ? images[0] : 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100&h=100&fit=crop',
+          price: minPrice > 0 ? `$${minPrice.toFixed(2)}` : 'Contact for price',
+          category: product.categoryName || 'Uncategorized',
+          type: 'product'
+        });
+      }
+
+      // Search categories
+      const categoryResults = await db
+        .select({
+          id: categories.id,
+          name: categories.name,
+          imageUrl: categories.imageUrl,
+          parentId: categories.parentId
+        })
+        .from(categories)
+        .where(and(
+          eq(categories.isActive, true),
+          ilike(categories.name, `%${searchTerm}%`)
+        ))
+        .limit(3);
+
+      // Add category suggestions
+      for (const category of categoryResults) {
+        suggestions.push({
+          id: category.id,
+          name: category.name,
+          image: category.imageUrl 
+            ? (category.imageUrl.startsWith('/uploads/') ? category.imageUrl : `/uploads/${category.imageUrl}`)
+            : 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=100&h=100&fit=crop',
+          price: '',
+          category: category.parentId ? 'Subcategory' : 'Category',
+          type: 'category'
+        });
+      }
+
+      // Sort suggestions (products first, then categories)
+      suggestions.sort((a, b) => {
+        if (a.type === 'product' && b.type === 'category') return -1;
+        if (a.type === 'category' && b.type === 'product') return 1;
+        return 0;
+      });
+
+      res.json(suggestions.slice(0, 8)); // Limit to 8 suggestions
+    } catch (error) {
+      console.error("Error fetching search suggestions:", error);
+      res.status(500).json({ error: "Failed to fetch search suggestions" });
     }
   });
 
@@ -1121,6 +1336,23 @@ app.post("/api/products/bulk-excel", upload.array('images', 100), async (req, re
     }
   });
 
+  // Get buyer dashboard stats
+  app.get("/api/buyer/dashboard/stats", authMiddleware, async (req, res) => {
+    try {
+      const buyerId = req.user?.id;
+      
+      if (!buyerId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+      
+      const stats = await storage.getBuyerDashboardStats(buyerId);
+      res.json(stats);
+    } catch (error) {
+      console.error('Error fetching buyer dashboard stats:', error);
+      res.status(500).json({ error: 'Failed to fetch dashboard stats' });
+    }
+  });
+
   // Get all quotations for buyer (centralized view) - ONLY their own quotations
   app.get("/api/buyer/quotations", async (req, res) => {
     try {
@@ -1198,6 +1430,24 @@ app.post("/api/products/bulk-excel", upload.array('images', 100), async (req, re
       
       // Increment product inquiry count
       await storage.incrementProductInquiries(validatedData.productId);
+      
+      // Get all admin users to notify them about new inquiry
+      const adminUsers = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.role, 'admin'));
+
+      // Create notification for each admin
+      for (const admin of adminUsers) {
+        await createNotification({
+          userId: admin.id,
+          type: 'info',
+          title: 'New Inquiry Received',
+          message: `A new inquiry has been received for product ${validatedData.productId}`,
+          relatedId: inquiry.id,
+          relatedType: 'inquiry'
+        });
+      }
       
       res.status(201).json(inquiry);
     } catch (error: any) {
@@ -1415,6 +1665,34 @@ app.post("/api/products/bulk-excel", upload.array('images', 100), async (req, re
         notes: `Order created from quotation. Admin: ${quotation.supplierName || 'Admin'}. Message: ${quotation.message || ''}`
       });
 
+      // Create notifications
+      await createNotification({
+        userId: buyerId,
+        type: 'success',
+        title: 'Quotation Accepted',
+        message: `Your quotation has been accepted and order #${order.orderNumber} has been created`,
+        relatedId: order.id,
+        relatedType: 'order'
+      });
+
+      // Get all admin users to notify them about new order
+      const adminUsers = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.role, 'admin'));
+
+      // Notify each admin about new order
+      for (const admin of adminUsers) {
+        await createNotification({
+          userId: admin.id,
+          type: 'info',
+          title: 'New Order Created',
+          message: `Order #${order.orderNumber} has been created from quotation ${quotationId}`,
+          relatedId: order.id,
+          relatedType: 'order'
+        });
+      }
+
       res.json({ 
         success: true, 
         message: 'Quotation accepted and order created successfully!',
@@ -1620,10 +1898,27 @@ app.post("/api/products/bulk-excel", upload.array('images', 100), async (req, re
   // Update quotation
   app.patch("/api/admin/quotations/:id", async (req, res) => {
     try {
+      const adminId = (req as any).user?.id;
+      const adminName = (req as any).user?.firstName || (req as any).user?.email || 'Admin';
+      
       const quotation = await storage.updateInquiryQuotation(req.params.id, req.body);
       if (!quotation) {
         return res.status(404).json({ error: "Quotation not found" });
       }
+      
+      // Create activity log
+      await createActivityLog({
+        adminId,
+        adminName,
+        action: 'Updated Quotation',
+        description: `Updated quotation ${req.params.id}`,
+        entityType: 'quotation',
+        entityId: req.params.id,
+        entityName: `Quotation ${req.params.id}`,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      });
+      
       res.json(quotation);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -2813,6 +3108,325 @@ app.post("/api/products/bulk-excel", upload.array('images', 100), async (req, re
       });
     } catch (error: any) {
       console.error('Error fetching analytics:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ==================== NOTIFICATION ROUTES ====================
+
+  // Get buyer notifications
+  app.get("/api/buyer/notifications", async (req, res) => {
+    try {
+      const userId = (req as any).user?.id;
+      console.log('=== FETCHING BUYER NOTIFICATIONS ===');
+      console.log('User ID:', userId);
+      
+      if (!userId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const userNotifications = await db
+        .select()
+        .from(notifications)
+        .where(eq(notifications.userId, userId))
+        .orderBy(desc(notifications.createdAt));
+
+      console.log('Found notifications:', userNotifications.length);
+      console.log('Notifications:', userNotifications);
+
+      res.json({ notifications: userNotifications });
+    } catch (error: any) {
+      console.error('Error fetching buyer notifications:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get admin notifications
+  app.get("/api/admin/notifications", async (req, res) => {
+    try {
+      const adminId = (req as any).user?.id;
+      console.log('=== FETCHING ADMIN NOTIFICATIONS ===');
+      console.log('Admin ID:', adminId);
+      
+      if (!adminId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const adminNotifications = await db
+        .select()
+        .from(notifications)
+        .where(eq(notifications.userId, adminId))
+        .orderBy(desc(notifications.createdAt));
+
+      console.log('Found admin notifications:', adminNotifications.length);
+      console.log('Admin notifications:', adminNotifications);
+
+      res.json({ notifications: adminNotifications });
+    } catch (error: any) {
+      console.error('Error fetching admin notifications:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Mark notification as read
+  app.patch("/api/notifications/:id/read", async (req, res) => {
+    try {
+      const userId = (req as any).user?.id;
+      const { id } = req.params;
+
+      if (!userId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      await db
+        .update(notifications)
+        .set({ read: true })
+        .where(and(eq(notifications.id, id), eq(notifications.userId, userId)));
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error marking notification as read:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Mark all notifications as read
+  app.patch("/api/notifications/mark-all-read", async (req, res) => {
+    try {
+      const userId = (req as any).user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      await db
+        .update(notifications)
+        .set({ read: true })
+        .where(eq(notifications.userId, userId));
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error marking all notifications as read:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Delete notification
+  app.delete("/api/notifications/:id", async (req, res) => {
+    try {
+      const userId = (req as any).user?.id;
+      const { id } = req.params;
+
+      if (!userId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      await db
+        .delete(notifications)
+        .where(and(eq(notifications.id, id), eq(notifications.userId, userId)));
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting notification:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ==================== ACTIVITY LOG ROUTES ====================
+
+  // Get activity logs
+  app.get("/api/admin/activity-logs", async (req, res) => {
+    try {
+      const adminId = (req as any).user?.id;
+      if (!adminId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const { search, type, admin } = req.query;
+
+      // Build query with conditions
+      let whereConditions = [];
+      
+      if (search) {
+        whereConditions.push(
+          or(
+            ilike(activity_logs.action, `%${search}%`),
+            ilike(activity_logs.description, `%${search}%`),
+            ilike(activity_logs.entityName, `%${search}%`)
+          )
+        );
+      }
+
+      if (type && type !== 'all') {
+        whereConditions.push(eq(activity_logs.entityType, type as string));
+      }
+
+      if (admin && admin !== 'all') {
+        whereConditions.push(eq(activity_logs.adminId, admin as string));
+      }
+
+      const logs = await db
+        .select()
+        .from(activity_logs)
+        .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+        .orderBy(desc(activity_logs.createdAt));
+
+      res.json({ logs });
+    } catch (error: any) {
+      console.error('Error fetching activity logs:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get admin users for filter
+  app.get("/api/admin/users", async (req, res) => {
+    try {
+      const adminId = (req as any).user?.id;
+      if (!adminId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const adminUsers = await db
+        .select({
+          id: users.id,
+          email: users.email,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          role: users.role
+        })
+        .from(users)
+        .where(eq(users.role, 'admin'));
+
+      res.json({ users: adminUsers });
+    } catch (error: any) {
+      console.error('Error fetching admin users:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ==================== NOTIFICATION HELPER FUNCTIONS ====================
+
+  // Helper function to create notification
+  async function createNotification(data: {
+    userId: string;
+    type: 'info' | 'success' | 'error' | 'warning';
+    title: string;
+    message: string;
+    relatedId?: string;
+    relatedType?: string;
+  }) {
+    try {
+      console.log('=== CREATING NOTIFICATION ===');
+      console.log('Notification data:', data);
+      
+      const result = await db.insert(notifications).values(data);
+      console.log('Notification created successfully:', result);
+    } catch (error) {
+      console.error('Error creating notification:', error);
+    }
+  }
+
+  // Helper function to create activity log
+  async function createActivityLog(data: {
+    adminId: string;
+    adminName: string;
+    action: string;
+    description: string;
+    entityType: string;
+    entityId?: string;
+    entityName?: string;
+    ipAddress?: string;
+    userAgent?: string;
+  }) {
+    try {
+      await db.insert(activity_logs).values(data);
+    } catch (error) {
+      console.error('Error creating activity log:', error);
+    }
+  }
+
+  // Test endpoint to create a notification
+  app.post("/api/test/notification", async (req, res) => {
+    try {
+      const { userId, type = 'info', title, message } = req.body;
+      
+      if (!userId || !title || !message) {
+        return res.status(400).json({ error: "userId, title, and message are required" });
+      }
+
+      await createNotification({
+        userId,
+        type,
+        title,
+        message,
+        relatedId: 'test-' + Date.now(),
+        relatedType: 'test'
+      });
+
+      res.json({ success: true, message: 'Test notification created' });
+    } catch (error: any) {
+      console.error('Error creating test notification:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get unseen notification count for current user
+  app.get("/api/notifications/unseen-count", async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const result = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(notifications)
+        .where(and(
+          eq(notifications.userId, userId),
+          eq(notifications.read, false)
+        ));
+
+      const count = result[0]?.count || 0;
+      res.json({ count });
+    } catch (error: any) {
+      console.error('Error fetching unseen notification count:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get unseen chat count for current user
+  app.get("/api/chat/unseen-count", async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      const userRole = req.user?.role;
+      
+      if (!userId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      let count = 0;
+
+      if (userRole === 'admin') {
+        // For admin, count unread messages from buyers
+        // Note: unreadCountAdmin column actually stores adminId, not count
+        // So we need to count unreadCountBuyer for conversations where adminId matches
+        const result = await db
+          .select({ count: sql<number>`sum(coalesce(cast(${conversations.unreadCountBuyer} as integer), 0))` })
+          .from(conversations)
+          .where(eq(conversations.unreadCountAdmin, userId));
+        count = result[0]?.count || 0;
+      } else {
+        // For buyer, count unread messages from admin
+        const result = await db
+          .select({ count: sql<number>`sum(coalesce(cast(${conversations.unreadCountBuyer} as integer), 0))` })
+          .from(conversations)
+          .where(eq(conversations.buyerId, userId));
+        count = result[0]?.count || 0;
+      }
+
+      res.json({ count });
+    } catch (error: any) {
+      console.error('Error fetching unseen chat count:', error);
       res.status(500).json({ error: error.message });
     }
   });

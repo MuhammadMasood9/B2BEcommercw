@@ -371,11 +371,7 @@ export default function AdminProductManagement() {
     queryKey: ["/api/categories"],
     queryFn: async () => {
       try {
-        const response = await apiRequest("GET", "/api/categories");
-        if (!response.ok) return [];
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) return [];
-        const data = await response.json();
+        const data = await apiRequest("GET", "/api/categories");
         return data;
       } catch (error) {
         console.error("Error fetching categories:", error);

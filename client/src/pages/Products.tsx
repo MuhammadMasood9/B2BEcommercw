@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
@@ -14,6 +15,7 @@ import { useLoading } from "@/contexts/LoadingContext";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useSearch } from "@/contexts/SearchContext";
 import type { Product, Category } from "@shared/schema";
 import {
   Select,
@@ -45,9 +47,10 @@ export default function Products() {
   const { addToCart, isInCart, getCartItem } = useCart();
   const { user } = useAuth();
   const { toast } = useToast();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [location, setLocation] = useLocation();
   const [priceRange, setPriceRange] = useState([0, 1000]);
   const [moqRange, setMoqRange] = useState([0, 10000]);
-  const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [sortBy, setSortBy] = useState("best-match");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -57,6 +60,19 @@ export default function Products() {
   const [verifiedAdminsOnly, setVerifiedAdminsOnly] = useState(false);
   const [tradeAssuranceOnly, setTradeAssuranceOnly] = useState(false);
   const [readyToShipOnly, setReadyToShipOnly] = useState(false);
+
+  // Handle URL search parameters
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const searchParam = urlParams.get('search');
+    const categoryParam = urlParams.get('category');
+    if (searchParam) {
+      setSearchQuery(searchParam);
+    }
+    if (categoryParam) {
+      setSelectedCategory(categoryParam);
+    }
+  }, []);
 
   // Fetch products from API
   const { data: apiProducts = [], isLoading: isProductsLoading } = useQuery<Product[]>({
@@ -132,27 +148,68 @@ export default function Products() {
     }
   });
 
-  const transformProductForCard = (product: Product) => ({
-    id: product.id,
-    name: product.name,
-    description: product.description,
-    price: (product as any).minPrice || (product as any).price || 0,
-    maxPrice: (product as any).maxPrice || (product as any).price || 1000,
-    priceRange: `${(product as any).minPrice || (product as any).price || 0} - ${(product as any).maxPrice || (product as any).price || 1000}`,
-    image: (product as any).images?.[0] || '/placeholder-product.jpg',
-    rating: (product as any).rating || 0,
-    reviewCount: (product as any).reviewCount || 0,
-    supplier: (product as any).supplierName || 'Admin Supplier',
-    supplierName: (product as any).supplierName || 'Admin Supplier',
-    supplierCountry: (product as any).supplierCountry || 'Global',
-    moq: (product as any).moq || 1,
-    isVerified: true,
-    isTradeAssurance: true,
-    responseTime: '24h',
-    responseRate: '99%',
-    views: (product as any).views || 0,
-    inquiries: (product as any).inquiries || 0
-  });
+  const transformProductForCard = (product: Product) => {
+    // Get price ranges from product data
+    let priceRanges = [];
+    if (product.priceRanges) {
+      try {
+        priceRanges = typeof product.priceRanges === 'string' 
+          ? JSON.parse(product.priceRanges) 
+          : product.priceRanges;
+      } catch (error) {
+        console.error('Error parsing priceRanges:', error);
+        priceRanges = [];
+      }
+    }
+    const minPrice = priceRanges.length > 0 ? Math.min(...priceRanges.map((r: any) => Number(r.pricePerUnit))) : 0;
+    const maxPrice = priceRanges.length > 0 ? Math.max(...priceRanges.map((r: any) => Number(r.pricePerUnit))) : 0;
+    const priceRange = priceRanges.length > 0 
+      ? `$${minPrice.toFixed(2)} - $${maxPrice.toFixed(2)}`
+      : 'Contact for price';
+
+    // Get images
+    let images = [];
+    if (product.images) {
+      try {
+        images = Array.isArray(product.images) 
+          ? product.images 
+          : (typeof product.images === 'string' ? JSON.parse(product.images) : []);
+      } catch (error) {
+        console.error('Error parsing images:', error);
+        images = [];
+      }
+    }
+    const firstImage = images.length > 0 ? images[0] : 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop';
+
+    return {
+      id: product.id,
+      name: product.name,
+      description: product.description,
+      priceRange,
+      image: firstImage,
+      moq: product.minOrderQuantity || 1,
+      supplierName: 'Admin Supplier',
+      supplierCountry: 'USA',
+      supplierType: 'manufacturer',
+      responseRate: '100%',
+      responseTime: '< 2h',
+      verified: true,
+      tradeAssurance: product.hasTradeAssurance || true,
+      readyToShip: product.inStock || false,
+      sampleAvailable: product.sampleAvailable || false,
+      customizationAvailable: product.customizationAvailable || false,
+      certifications: product.certifications || ['ISO 9001', 'CE Mark'],
+      rating: (product as any).rating || 4.8,
+      reviews: (product as any).reviews || Math.floor(Math.random() * 100) + 50,
+      views: (product as any).views || Math.floor(Math.random() * 1000) + 100,
+      inquiries: (product as any).inquiries || Math.floor(Math.random() * 50) + 10,
+      leadTime: product.leadTime || '7-15 days',
+      port: product.port || 'Los Angeles, USA',
+      paymentTerms: product.paymentTerms || ['T/T', 'L/C', 'PayPal'],
+      inStock: product.inStock || true,
+      stockQuantity: product.stockQuantity || Math.floor(Math.random() * 1000) + 100
+    };
+  };
 
   const handleAddToCart = (product: Product) => {
     if (!user) {
@@ -229,28 +286,37 @@ export default function Products() {
                   <div className="flex-1 flex items-center bg-white rounded-xl overflow-hidden shadow-lg">
                     <div className="flex items-center px-4">
                       <Search className="w-5 h-5 text-gray-400 mr-3" />
-            <Input
+                      <Input
                         placeholder="Search products..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
                         className="flex-1 border-0 focus-visible:ring-0 h-14 text-gray-900 placeholder:text-gray-500 text-lg"
-            />
-          </div>
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                      />
+                    </div>
+                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                       <SelectTrigger className="w-48 border-0 border-l border-gray-200 rounded-none focus:ring-0 text-gray-700 bg-gray-50">
                         <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Categories</SelectItem>
                         {apiCategories.map((category) => (
-                <SelectItem key={category.id} value={category.id}>
-                  {category.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <Button size="lg" className="h-14 px-8 shadow-lg hover:shadow-xl transition-all duration-200 bg-blue-600 hover:bg-blue-700">
+                  <Button 
+                    size="lg" 
+                    onClick={() => {
+                      const searchParams = new URLSearchParams();
+                      if (searchQuery) searchParams.set('search', searchQuery);
+                      if (selectedCategory && selectedCategory !== 'all') searchParams.set('category', selectedCategory);
+                      window.location.href = `/products?${searchParams.toString()}`;
+                    }}
+                    className="h-14 px-8 shadow-lg hover:shadow-xl transition-all duration-200 bg-blue-600 hover:bg-blue-700"
+                  >
                     <Search className="w-5 h-5 mr-2" />
                     Search
                   </Button>
@@ -513,10 +579,8 @@ export default function Products() {
                               });
                               return;
                             }
-                            toast({
-                              title: "Contact Supplier",
-                              description: "Opening chat with supplier...",
-                            });
+                            // Navigate to product-specific chat
+                            window.location.href = `/messages?productId=${product.id}&productName=${encodeURIComponent(product.name)}&chatType=product`;
                           }}
                           onQuote={() => {
                             if (!user) {

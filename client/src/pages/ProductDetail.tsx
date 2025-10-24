@@ -66,6 +66,7 @@ import {
   RefreshCw
 } from "lucide-react";
 import InquiryDialog from "@/components/InquiryDialog";
+import FloatingActionButtons from "@/components/FloatingActionButtons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProduct } from "@/contexts/ProductContext";
 
@@ -237,13 +238,8 @@ export default function ProductDetail() {
       return;
     }
     
-      setCurrentProduct(product);
-    
-    toast({
-      title: "Chat Now Available",
-      description: "Click the blue chat button on the right side to start a conversation about this product.",
-      duration: 5000,
-    });
+    // Navigate to product-specific chat
+    window.location.href = `/messages?productId=${product.id}&productName=${encodeURIComponent(product.name)}&chatType=product`;
   };
 
   const handleRequestQuote = () => {
@@ -1037,6 +1033,14 @@ export default function ProductDetail() {
       )}
 
       <Footer />
+      
+      {/* Floating Action Buttons for Product Chat */}
+      <FloatingActionButtons 
+        unreadCount={0} 
+        chatType="product" 
+        productId={productId}
+        productName={product.name}
+      />
     </div>
   );
 }

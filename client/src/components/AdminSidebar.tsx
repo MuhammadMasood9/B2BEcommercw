@@ -13,7 +13,9 @@ import {
   FileSpreadsheet,
   UserCheck,
   MessageSquare,
-  FileText
+  FileText,
+  Bell,
+  Activity
 } from "lucide-react";
 import {
   Sidebar,
@@ -69,16 +71,16 @@ const adminMenuItems = [
     url: "/admin/orders",
     icon: ShoppingCart,
   },
-  {
-    title: "Order Management",
-    url: "/admin/order-management",
-    icon: ShoppingCart,
-  },
-  {
-    title: "Customers",
-    url: "/admin/customers",
-    icon: Users,
-  },
+  // {
+  //   title: "Order Management",
+  //   url: "/admin/order-management",
+  //   icon: ShoppingCart,
+  // },
+  // {
+  //   title: "Customers",
+  //   url: "/admin/customers",
+  //   icon: Users,
+  // },
   {
     title: "Users",
     url: "/admin/users",
@@ -110,6 +112,16 @@ const adminMenuItems = [
     title: "Chat Management",
     url: "/admin/chat",
     icon: MessageSquare,
+  },
+  {
+    title: "Notifications",
+    url: "/admin/notifications",
+    icon: Bell,
+  },
+  {
+    title: "Activity Log",
+    url: "/admin/activity-log",
+    icon: Activity,
   },
   {
     title: "Settings",

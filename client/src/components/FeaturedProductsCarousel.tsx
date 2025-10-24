@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import ProductCard from "@/components/ProductCard";
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -59,6 +60,46 @@ export default function FeaturedProductsCarousel() {
   const getCurrentProducts = () => {
     const startIndex = currentIndex * 4;
     return products.slice(startIndex, startIndex + 4);
+  };
+
+  // Helper function to transform product data for ProductCard
+  const transformProductForCard = (product: any) => {
+    // Get first image from images array or use placeholder
+    const image = Array.isArray(product.images) && product.images.length > 0 
+      ? product.images[0] 
+      : 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop';
+    
+    // Get price range from priceRanges
+    const priceRange = Array.isArray(product.priceRanges) && product.priceRanges.length > 0
+      ? `$${product.priceRanges[0].pricePerUnit} - $${product.priceRanges[product.priceRanges.length - 1].pricePerUnit}`
+      : '$0.00';
+    
+    return {
+      ...product,
+      image,
+      priceRange,
+      moq: product.minOrderQuantity || 1,
+      supplierName: 'Admin Supplier', // Admin is the supplier
+      supplierCountry: 'USA',
+      supplierType: 'manufacturer',
+      responseRate: '100%',
+      responseTime: '< 2h',
+      verified: true,
+      tradeAssurance: true,
+      readyToShip: product.readyToShip || false,
+      sampleAvailable: product.sampleAvailable || false,
+      customizationAvailable: product.customizationAvailable || false,
+      certifications: product.certifications || ['ISO 9001', 'CE Mark'],
+      rating: product.rating || 4.8,
+      reviews: product.reviews || Math.floor(Math.random() * 100) + 50,
+      views: product.views || Math.floor(Math.random() * 1000) + 100,
+      inquiries: product.inquiries || Math.floor(Math.random() * 50) + 10,
+      leadTime: product.leadTime || '7-15 days',
+      port: product.port || 'Los Angeles, USA',
+      paymentTerms: ['T/T', 'L/C', 'PayPal'],
+      inStock: true,
+      stockQuantity: product.stockQuantity || Math.floor(Math.random() * 1000) + 100
+    };
   };
 
   if (isLoading) {
@@ -137,92 +178,25 @@ export default function FeaturedProductsCarousel() {
             <ChevronRight className="w-4 h-4" />
           </Button>
 
-          {/* Products Grid */}
+          {/* Products Grid using ProductCard */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {getCurrentProducts().map((product: any) => (
-              <Card key={product.id} className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-white border-gray-100">
-                <CardContent className="p-0">
-                  {/* Product Image */}
-                  <div className="relative overflow-hidden rounded-t-lg">
-                    <img
-                      src={product.images?.[0] || '/placeholder-product.jpg'}
-                      alt={product.name}
-                      className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300"
-                    />
-                    <div className="absolute top-3 left-3">
-                      <Badge className="bg-green-500 text-white">
-                        <Shield className="w-3 h-3 mr-1" />
-                        Verified
-                      </Badge>
-                    </div>
-                    <div className="absolute top-3 right-3">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="w-8 h-8 bg-white/80 hover:bg-white rounded-full"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Product Info */}
-                  <div className="p-6">
-                    <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
-                      {product.name}
-                    </h3>
-                    
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="flex items-center">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`w-4 h-4 ${
-                              i < Math.floor(product.rating || 4.5)
-                                ? 'text-yellow-400 fill-current'
-                                : 'text-gray-300'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <span className="text-sm text-gray-500">
-                        ({product.reviewCount || Math.floor(Math.random() * 100)})
-                      </span>
-                    </div>
-
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <MapPin className="w-4 h-4" />
-                        <span>{product.supplierCountry || 'China'}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Clock className="w-4 h-4" />
-                        <span>Response: {product.responseTime || '24h'}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <div className="text-lg font-bold text-gray-900">
-                          ${product.minPrice || '99'} - ${product.maxPrice || '299'}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          MOQ: {product.moq || '100'} pieces
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white">
-                        Contact Supplier
-                      </Button>
-                      <Button variant="outline" className="px-3">
-                        <ArrowRight className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <ProductCard
+                key={product.id}
+                {...transformProductForCard(product)}
+                onContact={() => {
+                  // Handle contact supplier
+                  console.log('Contact supplier for product:', product.id);
+                }}
+                onQuote={() => {
+                  // Handle request quote
+                  console.log('Request quote for product:', product.id);
+                }}
+                onSample={() => {
+                  // Handle request sample
+                  console.log('Request sample for product:', product.id);
+                }}
+              />
             ))}
           </div>
 

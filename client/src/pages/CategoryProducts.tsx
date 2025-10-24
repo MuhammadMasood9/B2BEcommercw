@@ -29,17 +29,17 @@ import type { Product, Category } from "@shared/schema";
 
 export default function CategoryProducts() {
   const { setLoading } = useLoading();
+  const [searchQuery, setSearchQuery] = useState("");
   const [, params] = useRoute("/category/:slug");
   const categorySlug = params?.slug || "electronics";
-  const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("newest");
   const [priceRange, setPriceRange] = useState({ min: "", max: "" });
   const [showFilters, setShowFilters] = useState(false);
   const [verifiedAdminsOnly, setVerifiedAdminsOnly] = useState(false);
   const [tradeAssurance, setTradeAssurance] = useState(false);
 
-  // Fetch categories to get the category by slug
-  const { data: categories = [] } = useQuery<Category[]>({
+  // Fetch categories to get the category by slug with comprehensive data
+  const { data: categories = [] } = useQuery({
     queryKey: ["/api/categories"],
     queryFn: async () => {
       try {
@@ -50,6 +50,7 @@ export default function CategoryProducts() {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
+        console.log("Fetched categories for CategoryProducts:", data);
         return Array.isArray(data) ? data : [];
       } catch (error) {
         console.error("Error fetching categories:", error);
@@ -62,6 +63,15 @@ export default function CategoryProducts() {
   const currentCategory = categories.find(cat => cat.slug === categorySlug);
   const categoryId = currentCategory?.id;
   const categoryName = currentCategory?.name || categorySlug;
+  
+  // Get subcategories for this category
+  const subcategories = categories.filter(cat => cat.parentId === categoryId);
+  
+  // Get category stats
+  const productCount = currentCategory?.productCount || 0;
+  const subcategoryCount = currentCategory?.subcategoryCount || 0;
+  const totalViews = currentCategory?.totalViews || 0;
+  const trend = currentCategory?.trend || 'low';
 
   // Fetch products for this category
   const { data: products = [], isLoading } = useQuery<Product[]>({
@@ -88,17 +98,20 @@ export default function CategoryProducts() {
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          product.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesPrice = (!priceRange.min || (product.price || 0) >= parseFloat(priceRange.min)) &&
-                        (!priceRange.max || (product.price || 0) <= parseFloat(priceRange.max));
+    const productPrice = (product as any).price || (product as any).minPrice || 0;
+    const matchesPrice = (!priceRange.min || productPrice >= parseFloat(priceRange.min)) &&
+                        (!priceRange.max || productPrice <= parseFloat(priceRange.max));
     return matchesSearch && matchesPrice;
   });
 
   const sortedProducts = [...filteredProducts].sort((a, b) => {
+    const priceA = (a as any).price || (a as any).minPrice || 0;
+    const priceB = (b as any).price || (b as any).minPrice || 0;
     switch (sortBy) {
       case 'price-low':
-        return (a.price || 0) - (b.price || 0);
+        return priceA - priceB;
       case 'price-high':
-        return (b.price || 0) - (a.price || 0);
+        return priceB - priceA;
       case 'name':
         return a.name.localeCompare(b.name);
       case 'newest':
@@ -109,17 +122,71 @@ export default function CategoryProducts() {
 
   // Transform product data for ProductCard
   const transformProductForCard = (product: Product) => {
+    // Parse price ranges from product data
+    let priceRanges = [];
+    if (product.priceRanges) {
+      try {
+        priceRanges = typeof product.priceRanges === 'string' 
+          ? JSON.parse(product.priceRanges) 
+          : product.priceRanges;
+      } catch (error) {
+        console.error('Error parsing priceRanges:', error);
+        priceRanges = [];
+      }
+    }
+    const minPrice = priceRanges.length > 0 ? Math.min(...priceRanges.map((r: any) => Number(r.pricePerUnit))) : 0;
+    const maxPrice = priceRanges.length > 0 ? Math.max(...priceRanges.map((r: any) => Number(r.pricePerUnit))) : 0;
+    const priceRange = priceRanges.length > 0 
+      ? `$${minPrice.toFixed(2)} - $${maxPrice.toFixed(2)}`
+      : 'Contact for price';
+    
+    // Get images
+    let images = [];
+    if (product.images) {
+      try {
+        images = Array.isArray(product.images) 
+          ? product.images 
+          : (typeof product.images === 'string' ? JSON.parse(product.images) : []);
+      } catch (error) {
+        console.error('Error parsing images:', error);
+        images = [];
+      }
+    }
+    const firstImage = images.length > 0 ? images[0] : 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop';
+    
     return {
-      ...product,
-      minPrice: (product as any).minPrice || product.price,
-      maxPrice: (product as any).maxPrice || product.price,
-      rating: (product as any).rating || 4.5,
-      reviewCount: (product as any).reviewCount || 0,
-      supplierName: (product as any).supplierName || 'Admin Supplier',
-      supplierCountry: (product as any).supplierCountry || 'Global',
-      moq: (product as any).moq || product.moq,
-      isVerified: true,
-      isTradeAssurance: true
+      id: product.id,
+      name: product.name,
+      description: product.description,
+      priceRange,
+      image: firstImage,
+      moq: product.minOrderQuantity || 1,
+      supplierName: 'Admin Supplier',
+      supplierCountry: 'USA',
+      supplierType: 'manufacturer',
+      responseRate: '100%',
+      responseTime: '< 2h',
+      verified: true,
+      tradeAssurance: product.hasTradeAssurance || true,
+      readyToShip: product.inStock || false,
+      sampleAvailable: product.sampleAvailable || false,
+      customizationAvailable: product.customizationAvailable || false,
+      certifications: product.certifications || ['ISO 9001', 'CE Mark'],
+      rating: (product as any).rating || 4.8,
+      reviews: (product as any).reviews || Math.floor(Math.random() * 100) + 50,
+      views: (product as any).views || Math.floor(Math.random() * 1000) + 100,
+      inquiries: (product as any).inquiries || Math.floor(Math.random() * 50) + 10,
+      leadTime: product.leadTime || '7-15 days',
+      port: product.port || 'Los Angeles, USA',
+      paymentTerms: product.paymentTerms || ['T/T', 'L/C', 'PayPal'],
+      inStock: product.inStock || true,
+      stockQuantity: product.stockQuantity || Math.floor(Math.random() * 1000) + 100,
+      onContact: () => {
+        // Navigate to product-specific chat
+        window.location.href = `/messages?productId=${product.id}&productName=${encodeURIComponent(product.name)}&chatType=product`;
+      },
+      onQuote: () => console.log('Request quote for product:', product.id),
+      onSample: () => console.log('Request sample for product:', product.id)
     };
   };
 
@@ -169,7 +236,16 @@ export default function CategoryProducts() {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="flex-1 border-0 focus-visible:ring-0 h-14 text-gray-900 placeholder:text-gray-500 text-lg"
                   />
-                  <Button size="lg" className="m-1 h-12 px-8 shadow-lg hover:shadow-xl transition-all duration-200 bg-blue-600 hover:bg-blue-700">
+                  <Button 
+                    size="lg" 
+                    onClick={() => {
+                      const searchParams = new URLSearchParams();
+                      if (searchQuery) searchParams.set('search', searchQuery);
+                      searchParams.set('category', categoryId || '');
+                      window.location.href = `/products?${searchParams.toString()}`;
+                    }}
+                    className="m-1 h-12 px-8 shadow-lg hover:shadow-xl transition-all duration-200 bg-blue-600 hover:bg-blue-700"
+                  >
                     Search
                   </Button>
                 </div>
@@ -180,15 +256,15 @@ export default function CategoryProducts() {
             <div className="flex flex-wrap justify-center gap-8 text-white/80 text-sm">
               <div className="flex items-center gap-2">
                 <Shield className="w-4 h-4 text-green-300" />
-                <span>{sortedProducts.length} Products</span>
+                <span>{productCount} Products</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-yellow-300" />
-                <span>Verified Admins</span>
+                <span>{subcategoryCount} Subcategories</span>
               </div>
               <div className="flex items-center gap-2">
                 <Globe className="w-4 h-4 text-purple-300" />
-                <span>Global Shipping</span>
+                <span>{totalViews} Views</span>
               </div>
             </div>
           </div>
@@ -205,6 +281,56 @@ export default function CategoryProducts() {
             <span className="mx-2 text-gray-400">/</span>
             <span className="text-gray-900 font-medium">{categoryName}</span>
           </nav>
+
+          {/* Subcategories Section */}
+          {subcategories.length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Subcategories</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {subcategories.map((subcategory: any) => {
+                  const getCategoryImage = (categoryName: string) => {
+                    const imageMap: { [key: string]: string } = {
+                      'Electronics': 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=400&h=400&fit=crop&auto=format',
+                      'Machinery': 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=400&h=400&fit=crop&auto=format',
+                      'Fashion': 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=400&fit=crop&auto=format',
+                      'Premium': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=400&fit=crop&auto=format',
+                      'Standard': 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=400&h=400&fit=crop&auto=format'
+                    };
+                    return imageMap[categoryName] || `https://images.unsplash.com/photo-${1500000000000 + Math.floor(Math.random() * 1000000000)}?w=400&h=400&fit=crop&auto=format`;
+                  };
+                  
+                  const subcategoryImage = subcategory.imageUrl ? 
+                    (subcategory.imageUrl.startsWith('/uploads/') ? subcategory.imageUrl : `/uploads/${subcategory.imageUrl}`) : 
+                    getCategoryImage(subcategory.name);
+                  
+                  return (
+                    <Link key={subcategory.id} href={`/subcategory/${subcategory.slug}`}>
+                      <Card className="group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer bg-white border-gray-100 hover:border-blue-200">
+                        <CardContent className="p-4 text-center">
+                          <div className="w-12 h-12 rounded-xl overflow-hidden mx-auto mb-3 bg-gray-100">
+                            <img 
+                              src={subcategoryImage} 
+                              alt={subcategory.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.src = getCategoryImage(subcategory.name);
+                              }}
+                            />
+                          </div>
+                          <h4 className="font-medium text-gray-900 text-sm group-hover:text-blue-600 transition-colors">
+                            {subcategory.name}
+                          </h4>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {subcategory.productCount || 0} products
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="flex flex-col lg:flex-row gap-8">
             {/* Desktop Filters */}
@@ -399,7 +525,7 @@ export default function CategoryProducts() {
                   {sortedProducts.map((product) => (
                     <ProductCard 
                       key={product.id} 
-                      product={transformProductForCard(product)} 
+                      {...transformProductForCard(product)} 
                     />
                   ))}
                 </div>

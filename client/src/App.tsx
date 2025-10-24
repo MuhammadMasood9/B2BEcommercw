@@ -15,6 +15,8 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { FavoriteProvider } from "@/contexts/FavoriteContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { ProductProvider } from "@/contexts/ProductContext";
+import { SearchProvider } from "@/contexts/SearchContext";
+import { UnseenCountsProvider } from "@/contexts/UnseenCountsContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import 'react-toastify/dist/ReactToastify.css';
 import Home from "@/pages/Home";
@@ -73,8 +75,13 @@ import AdminUserImportExport from "@/pages/admin/AdminUserImportExport";
 import AdminSettings from "@/pages/admin/AdminSettings";
 import AdminReports from "@/pages/admin/AdminReports";
 import AdminChat from "@/pages/admin/AdminChat";
+import AdminNotificationPage from "@/pages/admin/AdminNotificationPage";
+import AdminActivityLogPage from "@/pages/admin/AdminActivityLogPage";
 import AdminLogin from "@/pages/admin/AdminLogin";
 import GlobalChatButton from "@/components/GlobalChatButton";
+import FloatingActionButtons from "@/components/FloatingActionButtons";
+import NotificationPage from "@/pages/buyer/NotificationPage";
+import ProfilePage from "@/pages/buyer/ProfilePage";
 import NotFound from "@/pages/not-found";
 
 function AdminRouter() {
@@ -171,6 +178,16 @@ function AdminRouter() {
           <AdminChat />
         </ProtectedRoute>
       </Route>
+      <Route path="/admin/notifications">
+        <ProtectedRoute requiredRole="admin">
+          <AdminNotificationPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/activity-log">
+        <ProtectedRoute requiredRole="admin">
+          <AdminActivityLogPage />
+        </ProtectedRoute>
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
@@ -255,6 +272,8 @@ function PublicRouter() {
       <Route path="/category/:slug" component={CategoryProducts} />
       <Route path="/subcategory/:slug" component={SubcategoryProducts} />
       <Route path="/get-verified" component={GetVerified} />
+      <Route path="/notifications" component={NotificationPage} />
+      <Route path="/profile" component={ProfilePage} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -298,7 +317,7 @@ function AppContent() {
           showProgress={showProgress}
           progress={progress}
         />
-        <GlobalChatButton />
+        <FloatingActionButtons chatType="general" />
         <ToastContainer position="top-right" />
         <HotToaster position="top-right" />
       </>
@@ -309,7 +328,7 @@ function AppContent() {
     <>
       <PublicRouter />
       <ChatbotWidget />
-      <GlobalChatButton />
+      <FloatingActionButtons chatType="general" />
       <FullScreenLoader 
         isLoading={isLoading}
         message={loadingMessage}
@@ -327,16 +346,20 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <LoadingProvider>
         <AuthProvider>
-          <FavoriteProvider>
-            <CartProvider>
-              <ProductProvider>
-                <TooltipProvider>
-                  <Toaster />
-                  <AppContent />
-                </TooltipProvider>
-              </ProductProvider>
-            </CartProvider>
-          </FavoriteProvider>
+          <SearchProvider>
+            <FavoriteProvider>
+              <CartProvider>
+                <ProductProvider>
+                  <UnseenCountsProvider>
+                    <TooltipProvider>
+                      <Toaster />
+                      <AppContent />
+                    </TooltipProvider>
+                  </UnseenCountsProvider>
+                </ProductProvider>
+              </CartProvider>
+            </FavoriteProvider>
+          </SearchProvider>
         </AuthProvider>
       </LoadingProvider>
     </QueryClientProvider>

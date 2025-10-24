@@ -1,14 +1,15 @@
 import { Router, type Request, type Response } from "express";
 import { db } from "./db";
-import { categories, insertCategorySchema } from "@shared/schema";
-import { eq, isNull, like, or } from "drizzle-orm";
+import { categories, products, insertCategorySchema } from "@shared/schema";
+import { eq, isNull, like, or, and } from "drizzle-orm";
 
 const router = Router();
 
-// Get all categories
+// Get all categories with comprehensive data
 router.get("/categories", async (req: Request, res: Response) => {
   try {
-    const { search, parentId, isActive } = req.query;
+    console.log('=== CATEGORIES API CALLED (categoryRoutes) ===');
+    const { search, parentId, isActive, featured } = req.query;
     
     let query = db.select().from(categories);
     
@@ -36,13 +37,52 @@ router.get("/categories", async (req: Request, res: Response) => {
       conditions.push(eq(categories.isActive, false));
     }
     
+    if (featured === 'true') {
+      conditions.push(eq(categories.isFeatured, true));
+    }
+    
     if (conditions.length > 0) {
       query = query.where(conditions.length === 1 ? conditions[0] : or(...conditions));
     }
     
-    const result = await query;
+    const categoriesResult = await query;
+    console.log('Raw categories from database:', categoriesResult);
     
-    res.json(result);
+    // Add comprehensive data to each category
+    const categoriesWithCount = await Promise.all(
+      categoriesResult.map(async (category) => {
+        // Get products count
+        const productsResult = await db.select().from(products).where(eq(products.categoryId, category.id));
+        const publishedProducts = productsResult.filter(p => p.isPublished);
+        
+        // Get subcategories count
+        const subcategoriesResult = await db.select().from(categories).where(
+          and(eq(categories.parentId, category.id), eq(categories.isActive, true))
+        );
+        
+        // Calculate trend based on product views and inquiries
+        const totalViews = publishedProducts.reduce((sum, product) => sum + (product.views || 0), 0);
+        const totalInquiries = publishedProducts.reduce((sum, product) => sum + (product.inquiries || 0), 0);
+        const trendScore = totalViews + (totalInquiries * 10); // Weight inquiries more
+        
+        const result = {
+          ...category,
+          productCount: publishedProducts.length,
+          subcategoryCount: subcategoriesResult.length,
+          totalViews,
+          totalInquiries,
+          trendScore,
+          trend: trendScore > 100 ? 'high' : trendScore > 50 ? 'medium' : 'low',
+          // Ensure imageUrl is properly formatted
+          imageUrl: category.imageUrl || null
+        };
+        console.log(`Category: ${category.name}, Products: ${publishedProducts.length}, Subcategories: ${subcategoriesResult.length}, Trend: ${result.trend}`);
+        return result;
+      })
+    );
+    
+    console.log('Sending categories with counts:', categoriesWithCount);
+    res.json(categoriesWithCount);
   } catch (error: any) {
     console.error("Error fetching categories:", error);
     res.status(500).json({ 

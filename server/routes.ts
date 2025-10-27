@@ -7,7 +7,7 @@ import { authMiddleware } from "./auth";
 import categoryRoutes from "./categoryRoutes";
 import uploadRoutes from "./uploadRoutes";
 import chatRoutes from "./chatRoutes";
-import { upload } from "./upload";
+import { upload, uploadUnrestricted } from "./upload";
 import { 
   insertProductSchema, insertCategorySchema, insertCustomerSchema, insertOrderSchema,
   insertUserSchema, insertBuyerProfileSchema,
@@ -17,6 +17,8 @@ import {
   users, products, categories, orders, inquiries, quotations, notifications, activity_logs, conversations
 } from "@shared/schema";
 import { sql, eq, and, gte, desc, or, ilike } from "drizzle-orm";
+import * as path from 'path';
+import * as fs from 'fs';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   console.log('=== ROUTES LOADING - UPDATED VERSION ===');
@@ -460,8 +462,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-// Bulk upload with Excel/JSON and actual image files
-app.post("/api/products/bulk-excel", upload.array('images', 100), async (req, res) => {
+// Bulk upload with Excel/JSON and actual image files - NO LIMITS
+app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (req, res) => {
   try {
     const { products } = req.body;
     const imageFiles = req.files as Express.Multer.File[];
@@ -489,8 +491,12 @@ app.post("/api/products/bulk-excel", upload.array('images', 100), async (req, re
       return res.status(400).json({ error: "Products must be an array" });
     }
     
-    console.log(`📦 Received ${productsData.length} products for bulk upload`);
-    console.log(`📁 Received ${imageFiles ? imageFiles.length : 0} image files`);
+     console.log(`📦 Received ${productsData.length} products for bulk upload`);
+     console.log(`📁 Received ${imageFiles ? imageFiles.length : 0} image files`);
+     
+     // Log memory usage for large uploads
+     const memUsage = process.memoryUsage();
+     console.log(`💾 Memory usage: RSS=${Math.round(memUsage.rss / 1024 / 1024)}MB, Heap=${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`);
     
     // Debug: Log samplePrice types after JSON parsing
     console.log('🔍 Server-side samplePrice check after JSON.parse:');
@@ -506,10 +512,22 @@ app.post("/api/products/bulk-excel", upload.array('images', 100), async (req, re
       });
     }
     
-    const validatedProducts = [];
-    const errors = [];
-    
-    for (let i = 0; i < productsData.length; i++) {
+     const validatedProducts = [];
+     const errors = [];
+     
+     // Process products in batches for large uploads
+     const batchSize = 50; // Smaller batches for better memory management
+     const totalBatches = Math.ceil(productsData.length / batchSize);
+     
+     console.log(`🔄 Processing ${productsData.length} products in ${totalBatches} batches of ${batchSize}`);
+     
+     for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+       const startIndex = batchIndex * batchSize;
+       const endIndex = Math.min(startIndex + batchSize, productsData.length);
+       
+       console.log(`📦 Processing batch ${batchIndex + 1}/${totalBatches} (products ${startIndex + 1}-${endIndex})`);
+       
+       for (let i = startIndex; i < endIndex; i++) {
       const p = productsData[i];
       try {
         // Process arrays from Excel/JSON
@@ -588,15 +606,15 @@ app.post("/api/products/bulk-excel", upload.array('images', 100), async (req, re
                   const timestamp = Date.now();
                   const randomSuffix = Math.random().toString(36).substring(2, 8);
                   const filename = `excel-image-${timestamp}-${randomSuffix}.jpg`;
-                  const filePath = require('path').join(process.cwd(), 'public', 'uploads', filename);
-                  
-                  // Ensure uploads directory exists
-                  const uploadsDir = require('path').join(process.cwd(), 'public', 'uploads');
-                  if (!require('fs').existsSync(uploadsDir)) {
-                    require('fs').mkdirSync(uploadsDir, { recursive: true });
-                  }
-                  
-                  require('fs').writeFileSync(filePath, buffer);
+                   const filePath = path.join(process.cwd(), 'public', 'uploads', filename);
+                   
+                   // Ensure uploads directory exists
+                   const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+                   if (!fs.existsSync(uploadsDir)) {
+                     fs.mkdirSync(uploadsDir, { recursive: true });
+                   }
+                   
+                   fs.writeFileSync(filePath, buffer);
                   productImages.push(`/uploads/${filename}`);
                   console.log(`✅ Saved embedded image: ${filename} (${buffer.length} bytes)`);
                 } catch (error: any) {
@@ -625,11 +643,9 @@ app.post("/api/products/bulk-excel", upload.array('images', 100), async (req, re
           });
         }
         
-        // If no uploaded files match, check if images exist in uploads directory
-        if (productImages.length === 0 && excelImageFilenames.length > 0) {
-          const fs = require('fs');
-          const path = require('path');
-          const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+         // If no uploaded files match, check if images exist in uploads directory
+         if (productImages.length === 0 && excelImageFilenames.length > 0) {
+           const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
           
           excelImageFilenames.forEach(filename => {
             const filePath = path.join(uploadsDir, filename);
@@ -652,9 +668,13 @@ app.post("/api/products/bulk-excel", upload.array('images', 100), async (req, re
           }
         }
         
+        // Generate unique slug using name and SKU to avoid duplicates
+        const baseSlug = (p.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        const uniqueSlug = p.sku ? `${baseSlug}-${p.sku.toLowerCase().replace(/[^a-z0-9]+/g, '-')}` : `${baseSlug}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+        
         const productData = {
           name: p.name,
-          slug: (p.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          slug: uniqueSlug,
           shortDescription: p.shortDescription,
           description: p.description,
           categoryId: p.categoryId,
@@ -698,6 +718,15 @@ app.post("/api/products/bulk-excel", upload.array('images', 100), async (req, re
       }
     }
     
+    // Log batch completion
+    console.log(`✅ Completed batch ${batchIndex + 1}/${totalBatches}`);
+    
+    // Small delay between batches to prevent memory overload
+    if (batchIndex < totalBatches - 1) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    }
+    
     if (errors.length > 0) {
       return res.status(400).json({ 
         error: "Validation errors in Excel/JSON data", 
@@ -707,8 +736,16 @@ app.post("/api/products/bulk-excel", upload.array('images', 100), async (req, re
       });
     }
     
+    console.log(`💾 Creating ${validatedProducts.length} products in database...`);
     const createdProducts = await storage.bulkCreateProducts(validatedProducts);
-    res.status(201).json({ count: createdProducts.length, products: createdProducts });
+    
+    console.log(`✅ Successfully created ${createdProducts.length} products in database`);
+    res.status(201).json({ 
+      success: true,
+      count: createdProducts.length, 
+      products: createdProducts,
+      message: `Successfully uploaded ${createdProducts.length} products to database`
+    });
   } catch (error: any) {
     console.error('Excel/JSON bulk upload error:', error);
       res.status(400).json({ error: error.message });

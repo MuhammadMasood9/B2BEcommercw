@@ -31,12 +31,18 @@ const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCa
   }
 };
 
-// Create multer instance
+// Create multer instance with NO LIMITS for bulk uploads
 export const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
+    fieldNameSize: 1000,
+    fieldSize: Infinity, // Max field value size - NO LIMIT
+    fields: Infinity,
+    fileSize: Infinity,
+    files: Infinity,
+    parts: Infinity,
+    headerPairs: 2000
   }
 });
 
@@ -45,4 +51,19 @@ export const uploadSingle = upload.single('image');
 
 // Multiple images upload
 export const uploadMultiple = upload.array('images', 10); // Max 10 images
+
+// Completely unrestricted upload for bulk operations - NO LIMITS AT ALL
+export const uploadUnrestricted = multer({
+  storage: storage,
+  limits: {
+    fieldNameSize: 1000, // Max field name size
+    fieldSize: Infinity, // Max field value size - NO LIMIT
+    fields: Infinity, // Max number of non-file fields - NO LIMIT
+    fileSize: Infinity, // Max file size - NO LIMIT
+    files: Infinity, // Max number of file fields - NO LIMIT
+    parts: Infinity, // Max number of parts (fields + files) - NO LIMIT
+    headerPairs: 2000 // Max number of header key-value pairs
+  }
+  // No fileFilter - accepts all file types
+});
 

@@ -9,6 +9,13 @@ import { passport } from "./auth";
 
 const app = express();
 
+// Increase timeout for large uploads
+app.use((req, res, next) => {
+  req.setTimeout(30 * 60 * 1000); // 30 minutes
+  res.setTimeout(30 * 60 * 1000); // 30 minutes
+  next();
+});
+
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')));
 
@@ -31,8 +38,8 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.json({ limit: '1gb' }));
+app.use(express.urlencoded({ extended: false, limit: '1gb' }));
 
 app.use((req, res, next) => {
   const start = Date.now();

@@ -225,19 +225,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get("/api/products", async (req, res) => {
     try {
-      const { categoryId, search, isPublished, minMOQ, maxMOQ, featured, limit } = req.query;
+      const { categoryId, search, isPublished, minMOQ, maxMOQ, featured, limit, offset } = req.query;
       const filters: any = {};
+      const countFilters: any = {}; // Separate filters for count (without pagination)
       
-      if (categoryId) filters.categoryId = categoryId as string;
-      if (search) filters.search = search as string;
-      if (isPublished !== undefined) filters.isPublished = isPublished === 'true';
-      if (minMOQ) filters.minMOQ = parseInt(minMOQ as string);
-      if (maxMOQ) filters.maxMOQ = parseInt(maxMOQ as string);
-      if (featured === 'true') filters.featured = true;
-      if (limit) filters.limit = parseInt(limit as string);
+      if (categoryId) {
+        filters.categoryId = categoryId as string;
+        countFilters.categoryId = categoryId as string;
+      }
+      if (search) {
+        filters.search = search as string;
+        countFilters.search = search as string;
+      }
+      if (isPublished !== undefined) {
+        filters.isPublished = isPublished === 'true';
+        countFilters.isPublished = isPublished === 'true';
+      }
+      if (minMOQ) {
+        filters.minMOQ = parseInt(minMOQ as string);
+        countFilters.minMOQ = parseInt(minMOQ as string);
+      }
+      if (maxMOQ) {
+        filters.maxMOQ = parseInt(maxMOQ as string);
+        countFilters.maxMOQ = parseInt(maxMOQ as string);
+      }
+      if (featured === 'true') {
+        filters.featured = true;
+        countFilters.featured = true;
+      }
       
-      const products = await storage.getProducts(filters);
-      res.json(products);
+      // Add pagination ONLY to the getProducts filters, NOT to countFilters
+      let hasLimit = false;
+      let hasOffset = false;
+      
+      if (limit) {
+        filters.limit = parseInt(limit as string);
+        hasLimit = true;
+      }
+      if (offset !== undefined) {
+        filters.offset = parseInt(offset as string);
+        hasOffset = true;
+      }
+      
+      const result = await storage.getProducts(filters);
+      
+      // ALWAYS return paginated response structure when limit/offset are provided
+      // Even if total might not be accurate for non-paginated requests
+      if (hasLimit || hasOffset) {
+        const total = await storage.getProductsCount(countFilters); // Use countFilters (no pagination params)
+        
+        console.log(`📊 Products API Response: Returning ${result.length} products with total count: ${total}`);
+        console.log(`📄 Filters applied:`, countFilters);
+        
+        res.json({ 
+          products: result,
+          total,
+          page: filters.offset ? Math.floor(filters.offset / (filters.limit || 20)) + 1 : 1,
+          limit: filters.limit || 20
+        });
+      } else {
+        // No pagination parameters - return as array directly for backwards compatibility
+        res.json(result);
+      }
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

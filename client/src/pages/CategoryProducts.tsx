@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRoute, Link } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
@@ -73,13 +73,20 @@ export default function CategoryProducts() {
   const totalViews = currentCategory?.totalViews || 0;
   const trend = currentCategory?.trend || 'low';
 
-  // Fetch products for this category
-  const { data: products = [], isLoading } = useQuery<Product[]>({
+  // Fetch products for this category with infinite scroll
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading
+  } = useInfiniteQuery<Product[]>({
     queryKey: ["/api/products", "category", categoryId],
-    queryFn: async () => {
+    queryFn: async ({ pageParam = 0 }) => {
       if (!categoryId) return [];
       try {
-        const response = await fetch(`/api/products?categoryId=${categoryId}`, {
+        const limit = 20;
+        const response = await fetch(`/api/products?categoryId=${categoryId}&limit=${limit}&offset=${pageParam}`, {
           credentials: "include",
         });
         if (!response.ok) {
@@ -91,8 +98,16 @@ export default function CategoryProducts() {
         return [];
       }
     },
-    enabled: !!categoryId
+    getNextPageParam: (lastPage, allPages) => {
+      if (lastPage.length === 0 || lastPage.length < 20) return undefined;
+      return allPages.length * 20;
+    },
+    enabled: !!categoryId,
+    initialPageParam: 0,
   });
+
+  // Flatten all pages into a single array
+  const products = data?.pages.flat() || [];
 
   // Filter and sort products
   const filteredProducts = products.filter(product => {
@@ -193,6 +208,36 @@ export default function CategoryProducts() {
   useEffect(() => {
     setLoading(isLoading);
   }, [isLoading, setLoading]);
+
+  // Infinite scroll setup
+  const observerTarget = useRef<HTMLDivElement>(null);
+  const loadMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const currentTarget = observerTarget.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
+    }
+
+    return () => {
+      if (currentTarget) {
+        observer.unobserve(currentTarget);
+      }
+    };
+  }, [hasNextPage, isFetchingNextPage, loadMore]);
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-white">
@@ -521,14 +566,25 @@ export default function CategoryProducts() {
                   ))}
                 </div>
               ) : sortedProducts.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {sortedProducts.map((product) => (
-                    <ProductCard 
-                      key={product.id} 
-                      {...transformProductForCard(product)} 
-                    />
-                  ))}
-                </div>
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {sortedProducts.map((product) => (
+                      <ProductCard 
+                        key={product.id} 
+                        {...transformProductForCard(product)} 
+                      />
+                    ))}
+                  </div>
+                  {/* Observer target for infinite scroll */}
+                  <div ref={observerTarget} className="h-10 w-full flex items-center justify-center mt-6">
+                    {isFetchingNextPage && (
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span>Loading more products...</span>
+                      </div>
+                    )}
+                  </div>
+                </>
               ) : (
                 <div className="text-center py-16">
                   <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">

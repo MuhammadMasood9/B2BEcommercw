@@ -99,12 +99,12 @@ export default function ProductDetail() {
     },
   });
 
-  // Fetch related products
+  // Fetch related products (limit to 4 products)
   const { data: relatedProducts = [] } = useQuery<Product[]>({
-    queryKey: ["/api/products"],
+    queryKey: ["/api/products/related"],
     queryFn: async () => {
       try {
-        const response = await fetch('/api/products');
+        const response = await fetch('/api/products?limit=4');
         if (!response.ok) throw new Error('Failed to fetch products');
         const data = await response.json();
         return Array.isArray(data) ? data.slice(0, 4) : [];
@@ -133,6 +133,7 @@ export default function ProductDetail() {
       setCurrentProduct(null);
     };
   }, [product, setCurrentProduct]);
+
 
   if (isProductLoading) {
     return (
@@ -423,8 +424,8 @@ export default function ProductDetail() {
                 </div>
                 
                 <h1 className="text-4xl font-bold mb-4 leading-tight">{product.name}</h1>
-                <p className="text-blue-100 text-lg mb-6 leading-relaxed">
-                  {product.shortDescription || 'High-quality product from verified admin with trade assurance and premium quality guarantee.'}
+                <p className="text-blue-100 text-lg mb-6 leading-relaxed whitespace-pre-wrap">
+                  {product.shortDescription?.replace(/\\n/g, '\n').replace(/@/g, '') || 'High-quality product from verified admin with trade assurance and premium quality guarantee.'}
                 </p>
                 
                 <div className="flex items-center gap-6 text-sm">
@@ -508,7 +509,9 @@ export default function ProductDetail() {
                 <div>
                         <h2 className="text-xl font-semibold text-gray-900 mb-2">{product.name}</h2>
                         {product.shortDescription && (
-                          <p className="text-gray-600 text-sm leading-relaxed">{product.shortDescription}</p>
+                          <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap">
+                            {product.shortDescription.replace(/\\n/g, '\n').replace(/@/g, '')}
+                          </p>
                         )}
                   </div>
                   
@@ -652,8 +655,8 @@ export default function ProductDetail() {
                       <div className="prose max-w-none">
                         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6">
                           <h3 className="text-xl font-semibold text-gray-900 mb-4">Product Description</h3>
-                          <p className="text-gray-700 leading-relaxed text-lg">
-                            {product.description || 'This is a high-quality product designed to meet your business needs. Our verified admin ensures premium quality and reliable delivery.'}
+                          <p className="text-gray-700 leading-relaxed text-lg whitespace-pre-wrap">
+                            {product.description?.replace(/\\n/g, '\n').replace(/@/g, '') || 'This is a high-quality product designed to meet your business needs. Our verified admin ensures premium quality and reliable delivery.'}
                           </p>
                         </div>
                     </div>
@@ -1036,7 +1039,7 @@ export default function ProductDetail() {
       
       {/* Floating Action Buttons for Product Chat */}
       <FloatingActionButtons 
-        unreadCount={0} 
+        // unreadCount={0} 
         chatType="product" 
         productId={productId}
         productName={product.name}

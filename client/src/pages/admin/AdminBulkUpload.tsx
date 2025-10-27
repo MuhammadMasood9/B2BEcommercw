@@ -81,7 +81,151 @@ export default function AdminBulkUpload() {
       // Read the Excel file
       const data = await file.arrayBuffer();
       const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(data);
+      
+      // The error occurs during ExcelJS's internal reconciliation phase
+      // We'll temporarily patch the reconciliation method to handle undefined anchors gracefully
+      let originalReconcile: any = null;
+      
+      try {
+        // Try to load with a patched reconciliation
+        if (workbook.xlsx && (workbook.xlsx as any).reconcile) {
+          originalReconcile = (workbook.xlsx as any).reconcile;
+          
+          // Monkey-patch the reconcile method to handle undefined anchors
+          (workbook.xlsx as any).reconcile = function(model: any) {
+            try {
+              // Call original reconcile if it exists
+              if (originalReconcile) {
+                return originalReconcile.call(this, model);
+              }
+            } catch (error: any) {
+              console.warn('Reconcile error (continuing anyway):', error.message);
+              // Continue even if reconcile fails
+              if (model && model.drawings) {
+                // Fix any undefined anchors
+                const drawings = model.drawings;
+                if (Array.isArray(drawings)) {
+                  drawings.forEach((drawing: any) => {
+                    if (drawing && typeof drawing === 'object') {
+                      try {
+                        if (!drawing.anchors) {
+                          drawing.anchors = [];
+                        }
+                      } catch (e) {
+                        // Ignore
+                      }
+                    }
+                  });
+                }
+              }
+            }
+          };
+        }
+        
+        await workbook.xlsx.load(data);
+      } catch (loadError: any) {
+        console.warn('Load with patched reconcile failed, trying alternative approach:', loadError);
+        
+        // Alternative: Use xlsx library instead for parsing
+        try {
+          // Import xlsx library as fallback
+          const XLSX = await import('xlsx');
+          const workbook2 = XLSX.read(data, { type: 'array', cellDates: true });
+          
+          if (!workbook2.SheetNames || workbook2.SheetNames.length === 0) {
+            throw new Error('No worksheets found in Excel file');
+          }
+          
+          // Convert xlsx data to ExcelJS format manually
+          const sheetName = workbook2.SheetNames[0];
+          const worksheet = workbook2.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '', blankrows: false });
+          
+          // Process the data
+          const processedProducts = jsonData.map((row: any, index: number) => {
+            const processArray = (value: any) => {
+              if (typeof value === 'string') {
+                return value.split(',').map((item: string) => item.trim()).filter(Boolean);
+              }
+              return Array.isArray(value) ? value : [];
+            };
+            
+            let specifications = null;
+            if (row.specifications) {
+              try {
+                specifications = typeof row.specifications === 'string' ? JSON.parse(row.specifications) : row.specifications;
+              } catch (e) {
+                console.warn(`Invalid specifications JSON for product ${index + 1}:`, row.specifications);
+              }
+            }
+            
+            const priceTiers = [];
+            for (let tier = 1; tier <= 3; tier++) {
+              const minQty = row[`priceTier${tier}MinQty`];
+              const maxQty = row[`priceTier${tier}MaxQty`];
+              const price = row[`priceTier${tier}Price`];
+              
+              if (minQty && price) {
+                priceTiers.push({
+                  minQty: parseInt(minQty),
+                  maxQty: maxQty ? parseInt(maxQty) : null,
+                  pricePerUnit: parseFloat(price)
+                });
+              }
+            }
+            
+            return {
+              id: index + 1,
+              name: row.name || '',
+              sku: row.sku || '',
+              shortDescription: row.shortDescription || '',
+              description: row.description || '',
+              categoryId: row.categoryId || '',
+              minOrderQuantity: parseInt(row.minOrderQuantity || '1'),
+              sampleAvailable: row.sampleAvailable === 'TRUE' || row.sampleAvailable === true,
+              samplePrice: row.samplePrice ? row.samplePrice.toString() : '0',
+              customizationAvailable: row.customizationAvailable === 'TRUE' || row.customizationAvailable === true,
+              customizationDetails: row.customizationDetails || '',
+              leadTime: row.leadTime || '',
+              port: row.port || '',
+              paymentTerms: processArray(row.paymentTerms),
+              inStock: row.inStock === 'TRUE' || row.inStock === true,
+              stockQuantity: parseInt(row.stockQuantity || '0'),
+              isPublished: row.isPublished === 'TRUE' || row.isPublished === true,
+              isFeatured: row.isFeatured === 'TRUE' || row.isFeatured === true,
+              colors: processArray(row.colors),
+              sizes: processArray(row.sizes),
+              keyFeatures: processArray(row.keyFeatures),
+              certifications: processArray(row.certifications),
+              tags: processArray(row.tags),
+              hasTradeAssurance: row.hasTradeAssurance === 'TRUE' || row.hasTradeAssurance === true,
+              specifications,
+              priceTiers,
+              images: [],
+              imageData: []
+            };
+          });
+          
+          setProducts(processedProducts);
+          
+          toast({
+            title: "Success",
+            description: `Processed ${processedProducts.length} products from Excel file (using xlsx parser)`,
+          });
+          
+          return;
+        } catch (xlsxError) {
+          console.error('xlsx fallback also failed:', xlsxError);
+          throw new Error(
+            'Unable to load Excel file. Please try saving the file as CSV or removing images from the Excel file.'
+          );
+        }
+      } finally {
+        // Restore original reconcile if we patched it
+        if (originalReconcile && workbook.xlsx) {
+          (workbook.xlsx as any).reconcile = originalReconcile;
+        }
+      }
       
       // Get the first worksheet
       const worksheet = workbook.worksheets[0];
@@ -92,13 +236,29 @@ export default function AdminBulkUpload() {
       // Extract images from the workbook
       const extractedImages: { [key: string]: string } = {};
       
-      // Get all images from the workbook
-      const images = workbook.model.media || [];
+      // Get all images from the workbook with error handling
+      let images: any[] = [];
+      try {
+        // Try to access media array safely
+        if (workbook.model && workbook.model.media && Array.isArray(workbook.model.media)) {
+          images = workbook.model.media;
+        }
+      } catch (error) {
+        console.warn('Could not access workbook media (images may not be available):', error);
+        images = [];
+      }
+      
       console.log(`Found ${images.length} images in workbook`);
       
-      // Process each image
+      // Process each image with additional safety checks
       images.forEach((image: any, imageIndex: number) => {
         try {
+          // Check if image has valid buffer
+          if (!image || !image.buffer) {
+            console.warn(`Image ${imageIndex + 1} has no valid buffer data`);
+            return;
+          }
+          
           // Convert image buffer to base64 using browser-compatible method
           const uint8Array = new Uint8Array(image.buffer);
           let binary = '';

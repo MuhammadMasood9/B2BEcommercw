@@ -766,15 +766,19 @@ export default function AdminProductDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <h4 className="font-semibold mb-2">Short Description</h4>
-                <p className="text-muted-foreground">{product.shortDescription || 'No description'}</p>
-              </div>
-              <Separator />
-              <div>
-                <h4 className="font-semibold mb-2">Full Description</h4>
-                <p className="text-muted-foreground whitespace-pre-wrap">{product.description || 'No description'}</p>
-              </div>
+                      <div>
+                        <h4 className="font-semibold mb-2">Short Description</h4>
+                        <p className="text-muted-foreground whitespace-pre-wrap">
+                          {product.shortDescription?.replace(/\\n/g, '\n').replace(/@/g, '') || 'No description'}
+                        </p>
+                      </div>
+                      <Separator />
+                      <div>
+                        <h4 className="font-semibold mb-2">Full Description</h4>
+                        <p className="text-muted-foreground whitespace-pre-wrap">
+                          {product.description?.replace(/\\n/g, '\n').replace(/@/g, '') || 'No description'}
+                        </p>
+                      </div>
             </CardContent>
           </Card>
 

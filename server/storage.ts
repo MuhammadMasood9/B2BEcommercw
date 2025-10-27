@@ -41,7 +41,16 @@ export interface IStorage {
     maxMOQ?: number;
     featured?: boolean;
     limit?: number;
+    offset?: number;
   }): Promise<Product[]>;
+  getProductsCount(filters?: { 
+    categoryId?: string; 
+    search?: string; 
+    isPublished?: boolean;
+    minMOQ?: number;
+    maxMOQ?: number;
+    featured?: boolean;
+  }): Promise<number>;
   getProduct(id: string): Promise<Product | undefined>;
   getProductBySlug(slug: string): Promise<Product | undefined>;
   createProduct(product: InsertProduct): Promise<Product>;
@@ -268,6 +277,7 @@ export class PostgresStorage implements IStorage {
     maxMOQ?: number;
     featured?: boolean;
     limit?: number;
+    offset?: number;
   }): Promise<Product[]> {
     let query = db.select().from(products);
     const conditions = [];
@@ -295,17 +305,60 @@ export class PostgresStorage implements IStorage {
       query = query.where(and(...conditions)) as any;
     }
     
-    // Add ordering for featured products
-    if (filters?.featured) {
-      query = query.orderBy(desc(products.createdAt)) as any;
+    // Add ordering
+    query = query.orderBy(desc(products.createdAt)) as any;
+    
+    // Add pagination
+    if (filters?.offset) {
+      query = query.offset(filters.offset) as any;
     }
     
-    // Add limit
     if (filters?.limit) {
       query = query.limit(filters.limit) as any;
     }
     
     return await query;
+  }
+
+  async getProductsCount(filters?: { 
+    categoryId?: string; 
+    search?: string; 
+    isPublished?: boolean;
+    minMOQ?: number;
+    maxMOQ?: number;
+    featured?: boolean;
+  }): Promise<number> {
+    const conditions = [];
+    
+    if (filters?.categoryId) {
+      conditions.push(eq(products.categoryId, filters.categoryId));
+    }
+    if (filters?.isPublished !== undefined) {
+      conditions.push(eq(products.isPublished, filters.isPublished));
+    }
+    if (filters?.featured !== undefined) {
+      conditions.push(eq(products.isFeatured, filters.featured));
+    }
+    if (filters?.search) {
+      const searchPattern = `%${filters.search}%`;
+      conditions.push(
+        or(
+          like(products.name, searchPattern),
+          like(products.description, searchPattern)
+        )
+      );
+    }
+    
+    let query = db.select({ count: sql<number>`count(*)::int` }).from(products);
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    const result = await query;
+    const total = result[0]?.count || 0;
+    console.log(`🔢 getProductsCount: ${total} products found`);
+    return total;
   }
 
   async getProduct(id: string): Promise<Product | undefined> {

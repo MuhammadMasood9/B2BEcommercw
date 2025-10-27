@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
@@ -60,6 +60,8 @@ import {
   Box,
   Settings,
   Activity,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 
@@ -73,16 +75,45 @@ export default function AdminProducts() {
   const [showInventoryManagement, setShowInventoryManagement] = useState(false);
   const [inventoryFilter, setInventoryFilter] = useState<"all" | "low-stock" | "out-of-stock" | "in-stock">("all");
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const { toast } = useToast();
 
-  // Fetch products from API - REAL DATA ONLY
-  const { data: products = [], isLoading } = useQuery<Product[]>({
-    queryKey: ["/api/products"],
+  // Fetch products from API - With Pagination
+  const { data: productsData, isLoading } = useQuery<{ products: Product[], total: number }>({
+    queryKey: ["/api/products", currentPage, pageSize, filterCategory, filterStatus, search],
     queryFn: async () => {
       console.log("Fetching REAL products from database...");
       
       try {
-        const response = await fetch("/api/products", {
+        const offset = (currentPage - 1) * pageSize;
+        
+        // Build query parameters for server-side filtering
+        const params = new URLSearchParams({
+          limit: pageSize.toString(),
+          offset: offset.toString()
+        });
+        
+        // Add category filter
+        if (filterCategory && filterCategory !== "all") {
+          params.append("categoryId", filterCategory);
+        }
+        
+        // Add status filters
+        if (filterStatus === "published") {
+          params.append("isPublished", "true");
+        } else if (filterStatus === "draft") {
+          params.append("isPublished", "false");
+        } else if (filterStatus === "featured") {
+          params.append("featured", "true");
+        }
+        
+        // Add search filter
+        if (search) {
+          params.append("search", search);
+        }
+        
+        const response = await fetch(`/api/products?${params.toString()}`, {
           credentials: "include",
         });
         if (!response.ok) {
@@ -97,11 +128,43 @@ export default function AdminProducts() {
         }
         
         const data = await response.json();
-        console.log("✅ Successfully fetched REAL products from API:", data);
+        console.log("✅ FULL API Response:", JSON.stringify(data, null, 2));
+        console.log("📊 API Response analysis:", {
+          isArray: Array.isArray(data),
+          hasProductsProperty: 'products' in data,
+          hasTotalProperty: 'total' in data,
+          dataType: typeof data,
+          dataLength: Array.isArray(data) ? data.length : 'N/A',
+          productsLength: data.products?.length || 'N/A',
+          totalValue: data.total
+        });
+        
+        // Determine response structure
+        let productsFromAPI: any[] = [];
+        let totalCount = 0;
+        
+        if (Array.isArray(data)) {
+          // Old format - direct array
+          console.log("⚠️ Received old array format, no total available");
+          productsFromAPI = data;
+          totalCount = data.length;
+        } else if (data.products && Array.isArray(data.products)) {
+          // New format - object with products and total
+          console.log("✅ Received new paginated format");
+          productsFromAPI = data.products;
+          totalCount = data.total;
+        } else {
+          console.error("❌ Unknown response format:", data);
+          productsFromAPI = [];
+          totalCount = 0;
+        }
+        
+        console.log(`📦 Products from API: ${productsFromAPI.length}`);
+        console.log(`🔢 Total count from API: ${totalCount}`);
         
         // Enhance products with category names
         const enhancedProducts = await Promise.all(
-          data.map(async (product: Product & { categoryName?: string }) => {
+          productsFromAPI.map(async (product: Product & { categoryName?: string }) => {
             if (product.categoryId) {
               try {
                 const categoryResponse = await fetch(`/api/categories/${product.categoryId}`, {
@@ -131,18 +194,36 @@ export default function AdminProducts() {
           })
         );
         
-        console.log("✅ Enhanced products with category names:", enhancedProducts);
-        return enhancedProducts;
+        console.log("✅ Enhanced products with category names:", enhancedProducts.length);
+        
+        // Return with the total count we determined
+        console.log(`🎯 Returning to UI: ${enhancedProducts.length} products with total: ${totalCount}`);
+        
+        return { 
+          products: enhancedProducts, 
+          total: totalCount
+        };
       } catch (error) {
         console.error("❌ Error fetching products:", error);
         throw error; // Re-throw to trigger error state - NO FALLBACK
       }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchInterval: 30 * 1000, // Refetch every 30 seconds
     refetchOnWindowFocus: true,
     refetchOnMount: true,
   });
+
+  const products = productsData?.products || [];
+  const totalProducts = productsData?.total || 0;
+  const totalPages = totalProducts > 0 ? Math.ceil(totalProducts / pageSize) : 0;
+
+  // Debug logging
+  console.log("📊 Pagination State:", { currentPage, totalProducts, totalPages, pageSize, productsCount: products.length });
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterCategory, filterStatus]);
 
   // Fetch dashboard analytics
   const { data: dashboardAnalytics } = useQuery({
@@ -390,27 +471,14 @@ export default function AdminProducts() {
     },
   });
 
-  // Filter products
-  const filteredProducts = products.filter(p => {
-    const matchesSearch = 
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.sku?.toLowerCase().includes(search.toLowerCase()) ||
-      p.description?.toLowerCase().includes(search.toLowerCase());
-    
-    const matchesCategory = filterCategory === "all" || p.categoryId === filterCategory;
-    const matchesStatus = 
-      filterStatus === "all" ||
-      (filterStatus === "published" && p.isPublished) ||
-      (filterStatus === "draft" && !p.isPublished) ||
-      (filterStatus === "featured" && p.isFeatured) ||
-      (filterStatus === "out-of-stock" && (!p.inStock || p.stockQuantity === 0));
-    
-    return matchesSearch && matchesCategory && matchesStatus;
-  });
+  // No client-side filtering needed - server handles it
+  const filteredProducts = products;
 
   // Inventory management helpers
+  // Note: These are approximate stats from current page only
   const getInventoryStats = () => {
-    const totalProducts = products.length;
+    // Use the total count from database for totalProducts
+    const dbTotal = totalProducts;
     const inStock = products.filter(p => p.inStock && (p.stockQuantity || 0) > 0).length;
     const lowStock = products.filter(p => p.inStock && (p.stockQuantity || 0) > 0 && (p.stockQuantity || 0) < 10).length;
     const outOfStock = products.filter(p => !p.inStock || (p.stockQuantity || 0) === 0).length;
@@ -421,7 +489,7 @@ export default function AdminProducts() {
       return sum + (price * (p.stockQuantity || 0));
     }, 0);
 
-    return { totalProducts, inStock, lowStock, outOfStock, totalValue };
+    return { totalProducts: dbTotal, inStock, lowStock, outOfStock, totalValue };
   };
 
   const getLowStockProducts = () => {
@@ -471,8 +539,9 @@ export default function AdminProducts() {
   const inventoryStats = getInventoryStats();
 
   // Calculate stats with enhanced metrics
+  // Note: These stats are based on current page only - for accurate totals, would need separate query
   const stats = {
-    total: products.length,
+    total: totalProducts > 0 ? totalProducts : products.length, // Use totalProducts from API when available
     published: products.filter(p => p.isPublished).length,
     draft: products.filter(p => !p.isPublished).length,
     featured: products.filter(p => p.isFeatured).length,
@@ -1070,6 +1139,97 @@ export default function AdminProducts() {
               </TableBody>
             </Table>
           )}
+
+          {/* Pagination Controls */}
+          {!isLoading && totalProducts > 0 && (
+            <div className="border-t p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>
+                  Showing <strong>{((currentPage - 1) * pageSize) + 1}</strong> to <strong>{Math.min(currentPage * pageSize, totalProducts).toLocaleString()}</strong> of <strong>{totalProducts.toLocaleString()}</strong> products
+                </span>
+                <Select value={String(pageSize)} onValueChange={(value) => {
+                  setPageSize(Number(value));
+                  setCurrentPage(1);
+                }}>
+                  <SelectTrigger className="w-[100px] h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10 per page</SelectItem>
+                    <SelectItem value="20">20 per page</SelectItem>
+                    <SelectItem value="50">50 per page</SelectItem>
+                    <SelectItem value="100">100 per page</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Pagination Navigation - Show when there are multiple pages OR when total pages > 1 */}
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1 || totalPages === 0}
+                  >
+                    First
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1 || totalPages === 0}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {totalPages > 0 && Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+                      
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={currentPage === pageNum ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setCurrentPage(pageNum)}
+                          className="w-10"
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages || totalPages === 0}
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages || totalPages === 0}
+                  >
+                    Last
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
@@ -1122,7 +1282,7 @@ function ProductRow({ product, onEdit, onDelete, onToggleStatus, selectedProduct
           <div>
             <p className="font-medium">{product.name}</p>
             <p className="text-xs text-muted-foreground line-clamp-1">
-              {product.shortDescription}
+              {product.shortDescription?.replace(/\\n/g, ' ').replace(/\s+/g, ' ').replace(/@/g, '') || 'No description'}
             </p>
           </div>
         </div>

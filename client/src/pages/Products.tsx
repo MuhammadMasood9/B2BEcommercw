@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -38,7 +38,8 @@ import {
   Zap,
   ShoppingCart,
   Plus,
-  Minus
+  Minus,
+  Loader2
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -74,12 +75,19 @@ export default function Products() {
     }
   }, []);
 
-  // Fetch products from API
-  const { data: apiProducts = [], isLoading: isProductsLoading } = useQuery<Product[]>({
+  // Fetch products from API with infinite scroll
+  const {
+    data: productPages,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading: isProductsLoading
+  } = useInfiniteQuery<Product[]>({
     queryKey: ["/api/products"],
-    queryFn: async () => {
+    queryFn: async ({ pageParam = 0 }) => {
       try {
-        const response = await fetch("/api/products", {
+        const limit = 20;
+        const response = await fetch(`/api/products?limit=${limit}&offset=${pageParam}`, {
           credentials: "include",
         });
         if (!response.ok) {
@@ -92,7 +100,15 @@ export default function Products() {
         return [];
       }
     },
+    getNextPageParam: (lastPage, allPages) => {
+      if (lastPage.length === 0 || lastPage.length < 20) return undefined;
+      return allPages.length * 20;
+    },
+    initialPageParam: 0,
   });
+
+  // Flatten all pages into a single array
+  const apiProducts = productPages?.pages.flat() || [];
 
   // Fetch categories from API
   const { data: apiCategories = [] } = useQuery<Category[]>({
@@ -117,6 +133,36 @@ export default function Products() {
   useEffect(() => {
     setLoading(isProductsLoading, "Loading products...");
   }, [isProductsLoading, setLoading]);
+
+  // Infinite scroll setup
+  const observerTarget = useRef<HTMLDivElement>(null);
+  const loadMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const currentTarget = observerTarget.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
+    }
+
+    return () => {
+      if (currentTarget) {
+        observer.unobserve(currentTarget);
+      }
+    };
+  }, [hasNextPage, isFetchingNextPage, loadMore]);
 
   // Filter products based on search and filters
   const filteredProducts = apiProducts.filter(product => {
@@ -555,76 +601,87 @@ export default function Products() {
                   ))}
                 </div>
               ) : sortedProducts.length > 0 ? (
-                <div className={`grid gap-8 ${
-                  viewMode === "grid" 
-                    ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3" 
-                    : "grid-cols-1"
-                }`}>
-                  {sortedProducts.map((product) => {
-                    const transformedProduct = transformProductForCard(product);
-                    const cartItem = getCartItem(product.id);
-                    const isInCartItem = isInCart(product.id);
-                    
-                    return (
-                      <div key={product.id} className="relative h-full">
-                        <ProductCard 
-                          {...transformedProduct}
-                          onAddToCart={() => handleAddToCart(product)}
-                          onContact={() => {
-                            if (!user) {
+                <>
+                  <div className={`grid gap-8 ${
+                    viewMode === "grid" 
+                      ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3" 
+                      : "grid-cols-1"
+                  }`}>
+                    {sortedProducts.map((product) => {
+                      const transformedProduct = transformProductForCard(product);
+                      const cartItem = getCartItem(product.id);
+                      const isInCartItem = isInCart(product.id);
+                      
+                      return (
+                        <div key={product.id} className="relative h-full">
+                          <ProductCard 
+                            {...transformedProduct}
+                            onAddToCart={() => handleAddToCart(product)}
+                            onContact={() => {
+                              if (!user) {
+                                toast({
+                                  title: "Please Sign In",
+                                  description: "You need to be signed in to contact suppliers.",
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
+                              // Navigate to product-specific chat
+                              window.location.href = `/messages?productId=${product.id}&productName=${encodeURIComponent(product.name)}&chatType=product`;
+                            }}
+                            onQuote={() => {
+                              if (!user) {
+                                toast({
+                                  title: "Please Sign In",
+                                  description: "You need to be signed in to request quotes.",
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
                               toast({
-                                title: "Please Sign In",
-                                description: "You need to be signed in to contact suppliers.",
-                                variant: "destructive",
+                                title: "Quote Request",
+                                description: "Your quote request has been sent to the supplier.",
                               });
-                              return;
-                            }
-                            // Navigate to product-specific chat
-                            window.location.href = `/messages?productId=${product.id}&productName=${encodeURIComponent(product.name)}&chatType=product`;
-                          }}
-                          onQuote={() => {
-                            if (!user) {
+                            }}
+                            onSample={() => {
+                              if (!user) {
+                                toast({
+                                  title: "Please Sign In",
+                                  description: "You need to be signed in to request samples.",
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
                               toast({
-                                title: "Please Sign In",
-                                description: "You need to be signed in to request quotes.",
-                                variant: "destructive",
+                                title: "Sample Request",
+                                description: "Your sample request has been sent to the supplier.",
                               });
-                              return;
-                            }
-                            toast({
-                              title: "Quote Request",
-                              description: "Your quote request has been sent to the supplier.",
-                            });
-                          }}
-                          onSample={() => {
-                            if (!user) {
-                              toast({
-                                title: "Please Sign In",
-                                description: "You need to be signed in to request samples.",
-                                variant: "destructive",
-                              });
-                              return;
-                            }
-                            toast({
-                              title: "Sample Request",
-                              description: "Your sample request has been sent to the supplier.",
-                            });
-                          }}
-                        />
-                        
-                        {/* Add to Cart Button Overlay */}
-                        {isInCartItem && (
-                          <div className="absolute top-2 left-2 z-10">
-                            <Badge className="bg-green-600 text-white border-0 text-xs px-2 py-1">
-                              <ShoppingCart className="w-3 h-3 mr-1" />
-                              In Cart ({cartItem?.quantity || 1})
-                            </Badge>
-                          </div>
-                        )}
+                            }}
+                          />
+                          
+                          {/* Add to Cart Button Overlay */}
+                          {isInCartItem && (
+                            <div className="absolute top-2 left-2 z-10">
+                              <Badge className="bg-green-600 text-white border-0 text-xs px-2 py-1">
+                                <ShoppingCart className="w-3 h-3 mr-1" />
+                                In Cart ({cartItem?.quantity || 1})
+                              </Badge>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* Observer target for infinite scroll */}
+                  <div ref={observerTarget} className="h-10 w-full flex items-center justify-center mt-6">
+                    {isFetchingNextPage && (
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span>Loading more products...</span>
                       </div>
-                    );
-                  })}
-              </div>
+                    )}
+                  </div>
+                </>
               ) : (
                 <div className="text-center py-12">
                   <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">

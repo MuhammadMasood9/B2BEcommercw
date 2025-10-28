@@ -904,6 +904,57 @@ export default function ProductDetail() {
                   </Button>
                 </CardContent>
               </Card>
+
+              {/* Request for Quotation Section */}
+              <Card className="bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200 shadow-xl">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <FileText className="w-5 h-5 text-purple-600" />
+                    Request for Quotation (RFQ)
+                  </CardTitle>
+                  <p className="text-sm text-gray-600">Get a customized quote for bulk orders of this product</p>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <p className="text-sm text-gray-700 mb-4">
+                      Need this product in large quantities? Create an RFQ and get competitive quotes from our verified admin.
+                    </p>
+                    
+                    <Button 
+                      asChild
+                      className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
+                      size="lg"
+                    >
+                      <Link href={`/rfq/create?productId=${productId}&productName=${encodeURIComponent(product.name)}`}>
+                        <FileText className="w-5 h-5 mr-2" />
+                        Create RFQ for This Product
+                      </Link>
+                    </Button>
+
+                    <div className="mt-4 p-4 bg-white/50 rounded-lg border border-purple-200">
+                      <h4 className="font-semibold text-sm text-gray-900 mb-2">What's included:</h4>
+                      <ul className="space-y-1 text-xs text-gray-600">
+                        <li className="flex items-center gap-2">
+                          <CheckCircle className="w-3 h-3 text-green-600" />
+                          Custom pricing for bulk orders
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle className="w-3 h-3 text-green-600" />
+                          Flexible payment terms
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle className="w-3 h-3 text-green-600" />
+                          Trade assurance protection
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle className="w-3 h-3 text-green-600" />
+                          Fast response from admin
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
 

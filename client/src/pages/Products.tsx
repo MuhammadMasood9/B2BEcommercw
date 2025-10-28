@@ -81,27 +81,49 @@ export default function Products() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-    isLoading: isProductsLoading
+    isLoading: isProductsLoading,
+    refetch
   } = useInfiniteQuery<Product[]>({
-    queryKey: ["/api/products"],
+    queryKey: ["/api/products", "published", searchQuery, selectedCategory],
     queryFn: async ({ pageParam = 0 }) => {
       try {
         const limit = 20;
-        const response = await fetch(`/api/products?limit=${limit}&offset=${pageParam}`, {
+        const params = new URLSearchParams({
+          limit: limit.toString(),
+          offset: (pageParam as number).toString(),
+          isPublished: "true" // Only fetch published products
+        });
+        
+        // Add search query
+        if (searchQuery) {
+          params.append('search', searchQuery);
+        }
+        
+        // Add category filter
+        if (selectedCategory && selectedCategory !== 'all') {
+          params.append('categoryId', selectedCategory);
+        }
+        
+        const response = await fetch(`/api/products?${params.toString()}`, {
           credentials: "include",
         });
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        return Array.isArray(data) ? data : [];
+        
+        // Handle both array and paginated response
+        const products = Array.isArray(data) ? data : (data.products || []);
+        // Filter to only show published products
+        return products.filter((p: any) => p.isPublished === true);
       } catch (error) {
         console.error("Error fetching products:", error);
         return [];
       }
     },
     getNextPageParam: (lastPage, allPages) => {
-      if (lastPage.length === 0 || lastPage.length < 20) return undefined;
+      // Continue fetching if we got a full page
+      if (lastPage.length < 20) return undefined;
       return allPages.length * 20;
     },
     initialPageParam: 0,
@@ -133,6 +155,11 @@ export default function Products() {
   useEffect(() => {
     setLoading(isProductsLoading, "Loading products...");
   }, [isProductsLoading, setLoading]);
+
+  // Refetch when search query or category changes - disabled refetch to avoid infinite loop
+  // useEffect(() => {
+  //   refetch();
+  // }, [searchQuery, selectedCategory]);
 
   // Infinite scroll setup
   const observerTarget = useRef<HTMLDivElement>(null);

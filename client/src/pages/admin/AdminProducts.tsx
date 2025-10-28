@@ -471,6 +471,102 @@ export default function AdminProducts() {
     },
   });
 
+  // Bulk publish/unpublish mutation
+  const bulkPublishMutation = useMutation({
+    mutationFn: async ({ productIds, isPublished }: { productIds: string[], isPublished: boolean }) => {
+      const response = await fetch("/api/products/bulk-update", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ productIds, isPublished }),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      const count = variables.productIds.length;
+      setSelectedProducts([]);
+      toast({
+        title: "Success",
+        description: `${count} products ${variables.isPublished ? 'published' : 'unpublished'} successfully.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update products",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Bulk feature/unfeature mutation
+  const bulkFeatureMutation = useMutation({
+    mutationFn: async ({ productIds, isFeatured }: { productIds: string[], isFeatured: boolean }) => {
+      const response = await fetch("/api/products/bulk-update", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ productIds, isFeatured }),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      const count = variables.productIds.length;
+      setSelectedProducts([]);
+      toast({
+        title: "Success",
+        description: `${count} products ${variables.isFeatured ? 'featured' : 'unfeatured'} successfully.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update products",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Bulk delete mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (productIds: string[]) => {
+      const response = await fetch("/api/products/bulk-delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ productIds }),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      const count = variables.length;
+      setSelectedProducts([]);
+      toast({
+        title: "Success",
+        description: `${count} products deleted successfully.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete products",
+        variant: "destructive",
+      });
+    },
+  });
+
   // No client-side filtering needed - server handles it
   const filteredProducts = products;
 
@@ -689,33 +785,133 @@ export default function AdminProducts() {
                     </Button>
                   </div>
                 </div>
-                <div className="flex gap-2">
+                
+                {/* Publish/Unpublish Actions */}
+                <div className="mb-3">
+                  <h4 className="text-sm font-medium mb-2">Publication Status</h4>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        const areAllPublished = selectedProducts.every(id => 
+                          products.find(p => p.id === id)?.isPublished
+                        );
+                        bulkPublishMutation.mutate({ 
+                          productIds: selectedProducts, 
+                          isPublished: !areAllPublished 
+                        });
+                      }}
+                      disabled={bulkPublishMutation.isPending}
+                      className="bg-green-50 hover:bg-green-100 border-green-200"
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Publish All
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        bulkPublishMutation.mutate({ 
+                          productIds: selectedProducts, 
+                          isPublished: false 
+                        });
+                      }}
+                      disabled={bulkPublishMutation.isPending}
+                      className="bg-orange-50 hover:bg-orange-100 border-orange-200"
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Unpublish All
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Feature/Unfeature Actions */}
+                <div className="mb-3">
+                  <h4 className="text-sm font-medium mb-2">Featured Status</h4>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        bulkFeatureMutation.mutate({ 
+                          productIds: selectedProducts, 
+                          isFeatured: true 
+                        });
+                      }}
+                      disabled={bulkFeatureMutation.isPending}
+                      className="bg-purple-50 hover:bg-purple-100 border-purple-200"
+                    >
+                      <Star className="h-4 w-4 mr-2" />
+                      Feature Products
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        bulkFeatureMutation.mutate({ 
+                          productIds: selectedProducts, 
+                          isFeatured: false 
+                        });
+                      }}
+                      disabled={bulkFeatureMutation.isPending}
+                      className="bg-gray-50 hover:bg-gray-100 border-gray-200"
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Unfeature Products
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Stock Management Actions */}
+                <div className="mb-3">
+                  <h4 className="text-sm font-medium mb-2">Stock Management</h4>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleBulkStockUpdate(100)}
+                      disabled={bulkStockUpdateMutation.isPending}
+                    >
+                      <Package className="h-4 w-4 mr-2" />
+                      Set Stock to 100
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleBulkStockUpdate(50)}
+                      disabled={bulkStockUpdateMutation.isPending}
+                    >
+                      <Package className="h-4 w-4 mr-2" />
+                      Set Stock to 50
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleBulkStockUpdate(0)}
+                      disabled={bulkStockUpdateMutation.isPending}
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Mark Out of Stock
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Delete Action */}
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Danger Zone</h4>
                   <Button 
-                    variant="outline" 
+                    variant="destructive" 
                     size="sm"
-                    onClick={() => handleBulkStockUpdate(100)}
-                    disabled={bulkStockUpdateMutation.isPending}
+                    onClick={() => {
+                      if (confirm(`Are you sure you want to delete ${selectedProducts.length} products?`)) {
+                        bulkDeleteMutation.mutate(selectedProducts);
+                      }
+                    }}
+                    disabled={bulkDeleteMutation.isPending}
                   >
-                    <Package className="h-4 w-4 mr-2" />
-                    Set Stock to 100
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleBulkStockUpdate(50)}
-                    disabled={bulkStockUpdateMutation.isPending}
-                  >
-                    <Package className="h-4 w-4 mr-2" />
-                    Set Stock to 50
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleBulkStockUpdate(0)}
-                    disabled={bulkStockUpdateMutation.isPending}
-                  >
-                    <XCircle className="h-4 w-4 mr-2" />
-                    Mark Out of Stock
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Selected
                   </Button>
                 </div>
               </div>
@@ -996,6 +1192,104 @@ export default function AdminProducts() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Bulk Actions - Matching Admin Pattern */}
+      {selectedProducts.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>
+                Selected Products
+                {selectedProducts.length > 0 && (
+                  <span className="text-sm text-muted-foreground ml-2">
+                    ({selectedProducts.length} selected)
+                  </span>
+                )}
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={clearSelection}
+                >
+                  Clear Selection
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      Bulk Actions ({selectedProducts.length})
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => {
+                      bulkPublishMutation.mutate({ 
+                        productIds: selectedProducts, 
+                        isPublished: true 
+                      });
+                    }}>
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Publish All
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      bulkPublishMutation.mutate({ 
+                        productIds: selectedProducts, 
+                        isPublished: false 
+                      });
+                    }}>
+                      <XCircle className="w-4 h-4 mr-2" />
+                      Unpublish All
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => {
+                      bulkFeatureMutation.mutate({ 
+                        productIds: selectedProducts, 
+                        isFeatured: true 
+                      });
+                    }}>
+                      <Star className="w-4 h-4 mr-2" />
+                      Feature Products
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      bulkFeatureMutation.mutate({ 
+                        productIds: selectedProducts, 
+                        isFeatured: false 
+                      });
+                    }}>
+                      <XCircle className="w-4 h-4 mr-2" />
+                      Unfeature Products
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => handleBulkStockUpdate(100)}>
+                      <Package className="w-4 h-4 mr-2" />
+                      Set Stock to 100
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleBulkStockUpdate(50)}>
+                      <Package className="w-4 h-4 mr-2" />
+                      Set Stock to 50
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleBulkStockUpdate(0)}>
+                      <XCircle className="w-4 h-4 mr-2" />
+                      Mark Out of Stock
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      onClick={() => {
+                        if (confirm(`Are you sure you want to delete ${selectedProducts.length} products?`)) {
+                          bulkDeleteMutation.mutate(selectedProducts);
+                        }
+                      }}
+                      className="text-red-600"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete Selected
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          </CardHeader>
+        </Card>
+      )}
 
       {/* Product Performance Insights */}
       <Card>

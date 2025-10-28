@@ -10,6 +10,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/AdminSidebar";
 import ChatbotWidget from "@/components/ChatbotWidget";
 import FullScreenLoader from "@/components/FullScreenLoader";
+import { ScrollToTop } from "@/components/ScrollToTop";
 import { LoadingProvider, useLoading } from "@/contexts/LoadingContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { FavoriteProvider } from "@/contexts/FavoriteContext";
@@ -316,7 +317,9 @@ function AppContent() {
           message={loadingMessage}
           showProgress={showProgress}
           progress={progress}
+          isAdmin={true}
         />
+        <ScrollToTop />
         <FloatingActionButtons chatType="general" />
         <ToastContainer position="top-right" />
         <HotToaster position="top-right" />
@@ -326,6 +329,7 @@ function AppContent() {
   
   return (
     <>
+      <ScrollToTop />
       <PublicRouter />
       <ChatbotWidget />
       <FloatingActionButtons chatType="general" />

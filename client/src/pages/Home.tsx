@@ -76,7 +76,9 @@ export default function Home() {
       const response = await fetch('/api/products?featured=true&limit=8');
       if (!response.ok) throw new Error('Failed to fetch products');
       const data = await response.json();
-      return data;
+      // Handle both array and object with products property
+      const products = Array.isArray(data) ? data : (data.products || []);
+      return products.filter((p: any) => p.isFeatured === true);
     }
   });
 
@@ -186,7 +188,7 @@ export default function Home() {
             
             {/* Products Grid using ProductCard */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-              {featuredProducts.slice(0, 8).map((product: any) => (
+              {Array.isArray(featuredProducts) && featuredProducts.slice(0, 8).map((product: any) => (
                 <ProductCard
                   key={product.id}
                   {...transformProductForCard(product)}

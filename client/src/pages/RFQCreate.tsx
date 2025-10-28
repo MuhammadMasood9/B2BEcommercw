@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -29,7 +30,10 @@ import {
   Package,
   Calendar,
   MapPin,
-  DollarSign
+  DollarSign,
+  Image as ImageIcon,
+  CheckCircle,
+  Search
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
@@ -37,6 +41,39 @@ export default function RFQCreate() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const [files, setFiles] = useState<File[]>([]);
+  const [productSearchQuery, setProductSearchQuery] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [showProductSearch, setShowProductSearch] = useState(false);
+  
+  // Get productId and productName from URL params
+  const urlParams = new URLSearchParams(window.location.search);
+  const productIdFromUrl = urlParams.get('productId');
+  const productNameFromUrl = urlParams.get('productName');
+  
+  // Fetch product details if productId exists
+  const { data: productData } = useQuery({
+    queryKey: ['/api/products', productIdFromUrl],
+    queryFn: async () => {
+      if (!productIdFromUrl) return null;
+      const response = await fetch(`/api/products/${productIdFromUrl}`);
+      if (!response.ok) throw new Error('Failed to fetch product');
+      return response.json();
+    },
+    enabled: !!productIdFromUrl
+  });
+
+  // Fetch products for search
+  const { data: searchResults = [] } = useQuery({
+    queryKey: ['/api/products/search', productSearchQuery],
+    queryFn: async () => {
+      if (!productSearchQuery || productSearchQuery.length < 2) return [];
+      const response = await fetch(`/api/products?search=${encodeURIComponent(productSearchQuery)}&limit=10`);
+      if (!response.ok) return [];
+      const data = await response.json();
+      return Array.isArray(data) ? data : (data.products || []);
+    },
+    enabled: productSearchQuery.length >= 2
+  });
   
   // Form state
   const [formData, setFormData] = useState({
@@ -48,6 +85,42 @@ export default function RFQCreate() {
     deliveryLocation: '',
     expectedDate: ''
   });
+
+  // Auto-fill form when product data is loaded from URL
+  useEffect(() => {
+    if (productData && productIdFromUrl) {
+      setFormData(prev => ({
+        ...prev,
+        title: productNameFromUrl || productData.name || prev.title,
+        categoryId: productData.categoryId || prev.categoryId,
+        description: productData.description || prev.description,
+      }));
+      setSelectedProduct(productData);
+    }
+  }, [productData, productIdFromUrl, productNameFromUrl]);
+
+  // Set selected product from URL on mount
+  useEffect(() => {
+    if (productIdFromUrl && productData && !selectedProduct) {
+      setSelectedProduct(productData);
+    }
+  }, [productIdFromUrl, productData]);
+
+  // Handle clicks outside to close search results
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!event.target) return;
+      const target = event.target as HTMLElement;
+      if (!target.closest('.product-search-container')) {
+        setShowProductSearch(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // Fetch categories for dropdown
   const { data: categories = [] } = useQuery({
@@ -69,6 +142,11 @@ export default function RFQCreate() {
     mutationFn: async (data: any) => {
       const formData = new FormData();
       
+      console.log('=== Creating RFQ with data ===');
+      console.log('Full data object:', data);
+      console.log('productId from URL:', productIdFromUrl);
+      console.log('selectedProduct:', selectedProduct);
+      
       // Add RFQ data to FormData
       formData.append('title', data.title);
       formData.append('description', data.description);
@@ -79,6 +157,15 @@ export default function RFQCreate() {
       formData.append('categoryId', data.categoryId);
       formData.append('targetPrice', data.targetPrice);
       formData.append('expectedDate', data.expectedDate);
+      
+      // CRITICAL: Add productId if it exists (from selected product or URL)
+      const finalProductId = data.productId || (selectedProduct?.id);
+      if (finalProductId && finalProductId !== 'null' && finalProductId !== 'undefined' && finalProductId.trim() !== '') {
+        console.log('Adding productId to FormData:', finalProductId);
+        formData.append('productId', finalProductId);
+      } else {
+        console.log('No productId to add (productId is:', finalProductId, ')');
+      }
       
       // Add files to FormData
       files.forEach((file, index) => {
@@ -92,16 +179,19 @@ export default function RFQCreate() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create RFQ');
+        const errorData = await response.json();
+        console.error('RFQ creation failed:', errorData);
+        throw new Error(errorData.error || 'Failed to create RFQ');
       }
 
       return response.json();
     },
     onSuccess: () => {
       toast.success('RFQ created successfully!');
-      setLocation('/my-rfqs');
+      setLocation('/buyer/rfqs');
     },
     onError: (error: any) => {
+      console.error('RFQ creation error:', error);
       toast.error(error.message || 'Failed to create RFQ');
     }
   });
@@ -114,10 +204,13 @@ export default function RFQCreate() {
       return;
     }
 
+    const finalProductId = selectedProduct?.id || productIdFromUrl;
+
     createRFQMutation.mutate({
       ...formData,
       buyerId: user.id,
-      status: 'active'
+      status: 'open', // Use 'open' instead of 'active'
+      productId: finalProductId && finalProductId !== 'null' ? finalProductId : undefined
     });
   };
 
@@ -125,6 +218,31 @@ export default function RFQCreate() {
     if (e.target.files) {
       setFiles(Array.from(e.target.files));
     }
+  };
+
+  const handleProductSelect = (product: any) => {
+    setSelectedProduct(product);
+    setFormData(prev => ({
+      ...prev,
+      title: product.name || prev.title,
+      categoryId: product.categoryId || prev.categoryId,
+      description: product.description || prev.description,
+    }));
+    setShowProductSearch(false);
+    setProductSearchQuery('');
+  };
+
+  const handleRemoveProduct = () => {
+    setSelectedProduct(null);
+    setFormData(prev => ({
+      title: '',
+      categoryId: prev.categoryId,
+      description: '',
+      quantity: prev.quantity,
+      targetPrice: prev.targetPrice,
+      deliveryLocation: prev.deliveryLocation,
+      expectedDate: prev.expectedDate
+    }));
   };
 
   return (
@@ -140,7 +258,7 @@ export default function RFQCreate() {
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-600/10 to-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="relative  mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center text-white">
             <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/30 rounded-full px-6 py-3 text-sm text-white/95 shadow-lg mb-6">
               <FileText className="w-4 h-4" />
@@ -178,8 +296,101 @@ export default function RFQCreate() {
       </section>
 
       <main className="flex-1">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Product Selection */}
+            <Card className="bg-white border-gray-100 shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="w-5 h-5 text-indigo-600" />
+                  Select Product (Optional)
+                </CardTitle>
+                <p className="text-sm text-gray-600 mt-2">
+                  Search and select a product to auto-fill the RFQ details
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!selectedProduct ? (
+                  <>
+                    <div className="relative product-search-container">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <Input
+                          placeholder="Search for products..."
+                          value={productSearchQuery}
+                          onChange={(e) => {
+                            setProductSearchQuery(e.target.value);
+                            setShowProductSearch(true);
+                          }}
+                          onFocus={() => setShowProductSearch(true)}
+                          className="h-12 pl-10"
+                        />
+                      </div>
+                      {showProductSearch && searchResults.length > 0 && (
+                        <div className="absolute z-10 mt-2 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                          {searchResults.map((product: any) => (
+                            <div
+                              key={product.id}
+                              onClick={() => handleProductSelect(product)}
+                              className="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0"
+                            >
+                              <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
+                                <img 
+                                  src={product.images?.[0] || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100&h=100&fit=crop'} 
+                                  alt={product.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-gray-900 truncate">{product.name}</p>
+                                <p className="text-sm text-gray-500 truncate">{product.shortDescription || 'No description'}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {productSearchQuery.length >= 2 && searchResults.length === 0 && (
+                      <p className="text-sm text-gray-500 text-center py-4">No products found</p>
+                    )}
+                  </>
+                ) : (
+                  <div className="border border-blue-200 bg-blue-50 rounded-lg p-4">
+                    <div className="flex items-start gap-4">
+                      <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 border border-gray-200">
+                        <img 
+                          src={selectedProduct.images?.[0] || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100&h=100&fit=crop'} 
+                          alt={selectedProduct.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h4 className="font-semibold text-gray-900">{selectedProduct.name}</h4>
+                            <p className="text-sm text-gray-600 mt-1 line-clamp-2">{selectedProduct.shortDescription}</p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleRemoveProduct}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                        <Badge className="mt-2 bg-green-100 text-green-800 border-green-200">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Product Selected
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Basic Information */}
             <Card className="bg-white border-gray-100 shadow-lg">
               <CardHeader>

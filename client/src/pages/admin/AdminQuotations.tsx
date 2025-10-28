@@ -577,7 +577,7 @@ function AdminQuotations() {
 
       {/* Modern Stats Cards with Gradients */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg hover:shadow-xl transition-shadow">
+        {/* <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg hover:shadow-xl transition-shadow">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -588,7 +588,7 @@ function AdminQuotations() {
               <FileText className="h-10 w-10 text-blue-200 opacity-80" />
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
 
         <Card className="bg-gradient-to-br from-yellow-500 to-orange-500 text-white border-0 shadow-lg hover:shadow-xl transition-shadow">
           <CardContent className="p-6">

@@ -155,8 +155,18 @@ export default function Messages() {
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    // Use requestAnimationFrame to ensure DOM has updated
+    requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' });
+    });
+  }, [messages.length]);
+
+  // Also scroll when sending a new message
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' });
+    }, 150);
+  };
 
   // Cleanup effect to reset state when component unmounts
   useEffect(() => {
@@ -180,6 +190,8 @@ export default function Messages() {
       setNewMessage('');
       setAttachments([]);
       setReplyingTo(null);
+      // Scroll to bottom after sending message
+      setTimeout(() => scrollToBottom(), 100);
     }
   });
 

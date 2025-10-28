@@ -28,38 +28,44 @@ export default function FeaturedProductsCarousel() {
       const response = await fetch('/api/products?featured=true&limit=12');
       if (!response.ok) throw new Error('Failed to fetch featured products');
       const data = await response.json();
-      return data;
+      // Handle both array and object with products property
+      const products = Array.isArray(data) ? data : (data.products || []);
+      // Filter to ensure only featured products are returned
+      return products.filter((p: any) => p.isFeatured === true);
     }
   });
 
+  // Ensure we always work with an array
+  const productsArray = Array.isArray(products) ? products : [];
+
   // Auto-play carousel
   useEffect(() => {
-    if (!isAutoPlaying || products.length === 0) return;
+    if (!isAutoPlaying || productsArray.length === 0) return;
     
     const interval = setInterval(() => {
       setCurrentIndex((prevIndex) => 
-        prevIndex === Math.ceil(products.length / 4) - 1 ? 0 : prevIndex + 1
+        prevIndex === Math.ceil(productsArray.length / 4) - 1 ? 0 : prevIndex + 1
       );
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [isAutoPlaying, products.length]);
+  }, [isAutoPlaying, productsArray.length]);
 
   const nextSlide = () => {
     setCurrentIndex((prevIndex) => 
-      prevIndex === Math.ceil(products.length / 4) - 1 ? 0 : prevIndex + 1
+      prevIndex === Math.ceil(productsArray.length / 4) - 1 ? 0 : prevIndex + 1
     );
   };
 
   const prevSlide = () => {
     setCurrentIndex((prevIndex) => 
-      prevIndex === 0 ? Math.ceil(products.length / 4) - 1 : prevIndex - 1
+      prevIndex === 0 ? Math.ceil(productsArray.length / 4) - 1 : prevIndex - 1
     );
   };
 
   const getCurrentProducts = () => {
     const startIndex = currentIndex * 4;
-    return products.slice(startIndex, startIndex + 4);
+    return productsArray.slice(startIndex, startIndex + 4);
   };
 
   // Helper function to transform product data for ProductCard
@@ -202,7 +208,7 @@ export default function FeaturedProductsCarousel() {
 
           {/* Dots Indicator */}
           <div className="flex justify-center mt-8 gap-2">
-            {[...Array(Math.ceil(products.length / 4))].map((_, index) => (
+            {[...Array(Math.ceil(productsArray.length / 4))].map((_, index) => (
               <button
                 key={index}
                 className={`w-2 h-2 rounded-full transition-all ${

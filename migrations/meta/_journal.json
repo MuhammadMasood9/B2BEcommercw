@@ -1,5 +1,5 @@
 {
-  "version": "7",
+  "version": "8",
   "dialect": "postgresql",
   "entries": [
     {
@@ -28,6 +28,13 @@
       "version": "7",
       "when": 1760627535685,
       "tag": "0003_whole_avengers",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "8",
+      "when": 1760650000000,
+      "tag": "0008_add_productid_to_rfqs",
       "breakpoints": true
     }
   ]

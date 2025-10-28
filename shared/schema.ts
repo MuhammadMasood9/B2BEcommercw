@@ -148,6 +148,7 @@ export type Product = typeof products.$inferSelect;
 export const rfqs = pgTable("rfqs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   buyerId: varchar("buyer_id").notNull(),
+  productId: varchar("product_id"), // Product-specific RFQ
   title: text("title").notNull(),
   categoryId: varchar("category_id"),
   description: text("description").notNull(),

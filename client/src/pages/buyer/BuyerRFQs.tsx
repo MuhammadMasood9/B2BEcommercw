@@ -62,6 +62,27 @@ export default function BuyerRFQs() {
     }
   });
 
+  // Fetch all products to show product information for product-specific RFQs
+  const { data: allProducts = [] } = useQuery({
+    queryKey: ['/api/all-products'],
+    queryFn: async () => {
+      try {
+        const response = await fetch('/api/products?limit=1000');
+        if (!response.ok) throw new Error('Failed to fetch products');
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+      } catch (error) {
+        return [];
+      }
+    }
+  });
+
+  // Helper function to get product details
+  const getProductDetails = (productId: string) => {
+    const product = allProducts.find((p: any) => p.id === productId);
+    return product || null;
+  };
+
   // Helper function to get category name
   const getCategoryName = (categoryId: string) => {
     const category = categories.find((cat: any) => cat.id === categoryId);
@@ -296,6 +317,8 @@ export default function BuyerRFQs() {
                   {filteredRFQs.map((rfq: any) => {
                     const StatusIcon = getStatusIcon(rfq.status);
                     const quotationCount = rfq.quotationsCount || 0;
+                    const productDetails = rfq.productId ? getProductDetails(rfq.productId) : null;
+                    
                     return (
                       <Card key={rfq.id} className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-white border-gray-100">
                         <CardHeader>
@@ -305,6 +328,11 @@ export default function BuyerRFQs() {
                                 {rfq.title}
                               </CardTitle>
                               <p className="text-sm text-gray-600 mt-1">RFQ #{rfq.id}</p>
+                              {productDetails && (
+                                <Badge variant="outline" className="mt-2 text-xs">
+                                  📦 Product: {productDetails.name || 'Product RFQ'}
+                                </Badge>
+                              )}
                             </div>
                             <Badge className={`${getStatusColor(rfq.status)} flex items-center gap-1`}>
                               <StatusIcon className="w-3 h-3 mr-1" />
@@ -313,6 +341,17 @@ export default function BuyerRFQs() {
                           </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
+                          {/* Product Image Section */}
+                          {productDetails && productDetails.images && productDetails.images.length > 0 && (
+                            <div className="relative w-full h-32 bg-gray-100 rounded-lg overflow-hidden mb-2">
+                              <img 
+                                src={productDetails.images[0]} 
+                                alt={productDetails.name} 
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
+                          
                           <p className="text-sm text-gray-600 line-clamp-2">{rfq.description}</p>
                           
                           <div className="space-y-2">

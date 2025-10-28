@@ -330,6 +330,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk update endpoint for publish/feature operations - MUST come before /:id routes
+  app.patch("/api/products/bulk-update", async (req, res) => {
+    try {
+      const { productIds, productId, id, isPublished, isFeatured } = req.body;
+      // Normalize to an array to support single or multiple ids
+      const normalizedIds = Array.isArray(productIds)
+        ? productIds
+        : (productIds ? [productIds] : (productId ? [productId] : (id ? [id] : [])));
+
+      if (!Array.isArray(normalizedIds) || normalizedIds.length === 0) {
+        return res.status(400).json({ error: "productIds must be a non-empty array" });
+      }
+
+      const updates: any = {};
+      if (isPublished !== undefined) {
+        updates.isPublished = isPublished;
+      }
+      if (isFeatured !== undefined) {
+        updates.isFeatured = isFeatured;
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ error: "No valid update fields provided" });
+      }
+
+      const updatedProducts = [];
+      
+      for (const productId of normalizedIds) {
+        try {
+          const product = await storage.updateProduct(productId, updates);
+          
+          if (product) {
+            updatedProducts.push(product);
+          }
+        } catch (error) {
+          console.error(`Failed to update product ${productId}:`, error);
+        }
+      }
+      
+      res.json({ 
+        message: `Updated ${updatedProducts.length} products successfully`,
+        updatedProducts 
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Bulk delete endpoint - MUST come before /:id routes
+  app.delete("/api/products/bulk-delete", async (req, res) => {
+    try {
+      const { productIds, productId, id } = req.body;
+      const normalizedIds = Array.isArray(productIds)
+        ? productIds
+        : (productIds ? [productIds] : (productId ? [productId] : (id ? [id] : [])));
+
+      if (!Array.isArray(normalizedIds) || normalizedIds.length === 0) {
+        return res.status(400).json({ error: "productIds must be a non-empty array" });
+      }
+
+      const deletedProducts = [];
+      
+      for (const productId of normalizedIds) {
+        try {
+          const success = await storage.deleteProduct(productId);
+          if (success) {
+            deletedProducts.push(productId);
+          }
+        } catch (error) {
+          console.error(`Failed to delete product ${productId}:`, error);
+        }
+      }
+      
+      res.json({ 
+        message: `Deleted ${deletedProducts.length} products successfully`,
+        deletedProducts 
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.patch("/api/products/:id", async (req, res) => {
     try {
       const validatedData = insertProductSchema.partial().parse(req.body);
@@ -1080,14 +1162,18 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
     }
   });
 
-  app.post("/api/rfqs", upload.array('attachments', 10), async (req, res) => {
+  app.post("/api/rfqs", upload.array('files', 10), async (req, res) => {
     try {
+      console.log('=== RFQ POST REQUEST ===');
+      console.log('Request body:', req.body);
+      console.log('productId received:', req.body.productId);
+      
       // Handle file uploads
       const uploadedFiles = req.files as Express.Multer.File[] || [];
       const filePaths = uploadedFiles.map(file => `/uploads/${file.filename}`);
 
       // Prepare RFQ data
-      const rfqData = {
+      const rfqData: any = {
         title: req.body.title,
         description: req.body.description,
         quantity: parseInt(req.body.quantity),
@@ -1095,13 +1181,27 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
         status: req.body.status || 'open',
         buyerId: req.body.buyerId,
         categoryId: req.body.categoryId || null,
+        productId: req.body.productId || null, // Always include productId
         targetPrice: req.body.targetPrice || null,
         expectedDate: req.body.expectedDate ? new Date(req.body.expectedDate) : null,
         attachments: filePaths.length > 0 ? filePaths : null
       };
 
-      const validatedData = insertRfqSchema.parse(rfqData);
-      const rfq = await storage.createRfq(validatedData);
+      console.log('RFQ data to validate:', rfqData);
+
+      // Use partial schema since some fields are optional
+      const validatedData = insertRfqSchema.partial().parse(rfqData);
+      
+      // Remove undefined values to avoid validation errors
+      Object.keys(validatedData).forEach((key: string) => {
+        if ((validatedData as any)[key] === undefined) {
+          delete (validatedData as any)[key];
+        }
+      });
+
+      console.log('Validated RFQ data:', validatedData);
+      
+      const rfq = await storage.createRfq(validatedData as any);
       res.status(201).json(rfq);
     } catch (error: any) {
       console.error('Error creating RFQ:', error);

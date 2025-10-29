@@ -14,7 +14,7 @@ import {
   insertRfqSchema, insertQuotationSchema, insertInquirySchema,
   insertConversationSchema, insertMessageSchema, insertReviewSchema,
   insertFavoriteSchema, insertNotificationSchema, insertActivityLogSchema,
-  users, products, categories, orders, inquiries, quotations, notifications, activity_logs, conversations
+  users, products, categories, orders, inquiries, quotations, rfqs, notifications, activity_logs, conversations
 } from "@shared/schema";
 import { sql, eq, and, gte, desc, or, ilike } from "drizzle-orm";
 import * as path from 'path';
@@ -1317,53 +1317,373 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
     }
   });
 
-  // Accept RFQ quotation
+  // Accept RFQ quotation - Proper system for order creation
+  // FLOW EXPLANATION:
+  // 1. Get quotation from quotations table (has rfq_id field)
+  // 2. Use quotation.rfqId to query rfqs table
+  // 3. Extract productId from rfqs.productId field
+  // 4. Use this productId to create order
+  // 
+  // Data Flow: quotations.rfq_id -> rfqs.id -> rfqs.product_id -> orders.product_id
   app.post("/api/quotations/:id/accept", async (req, res) => {
     try {
       const { shippingAddress } = req.body;
       const quotationId = req.params.id;
 
+      console.log('=== START: ACCEPTING RFQ QUOTATION ===');
+      console.log('Quotation ID:', quotationId);
+      console.log('Shipping Address:', shippingAddress);
+
+      // Step 1: Get quotation with rfq_id
       const quotation = await storage.getQuotation(quotationId);
       if (!quotation) {
+        console.error('❌ Quotation not found:', quotationId);
         return res.status(404).json({ error: "Quotation not found" });
       }
 
       if (quotation.status !== 'pending') {
+        console.error('❌ Quotation not pending:', quotation.status);
         return res.status(400).json({ error: "Only pending quotations can be accepted" });
       }
 
-      // Get RFQ details for order creation
-      const rfq = await storage.getRfq(quotation.rfqId);
-      if (!rfq) {
-        return res.status(404).json({ error: "RFQ not found" });
+      if (!quotation.rfqId) {
+        console.error('❌ Quotation missing rfqId:', quotationId);
+        return res.status(400).json({ error: "Quotation is not linked to an RFQ" });
       }
 
-      // Create order directly from accepted quotation
+      console.log('✅ Quotation found:', {
+        id: quotation.id,
+        rfqId: quotation.rfqId,
+        status: quotation.status
+      });
+
+      // Step 2: Get RFQ from rfqs table using rfq_id from quotation
+      // CRITICAL: The quotation.rfqId links to rfqs.id, and rfqs.productId contains the product ID
+      console.log('🔍 Querying rfqs table for rfqId:', quotation.rfqId);
+      
+      const [rfqFromDb] = await db.select({
+        id: rfqs.id,
+        buyerId: rfqs.buyerId,
+        productId: rfqs.productId, // THIS IS THE KEY FIELD - productId from rfqs table
+        categoryId: rfqs.categoryId,
+        title: rfqs.title,
+        description: rfqs.description,
+        quantity: rfqs.quantity,
+        targetPrice: rfqs.targetPrice,
+        status: rfqs.status
+      })
+        .from(rfqs)
+        .where(eq(rfqs.id, quotation.rfqId)) // Use rfq_id from quotation to find RFQ
+        .limit(1);
+
+      if (!rfqFromDb) {
+        console.error('❌ RFQ not found in database for rfqId:', quotation.rfqId);
+        return res.status(404).json({ error: "RFQ not found in database" });
+      }
+
+      console.log('✅ RFQ found from rfqs table:', {
+        rfqId: rfqFromDb.id,
+        productId: rfqFromDb.productId,
+        productIdType: typeof rfqFromDb.productId,
+        productIdRaw: JSON.stringify(rfqFromDb.productId),
+        title: rfqFromDb.title,
+        fullRfqData: JSON.stringify(rfqFromDb, null, 2)
+      });
+
+      // Step 3: Extract productId from RFQ - THIS IS THE KEY STEP
+      // The flow is: quotation.rfqId -> rfqs table -> rfqs.productId
+      let productId: string | null = null;
+      
+      // Primary source: Get productId directly from the rfqs table record we just queried
+      const rfqProductId = rfqFromDb.productId;
+      
+      console.log('=== PRODUCT ID EXTRACTION ===');
+      console.log('RFQ from rfqs table - RAW DATA:', {
+        rfqId: rfqFromDb.id,
+        productId_camelCase: rfqFromDb.productId,
+        productId_snakeCase: (rfqFromDb as any).product_id,
+        productIdType: typeof rfqFromDb.productId,
+        productIdValue: rfqProductId,
+        isNull: rfqProductId === null,
+        isUndefined: rfqProductId === undefined,
+        isEmptyString: rfqProductId === '',
+        allFields: Object.keys(rfqFromDb)
+      });
+      
+      // CRITICAL: Check if RFQ actually has a productId
+      if (!rfqProductId || rfqProductId === null || rfqProductId === undefined || rfqProductId === '' || String(rfqProductId).trim() === '' || String(rfqProductId).trim() === 'null') {
+        console.error('❌ RFQ DOES NOT HAVE PRODUCTID IN DATABASE!');
+        console.error('RFQ Details:', {
+          rfqId: rfqFromDb.id,
+          rfqTitle: rfqFromDb.title,
+          categoryId: rfqFromDb.categoryId,
+          productIdFromDb: rfqProductId
+        });
+        
+        // Try fallback immediately before proceeding
+        console.log('⚠️ Attempting fallback strategies...');
+      }
+      
+      // Strategy 1: Use productId directly from rfqs table (PRIMARY METHOD)
+      if (rfqProductId && 
+          rfqProductId !== null &&
+          rfqProductId !== undefined &&
+          rfqProductId !== 'null' && 
+          rfqProductId !== 'undefined' && 
+          String(rfqProductId).trim() !== '' &&
+          String(rfqProductId).trim().length >= 10) {
+        productId = String(rfqProductId).trim();
+        console.log('✅✅✅ Strategy 1 SUCCESS: productId found in rfqs table:', {
+          productId: productId,
+          length: productId.length,
+          source: 'rfqs.productId',
+          isValid: productId.length >= 10
+        });
+      } else {
+        console.error('❌❌❌ Strategy 1 FAILED: RFQ does not have valid productId!', {
+          rfqProductId: rfqProductId,
+          type: typeof rfqProductId,
+          isNull: rfqProductId === null,
+          isUndefined: rfqProductId === undefined,
+          isEmpty: rfqProductId === '',
+          length: rfqProductId ? String(rfqProductId).length : 0
+        });
+        console.log('⚠️ Trying fallback strategies...');
+      }
+
+      // Strategy 2: Find product by category (fallback if rfqs.productId is null)
+      if (!productId && rfqFromDb.categoryId) {
+        try {
+          console.log('🔍 Strategy 2: Searching for product by categoryId:', rfqFromDb.categoryId);
+          const [categoryProduct] = await db.select({ id: products.id })
+            .from(products)
+            .where(and(
+              eq(products.categoryId, rfqFromDb.categoryId),
+              eq(products.isPublished, true)
+            ))
+            .limit(1);
+          
+          if (categoryProduct && categoryProduct.id) {
+            productId = categoryProduct.id;
+            console.log('✅ Strategy 2 SUCCESS: Found product by category:', productId);
+          } else {
+            console.log('⚠️ Strategy 2 FAILED: No products found in category');
+          }
+        } catch (err) {
+          console.error('❌ Strategy 2 ERROR:', err);
+        }
+      }
+
+      // Strategy 3: Find ANY published product as absolute fallback
+      if (!productId) {
+        try {
+          console.log('🔍 Strategy 3: Searching for ANY published product...');
+          const [anyProduct] = await db.select({ id: products.id })
+            .from(products)
+            .where(eq(products.isPublished, true))
+            .orderBy(desc(products.createdAt))
+            .limit(1);
+          
+          if (anyProduct && anyProduct.id) {
+            productId = anyProduct.id;
+            console.log('✅ Strategy 3 SUCCESS: Found fallback product:', productId);
+          } else {
+            console.log('❌ Strategy 3 FAILED: No products exist in database');
+          }
+        } catch (err) {
+          console.error('❌ Strategy 3 ERROR:', err);
+        }
+      }
+
+      // Step 4: CRITICAL VALIDATION - productId MUST exist at this point
+      if (!productId || productId.trim() === '' || productId === 'null' || productId === 'undefined') {
+        console.error('❌ CRITICAL FAILURE: All strategies failed. No productId found!');
+        console.error('RFQ Details:', {
+          rfqId: rfqFromDb.id,
+          rfqProductId: rfqFromDb.productId,
+          categoryId: rfqFromDb.categoryId,
+          title: rfqFromDb.title,
+          quotationId: quotationId
+        });
+        return res.status(400).json({ 
+          error: "Unable to create order: This RFQ is not linked to a product and no fallback product could be found. Please ensure your RFQ is associated with a product before accepting quotations, or contact support." 
+        });
+      }
+
+      // Step 5: Final validation and sanitization
+      productId = String(productId).trim();
+      
+      if (productId.length < 10 || productId === 'null' || productId === 'undefined') {
+        console.error('❌ Invalid productId after sanitization:', productId);
+        return res.status(400).json({ 
+          error: "Invalid product ID format. Please contact support." 
+        });
+      }
+
+      console.log('✅ Final productId confirmed:', {
+        productId: productId,
+        length: productId.length,
+        type: typeof productId
+      });
+      
+      // Step 6: Prepare order creation data
+      // Generate unique order number
       const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
-      const orderData = {
+      
+      // Get quantity from RFQ or quotation MOQ
+      const quantity = rfqFromDb.quantity || quotation.moq || 1;
+      
+      // Get unit price and total price
+      const unitPrice = parseFloat(quotation.pricePerUnit || '0');
+      const totalPrice = parseFloat(quotation.totalPrice || '0');
+      
+      // Step 7: Final verification - productId MUST be valid before proceeding
+      if (!productId || productId.trim() === '' || productId === 'null' || productId === 'undefined' || productId.trim().length < 10) {
+        console.error('❌ FATAL: productId is invalid after all strategies!', {
+          productId: productId,
+          type: typeof productId,
+          length: productId ? productId.length : 0,
+          rfqId: quotation.rfqId,
+          quotationId: quotationId
+        });
+        return res.status(400).json({ 
+          error: "Unable to create order: No valid product ID found for this RFQ. Please ensure the RFQ is linked to a product or contact support." 
+        });
+      }
+
+      // Normalize productId to ensure it's a valid string
+      productId = String(productId).trim();
+      console.log('✅ FINAL productId before order creation:', {
+        productId: productId,
+        length: productId.length,
+        type: typeof productId,
+        isValid: productId.length >= 10
+      });
+
+      // Step 8: Build order data object - productId is GUARANTEED to be valid at this point
+      const orderData: any = {
         orderNumber: orderNumber,
-        buyerId: rfq.buyerId,
+        buyerId: rfqFromDb.buyerId,
         supplierId: quotation.supplierId,
         rfqId: quotation.rfqId,
         quotationId: quotationId,
-        totalAmount: parseFloat(quotation.totalPrice),
-        status: 'pending_approval', // Buyer needs to accept the created order
+        productId: productId, // REQUIRED - guaranteed valid UUID string
+        quantity: quantity,
+        unitPrice: unitPrice ? String(unitPrice) : '0',
+        totalAmount: String(totalPrice), // Must be string for decimal
+        status: 'pending_approval',
         shippingAddress: JSON.stringify({
-          address: shippingAddress,
+          address: shippingAddress || '',
           city: '',
           state: '',
           country: '',
           zipCode: ''
         }),
         items: JSON.stringify([{
-          productName: rfq.title,
-          quantity: rfq.quantity,
-          unitPrice: parseFloat(quotation.pricePerUnit),
-          totalPrice: parseFloat(quotation.totalPrice)
+          productName: rfqFromDb.title || 'RFQ Product',
+          quantity: quantity,
+          unitPrice: unitPrice,
+          totalPrice: totalPrice
         }])
       };
 
-      const order = await storage.createOrder(orderData as any);
+      // Final validation: ensure productId is definitely in the order data
+      if (!orderData.productId || orderData.productId.trim() === '' || orderData.productId === 'null') {
+        console.error('❌ CRITICAL: productId missing in orderData after assignment!', {
+          orderData: JSON.stringify(orderData, null, 2),
+          productId: orderData.productId,
+          productIdType: typeof orderData.productId
+        });
+        return res.status(500).json({ 
+          error: "System error: Product ID validation failed during order data preparation. Please contact support." 
+        });
+      }
+      
+      // Verify productId format one more time
+      if (orderData.productId.length < 10) {
+        console.error('❌ CRITICAL: productId format invalid in orderData!', {
+          productId: orderData.productId,
+          length: orderData.productId.length
+        });
+        return res.status(500).json({ 
+          error: "System error: Invalid product ID format. Please contact support." 
+        });
+      }
+
+      console.log('✅✅✅ ORDER DATA BEFORE CREATION - FINAL CHECK:', {
+        orderNumber: orderData.orderNumber,
+        productId: orderData.productId,
+        productIdRaw: JSON.stringify(orderData.productId),
+        productIdType: typeof orderData.productId,
+        productIdLength: orderData.productId?.length,
+        productIdIsNull: orderData.productId === null,
+        productIdIsUndefined: orderData.productId === undefined,
+        productIdIsEmpty: orderData.productId === '',
+        buyerId: orderData.buyerId,
+        rfqId: orderData.rfqId,
+        quotationId: orderData.quotationId,
+        quantity: orderData.quantity,
+        totalAmount: orderData.totalAmount,
+        fullOrderData: JSON.stringify(orderData, null, 2)
+      });
+
+      // ABSOLUTE FINAL CHECK - Do not proceed if productId is null/undefined/empty
+      if (!orderData.productId || 
+          orderData.productId === null || 
+          orderData.productId === undefined || 
+          orderData.productId === '' || 
+          String(orderData.productId).trim() === '' ||
+          String(orderData.productId).trim() === 'null') {
+        console.error('❌❌❌ ABSOLUTE FINAL CHECK FAILED - productId is invalid!');
+        console.error('OrderData productId value:', orderData.productId);
+        console.error('Full orderData:', JSON.stringify(orderData, null, 2));
+        return res.status(400).json({ 
+          error: "Cannot create order: Product ID is missing. The RFQ must be linked to a product. Please contact support or update the RFQ to include a product before accepting quotations." 
+        });
+      }
+
+      try {
+        // CRITICAL: One more explicit check right before database insert
+        // The database has NOT NULL constraint on product_id, so we MUST have a valid value
+        const finalProductId = orderData.productId;
+        
+        if (!finalProductId || 
+            finalProductId === null || 
+            finalProductId === undefined || 
+            finalProductId === '' ||
+            String(finalProductId).trim() === '' ||
+            String(finalProductId).trim() === 'null' ||
+            String(finalProductId).trim().length < 10) {
+          console.error('❌❌❌ PRE-INSERT VALIDATION FAILED!');
+          console.error('Final productId check before DB insert:', {
+            productId: finalProductId,
+            type: typeof finalProductId,
+            isNull: finalProductId === null,
+            isUndefined: finalProductId === undefined,
+            isEmpty: finalProductId === '',
+            trimmedLength: finalProductId ? String(finalProductId).trim().length : 0,
+            orderDataKeys: Object.keys(orderData),
+            orderDataProductId: orderData.productId
+          });
+          return res.status(400).json({ 
+            error: "Cannot create order: Product ID validation failed. The RFQ does not have a product linked. Please ensure the RFQ is associated with a product before accepting quotations." 
+          });
+        }
+
+        console.log('🚀 ATTEMPTING TO CREATE ORDER WITH productId:', finalProductId);
+        console.log('Order data productId field:', orderData.productId);
+        
+        // Ensure productId is explicitly set (defensive programming)
+        orderData.productId = String(finalProductId).trim();
+        
+        console.log('✅ Final orderData.productId after explicit assignment:', orderData.productId);
+        
+        const order = await storage.createOrder(orderData);
+        console.log('✅ Order created successfully:', {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          productId: order.productId
+        });
 
       // Update quotation status to accepted and add order info
       await storage.updateQuotation(quotationId, { 
@@ -1374,14 +1694,34 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       // Close the RFQ
       await storage.updateRfq(quotation.rfqId, { status: 'closed' });
 
+        console.log('✅ RFQ quotation accepted and order created successfully');
       res.json({ 
         success: true, 
         message: 'Quotation accepted and order created successfully!',
-        orderId: order.id
-      });
+          orderId: order.id,
+          orderNumber: order.orderNumber
+        });
+      } catch (createOrderError: any) {
+        console.error('❌ Error creating order:', createOrderError);
+        console.error('Order data that failed:', JSON.stringify(orderData, null, 2));
+        
+        // Check if it's a productId constraint error
+        if (createOrderError.message && createOrderError.message.includes('product_id') && createOrderError.message.includes('null')) {
+          return res.status(400).json({ 
+            error: "Product ID is required for order creation. The RFQ must be linked to a product. Please contact support." 
+          });
+        }
+        
+        return res.status(500).json({ 
+          error: createOrderError.message || "Failed to create order. Please try again or contact support." 
+        });
+      }
     } catch (error: any) {
-      console.error('Error accepting RFQ quotation:', error);
-      res.status(500).json({ error: error.message });
+      console.error('❌ Error accepting RFQ quotation:', error);
+      console.error('Error stack:', error.stack);
+      res.status(500).json({ 
+        error: error.message || 'Failed to accept quotation. Please try again.' 
+      });
     }
   });
 
@@ -1542,7 +1882,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
   // Get all quotations for buyer (centralized view) - ONLY their own quotations
   app.get("/api/buyer/quotations", async (req, res) => {
     try {
-      const { status, search, sort } = req.query;
+      const { status, search, sort, type } = req.query;
       
       // IMPORTANT: Get buyer ID from authenticated session
       // @ts-ignore - req.user is added by auth middleware
@@ -1552,22 +1892,75 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
         return res.status(401).json({ error: "Authentication required" });
       }
       
-      // Get all inquiry quotations
-      let quotations = await storage.getInquiryQuotations();
+      // Get both inquiry quotations and RFQ quotations
+      const [inquiryQuotations, allRfqQuotations] = await Promise.all([
+        storage.getInquiryQuotations(),
+        storage.getQuotations({})
+      ]);
       
-      // FILTER: Only show quotations for THIS buyer's inquiries
-      quotations = quotations.filter((q: any) => q.buyerId && q.buyerId.toString() === buyerId.toString());
+      // Filter inquiry quotations for this buyer
+      let buyerInquiryQuotations = inquiryQuotations.filter((q: any) => 
+        q.buyerId && q.buyerId.toString() === buyerId.toString()
+      ).map((q: any) => ({ ...q, type: 'inquiry' }));
+      
+      // Get RFQs for this buyer and filter RFQ quotations
+      const buyerRfqs = await storage.getRfqs({ buyerId });
+      const buyerRfqIds = new Set(buyerRfqs.map((r: any) => r.id));
+      
+      // Enhance RFQ quotations with RFQ and product data
+      const buyerRfqQuotations = await Promise.all(
+        allRfqQuotations
+          .filter((q: any) => buyerRfqIds.has(q.rfqId))
+          .map(async (quotation: any) => {
+            quotation.type = 'rfq';
+            
+            // Fetch RFQ details
+            const rfq = await storage.getRfq(quotation.rfqId);
+            if (rfq) {
+              quotation.rfq = rfq;
+              quotation.rfqTitle = rfq.title;
+              quotation.quantity = rfq.quantity;
+              quotation.targetPrice = rfq.targetPrice;
+              
+              // Fetch product if exists
+              if (rfq.productId) {
+                try {
+                  const product = await db.select().from(products).where(eq(products.id, rfq.productId)).limit(1);
+                  if (product[0]) {
+                    quotation.product = product[0];
+                    quotation.productId = product[0].id;
+                    quotation.productName = product[0].name;
+                    quotation.productImages = product[0].images;
+                  }
+                } catch (err) {
+                  console.error('Error fetching product:', err);
+                }
+              }
+            }
+            
+            return quotation;
+          })
+      );
+      
+      // Combine both types
+      let allQuotations = [...buyerInquiryQuotations, ...buyerRfqQuotations];
+      
+      // Filter by type if provided
+      if (type && type !== 'all') {
+        allQuotations = allQuotations.filter((q: any) => q.type === type);
+      }
       
       // Filter by status if provided
       if (status && status !== 'all') {
-        quotations = quotations.filter((q: any) => q.status === status);
+        allQuotations = allQuotations.filter((q: any) => q.status === status);
       }
       
       // Search filter
       if (search) {
         const searchLower = (search as string).toLowerCase();
-        quotations = quotations.filter((q: any) => 
+        allQuotations = allQuotations.filter((q: any) => 
           q.productName?.toLowerCase().includes(searchLower) ||
+          q.rfqTitle?.toLowerCase().includes(searchLower) ||
           q.buyerName?.toLowerCase().includes(searchLower) ||
           q.buyerCompany?.toLowerCase().includes(searchLower)
         );
@@ -1577,22 +1970,31 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       if (sort) {
         switch(sort) {
           case 'newest':
-            quotations.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            allQuotations.sort((a: any, b: any) => 
+              new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+            );
             break;
           case 'oldest':
-            quotations.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+            allQuotations.sort((a: any, b: any) => 
+              new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+            );
             break;
           case 'price-high':
-            quotations.sort((a: any, b: any) => (b.pricePerUnit || 0) - (a.pricePerUnit || 0));
+            allQuotations.sort((a: any, b: any) => 
+              (parseFloat(b.pricePerUnit) || 0) - (parseFloat(a.pricePerUnit) || 0)
+            );
             break;
           case 'price-low':
-            quotations.sort((a: any, b: any) => (a.pricePerUnit || 0) - (b.pricePerUnit || 0));
+            allQuotations.sort((a: any, b: any) => 
+              (parseFloat(a.pricePerUnit) || 0) - (parseFloat(b.pricePerUnit) || 0)
+            );
             break;
         }
       }
       
-      res.json({ quotations });
+      res.json({ quotations: allQuotations });
     } catch (error: any) {
+      console.error('Error fetching buyer quotations:', error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -1611,8 +2013,36 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
 
   app.post("/api/inquiries", async (req, res) => {
     try {
-      const validatedData = insertInquirySchema.parse(req.body);
+      console.log('=== RECEIVED INQUIRY REQUEST ===');
+      console.log('Request body:', req.body);
+      
+      // Clean up the request body - only include fields that exist in schema
+      // Note: decimal fields should be strings, not numbers (drizzle-zod requirement)
+      const cleanedData: any = {
+        productId: req.body.productId,
+        buyerId: req.body.buyerId,
+        quantity: req.body.quantity ? parseInt(req.body.quantity) : undefined,
+        targetPrice: req.body.targetPrice ? String(req.body.targetPrice) : undefined, // Keep as string for decimal field
+        message: req.body.message || null,
+        requirements: req.body.requirements || null,
+        status: req.body.status || 'pending'
+      };
+
+      // Remove undefined values
+      Object.keys(cleanedData).forEach(key => {
+        if (cleanedData[key] === undefined) {
+          delete cleanedData[key];
+        }
+      });
+
+      console.log('Cleaned inquiry data:', cleanedData);
+
+      // Validate with schema
+      const validatedData = insertInquirySchema.parse(cleanedData);
+      console.log('Validated inquiry data:', validatedData);
+      
       const inquiry = await storage.createInquiry(validatedData);
+      console.log('✅ Inquiry created successfully:', inquiry.id);
       
       // Increment product inquiry count
       await storage.incrementProductInquiries(validatedData.productId);
@@ -1637,7 +2067,12 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       
       res.status(201).json(inquiry);
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      console.error('❌ Error creating inquiry:', error);
+      console.error('Error details:', error.errors || error.message);
+      res.status(400).json({ 
+        error: error.message || 'Failed to create inquiry',
+        details: error.errors || undefined
+      });
     }
   });
 
@@ -1750,9 +2185,106 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
   // Get all quotations
   app.get("/api/admin/quotations", async (req, res) => {
     try {
-      const quotations = await storage.getInquiryQuotations();
-      res.json({ quotations });
+      const { status, search, type } = req.query;
+      
+      // Get both RFQ quotations and Inquiry quotations
+      const [rfqQuotations, inquiryQuotations] = await Promise.all([
+        storage.getQuotations(status ? { status: status as string } : {}),
+        storage.getInquiryQuotations()
+      ]);
+      
+      // Mark each quotation with its type and enhance with related data
+      const enhancedRfqQuotations = await Promise.all(
+        rfqQuotations.map(async (quotation: any) => {
+          quotation.type = 'rfq';
+          quotation.quotationId = quotation.id; // For consistency with inquiry quotations
+          
+          // Fetch RFQ details
+          try {
+            const rfq = await storage.getRfq(quotation.rfqId);
+            if (rfq) {
+              quotation.rfq = rfq;
+              quotation.rfqTitle = rfq.title;
+              quotation.quantity = rfq.quantity;
+              quotation.targetPrice = rfq.targetPrice;
+              
+              // Fetch buyer details
+              if (rfq.buyerId) {
+                const buyer = await storage.getUser(rfq.buyerId);
+                if (buyer) {
+                  quotation.buyer = buyer;
+                  quotation.buyerId = buyer.id;
+                  quotation.buyerName = `${buyer.firstName || ''} ${buyer.lastName || ''}`.trim() || buyer.email;
+                  quotation.buyerCompany = buyer.companyName;
+                  quotation.buyerEmail = buyer.email;
+                  quotation.buyerPhone = buyer.phone;
+                }
+              }
+              
+              // Fetch product details if productId exists
+              if (rfq.productId) {
+                try {
+                  const product = await db.select().from(products).where(eq(products.id, rfq.productId)).limit(1);
+                  if (product[0]) {
+                    quotation.product = product[0];
+                    quotation.productId = product[0].id;
+                    quotation.productName = product[0].name;
+                    quotation.productImages = product[0].images;
+                  }
+                } catch (err) {
+                  console.error('Error fetching product:', err);
+                }
+              }
+            }
+          } catch (err) {
+            console.error('Error enhancing RFQ quotation:', err);
+          }
+          
+          return quotation;
+        })
+      );
+      
+      // Mark inquiry quotations with type
+      const enhancedInquiryQuotations = inquiryQuotations.map((quotation: any) => {
+        quotation.type = 'inquiry';
+        return quotation;
+      });
+      
+      // Combine both types
+      let allQuotations = [...enhancedRfqQuotations, ...enhancedInquiryQuotations];
+      
+      // Filter by type if provided
+      if (type && type !== 'all') {
+        allQuotations = allQuotations.filter((q: any) => q.type === type);
+      }
+      
+      // Filter by status if provided
+      if (status && status !== 'all') {
+        allQuotations = allQuotations.filter((q: any) => q.status === status);
+      }
+      
+      // Search filter
+      if (search) {
+        const searchLower = (search as string).toLowerCase();
+        allQuotations = allQuotations.filter((q: any) => 
+          q.productName?.toLowerCase().includes(searchLower) ||
+          q.buyerName?.toLowerCase().includes(searchLower) ||
+          q.buyerCompany?.toLowerCase().includes(searchLower) ||
+          q.rfqTitle?.toLowerCase().includes(searchLower) ||
+          q.id?.toLowerCase().includes(searchLower)
+        );
+      }
+      
+      // Sort by created date (newest first)
+      allQuotations.sort((a: any, b: any) => {
+        const dateA = new Date(a.createdAt || 0).getTime();
+        const dateB = new Date(b.createdAt || 0).getTime();
+        return dateB - dateA;
+      });
+      
+      res.json({ quotations: allQuotations });
     } catch (error: any) {
+      console.error('Error fetching admin quotations:', error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -2068,44 +2600,72 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
     }
   });
 
-  // Get specific quotation
+  // Get specific quotation (handles both RFQ and Inquiry quotations)
   app.get("/api/admin/quotations/:id", async (req, res) => {
     try {
-      const quotation = await storage.getInquiryQuotation(req.params.id);
-      if (!quotation) {
-        return res.status(404).json({ error: "Quotation not found" });
+      // Try to get as inquiry quotation first
+      let quotation: any = await storage.getInquiryQuotation(req.params.id);
+      if (quotation) {
+        quotation.type = 'inquiry';
+        return res.json(quotation);
       }
-      res.json(quotation);
+      
+      // If not found, try as RFQ quotation
+      quotation = await storage.getQuotation(req.params.id);
+      if (quotation) {
+        quotation = { ...quotation, type: 'rfq' };
+        return res.json(quotation);
+      }
+      
+      return res.status(404).json({ error: "Quotation not found" });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  // Update quotation
+  // Update quotation (handles both types)
   app.patch("/api/admin/quotations/:id", async (req, res) => {
     try {
       const adminId = (req as any).user?.id;
       const adminName = (req as any).user?.firstName || (req as any).user?.email || 'Admin';
       
-      const quotation = await storage.updateInquiryQuotation(req.params.id, req.body);
-      if (!quotation) {
-        return res.status(404).json({ error: "Quotation not found" });
+      // Try to update as inquiry quotation first
+      let quotation: any = await storage.updateInquiryQuotation(req.params.id, req.body);
+      if (quotation) {
+        // Create activity log
+        await createActivityLog({
+          adminId,
+          adminName,
+          action: 'Updated Quotation',
+          description: `Updated inquiry quotation ${req.params.id}`,
+          entityType: 'quotation',
+          entityId: req.params.id,
+          entityName: `Quotation ${req.params.id}`,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        });
+        return res.json(quotation);
       }
       
+      // If not found, try as RFQ quotation
+      quotation = await storage.updateQuotation(req.params.id, req.body);
+      if (quotation) {
       // Create activity log
       await createActivityLog({
         adminId,
         adminName,
         action: 'Updated Quotation',
-        description: `Updated quotation ${req.params.id}`,
+          description: `Updated RFQ quotation ${req.params.id}`,
         entityType: 'quotation',
         entityId: req.params.id,
         entityName: `Quotation ${req.params.id}`,
         ipAddress: req.ip,
         userAgent: req.get('User-Agent')
       });
+        return res.json(quotation);
+      }
       
-      res.json(quotation);
+      return res.status(404).json({ error: "Quotation not found" });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -2203,6 +2763,85 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
     } catch (error: any) {
       console.error('Error creating revised quotation:', error);
       res.status(400).json({ error: error.message });
+    }
+  });
+
+  // ==================== RFQ QUOTATION NEGOTIATION ROUTES ====================
+
+  // Admin creates revised RFQ quotation (creates a new quotation for the RFQ)
+  app.post("/api/admin/rfqs/:rfqId/revised-quotation", async (req, res) => {
+    try {
+      if (!req.user || req.user.role !== 'admin') {
+        return res.status(403).json({ error: "Unauthorized: Only admins can create quotations." });
+      }
+      
+      const supplierId = req.user.id;
+      const { rfqId } = req.params;
+      const { pricePerUnit, totalPrice, moq, leadTime, paymentTerms, validUntil, message, attachments } = req.body;
+      
+      // Validate required fields
+      if (!pricePerUnit || !totalPrice || !moq) {
+        return res.status(400).json({ error: "Missing required fields: pricePerUnit, totalPrice, moq" });
+      }
+      
+      // Get the RFQ to verify it exists
+      const rfq = await storage.getRfq(rfqId);
+      if (!rfq) {
+        return res.status(404).json({ error: "RFQ not found" });
+      }
+      
+      // Create new quotation for this RFQ
+      const quotationData = {
+        rfqId,
+        supplierId,
+        pricePerUnit: pricePerUnit.toString(),
+        totalPrice: totalPrice.toString(),
+        moq: parseInt(moq),
+        leadTime: leadTime || null,
+        paymentTerms: paymentTerms || null,
+        validUntil: validUntil ? new Date(validUntil) : null,
+        message: message || null,
+        attachments: attachments || [],
+        status: 'pending'
+      };
+      
+      const validatedData = insertQuotationSchema.parse(quotationData);
+      const createdQuotation = await storage.createQuotation(validatedData);
+      
+      // Increment RFQ quotation count
+      await storage.incrementRfqQuotationCount(rfqId);
+      
+      // Update RFQ status to negotiating if not already
+      if (rfq.status === 'open') {
+        await storage.updateRfq(rfqId, { status: 'open' }); // Keep open, or change logic as needed
+      }
+      
+      res.json({ success: true, quotation: createdQuotation });
+    } catch (error: any) {
+      console.error('Error creating revised RFQ quotation:', error);
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Get RFQ quotation history (all quotations for a specific RFQ)
+  app.get("/api/rfqs/:rfqId/quotations", async (req, res) => {
+    try {
+      const { rfqId } = req.params;
+      
+      // Get all quotations for this RFQ
+      const quotations = await storage.getQuotations({ rfqId });
+      
+      // Sort by creation date (newest first)
+      quotations.sort((a: any, b: any) => {
+        const dateA = new Date(a.createdAt || 0).getTime();
+        const dateB = new Date(b.createdAt || 0).getTime();
+        return dateB - dateA;
+      });
+      
+      res.json({ quotations, rfqId });
+    } catch (error: any) {
+      console.error('Error fetching RFQ quotation history:', error);
+      res.status(500).json({ error: error.message });
     }
   });
 

@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import { 
   Search, 
   Filter, 
@@ -28,7 +30,12 @@ import {
   Loader2,
   Shield,
   Globe,
-  MessageSquare
+  MessageSquare,
+  ShoppingCart,
+  X,
+  History,
+  ThumbsUp,
+  ThumbsDown
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
@@ -36,6 +43,13 @@ export default function BuyerRFQs() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
+  const [selectedRFQ, setSelectedRFQ] = useState<any>(null);
+  const [isQuotationsDialogOpen, setIsQuotationsDialogOpen] = useState(false);
+  const [selectedQuotation, setSelectedQuotation] = useState<any>(null);
+  const [isAcceptDialogOpen, setIsAcceptDialogOpen] = useState(false);
+  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+  const [shippingAddress, setShippingAddress] = useState('');
+  const [rejectionReason, setRejectionReason] = useState('');
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -144,6 +158,107 @@ export default function BuyerRFQs() {
       style: 'currency',
       currency: 'USD'
     }).format(price);
+  };
+
+  // Fetch quotations for a specific RFQ
+  const { data: rfqQuotations = [] } = useQuery({
+    queryKey: ['/api/rfqs/quotations', selectedRFQ?.id],
+    queryFn: async () => {
+      if (!selectedRFQ?.id) return [];
+      try {
+        const response = await fetch(`/api/rfqs/${selectedRFQ.id}/quotations`, {
+          credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Failed to fetch quotations');
+        const data = await response.json();
+        return data.quotations || [];
+      } catch (error) {
+        console.error('Error fetching RFQ quotations:', error);
+        return [];
+      }
+    },
+    enabled: !!selectedRFQ?.id && isQuotationsDialogOpen
+  });
+
+  // Accept RFQ quotation mutation
+  const acceptQuotationMutation = useMutation({
+    mutationFn: async (quotationId: string) => {
+      const response = await fetch(`/api/quotations/${quotationId}/accept`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shippingAddress }),
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to accept quotation' }));
+        throw new Error(errorData.error || 'Failed to accept quotation');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast.success('Quotation accepted successfully! Order has been created.');
+      queryClient.invalidateQueries({ queryKey: ['/api/rfqs'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/rfqs/quotations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/buyer/quotations'] });
+      setIsAcceptDialogOpen(false);
+      setShippingAddress('');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to accept quotation');
+    }
+  });
+
+  // Reject RFQ quotation mutation
+  const rejectQuotationMutation = useMutation({
+    mutationFn: async (quotationId: string) => {
+      const response = await fetch(`/api/quotations/${quotationId}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: rejectionReason }),
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to reject quotation' }));
+        throw new Error(errorData.error || 'Failed to reject quotation');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast.success('Quotation rejected successfully');
+      queryClient.invalidateQueries({ queryKey: ['/api/rfqs'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/rfqs/quotations'] });
+      setIsRejectDialogOpen(false);
+      setRejectionReason('');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to reject quotation');
+    }
+  });
+
+  const handleViewQuotations = (rfq: any) => {
+    setSelectedRFQ(rfq);
+    setIsQuotationsDialogOpen(true);
+  };
+
+  const handleAcceptQuotation = () => {
+    if (selectedQuotation && shippingAddress.trim()) {
+      acceptQuotationMutation.mutate(selectedQuotation.id);
+    }
+  };
+
+  const handleRejectQuotation = () => {
+    if (selectedQuotation && rejectionReason.trim()) {
+      rejectQuotationMutation.mutate(selectedQuotation.id);
+    }
+  };
+
+  const getQuotationStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'accepted': return 'bg-green-100 text-green-800 border-green-200';
+      case 'rejected': return 'bg-red-100 text-red-800 border-red-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
   };
 
   const stats = {
@@ -371,6 +486,17 @@ export default function BuyerRFQs() {
                               <span className="text-gray-600">Quotations:</span>
                               <span className="font-medium text-green-600">{quotationCount}</span>
                             </div>
+                            {quotationCount > 0 && (
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="w-full mt-2"
+                                onClick={() => handleViewQuotations(rfq)}
+                              >
+                                <ShoppingCart className="w-4 h-4 mr-2" />
+                                View Quotations ({quotationCount})
+                              </Button>
+                            )}
                           </div>
                           
                           <div className="pt-4 border-t">
@@ -643,6 +769,239 @@ export default function BuyerRFQs() {
 
         </div>
       </main>
+
+      {/* RFQ Quotations Dialog */}
+      <Dialog open={isQuotationsDialogOpen} onOpenChange={setIsQuotationsDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShoppingCart className="w-5 h-5 text-blue-600" />
+              Quotations for {selectedRFQ?.title || 'RFQ'}
+            </DialogTitle>
+            <DialogDescription>
+              Review and manage quotations received for this RFQ. Accept, reject, or negotiate terms.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {rfqQuotations.length > 0 ? (
+              rfqQuotations.map((quotation: any) => (
+                <Card key={quotation.id} className="border border-gray-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge className={getQuotationStatusColor(quotation.status)}>
+                            {quotation.status}
+                          </Badge>
+                          <span className="text-sm text-gray-600">
+                            Quotation #{quotation.id.slice(0, 8)}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                          <div>
+                            <span className="text-gray-600 block">Price per Unit:</span>
+                            <span className="font-medium text-green-600">
+                              ${quotation.pricePerUnit || 0}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600 block">Total Price:</span>
+                            <span className="font-medium">
+                              ${quotation.totalPrice || 0}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600 block">MOQ:</span>
+                            <span className="font-medium">{quotation.moq || 'N/A'} units</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600 block">Lead Time:</span>
+                            <span className="font-medium">{quotation.leadTime || 'N/A'}</span>
+                          </div>
+                        </div>
+                        {quotation.message && (
+                          <div className="mt-3 p-2 bg-gray-50 rounded text-sm text-gray-700">
+                            {quotation.message}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-2 ml-4">
+                        {quotation.status === 'pending' && (
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                setSelectedQuotation(quotation);
+                                setIsAcceptDialogOpen(true);
+                              }}
+                              className="bg-green-600 hover:bg-green-700 text-white"
+                            >
+                              <CheckCircle className="w-4 h-4 mr-1" />
+                              Accept
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedQuotation(quotation);
+                                setIsRejectDialogOpen(true);
+                              }}
+                              className="text-red-600 border-red-200 hover:bg-red-50"
+                            >
+                              <X className="w-4 h-4 mr-1" />
+                              Reject
+                            </Button>
+                          </>
+                        )}
+                        {quotation.status === 'accepted' && (
+                          <Badge className="bg-green-100 text-green-800">
+                            Accepted ✓
+                          </Badge>
+                        )}
+                        {quotation.status === 'rejected' && (
+                          <Badge className="bg-red-100 text-red-800">
+                            Rejected
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <div className="text-center py-8">
+                <ShoppingCart className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No Quotations Yet</h3>
+                <p className="text-gray-600">No quotations have been received for this RFQ yet.</p>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsQuotationsDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Accept Quotation Dialog */}
+      <Dialog open={isAcceptDialogOpen} onOpenChange={setIsAcceptDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+              Accept Quotation
+            </DialogTitle>
+            <DialogDescription>
+              Please provide your shipping address to proceed with this quotation.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {selectedQuotation && (
+              <div className="bg-green-50 p-4 rounded-lg">
+                <h4 className="font-semibold text-green-800 mb-2">Quotation Summary</h4>
+                <div className="space-y-1 text-sm text-green-700">
+                  <p><strong>RFQ:</strong> {selectedRFQ?.title || 'N/A'}</p>
+                  <p><strong>MOQ:</strong> {selectedQuotation.moq || 0} units</p>
+                  <p><strong>Total Amount:</strong> ${selectedQuotation.totalPrice || 0}</p>
+                </div>
+              </div>
+            )}
+            <div>
+              <label className="text-sm font-medium block mb-2">Shipping Address</label>
+              <Textarea
+                placeholder="Enter your complete shipping address..."
+                value={shippingAddress}
+                onChange={(e) => setShippingAddress(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAcceptDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleAcceptQuotation}
+              disabled={!shippingAddress.trim() || acceptQuotationMutation.isPending}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              {acceptQuotationMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Accepting...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Accept Quotation
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject Quotation Dialog */}
+      <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <X className="w-5 h-5 text-red-600" />
+              Reject Quotation
+            </DialogTitle>
+            <DialogDescription>
+              Please provide a reason for rejecting this quotation.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {selectedQuotation && (
+              <div className="bg-red-50 p-4 rounded-lg">
+                <h4 className="font-semibold text-red-800 mb-2">Quotation Summary</h4>
+                <div className="space-y-1 text-sm text-red-700">
+                  <p><strong>RFQ:</strong> {selectedRFQ?.title || 'N/A'}</p>
+                  <p><strong>MOQ:</strong> {selectedQuotation.moq || 0} units</p>
+                  <p><strong>Total Amount:</strong> ${selectedQuotation.totalPrice || 0}</p>
+                </div>
+              </div>
+            )}
+            <div>
+              <label className="text-sm font-medium block mb-2">Reason for Rejection</label>
+              <Textarea
+                placeholder="Enter reason for rejection..."
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRejectDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleRejectQuotation}
+              disabled={!rejectionReason.trim() || rejectQuotationMutation.isPending}
+              variant="destructive"
+            >
+              {rejectQuotationMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Rejecting...
+                </>
+              ) : (
+                <>
+                  <X className="w-4 h-4 mr-2" />
+                  Reject Quotation
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Footer />
     </div>
   );

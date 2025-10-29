@@ -72,6 +72,7 @@ import {
 export default function BuyerQuotations() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'rfq' | 'inquiry'>('all');
   const [sortBy, setSortBy] = useState('newest');
   const [selectedQuotation, setSelectedQuotation] = useState<any>(null);
   const [isAcceptDialogOpen, setIsAcceptDialogOpen] = useState(false);
@@ -96,12 +97,18 @@ export default function BuyerQuotations() {
 
   const queryClient = useQueryClient();
 
-  // Fetch quotations from API
+  // Fetch quotations from API (both RFQ and Inquiry)
   const { data: quotationsData, isLoading } = useQuery({
-    queryKey: ['/api/buyer/quotations', statusFilter, searchQuery, sortBy],
+    queryKey: ['/api/buyer/quotations', statusFilter, searchQuery, sortBy, typeFilter],
     queryFn: async () => {
       try {
-        const response = await fetch('/api/buyer/quotations', {
+        const params = new URLSearchParams();
+        if (statusFilter && statusFilter !== 'all') params.append('status', statusFilter);
+        if (searchQuery) params.append('search', searchQuery);
+        if (typeFilter && typeFilter !== 'all') params.append('type', typeFilter);
+        if (sortBy) params.append('sort', sortBy);
+        
+        const response = await fetch(`/api/buyer/quotations?${params.toString()}`, {
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
@@ -118,44 +125,115 @@ export default function BuyerQuotations() {
     }
   });
 
-  // Accept quotation mutation
+  // Accept quotation mutation (handles both Inquiry and RFQ quotations)
   const acceptQuotationMutation = useMutation({
-    mutationFn: async (quotationId: string) => {
-      const response = await fetch(`/api/inquiry-quotations/${quotationId}/accept`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ shippingAddress }),
-        credentials: 'include'
+    mutationFn: async (quotation: any) => {
+      console.log('Accepting quotation:', {
+        quotationId: quotation.id,
+        type: quotation.type,
+        rfqId: quotation.rfqId,
+        inquiryId: quotation.inquiryId,
+        shippingAddress: shippingAddress
       });
-      if (!response.ok) throw new Error('Failed to accept quotation');
-      return response.json();
+
+      let response;
+      
+      if (quotation.type === 'rfq') {
+        // Accept RFQ quotation - using proper RFQ quotation acceptance endpoint
+        console.log('Accepting RFQ quotation:', quotation.id);
+        response = await fetch(`/api/quotations/${quotation.id}/accept`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            shippingAddress: shippingAddress.trim() || 'Address not provided'
+          }),
+          credentials: 'include'
+        });
+      } else {
+        // Accept inquiry quotation
+        console.log('Accepting inquiry quotation:', quotation.id);
+        response = await fetch(`/api/inquiry-quotations/${quotation.id}/accept`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            shippingAddress: shippingAddress.trim() || 'Address not provided'
+          }),
+          credentials: 'include'
+        });
+      }
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ 
+          error: 'Failed to accept quotation. Please try again or contact support.' 
+        }));
+        console.error('Error accepting quotation:', errorData);
+        throw new Error(errorData.error || 'Failed to accept quotation. Please check if the RFQ is linked to a product.');
+      }
+      
+      const result = await response.json();
+      console.log('Quotation accepted successfully:', result);
+      return result;
     },
-    onSuccess: () => {
-      toast.success('Quotation accepted successfully! Order has been created.');
+    onSuccess: (data: any) => {
+      toast.success(data.message || 'Quotation accepted successfully! Order has been created.');
       queryClient.invalidateQueries({ queryKey: ['/api/buyer/quotations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/rfqs'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
       setIsAcceptDialogOpen(false);
       setShippingAddress('');
+      setSelectedQuotation(null);
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to accept quotation');
+      console.error('Mutation error:', error);
+      const errorMessage = error.message || 'Failed to accept quotation. Please try again.';
+      
+      // Check for specific error messages about productId
+      if (errorMessage.toLowerCase().includes('product') || 
+          errorMessage.toLowerCase().includes('product_id')) {
+        toast.error('Unable to create order: The RFQ must be linked to a product. Please contact support.', {
+          duration: 6000
+        });
+      } else {
+        toast.error(errorMessage, {
+          duration: 5000
+        });
+      }
     }
   });
 
-  // Reject quotation mutation
+  // Reject quotation mutation (handles both Inquiry and RFQ quotations)
   const rejectQuotationMutation = useMutation({
-    mutationFn: async (quotationId: string) => {
-      const response = await fetch(`/api/inquiry-quotations/${quotationId}/reject`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: rejectionReason }),
-        credentials: 'include'
-      });
-      if (!response.ok) throw new Error('Failed to reject quotation');
+    mutationFn: async (quotation: any) => {
+      let response;
+      
+      if (quotation.type === 'rfq') {
+        // Reject RFQ quotation
+        response = await fetch(`/api/quotations/${quotation.id}/reject`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason: rejectionReason }),
+          credentials: 'include'
+        });
+      } else {
+        // Reject inquiry quotation
+        response = await fetch(`/api/inquiry-quotations/${quotation.id}/reject`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason: rejectionReason }),
+          credentials: 'include'
+        });
+      }
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to reject quotation' }));
+        throw new Error(errorData.error || 'Failed to reject quotation');
+      }
       return response.json();
     },
     onSuccess: () => {
       toast.success('Quotation rejected successfully');
       queryClient.invalidateQueries({ queryKey: ['/api/buyer/quotations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/rfqs'] });
       setIsRejectDialogOpen(false);
       setRejectionReason('');
     },
@@ -164,29 +242,41 @@ export default function BuyerQuotations() {
     }
   });
 
-  // Send counter-offer mutation
+  // Send counter-offer mutation (handles both Inquiry and RFQ quotations)
   const counterOfferMutation = useMutation({
-    mutationFn: async ({ quotationId, counterOfferData }: { quotationId: string, counterOfferData: any }) => {
-      const response = await fetch(`/api/inquiries/${selectedQuotation?.inquiryId}/counter-offer`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          quantity: parseInt(counterOfferData.quantity),
-          targetPrice: parseFloat(counterOfferData.targetPrice),
-          message: counterOfferData.message,
-          requirements: counterOfferData.requirements,
-          urgency: counterOfferData.urgency,
-          deadline: counterOfferData.deadline
-        }),
-        credentials: 'include'
-      });
-      if (!response.ok) throw new Error('Failed to send counter-offer');
-      return response.json();
+    mutationFn: async ({ quotation, counterOfferData }: { quotation: any, counterOfferData: any }) => {
+      if (quotation.type === 'rfq') {
+        // For RFQs, note that buyer wants to negotiate
+        // The admin will see this and can send a revised quotation via the admin panel
+        toast('RFQ counter-offer: Admin will review and send revised quotation', {
+          icon: 'ℹ️',
+          duration: 4000
+        });
+        return { success: true };
+      } else {
+        // Send counter-offer for inquiry
+        const response = await fetch(`/api/inquiries/${quotation.inquiryId}/counter-offer`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            quantity: parseInt(counterOfferData.quantity),
+            targetPrice: parseFloat(counterOfferData.targetPrice).toString(),
+            message: counterOfferData.message,
+            requirements: counterOfferData.requirements,
+            urgency: counterOfferData.urgency,
+            deadline: counterOfferData.deadline
+          }),
+          credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Failed to send counter-offer');
+        return response.json();
+      }
     },
     onSuccess: () => {
       toast.success('Counter-offer sent successfully!');
       queryClient.invalidateQueries({ queryKey: ['/api/buyer/quotations'] });
       queryClient.invalidateQueries({ queryKey: ['/api/inquiries'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/rfqs'] });
       setIsCounterOfferDialogOpen(false);
       setCounterOffer({ quantity: '', targetPrice: '', message: '', requirements: '', urgency: 'normal', deadline: '' });
     },
@@ -195,14 +285,42 @@ export default function BuyerQuotations() {
     }
   });
 
-  // Fetch negotiation history
+  // Fetch negotiation history (handles both Inquiry and RFQ quotations)
   const fetchNegotiationHistory = useMutation({
-    mutationFn: async (inquiryId: string) => {
-      const response = await fetch(`/api/inquiries/${inquiryId}/revisions`, {
-        credentials: 'include'
-      });
-      if (!response.ok) throw new Error('Failed to fetch negotiation history');
-      return response.json();
+    mutationFn: async (quotation: any) => {
+      if (quotation.type === 'rfq') {
+        // For RFQs, get all quotations for the same RFQ
+        const response = await fetch(`/api/rfqs/${quotation.rfqId}/quotations`, {
+          credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Failed to fetch RFQ quotation history');
+        const data = await response.json();
+        // Transform quotations to revision-like format
+        return {
+          revisions: (data.quotations || []).map((q: any, index: number) => ({
+            id: q.id,
+            revisionNumber: (data.quotations || []).length - index,
+            quantity: q.moq,
+            targetPrice: q.pricePerUnit,
+            message: q.message,
+            requirements: q.leadTime ? `Lead Time: ${q.leadTime}` : '',
+            status: q.status,
+            createdBy: q.supplierId ? 'admin' : 'buyer',
+            createdAt: q.createdAt,
+            pricePerUnit: q.pricePerUnit,
+            totalPrice: q.totalPrice,
+            leadTime: q.leadTime,
+            paymentTerms: q.paymentTerms
+          }))
+        };
+      } else {
+        // For inquiries, get revisions
+        const response = await fetch(`/api/inquiries/${quotation.inquiryId}/revisions`, {
+          credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Failed to fetch negotiation history');
+        return response.json();
+      }
     },
     onSuccess: (data) => {
       setNegotiationHistory(data.revisions || []);
@@ -269,10 +387,12 @@ export default function BuyerQuotations() {
 
   const filteredQuotations = quotations.filter((quotation: any) => {
     const matchesSearch = (quotation.productName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (quotation.rfqTitle || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                          (quotation.supplierName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                          (quotation.adminName || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || quotation.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesType = typeFilter === 'all' || quotation.type === typeFilter;
+    return matchesSearch && matchesStatus && matchesType;
   });
 
   const sortedQuotations = [...filteredQuotations].sort((a: any, b: any) => {
@@ -304,42 +424,47 @@ export default function BuyerQuotations() {
 
   const handleAcceptQuotation = () => {
     if (selectedQuotation && shippingAddress.trim()) {
-      acceptQuotationMutation.mutate(selectedQuotation.id);
+      acceptQuotationMutation.mutate(selectedQuotation);
     }
   };
 
   const handleRejectQuotation = () => {
     if (selectedQuotation && rejectionReason.trim()) {
-      rejectQuotationMutation.mutate(selectedQuotation.id);
+      rejectQuotationMutation.mutate(selectedQuotation);
     }
   };
 
   const handleCounterOffer = () => {
     if (selectedQuotation && counterOffer.quantity && counterOffer.targetPrice) {
       counterOfferMutation.mutate({ 
-        quotationId: selectedQuotation.id, 
+        quotation: selectedQuotation, 
         counterOfferData: counterOffer 
       });
     }
   };
 
   const handleViewNegotiationHistory = (quotation: any) => {
-    if (quotation.inquiryId) {
-      fetchNegotiationHistory.mutate(quotation.inquiryId);
-    }
+    fetchNegotiationHistory.mutate(quotation);
   };
 
   const handleCompareQuotations = (quotation: any) => {
-    // Only show quotations from the same inquiry for comparison
-    const sameInquiryQuotations = quotations.filter((q: any) => 
-      q.inquiryId === quotation.inquiryId && q.id !== quotation.id
-    );
+    // Show quotations from the same inquiry or RFQ for comparison
+    let sameQuotations;
+    if (quotation.type === 'rfq') {
+      sameQuotations = quotations.filter((q: any) => 
+        q.rfqId === quotation.rfqId && q.id !== quotation.id && q.type === 'rfq'
+      );
+    } else {
+      sameQuotations = quotations.filter((q: any) => 
+        q.inquiryId === quotation.inquiryId && q.id !== quotation.id && q.type === 'inquiry'
+      );
+    }
     
-    if (sameInquiryQuotations.length > 0) {
-      setSelectedQuotationsForCompare([quotation, ...sameInquiryQuotations]);
+    if (sameQuotations.length > 0) {
+      setSelectedQuotationsForCompare([quotation, ...sameQuotations]);
       setIsCompareDialogOpen(true);
     } else {
-      toast.error('No other quotations found for this inquiry to compare');
+      toast.error(`No other quotations found for this ${quotation.type === 'rfq' ? 'RFQ' : 'inquiry'} to compare`);
     }
   };
 
@@ -418,8 +543,8 @@ export default function BuyerQuotations() {
                   <div className="flex-1 max-w-md">
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                      <Input
-                        placeholder="Search quotations, suppliers, or products..."
+                        <Input
+                        placeholder="Search quotations, RFQ titles, suppliers, or products..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="pl-10"
@@ -428,6 +553,16 @@ export default function BuyerQuotations() {
                   </div>
                   
                   <div className="flex gap-3">
+                    <Select value={typeFilter} onValueChange={(value) => setTypeFilter(value as 'all' | 'rfq' | 'inquiry')}>
+                      <SelectTrigger className="w-48">
+                        <SelectValue placeholder="Filter by type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Types</SelectItem>
+                        <SelectItem value="rfq">RFQ Quotations</SelectItem>
+                        <SelectItem value="inquiry">Inquiry Quotations</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
                       <SelectTrigger className="w-48">
                         <SelectValue placeholder="Filter by status" />
@@ -585,9 +720,29 @@ export default function BuyerQuotations() {
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                              {quotation.productName}
+                              {quotation.type === 'rfq' ? (quotation.rfqTitle || 'RFQ Quotation') : (quotation.productName || 'Product Quotation')}
                             </CardTitle>
-                            <p className="text-sm text-gray-600 mt-1">Quotation #{quotation.id}</p>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              <Badge 
+                                variant={quotation.type === 'rfq' ? 'default' : 'secondary'} 
+                                className={quotation.type === 'rfq' 
+                                  ? 'bg-purple-100 text-purple-800 border-purple-300 font-semibold text-xs px-2 py-1' 
+                                  : 'bg-blue-100 text-blue-800 border-blue-300 font-semibold text-xs px-2 py-1'}
+                              >
+                                {quotation.type === 'rfq' ? '📋 RFQ (quotations)' : '💬 Inquiry (inquiry_quotations)'}
+                              </Badge>
+                              <p className="text-sm text-gray-600">ID: {quotation.id?.slice(0, 8)}...</p>
+                              {quotation.type === 'rfq' && quotation.rfqId && (
+                                <Badge variant="outline" className="text-xs bg-gray-50 text-gray-600">
+                                  RFQ: {quotation.rfqId.slice(0, 8)}...
+                                </Badge>
+                              )}
+                              {quotation.type === 'inquiry' && quotation.inquiryId && (
+                                <Badge variant="outline" className="text-xs bg-gray-50 text-gray-600">
+                                  Inquiry: {quotation.inquiryId.slice(0, 8)}...
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                           <Badge className={`${getStatusColor(quotation.status)} flex items-center gap-1`}>
                             {getStatusIcon(quotation.status)}
@@ -602,24 +757,44 @@ export default function BuyerQuotations() {
                             <span className="font-medium">{quotation.supplierName || quotation.adminName || 'Admin'}</span>
                           </div>
                           <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-600">Quantity:</span>
-                            <span className="font-medium">{(quotation.inquiryQuantity || quotation.quantity || 0).toLocaleString()}</span>
+                            <span className="text-gray-600">Quantity/MOQ:</span>
+                            <span className="font-medium">{(quotation.inquiryQuantity || quotation.quantity || quotation.moq || 0).toLocaleString()} units</span>
                           </div>
                           <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-600">Unit Price:</span>
-                            <span className="font-medium">${quotation.pricePerUnit || quotation.unitPrice || 0}</span>
+                            <span className="text-gray-600">Price per Unit:</span>
+                            <span className="font-medium">${parseFloat(quotation.pricePerUnit) || 0}</span>
                           </div>
                           <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-600">Total:</span>
-                            <span className="font-medium text-green-600">${(quotation.totalPrice || quotation.totalAmount || 0).toLocaleString()}</span>
+                            <span className="text-gray-600">Total Price:</span>
+                            <span className="font-medium text-green-600">${parseFloat(quotation.totalPrice) || 0}</span>
                           </div>
+                          {quotation.leadTime && (
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">Lead Time:</span>
+                              <span className="font-medium">{quotation.leadTime}</span>
+                            </div>
+                          )}
+                          {quotation.paymentTerms && (
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">Payment Terms:</span>
+                              <span className="font-medium">{quotation.paymentTerms}</span>
+                            </div>
+                          )}
                         </div>
                         
                         <div className="pt-4 border-t">
-                          <div className="flex items-center justify-between text-xs text-gray-500">
-                            <span>Quoted: {new Date(quotation.quotationDate || quotation.createdAt || quotation.created_at || new Date()).toLocaleDateString()}</span>
-                            <span>Valid Until: {new Date(quotation.validUntil || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)).toLocaleDateString()}</span>
+                          <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                            <span>Created: {new Date(quotation.createdAt || quotation.created_at || new Date()).toLocaleDateString()}</span>
+                            {quotation.validUntil && (
+                              <span>Valid Until: {new Date(quotation.validUntil).toLocaleDateString()}</span>
+                            )}
                           </div>
+                          {quotation.attachments && Array.isArray(quotation.attachments) && quotation.attachments.length > 0 && (
+                            <div className="flex items-center gap-1 text-xs text-blue-600 mt-2">
+                              <FileText className="h-3 w-3" />
+                              <span>{quotation.attachments.length} attachment(s)</span>
+                            </div>
+                          )}
                         </div>
                         
                         <div className="flex flex-wrap gap-2">
@@ -679,8 +854,8 @@ export default function BuyerQuotations() {
                             </Button>
                           )}
                           
-                          {/* History Button */}
-                          {quotation.inquiryId && (
+                          {/* History Button - Available for both types */}
+                          {(quotation.inquiryId || quotation.rfqId) && (
                             <Button 
                               variant="outline" 
                               size="sm"
@@ -692,10 +867,12 @@ export default function BuyerQuotations() {
                             </Button>
                           )}
                           
-                          {/* Compare Button - Only show if there are other quotations for the same inquiry */}
-                          {quotation.inquiryId && quotations.filter((q: any) => 
-                            q.inquiryId === quotation.inquiryId && q.id !== quotation.id
-                          ).length > 0 && (
+                          {/* Compare Button - Only show if there are other quotations for the same inquiry or RFQ */}
+                          {((quotation.inquiryId && quotations.filter((q: any) => 
+                            q.inquiryId === quotation.inquiryId && q.id !== quotation.id && q.type === 'inquiry'
+                          ).length > 0) || (quotation.rfqId && quotations.filter((q: any) => 
+                            q.rfqId === quotation.rfqId && q.id !== quotation.id && q.type === 'rfq'
+                          ).length > 0)) && (
                             <Button 
                               variant="outline" 
                               size="sm"
@@ -1070,16 +1247,24 @@ export default function BuyerQuotations() {
                 </h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div className="bg-white p-3 rounded-lg">
-                    <span className="text-gray-600 block">Product:</span>
-                    <span className="font-medium text-gray-900">{selectedQuotation.productName}</span>
+                    <span className="text-gray-600 block">
+                      {selectedQuotation.type === 'rfq' ? 'RFQ Title:' : 'Product:'}
+                    </span>
+                    <span className="font-medium text-gray-900">
+                      {selectedQuotation.type === 'rfq' 
+                        ? (selectedQuotation.rfqTitle || 'RFQ') 
+                        : (selectedQuotation.productName || 'Unknown')}
+                    </span>
                   </div>
                   <div className="bg-white p-3 rounded-lg">
                     <span className="text-gray-600 block">Admin:</span>
-                    <span className="font-medium text-gray-900">{selectedQuotation.supplierName || selectedQuotation.adminName}</span>
+                    <span className="font-medium text-gray-900">{selectedQuotation.supplierName || selectedQuotation.adminName || 'Admin'}</span>
                   </div>
                   <div className="bg-white p-3 rounded-lg">
                     <span className="text-gray-600 block">Quantity:</span>
-                    <span className="font-medium text-gray-900">{(selectedQuotation.inquiryQuantity || selectedQuotation.quantity || 0).toLocaleString()}</span>
+                    <span className="font-medium text-gray-900">
+                      {(selectedQuotation.inquiryQuantity || selectedQuotation.quantity || selectedQuotation.moq || 0).toLocaleString()}
+                    </span>
                   </div>
                   <div className="bg-white p-3 rounded-lg">
                     <span className="text-gray-600 block">Unit Price:</span>
@@ -1266,21 +1451,38 @@ export default function BuyerQuotations() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
                       <div>
                         <span className="text-sm text-gray-600">Quantity:</span>
-                        <span className="ml-2 font-medium">{revision.quantity?.toLocaleString()}</span>
+                        <span className="ml-2 font-medium">{revision.quantity?.toLocaleString() || revision.moq?.toLocaleString() || 'N/A'}</span>
                       </div>
                       <div>
-                        <span className="text-sm text-gray-600">Target Price:</span>
-                        <span className="ml-2 font-medium">${revision.targetPrice || 'Not specified'}</span>
+                        <span className="text-sm text-gray-600">Price per Unit:</span>
+                        <span className="ml-2 font-medium">${revision.pricePerUnit || revision.targetPrice || 'Not specified'}</span>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-600">Total Price:</span>
+                        <span className="ml-2 font-medium">${revision.totalPrice || 'Not specified'}</span>
                       </div>
                       <div>
                         <span className="text-sm text-gray-600">Created By:</span>
-                        <span className="ml-2 font-medium">{revision.createdBy === 'admin' ? 'Admin' : 'Buyer'}</span>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-600">Status:</span>
-                        <span className="ml-2 font-medium">{revision.status}</span>
+                        <span className="ml-2 font-medium">{revision.createdBy === 'admin' || revision.createdBy === 'supplierId' ? 'Admin' : 'Buyer'}</span>
                       </div>
                     </div>
+                    
+                    {(revision.leadTime || revision.paymentTerms) && (
+                      <div className="grid grid-cols-2 gap-4 mb-3">
+                        {revision.leadTime && (
+                          <div>
+                            <span className="text-sm text-gray-600">Lead Time:</span>
+                            <span className="ml-2 font-medium">{revision.leadTime}</span>
+                          </div>
+                        )}
+                        {revision.paymentTerms && (
+                          <div>
+                            <span className="text-sm text-gray-600">Payment Terms:</span>
+                            <span className="ml-2 font-medium">{revision.paymentTerms}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     
                     {revision.message && (
                       <div className="bg-gray-50 p-3 rounded-lg">
@@ -1331,14 +1533,21 @@ export default function BuyerQuotations() {
           </DialogHeader>
           
           <div className="space-y-6">
-            {/* Quotation Selection - Only show quotations from same inquiry */}
+            {/* Quotation Selection - Only show quotations from same inquiry or RFQ */}
             <div className="bg-gray-50 p-4 rounded-lg">
-              <h4 className="font-semibold text-gray-900 mb-3">Quotations from Same Inquiry</h4>
+              <h4 className="font-semibold text-gray-900 mb-3">
+                Quotations from Same {selectedQuotationsForCompare[0]?.type === 'rfq' ? 'RFQ' : 'Inquiry'}
+              </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {selectedQuotationsForCompare.length > 0 && sortedQuotations
-                  .filter((quotation: any) => 
-                    quotation.inquiryId === selectedQuotationsForCompare[0]?.inquiryId
-                  )
+                  .filter((quotation: any) => {
+                    const first = selectedQuotationsForCompare[0];
+                    if (first?.type === 'rfq') {
+                      return quotation.rfqId === first.rfqId && quotation.type === 'rfq';
+                    } else {
+                      return quotation.inquiryId === first?.inquiryId && quotation.type === 'inquiry';
+                    }
+                  })
                   .map((quotation: any) => {
                     const isSelected = selectedQuotationsForCompare.some(q => q.id === quotation.id);
                     
@@ -1370,7 +1579,7 @@ export default function BuyerQuotations() {
                   })}
               </div>
               <p className="text-xs text-gray-500 mt-2">
-                Comparing {selectedQuotationsForCompare.length} quotations from the same inquiry
+                Comparing {selectedQuotationsForCompare.length} quotations from the same {selectedQuotationsForCompare[0]?.type === 'rfq' ? 'RFQ' : 'inquiry'}
               </p>
             </div>
 

@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Breadcrumb from '@/components/Breadcrumb';
 import { 
   Search, 
@@ -26,12 +27,19 @@ import {
   TrendingUp,
   RefreshCw,
   Download,
-  Loader2
+  Loader2,
+  MessageSquare,
+  BarChart3,
+  Activity,
+  Target,
+  Settings
 } from 'lucide-react';
 
 export default function AdminRFQs() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [activeTab, setActiveTab] = useState('overview');
+  const [dateRange, setDateRange] = useState('all');
   const [selectedRFQ, setSelectedRFQ] = useState<any>(null);
   const [isQuoteDialogOpen, setIsQuoteDialogOpen] = useState(false);
   const [quoteForm, setQuoteForm] = useState({
@@ -70,10 +78,66 @@ export default function AdminRFQs() {
 
   const rfqs = rfqsData || [];
 
+  // Collect unique product IDs from RFQs
+  const productIds = useMemo(() => {
+    const ids = new Set<string>();
+    rfqs.forEach((rfq: any) => {
+      if (rfq.productId && rfq.productId !== 'null' && rfq.productId !== 'undefined' && rfq.productId.trim() !== '') {
+        ids.add(rfq.productId);
+      }
+    });
+    return Array.from(ids);
+  }, [rfqs]);
+
+  // Fetch all products that are referenced in RFQs
+  const { data: productsData = [] } = useQuery({
+    queryKey: ['/api/products/batch', productIds],
+    queryFn: async () => {
+      if (productIds.length === 0) return [];
+      
+      // Fetch each product individually (batch fetching would require API changes)
+      const productPromises = productIds.map(async (productId) => {
+        try {
+          const response = await fetch(`/api/products/${productId}`);
+          if (response.ok) {
+            return await response.json();
+          }
+          return null;
+        } catch (error) {
+          console.error(`Error fetching product ${productId}:`, error);
+          return null;
+        }
+      });
+      
+      const products = await Promise.all(productPromises);
+      return products.filter(p => p !== null);
+    },
+    enabled: productIds.length > 0
+  });
+
+  // Create a map of productId to product data for quick lookup
+  const productsMap = useMemo(() => {
+    const map = new Map();
+    productsData.forEach((product: any) => {
+      if (product && product.id) {
+        map.set(product.id, product);
+      }
+    });
+    return map;
+  }, [productsData]);
+
   // Helper function to get category name
   const getCategoryName = (categoryId: string) => {
     const category = categories.find((cat: any) => cat.id === categoryId);
     return category ? category.name : categoryId || 'General';
+  };
+
+  // Helper function to get product details
+  const getProductDetails = (productId: string | null | undefined) => {
+    if (!productId || productId === 'null' || productId === 'undefined' || productId.trim() === '') {
+      return null;
+    }
+    return productsMap.get(productId) || null;
   };
 
   // Send quotation mutation
@@ -163,134 +227,309 @@ export default function AdminRFQs() {
     }).format(numPrice);
   };
 
+  // Enhanced analytics
   const stats = {
     total: rfqs.length,
     open: rfqs.filter((r: any) => r.status === 'open').length,
     closed: rfqs.filter((r: any) => r.status === 'closed').length,
-    totalValue: rfqs.reduce((sum: number, r: any) => sum + (parseFloat(r.targetPrice) || 0) * (r.quantity || 0), 0)
+    // Calculate conversion rates
+    conversionRate: rfqs.length > 0 ? 
+      ((rfqs.filter((r: any) => (r.quotationsCount || 0) > 0).length / rfqs.length) * 100).toFixed(1) : 0,
+    responseRate: rfqs.length > 0 ? 
+      ((rfqs.filter((r: any) => (r.quotationsCount || 0) > 0).length / rfqs.length) * 100).toFixed(1) : 0,
+    // Calculate average response time (mock data for now)
+    avgResponseTime: '2.5 hours',
+    // Calculate total RFQ value
+    totalValue: rfqs.reduce((sum: number, r: any) => 
+      sum + ((r.quantity || 0) * (r.targetPrice || 0)), 0),
+    // Recent activity (last 7 days)
+    recentActivity: rfqs.filter((r: any) => {
+      const createdAt = new Date(r.createdAt);
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      return createdAt > weekAgo;
+    }).length
   };
 
   return (
-    <div className="flex-1 p-8">
-      <div className=" mx-auto">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="mx-auto p-6">
         {/* Breadcrumb */}
         <Breadcrumb items={[{ label: "RFQs" }]} />
         
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">RFQ Management</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              View and respond to Request for Quotations from buyers
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/rfqs'] })}
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
-            <Button variant="outline">
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
+        {/* Header Section */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                RFQ Management
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                View and respond to Request for Quotations from buyers
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/rfqs'] })}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </Button>
+              <Button variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+            </div>
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          {/* Total RFQs - Blue */}
-          <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
+        {/* Key Metrics Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-blue-100">Total RFQs</p>
-                  <p className="text-3xl font-bold text-white">{stats.total}</p>
+                  <p className="text-blue-100 text-sm font-medium">Total RFQs</p>
+                  <p className="text-3xl font-bold">{stats.total}</p>
+                  <p className="text-blue-200 text-xs">+{stats.recentActivity} this week</p>
                 </div>
                 <FileText className="h-8 w-8 text-blue-200" />
               </div>
             </CardContent>
           </Card>
 
-          {/* Open RFQs - Green */}
-          <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-lg">
+          <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-green-100">Open RFQs</p>
-                  <p className="text-3xl font-bold text-white">{stats.open}</p>
+                  <p className="text-green-100 text-sm font-medium">Response Rate</p>
+                  <p className="text-3xl font-bold">{stats.responseRate}%</p>
+                  <p className="text-green-200 text-xs">RFQs with Quotations</p>
                 </div>
                 <TrendingUp className="h-8 w-8 text-green-200" />
               </div>
             </CardContent>
           </Card>
 
-          {/* Closed - Gray */}
-          <Card className="bg-gradient-to-br from-gray-500 to-gray-600 text-white border-0 shadow-lg">
+          <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-100">Closed</p>
-                  <p className="text-3xl font-bold text-white">{stats.closed}</p>
+                  <p className="text-purple-100 text-sm font-medium">Open RFQs</p>
+                  <p className="text-3xl font-bold">{stats.open}</p>
+                  <p className="text-purple-200 text-xs">Active Opportunities</p>
                 </div>
-                <CheckCircle className="h-8 w-8 text-gray-200" />
+                <MessageSquare className="h-8 w-8 text-purple-200" />
               </div>
             </CardContent>
           </Card>
 
-          {/* Total Value - Purple */}
-          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-lg">
+          <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-purple-100">Total Value</p>
-                  <p className="text-3xl font-bold text-white">{formatPrice(stats.totalValue)}</p>
+                  <p className="text-orange-100 text-sm font-medium">Total Value</p>
+                  <p className="text-3xl font-bold">${stats.totalValue.toLocaleString()}</p>
+                  <p className="text-orange-200 text-xs">RFQ Value</p>
                 </div>
-                <DollarSign className="h-8 w-8 text-purple-200" />
+                <DollarSign className="h-8 w-8 text-orange-200" />
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Filters */}
-        <Card className="mb-6">
-          <CardContent className="p-6">
-            <div className="flex flex-col lg:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <Input
-                    placeholder="Search RFQs by title..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
+        {/* Detailed Analytics */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Status Breakdown
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <span className="text-sm">Open</span>
+                  </div>
+                  <span className="font-semibold">{stats.open}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
+                    <span className="text-sm">Closed</span>
+                  </div>
+                  <span className="font-semibold">{stats.closed}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                    <span className="text-sm">With Quotations</span>
+                  </div>
+                  <span className="font-semibold">{rfqs.filter((r: any) => (r.quotationsCount || 0) > 0).length}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                    <span className="text-sm">Pending Response</span>
+                  </div>
+                  <span className="font-semibold">{rfqs.filter((r: any) => r.status === 'open' && (r.quotationsCount || 0) === 0).length}</span>
                 </div>
               </div>
-              <div className="flex gap-3">
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="open">Open</SelectItem>
-                    <SelectItem value="closed">Closed</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button variant="outline">
-                  <Filter className="h-4 w-4 mr-2" />
-                  More Filters
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-5 w-5" />
+                Performance Metrics
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Avg Response Time</span>
+                  <span className="font-semibold">{stats.avgResponseTime}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Recent Activity</span>
+                  <span className="font-semibold">{stats.recentActivity} RFQs</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Response Rate</span>
+                  <span className="font-semibold text-green-600">{stats.responseRate}%</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="h-5 w-5" />
+                Quick Actions
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <Button className="w-full justify-start" variant="outline">
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  View All RFQs
+                </Button>
+                <Button className="w-full justify-start" variant="outline">
+                  <FileText className="h-4 w-4 mr-2" />
+                  Generate Report
+                </Button>
+                <Button className="w-full justify-start" variant="outline">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Settings
                 </Button>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
 
-        {/* RFQs List */}
-        <div className="space-y-6">
+        {/* Main Management Interface */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="rfqs">All RFQs</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Activity</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {rfqs.slice(0, 5).map((rfq: any) => {
+                    const productDetails = getProductDetails(rfq.productId);
+                    return (
+                      <div key={rfq.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                            <Package className="h-5 w-5 text-gray-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{productDetails?.name || rfq.title}</p>
+                            <p className="text-sm text-gray-600">Quantity: {rfq.quantity} units</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge className={rfq.status === 'open' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-gray-100 text-gray-800 border-gray-200'}>
+                            {rfq.status?.toUpperCase()}
+                          </Badge>
+                          <span className="text-sm text-gray-500">
+                            {formatDate(rfq.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="rfqs" className="space-y-6">
+            {/* Enhanced Filters */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Input
+                      placeholder="Search RFQs..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="open">Open</SelectItem>
+                      <SelectItem value="closed">Closed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={dateRange} onValueChange={setDateRange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Date Range" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Time</SelectItem>
+                      <SelectItem value="today">Today</SelectItem>
+                      <SelectItem value="week">This Week</SelectItem>
+                      <SelectItem value="month">This Month</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value="all">
+                    <SelectTrigger>
+                      <SelectValue placeholder="Priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Priority</SelectItem>
+                      <SelectItem value="high">High Value</SelectItem>
+                      <SelectItem value="medium">Medium Value</SelectItem>
+                      <SelectItem value="low">Low Value</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* RFQs List */}
+            <div className="space-y-4">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
@@ -315,116 +554,151 @@ export default function AdminRFQs() {
             filteredRFQs.map((rfq: any) => {
               const quotationCount = rfq.quotationsCount || 0;
               const hasQuoted = quotationCount > 0;
+              const productDetails = getProductDetails(rfq.productId);
               
               return (
                 <Card key={rfq.id} className="hover:shadow-lg transition-shadow">
                   <CardContent className="p-6">
-                    <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between mb-4">
-                      <div className="flex-1">
-                          <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-4">
+                        <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
+                          {productDetails?.images && productDetails.images.length > 0 ? (
+                            <img 
+                              src={Array.isArray(productDetails.images) ? productDetails.images[0] : productDetails.images} 
+                              alt={productDetails.name || 'Product'} 
+                              className="w-full h-full object-cover rounded-lg"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100&h=100&fit=crop';
+                              }}
+                            />
+                          ) : (
+                            <Package className="h-8 w-8 text-gray-600" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                              {productDetails?.name || rfq.title}
+                            </h3>
+                            <Badge className={rfq.status === 'open' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-gray-100 text-gray-800 border-gray-200'}>
+                              {rfq.status?.toUpperCase()}
+                            </Badge>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 dark:text-gray-400">
                             <div>
-                              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-                                {rfq.title}
-                              </h3>
-                              <div className="flex gap-2 mb-2">
-                                <Badge className={rfq.status === 'open' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-gray-100 text-gray-800 border-gray-200'}>
-                                  {rfq.status?.toUpperCase()}
-                                </Badge>
-                                {rfq.categoryId && (
-                                  <Badge variant="outline" className="text-blue-600 border-blue-200">
-                                    {getCategoryName(rfq.categoryId)}
-                                  </Badge>
-                                )}
+                              <span className="font-medium">Quantity:</span> {rfq.quantity?.toLocaleString() || 'N/A'} units
+                            </div>
+                            <div>
+                              <span className="font-medium">Target Price:</span> {formatPrice(rfq.targetPrice)}
+                            </div>
+                            <div>
+                              <span className="font-medium">Expected:</span> {formatDate(rfq.expectedDate)}
+                            </div>
+                            <div>
+                              <span className="font-medium">Location:</span> {rfq.deliveryLocation || 'N/A'}
+                            </div>
+                          </div>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                            {rfq.description}
+                          </p>
+                          <div className="flex items-center gap-4 mt-3">
+                            <span className="text-xs text-gray-500">
+                              Created: {formatDate(rfq.createdAt)}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              Quotations Sent: {quotationCount}
+                            </span>
+                          </div>
+
+                          {/* Display sent quotations */}
+                          {hasQuoted && (
+                            <div className="mt-4 pt-4 border-t">
+                              <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                                <FileText className="h-4 w-4" />
+                                Quotations Sent ({quotationCount})
+                              </h4>
+                              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 rounded-lg">
+                                <p className="text-sm text-blue-800 dark:text-blue-200 font-medium">
+                                  ✓ You have sent {quotationCount} quotation{quotationCount > 1 ? 's' : ''} for this RFQ
+                                </p>
                               </div>
                             </div>
-                          </div>
-                        <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
-                          {rfq.description}
-                        </p>
-                        {rfq.attachments && rfq.attachments.length > 0 && (
-                          <div className="mb-4">
-                            <p className="text-xs font-medium text-gray-600 mb-2">Attachments:</p>
-                            <div className="flex flex-wrap gap-2">
-                              {rfq.attachments.map((attachment: string, index: number) => (
-                                <a 
-                                  key={index}
-                                  href={attachment} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-600 text-xs rounded hover:bg-blue-100"
-                                >
-                                  <FileText className="w-3 h-3" />
-                                  Doc {index + 1}
-                                </a>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
-                    </div>
-
-                    {/* RFQ Details */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Package className="h-4 w-4 text-gray-400" />
-                        <span className="text-gray-600">Quantity:</span>
-                        <span className="font-medium">{rfq.quantity?.toLocaleString() || 'N/A'} units</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <DollarSign className="h-4 w-4 text-gray-400" />
-                        <span className="text-gray-600">Target Price:</span>
-                        <span className="font-medium">{formatPrice(rfq.targetPrice)}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Calendar className="h-4 w-4 text-gray-400" />
-                        <span className="text-gray-600">Expected:</span>
-                        <span className="font-medium">{formatDate(rfq.expectedDate)}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <MapPin className="h-4 w-4 text-gray-400" />
-                        <span className="text-gray-600">Location:</span>
-                        <span className="font-medium">{rfq.deliveryLocation || 'N/A'}</span>
-                      </div>
-                    </div>
-
-                    {/* Statistics */}
-                    <div className="flex items-center gap-6 text-sm text-gray-600 mb-4">
-                      <span>Created: {formatDate(rfq.createdAt)}</span>
-                      <span>Quotations Sent: {quotationCount}</span>
-                    </div>
-
-                    {/* Status Badge */}
-                    {hasQuoted && (
-                      <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 rounded-lg">
-                        <p className="text-sm text-blue-800 dark:text-blue-200 font-medium">
-                          ✓ You have sent {quotationCount} quotation{quotationCount > 1 ? 's' : ''} for this RFQ
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Actions */}
-                    <div className="flex flex-wrap gap-2">
-                      <Link href={`/rfq/${rfq.id}`}>
-                        <Button variant="outline" size="sm">
-                          <Eye className="h-4 w-4 mr-2" />
-                          View Details
+                      <div className="flex flex-col gap-2">
+                        <Link href={`/admin/rfqs/${rfq.id}`}>
+                          <Button variant="outline" size="sm">
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Details
+                          </Button>
+                        </Link>
+                        <Button 
+                          size="sm" 
+                          className="bg-blue-600 hover:bg-blue-700"
+                          onClick={() => handleSendQuotation(rfq)}
+                        >
+                          <Send className="h-4 w-4 mr-2" />
+                          {hasQuoted ? 'Send Another Quote' : 'Send Quotation'}
                         </Button>
-                      </Link>
-                      <Button 
-                        size="sm" 
-                        className="bg-blue-600 hover:bg-blue-700"
-                        onClick={() => handleSendQuotation(rfq)}
-                      >
-                        <Send className="h-4 w-4 mr-2" />
-                        {hasQuoted ? 'Send Another Quote' : 'Send Quotation'}
-                      </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
               );
             })
           )}
-        </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>RFQ Trends</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">This Week</span>
+                      <span className="font-semibold">{stats.recentActivity}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Response Rate</span>
+                      <span className="font-semibold text-green-600">{stats.responseRate}%</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Open RFQs</span>
+                      <span className="font-semibold text-blue-600">{stats.open}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Performance Metrics</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Avg Response Time</span>
+                      <span className="font-semibold">{stats.avgResponseTime}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Total Value</span>
+                      <span className="font-semibold">${stats.totalValue.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Success Rate</span>
+                      <span className="font-semibold text-green-600">{stats.responseRate}%</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Send Quotation Dialog */}

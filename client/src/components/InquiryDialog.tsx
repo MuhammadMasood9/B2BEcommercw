@@ -62,17 +62,24 @@ export default function InquiryDialog({ isOpen, onClose, product }: InquiryDialo
     shippingAddress: ''
   });
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const sendInquiryMutation = useMutation({
     mutationFn: async (inquiryData: any) => {
+      console.log('Sending inquiry data:', inquiryData);
+      
       const response = await fetch('/api/inquiries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(inquiryData)
       });
-      if (!response.ok) throw new Error('Failed to send inquiry');
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to send inquiry' }));
+        console.error('Inquiry API error:', errorData);
+        throw new Error(errorData.error || errorData.message || 'Failed to send inquiry');
+      }
+      
       return response.json();
     },
     onSuccess: () => {
@@ -86,9 +93,11 @@ export default function InquiryDialog({ isOpen, onClose, product }: InquiryDialo
       resetForm();
     },
     onError: (error: any) => {
+      console.error('Inquiry submission error:', error);
+      const errorMessage = error.message || "Please try again later.";
       toast({
         title: "Failed to Send Inquiry",
-        description: error.message || "Please try again later.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -130,25 +139,80 @@ export default function InquiryDialog({ isOpen, onClose, product }: InquiryDialo
       return;
     }
 
-    setIsSubmitting(true);
+    // Validate quantity
+    const quantity = parseInt(formData.quantity);
+    if (isNaN(quantity) || quantity <= 0) {
+      toast({
+        title: "Invalid Quantity",
+        description: "Please enter a valid quantity greater than 0.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate target price
+    const targetPrice = parseFloat(formData.targetPrice);
+    if (isNaN(targetPrice) || targetPrice <= 0) {
+      toast({
+        title: "Invalid Target Price",
+        description: "Please enter a valid target price greater than 0.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Combine message and requirements with additional contact info
+    let fullMessage = formData.message || '';
+    let fullRequirements = formData.requirements || '';
     
-    const inquiryData = {
+    // Add delivery date to requirements if provided
+    if (formData.deliveryDate) {
+      fullRequirements = (fullRequirements ? fullRequirements + '\n\n' : '') + 
+        `Required Delivery Date: ${formData.deliveryDate}`;
+    }
+    
+    // Add payment terms to requirements if provided
+    if (formData.paymentTerms) {
+      fullRequirements = (fullRequirements ? fullRequirements + '\n\n' : '') + 
+        `Preferred Payment Terms: ${formData.paymentTerms}`;
+    }
+
+    // Add contact information to message if provided
+    const contactInfo = [];
+    if (formData.contactPhone) contactInfo.push(`Phone: ${formData.contactPhone}`);
+    if (formData.companyName) contactInfo.push(`Company: ${formData.companyName}`);
+    if (formData.shippingAddress) contactInfo.push(`Shipping Address: ${formData.shippingAddress}`);
+    
+    if (contactInfo.length > 0) {
+      fullMessage = (fullMessage ? fullMessage + '\n\n' : '') + 
+        `Contact Information:\n${contactInfo.join('\n')}`;
+    }
+    
+    // Prepare inquiry data matching the schema exactly
+    // Note: decimal fields in drizzle-zod expect strings, not numbers
+    const inquiryData: any = {
       productId: product.id,
       buyerId: user.id,
-      quantity: parseInt(formData.quantity),
-      targetPrice: parseFloat(formData.targetPrice),
-      message: formData.message,
-      requirements: formData.requirements,
-      deliveryDate: formData.deliveryDate,
-      paymentTerms: formData.paymentTerms,
-      contactEmail: formData.contactEmail,
-      contactPhone: formData.contactPhone,
-      companyName: formData.companyName,
-      shippingAddress: formData.shippingAddress
+      quantity: quantity,
+      targetPrice: targetPrice.toString() // Convert to string for decimal field
     };
 
+    // Only include optional fields if they have values
+    if (fullMessage && fullMessage.trim()) {
+      inquiryData.message = fullMessage.trim();
+    }
+    
+    if (fullRequirements && fullRequirements.trim()) {
+      inquiryData.requirements = fullRequirements.trim();
+    }
+
+    // Status is optional and defaults to 'pending' in schema, so we can omit it
+    // inquiryData.status = 'pending';
+
+    console.log('Prepared inquiry data:', inquiryData);
+
+    // The mutation will handle submission and state
     sendInquiryMutation.mutate(inquiryData);
-    setIsSubmitting(false);
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -209,7 +273,7 @@ export default function InquiryDialog({ isOpen, onClose, product }: InquiryDialo
             </CardContent>
           </Card>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form id="inquiry-form" onSubmit={handleSubmit} className="space-y-6">
             {/* Basic Requirements */}
             <div className="space-y-4">
               <h4 className="font-semibold text-gray-900 flex items-center gap-2">
@@ -406,16 +470,17 @@ export default function InquiryDialog({ isOpen, onClose, product }: InquiryDialo
         </div>
 
         <DialogFooter className="flex gap-3">
-          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
+          <Button variant="outline" onClick={onClose} disabled={sendInquiryMutation.isPending}>
             <X className="w-4 h-4 mr-2" />
             Cancel
           </Button>
           <Button 
-            onClick={handleSubmit}
-            disabled={isSubmitting || !formData.quantity || !formData.targetPrice}
+            type="submit"
+            form="inquiry-form"
+            disabled={!formData.quantity || !formData.targetPrice || sendInquiryMutation.isPending}
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
-            {isSubmitting ? (
+            {sendInquiryMutation.isPending ? (
               <>
                 <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
                 Sending...

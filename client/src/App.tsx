@@ -8,7 +8,7 @@ import { Toaster as HotToaster } from 'react-hot-toast';
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/AdminSidebar";
-import ChatbotWidget from "@/components/ChatbotWidget";
+import EnhancedB2BAssistant from "@/components/EnhancedB2BAssistant";
 import FullScreenLoader from "@/components/FullScreenLoader";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { LoadingProvider, useLoading } from "@/contexts/LoadingContext";
@@ -58,7 +58,9 @@ import QuotationDetail from "@/pages/QuotationDetail";
 import BuyerRFQs from "@/pages/buyer/BuyerRFQs";
 import AdminInquiries from "@/pages/admin/AdminInquiries";
 import AdminQuotations from "@/pages/admin/AdminQuotations";
+import AdminQuotationDetail from "@/pages/admin/AdminQuotationDetail";
 import AdminRFQs from "@/pages/admin/AdminRFQs";
+import AdminRFQDetail from "@/pages/admin/AdminRFQDetail";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminProducts from "@/pages/admin/AdminProducts";
 import AdminProductDetail from "@/pages/admin/AdminProductDetail";
@@ -134,9 +136,19 @@ function AdminRouter() {
           <AdminQuotations />
         </ProtectedRoute>
       </Route>
+      <Route path="/admin/quotations/:id">
+        <ProtectedRoute requiredRole="admin">
+          <AdminQuotationDetail />
+        </ProtectedRoute>
+      </Route>
       <Route path="/admin/rfqs">
         <ProtectedRoute requiredRole="admin">
           <AdminRFQs />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/rfqs/:id">
+        <ProtectedRoute requiredRole="admin">
+          <AdminRFQDetail />
         </ProtectedRoute>
       </Route>
       <Route path="/admin/orders">
@@ -331,7 +343,7 @@ function AppContent() {
     <>
       <ScrollToTop />
       <PublicRouter />
-      <ChatbotWidget />
+      <EnhancedB2BAssistant />
       <FloatingActionButtons chatType="general" />
       <FullScreenLoader 
         isLoading={isLoading}

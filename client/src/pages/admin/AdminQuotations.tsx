@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -68,11 +69,13 @@ import {
 function AdminQuotations() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'rfq' | 'inquiry'>('all');
   const [selectedQuotation, setSelectedQuotation] = useState<any>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isNegotiationDialogOpen, setIsNegotiationDialogOpen] = useState(false);
   const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
   const [isAnalyticsDialogOpen, setIsAnalyticsDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'timeline'>('grid');
   const [editForm, setEditForm] = useState({
     status: '',
@@ -119,14 +122,15 @@ function AdminQuotations() {
     }
   });
 
-  // Fetch quotations with enhanced product data
+  // Fetch quotations with enhanced product data (both RFQ and Inquiry)
   const { data: quotations = [], isLoading, error } = useQuery({
-    queryKey: ['/api/admin/quotations', statusFilter, searchQuery],
+    queryKey: ['/api/admin/quotations', statusFilter, searchQuery, typeFilter],
     queryFn: async () => {
       try {
         const params = new URLSearchParams();
         if (statusFilter && statusFilter !== 'all') params.append('status', statusFilter);
         if (searchQuery) params.append('search', searchQuery);
+        if (typeFilter && typeFilter !== 'all') params.append('type', typeFilter);
         const response = await fetch(`/api/admin/quotations?${params.toString()}`);
         if (!response.ok) {
           throw new Error('Failed to fetch quotations');
@@ -134,39 +138,41 @@ function AdminQuotations() {
         const data = await response.json();
         const quotations = data.quotations || [];
         
-        // Enhance quotations with product data
+        // Enhance quotations with additional data (product details for inquiry quotations that may not have been enhanced)
         const enhancedQuotations = await Promise.all(
           quotations.map(async (quotation: any) => {
             try {
-              // Fetch product details
-              const productResponse = await fetch(`/api/products/${quotation.productId}`);
-              if (productResponse.ok) {
-                const productData = await productResponse.json();
-                quotation.product = productData;
-                quotation.productName = productData.name;
-                quotation.productImages = productData.images;
-                quotation.productCategory = productData.categoryName;
-                quotation.productViews = productData.views || 0;
-                quotation.productInquiries = productData.inquiries || 0;
-                quotation.productStock = productData.stockQuantity || 0;
-                quotation.productPrice = productData.priceRanges?.[0]?.pricePerUnit || 0;
-                quotation.productMOQ = productData.minOrderQuantity || 1;
-                quotation.productLeadTime = productData.leadTime;
-                quotation.productPaymentTerms = productData.paymentTerms;
-                quotation.productSpecifications = productData.specifications;
+              // For inquiry quotations, fetch product details if not already present
+              if (quotation.type === 'inquiry' && quotation.productId && !quotation.productName) {
+                try {
+                  const productResponse = await fetch(`/api/products/${quotation.productId}`);
+                  if (productResponse.ok) {
+                    const productData = await productResponse.json();
+                    quotation.product = productData;
+                    quotation.productName = productData.name;
+                    quotation.productImages = productData.images;
+                    quotation.productCategory = productData.categoryName;
+                  }
+                } catch (err) {
+                  console.error('Error fetching product:', err);
+                }
               }
               
-              // Fetch buyer details
-              const buyerResponse = await fetch(`/api/users/${quotation.buyerId}`);
-              if (buyerResponse.ok) {
-                const buyerData = await buyerResponse.json();
-                quotation.buyer = buyerData;
-                quotation.buyerName = buyerData.firstName + ' ' + buyerData.lastName;
-                quotation.buyerCompany = buyerData.companyName;
-                quotation.buyerEmail = buyerData.email;
-                quotation.buyerPhone = buyerData.phone;
-                quotation.buyerCountry = buyerData.country;
-                quotation.buyerVerified = buyerData.isVerified;
+              // For RFQ quotations, ensure buyer details are fetched if not present
+              if (quotation.type === 'rfq' && quotation.buyerId && !quotation.buyerName) {
+                try {
+                  const buyerResponse = await fetch(`/api/users/${quotation.buyerId}`);
+                  if (buyerResponse.ok) {
+                    const buyerData = await buyerResponse.json();
+                    quotation.buyer = buyerData;
+                    quotation.buyerName = `${buyerData.firstName || ''} ${buyerData.lastName || ''}`.trim() || buyerData.email;
+                    quotation.buyerCompany = buyerData.companyName;
+                    quotation.buyerEmail = buyerData.email;
+                    quotation.buyerPhone = buyerData.phone;
+                  }
+                } catch (err) {
+                  console.error('Error fetching buyer:', err);
+                }
               }
               
               return quotation;
@@ -212,30 +218,63 @@ function AdminQuotations() {
     }
   });
 
-  // Send revised quotation mutation
+  // Send revised quotation mutation (handles both RFQ and Inquiry quotations)
   const sendRevisedQuotationMutation = useMutation({
-    mutationFn: async ({ inquiryId, revisionData }: { inquiryId: string; revisionData: any }) => {
-      const response = await fetch(`/api/admin/inquiries/${inquiryId}/revised-quotation`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          pricePerUnit: parseFloat(revisionData.newPrice),
-          totalPrice: parseFloat(revisionData.newPrice) * (selectedQuotation?.inquiryQuantity || 1),
-          leadTime: revisionData.newLeadTime,
-          paymentTerms: revisionData.newPaymentTerms,
-          message: revisionData.message,
-          isFinalOffer: revisionData.isFinalOffer,
-          urgency: revisionData.urgency
-        }),
-        credentials: 'include'
-      });
-      if (!response.ok) throw new Error('Failed to send revised quotation');
+    mutationFn: async ({ quotationId, revisionData }: { quotationId?: string; revisionData: any }) => {
+      const quotation = selectedQuotation;
+      if (!quotation) throw new Error('No quotation selected');
+      
+      const quantity = quotation.quantity || quotation.inquiryQuantity || 1;
+      const pricePerUnit = parseFloat(revisionData.newPrice);
+      const totalPrice = pricePerUnit * quantity;
+      
+      let response;
+      
+      if (quotation.type === 'rfq') {
+        // Send revised RFQ quotation
+        response = await fetch(`/api/admin/rfqs/${quotation.rfqId}/revised-quotation`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pricePerUnit,
+            totalPrice,
+            moq: quotation.moq || quantity,
+            leadTime: revisionData.newLeadTime,
+            paymentTerms: revisionData.newPaymentTerms,
+            message: revisionData.message
+          }),
+          credentials: 'include'
+        });
+      } else {
+        // Send revised inquiry quotation
+        response = await fetch(`/api/admin/inquiries/${quotation.inquiryId}/revised-quotation`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            quotation: {
+              pricePerUnit,
+              totalPrice,
+              moq: quotation.moq || quantity,
+              leadTime: revisionData.newLeadTime,
+              paymentTerms: revisionData.newPaymentTerms,
+              message: revisionData.message
+            }
+          }),
+          credentials: 'include'
+        });
+      }
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to send revised quotation' }));
+        throw new Error(errorData.error || 'Failed to send revised quotation');
+      }
       return response.json();
     },
     onSuccess: () => {
       toast.success('Revised quotation sent successfully!');
       queryClient.invalidateQueries({ queryKey: ['/api/admin/quotations'] });
       queryClient.invalidateQueries({ queryKey: ['/api/inquiries'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/rfqs'] });
       setIsNegotiationDialogOpen(false);
       setNegotiationForm({ message: '', newPrice: '', newLeadTime: '', newPaymentTerms: '', isFinalOffer: false, urgency: 'normal' });
     },
@@ -244,14 +283,42 @@ function AdminQuotations() {
     }
   });
 
-  // Fetch negotiation history
+  // Fetch negotiation history (handles both RFQ and Inquiry quotations)
   const fetchNegotiationHistory = useMutation({
-    mutationFn: async (inquiryId: string) => {
-      const response = await fetch(`/api/inquiries/${inquiryId}/revisions`, {
-        credentials: 'include'
-      });
-      if (!response.ok) throw new Error('Failed to fetch negotiation history');
-      return response.json();
+    mutationFn: async (quotation: any) => {
+      if (quotation.type === 'rfq') {
+        // For RFQ quotations, get all quotations for the same RFQ
+        const response = await fetch(`/api/rfqs/${quotation.rfqId}/quotations`, {
+          credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Failed to fetch RFQ quotation history');
+        const data = await response.json();
+        // Transform quotations to revision-like format for display
+        return {
+          revisions: (data.quotations || []).map((q: any, index: number) => ({
+            id: q.id,
+            revisionNumber: (data.quotations || []).length - index,
+            quantity: q.moq,
+            targetPrice: q.pricePerUnit,
+            message: q.message,
+            requirements: q.leadTime ? `Lead Time: ${q.leadTime}` : '',
+            status: q.status,
+            createdBy: q.supplierId ? 'admin' : 'buyer',
+            createdAt: q.createdAt,
+            pricePerUnit: q.pricePerUnit,
+            totalPrice: q.totalPrice,
+            leadTime: q.leadTime,
+            paymentTerms: q.paymentTerms
+          }))
+        };
+      } else {
+        // For inquiry quotations, get revisions
+        const response = await fetch(`/api/inquiries/${quotation.inquiryId}/revisions`, {
+          credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Failed to fetch negotiation history');
+        return response.json();
+      }
     },
     onSuccess: (data) => {
       setNegotiationHistory(data.revisions || []);
@@ -361,12 +428,26 @@ function AdminQuotations() {
   const filteredQuotations = quotations.filter((quotation: any) => {
     const matchesSearch = !searchQuery || 
       quotation.productName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      quotation.rfqTitle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       quotation.buyerName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       quotation.buyerCompany?.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || quotation.status === statusFilter;
+    const matchesType = typeFilter === 'all' || quotation.type === typeFilter;
     
-    return matchesSearch && matchesStatus;
+    // Apply tab filter
+    let matchesTab = true;
+    if (activeTab === 'rfq') {
+      matchesTab = quotation.type === 'rfq';
+    } else if (activeTab === 'inquiry') {
+      matchesTab = quotation.type === 'inquiry';
+    } else if (activeTab === 'quotations') {
+      matchesTab = true; // Show all
+    } else if (activeTab === 'overview') {
+      matchesTab = false; // Overview tab shows different content
+    }
+    
+    return matchesSearch && matchesStatus && matchesType && matchesTab;
   });
 
   const formatDate = (dateString: string) => {
@@ -443,7 +524,7 @@ function AdminQuotations() {
     setSelectedQuotation(quotation);
     setNegotiationForm({
       message: '',
-      newPrice: quotation.pricePerUnit || '',
+      newPrice: quotation.pricePerUnit?.toString() || '',
       newLeadTime: quotation.leadTime || '',
       newPaymentTerms: quotation.paymentTerms || '',
       isFinalOffer: false,
@@ -455,16 +536,14 @@ function AdminQuotations() {
   const handleSendRevisedQuotation = () => {
     if (selectedQuotation && negotiationForm.newPrice) {
       sendRevisedQuotationMutation.mutate({
-        inquiryId: selectedQuotation.inquiryId,
+        quotationId: selectedQuotation.id,
         revisionData: negotiationForm
       });
     }
   };
 
   const handleViewNegotiationHistory = (quotation: any) => {
-    if (quotation.inquiryId) {
-      fetchNegotiationHistory.mutate(quotation.inquiryId);
-    }
+    fetchNegotiationHistory.mutate(quotation);
   };
 
   const handleBulkAction = (action: string, quotationIds: string[]) => {
@@ -485,558 +564,849 @@ function AdminQuotations() {
   // Orders are created when buyers accept quotations via /api/quotations/accept
 
   return (
-    <div className="mx-auto p-6">
-      {/* Breadcrumb */}
-      <Breadcrumb items={[{ label: "Quotations" }]} />
-      
-      {/* Enhanced Header with Analytics */}
-      <div className="space-y-6 mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-              Quotations Management
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              Track quotation status, manage negotiations, and analyze performance in real-time
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/admin/quotations'] })}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleExportQuotations}>
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setIsAnalyticsDialogOpen(true)}>
-              <BarChart3 className="h-4 w-4 mr-2" />
-              Analytics
-            </Button>
-          </div>
-        </div>
-
-        {/* Enhanced Analytics Dashboard */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-blue-100 text-sm">Total Quotations</p>
-                  <p className="text-2xl font-bold">{stats.total}</p>
-                  <p className="text-blue-200 text-xs mt-1">{formatPrice(stats.totalValue)} value</p>
-                </div>
-                <FileText className="h-8 w-8 text-blue-200 opacity-80" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-green-500 to-emerald-600 text-white border-0">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-green-100 text-sm">Conversion Rate</p>
-                  <p className="text-2xl font-bold">{stats.conversionRate}%</p>
-                  <p className="text-green-200 text-xs mt-1 flex items-center gap-1">
-                    <TrendingUp className="h-3 w-3" />
-                    {stats.accepted} accepted
-                  </p>
-                </div>
-                <CheckCircle className="h-8 w-8 text-green-200 opacity-80" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-purple-100 text-sm">Negotiation Success</p>
-                  <p className="text-2xl font-bold">{stats.negotiationSuccessRate}%</p>
-                  <p className="text-purple-200 text-xs mt-1">{stats.negotiating} active</p>
-                </div>
-                <Target className="h-8 w-8 text-purple-200 opacity-80" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-orange-100 text-sm">Price Optimization</p>
-                  <p className="text-2xl font-bold">${stats.priceOptimization.toLocaleString()}</p>
-                  <p className="text-orange-200 text-xs mt-1">Savings achieved</p>
-                </div>
-                <Percent className="h-8 w-8 text-orange-200 opacity-80" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* Modern Stats Cards with Gradients */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        {/* <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg hover:shadow-xl transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-100 text-sm font-medium mb-1">Total Quotations</p>
-                <p className="text-3xl font-bold">{stats.total}</p>
-                <p className="text-blue-200 text-xs mt-1">{formatPrice(stats.totalValue)} value</p>
-              </div>
-              <FileText className="h-10 w-10 text-blue-200 opacity-80" />
-            </div>
-          </CardContent>
-        </Card> */}
-
-        <Card className="bg-gradient-to-br from-yellow-500 to-orange-500 text-white border-0 shadow-lg hover:shadow-xl transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-yellow-100 text-sm font-medium mb-1">Pending</p>
-                <p className="text-3xl font-bold">{stats.pending}</p>
-                <p className="text-yellow-200 text-xs mt-1">Awaiting response</p>
-              </div>
-              <Clock className="h-10 w-10 text-yellow-200 opacity-80" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-green-500 to-emerald-600 text-white border-0 shadow-lg hover:shadow-xl transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-green-100 text-sm font-medium mb-1">Accepted</p>
-                <p className="text-3xl font-bold">{stats.accepted}</p>
-                <p className="text-green-200 text-xs mt-1 flex items-center gap-1">
-                  <TrendingUp className="h-3 w-3" />
-                  {stats.conversionRate}% conversion
-                </p>
-              </div>
-              <CheckCircle className="h-10 w-10 text-green-200 opacity-80" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-red-500 to-pink-600 text-white border-0 shadow-lg hover:shadow-xl transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-red-100 text-sm font-medium mb-1">Rejected</p>
-                <p className="text-3xl font-bold">{stats.rejected}</p>
-                <p className="text-red-200 text-xs mt-1">Need follow-up</p>
-              </div>
-              <AlertCircle className="h-10 w-10 text-red-200 opacity-80" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Enhanced Search and Filter */}
-      <Card className="mb-6">
-        <CardContent className="p-6">
-          <div className="flex flex-col lg:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search by product, buyer name, company, or quotation ID..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="mx-auto p-6">
+        {/* Breadcrumb */}
+        <Breadcrumb items={[{ label: "Quotations" }]} />
+        
+        {/* Header Section */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                Quotations Management
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                Track quotation status, manage negotiations, and analyze performance in real-time
+              </p>
             </div>
             <div className="flex gap-3">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="negotiating">Negotiating</SelectItem>
-                  <SelectItem value="counter_offered">Counter Offered</SelectItem>
-                  <SelectItem value="revised">Revised</SelectItem>
-                  <SelectItem value="final_offer">Final Offer</SelectItem>
-                  <SelectItem value="accepted">Accepted</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
-                  <SelectItem value="expired">Expired</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setViewMode('grid')}>
-                  <Layers className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setViewMode('list')}>
-                  <Activity className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setViewMode('timeline')}>
-                  <GitBranch className="h-4 w-4" />
-                </Button>
-              </div>
-              
-              <Button variant="outline" size="sm">
-                <Filter className="h-4 w-4 mr-2" />
-                More Filters
+              <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/admin/quotations'] })}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExportQuotations}>
+                <Download className="h-4 w-4 mr-2" />
+                Export
               </Button>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Quotations List */}
-      <div className="space-y-6">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span className="ml-3 text-gray-600">Loading quotations...</span>
-          </div>
-        ) : error ? (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <AlertCircle className="h-16 w-16 mx-auto text-red-400 mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                Error loading quotations
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400">
-                There was an error loading the quotations. Please try again.
-              </p>
+        {/* Key Metrics Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-blue-100 text-sm font-medium">Total Quotations</p>
+                  <p className="text-3xl font-bold">{stats.total}</p>
+                  <p className="text-blue-200 text-xs">{formatPrice(stats.totalValue)} value</p>
+                </div>
+                <FileText className="h-8 w-8 text-blue-200" />
+              </div>
             </CardContent>
           </Card>
-        ) : filteredQuotations.length === 0 ? (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <FileText className="h-16 w-16 mx-auto text-gray-400 mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                No quotations found
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400">
-                {searchQuery || statusFilter !== 'all' 
-                  ? 'Try adjusting your search or filter criteria.'
-                  : 'No quotations have been sent yet.'
-                }
-              </p>
+
+          <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-green-100 text-sm font-medium">Conversion Rate</p>
+                  <p className="text-3xl font-bold">{stats.conversionRate}%</p>
+                  <p className="text-green-200 text-xs">Quotations to Orders</p>
+                </div>
+                <TrendingUp className="h-8 w-8 text-green-200" />
+              </div>
             </CardContent>
           </Card>
-        ) : (
-          filteredQuotations.map((quotation: any) => {
-            return (
-              <Card key={quotation.id} className="hover:shadow-lg transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex flex-col lg:flex-row gap-6">
-                    {/* Product Info */}
-                    <div className="flex-shrink-0">
-                      {quotation.productImages && quotation.productImages.length > 0 ? (
-                        <div className="w-20 h-20 rounded-lg overflow-hidden border">
-                          <img 
-                            src={quotation.productImages[0]} 
-                            alt={quotation.productName}
-                            className="w-full h-full object-cover"
-                          />
+
+          <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-purple-100 text-sm font-medium">Negotiation Rate</p>
+                  <p className="text-3xl font-bold">{stats.negotiationSuccessRate}%</p>
+                  <p className="text-purple-200 text-xs">Active Negotiations</p>
+                </div>
+                <MessageSquare className="h-8 w-8 text-purple-200" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-orange-100 text-sm font-medium">Total Value</p>
+                  <p className="text-3xl font-bold">${stats.totalValue.toLocaleString()}</p>
+                  <p className="text-orange-200 text-xs">Quotation Value</p>
+                </div>
+                <DollarSign className="h-8 w-8 text-orange-200" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Detailed Analytics */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Status Breakdown
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                    <span className="text-sm">Pending</span>
+                  </div>
+                  <span className="font-semibold">{stats.pending}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <span className="text-sm">Accepted</span>
+                  </div>
+                  <span className="font-semibold">{stats.accepted}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                    <span className="text-sm">Negotiating</span>
+                  </div>
+                  <span className="font-semibold">{stats.negotiating}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                    <span className="text-sm">Rejected</span>
+                  </div>
+                  <span className="font-semibold">{stats.rejected}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-5 w-5" />
+                Performance Metrics
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Conversion Rate</span>
+                  <span className="font-semibold text-green-600">{stats.conversionRate}%</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Total Value</span>
+                  <span className="font-semibold">${stats.totalValue.toLocaleString()}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Negotiation Success</span>
+                  <span className="font-semibold text-purple-600">{stats.negotiationSuccessRate}%</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="h-5 w-5" />
+                Quick Actions
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <Button className="w-full justify-start" variant="outline">
+                  <FileText className="h-4 w-4 mr-2" />
+                  View All Negotiations
+                </Button>
+                <Button className="w-full justify-start" variant="outline" onClick={handleExportQuotations}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export Report
+                </Button>
+                <Button className="w-full justify-start" variant="outline" onClick={() => setIsAnalyticsDialogOpen(true)}>
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Analytics
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Main Management Interface */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="quotations">All Quotations</TabsTrigger>
+            <TabsTrigger value="rfq">RFQ Quotations</TabsTrigger>
+            <TabsTrigger value="inquiry">Inquiry Quotations</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Activity</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {quotations.slice(0, 5).map((quotation: any) => (
+                    <div key={quotation.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                          <Package className="h-5 w-5 text-gray-600" />
                         </div>
-                      ) : (
-                        <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
-                          <Package className="h-8 w-8 text-gray-400" />
+                        <div>
+                          <p className="font-medium">{quotation.type === 'rfq' ? quotation.rfqTitle : quotation.productName}</p>
+                          <p className="text-sm text-gray-600">{quotation.buyerCompany}</p>
                         </div>
-                      )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className={getStatusColor(quotation.status)}>
+                          {quotation.status}
+                        </Badge>
+                        <span className="text-sm text-gray-500">
+                          {formatDate(quotation.createdAt)}
+                        </span>
+                      </div>
                     </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-                    {/* Main Content */}
-                    <div className="flex-1">
-                      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                              {quotation.productName || 'Unknown Product'}
-                            </h3>
-                            <Badge className={getStatusColor(quotation.status)}>
-                              {getStatusIcon(quotation.status)}
-                              {quotation.status}
-                            </Badge>
-                            {quotation.status === 'accepted' && quotation.orderId && (
-                              <Badge variant="outline" className="ml-2 bg-green-50 text-green-700 border-green-300">
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                                Order Created
+          <TabsContent value="quotations" className="space-y-6">
+            {/* Enhanced Filters */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Input
+                      placeholder="Search quotations..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <Select value={typeFilter} onValueChange={(value) => setTypeFilter(value as 'all' | 'rfq' | 'inquiry')}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="rfq">RFQ Quotations</SelectItem>
+                      <SelectItem value="inquiry">Inquiry Quotations</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="negotiating">Negotiating</SelectItem>
+                      <SelectItem value="counter_offered">Counter Offered</SelectItem>
+                      <SelectItem value="revised">Revised</SelectItem>
+                      <SelectItem value="final_offer">Final Offer</SelectItem>
+                      <SelectItem value="accepted">Accepted</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                      <SelectItem value="expired">Expired</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setViewMode('grid')}>
+                      <Layers className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setViewMode('list')}>
+                      <Activity className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setViewMode('timeline')}>
+                      <GitBranch className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Quotations List */}
+            <div className="space-y-4">
+              {isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <span className="ml-3 text-gray-600">Loading quotations...</span>
+                </div>
+              ) : error ? (
+                <Card>
+                  <CardContent className="p-12 text-center">
+                    <AlertCircle className="h-16 w-16 mx-auto text-red-400 mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                      Error loading quotations
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      There was an error loading the quotations. Please try again.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : filteredQuotations.length === 0 ? (
+                <Card>
+                  <CardContent className="p-12 text-center">
+                    <FileText className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                      No quotations found
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      {searchQuery || statusFilter !== 'all' 
+                        ? 'Try adjusting your search or filter criteria.'
+                        : 'No quotations have been sent yet.'
+                      }
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                filteredQuotations.map((quotation: any) => (
+                  <Card key={quotation.id} className={`hover:shadow-xl transition-all duration-300 ${
+                    quotation.type === 'rfq' 
+                      ? 'border-l-4 border-l-purple-500' 
+                      : 'border-l-4 border-l-blue-500'
+                  }`}>
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between gap-6">
+                        <div className="flex gap-4 flex-1">
+                          {/* Product/RFQ Image */}
+                          {quotation.type === 'inquiry' && quotation.productImages && quotation.productImages.length > 0 ? (
+                            <div className="flex-shrink-0">
+                              <div className="w-24 h-24 rounded-xl overflow-hidden border-2 border-gray-200 shadow-md">
+                                <img 
+                                  src={quotation.productImages[0]} 
+                                  alt={quotation.productName}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            </div>
+                          ) : quotation.type === 'inquiry' ? (
+                            <div className="flex-shrink-0">
+                              <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 rounded-xl flex items-center justify-center shadow-md">
+                                <Package className="h-10 w-10 text-blue-600 dark:text-blue-400" />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex-shrink-0">
+                              <div className="w-24 h-24 bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800 rounded-xl flex items-center justify-center shadow-md">
+                                <FileText className="h-10 w-10 text-purple-600 dark:text-purple-400" />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Content */}
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-3 flex-wrap">
+                              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                                {quotation.type === 'rfq' ? (quotation.rfqTitle || 'RFQ Quotation') : (quotation.productName || 'Inquiry Quotation')}
+                              </h3>
+                              <Badge 
+                                className={quotation.type === 'rfq' 
+                                  ? 'bg-purple-100 text-purple-800 border-purple-300 font-semibold' 
+                                  : 'bg-blue-100 text-blue-800 border-blue-300 font-semibold'}
+                              >
+                                {quotation.type === 'rfq' ? 'RFQ Quotation' : 'Inquiry Quotation'}
                               </Badge>
-                            )}
-                            {quotation.productCategory && (
-                              <Badge variant="secondary" className="ml-2">
-                                {quotation.productCategory}
+                              <Badge className={getStatusColor(quotation.status)}>
+                                {getStatusIcon(quotation.status)}
+                                <span className="ml-1">{quotation.status}</span>
                               </Badge>
+                              {quotation.status === 'accepted' && quotation.orderId && (
+                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Order Created
+                                </Badge>
+                              )}
+                            </div>
+                            
+                            {/* Key Metrics */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                              <div className={`p-3 rounded-lg ${
+                                quotation.type === 'rfq' 
+                                  ? 'bg-purple-50 dark:bg-purple-900/20' 
+                                  : 'bg-blue-50 dark:bg-blue-900/20'
+                              }`}>
+                                <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Price/Unit</p>
+                                <p className="text-lg font-bold text-gray-900 dark:text-white">{formatPrice(parseFloat(quotation.pricePerUnit) || 0)}</p>
+                              </div>
+                              <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
+                                <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Total Price</p>
+                                <p className="text-lg font-bold text-gray-900 dark:text-white">{formatPrice(parseFloat(quotation.totalPrice) || 0)}</p>
+                              </div>
+                              <div className={`p-3 rounded-lg ${
+                                quotation.type === 'rfq' 
+                                  ? 'bg-purple-50 dark:bg-purple-900/20' 
+                                  : 'bg-blue-50 dark:bg-blue-900/20'
+                              }`}>
+                                <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">MOQ</p>
+                                <p className="text-lg font-bold text-gray-900 dark:text-white">{quotation.moq || quotation.inquiryQuantity || quotation.quantity || 'N/A'} units</p>
+                              </div>
+                            </div>
+
+                            {/* Buyer & Metadata */}
+                            <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400 mb-3">
+                              <div className="flex items-center gap-2">
+                                <User className="h-4 w-4" />
+                                <span>{quotation.buyerName || 'Unknown Buyer'}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Building className="h-4 w-4" />
+                                <span>{quotation.buyerCompany || 'Unknown Company'}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Clock className="h-4 w-4" />
+                                <span>{formatDate(quotation.createdAt)}</span>
+                              </div>
+                            </div>
+
+                            {/* Additional Info */}
+                            <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+                              {quotation.leadTime && (
+                                <div className="flex items-center gap-2">
+                                  <Truck className="h-4 w-4" />
+                                  <span>Lead Time: {quotation.leadTime}</span>
+                                </div>
+                              )}
+                              {quotation.paymentTerms && (
+                                <div className="flex items-center gap-2">
+                                  <DollarSign className="h-4 w-4" />
+                                  <span>{quotation.paymentTerms}</span>
+                                </div>
+                              )}
+                              {quotation.buyerVerified && (
+                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Verified Buyer
+                                </Badge>
+                              )}
+                            </div>
+
+                            {/* Status Messages */}
+                            {quotation.status === 'accepted' && (
+                              <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                                <p className="text-sm font-medium text-green-700 dark:text-green-400 flex items-center gap-2">
+                                  <CheckCircle className="h-4 w-4" />
+                                  Quotation Accepted - Order Created
+                                </p>
+                              </div>
                             )}
-                          </div>
-                          
-                          {/* Product Performance Indicators */}
-                          <div className="flex items-center gap-4 mb-3 text-sm text-muted-foreground">
-                            <div className="flex items-center gap-1">
-                              <Eye className="h-3 w-3" />
-                              <span>{quotation.productViews || 0} views</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <ShoppingCart className="h-3 w-3" />
-                              <span>{quotation.productInquiries || 0} inquiries</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Package className="h-3 w-3" />
-                              <span>{quotation.productStock || 0} in stock</span>
-                            </div>
-                            {quotation.buyerVerified && (
-                              <div className="flex items-center gap-1 text-green-600">
-                                <CheckCircle className="h-3 w-3" />
-                                <span>Verified Buyer</span>
+                            {quotation.status === 'rejected' && (
+                              <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                                <p className="text-sm font-medium text-red-700 dark:text-red-400 flex items-center gap-2">
+                                  <AlertCircle className="h-4 w-4" />
+                                  Quotation Rejected by Buyer
+                                </p>
                               </div>
                             )}
                           </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                  <div>
-                                    <h4 className="font-semibold text-sm mb-2 text-gray-700 dark:text-gray-300">Buyer Information</h4>
-                                    <div className="space-y-2">
-                                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                                        <User className="h-4 w-4" />
-                                        <span>{quotation.buyerName || 'Unknown Buyer'}</span>
-                                        {quotation.buyerVerified && (
-                                          <Badge variant="default" className="text-xs">
-                                            <CheckCircle className="h-3 w-3 mr-1" />
-                                            Verified
-                                          </Badge>
-                                        )}
-                                      </div>
-                                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                                        <Building className="h-4 w-4" />
-                                        <span>{quotation.buyerCompany || 'Unknown Company'}</span>
-                                      </div>
-                                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                                        <Mail className="h-4 w-4" />
-                                        <span>{quotation.buyerEmail || 'No email'}</span>
-                                      </div>
-                                      {quotation.buyerPhone && (
-                                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                                          <Phone className="h-4 w-4" />
-                                          <span>{quotation.buyerPhone}</span>
-                                        </div>
-                                      )}
-                                      {quotation.buyerCountry && (
-                                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                                          <Globe className="h-4 w-4" />
-                                          <span>{quotation.buyerCountry}</span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  <div>
-                                    <h4 className="font-semibold text-sm mb-2 text-gray-700 dark:text-gray-300">Quotation Details</h4>
-                                    <div className="space-y-2">
-                                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                                        <DollarSign className="h-4 w-4" />
-                                        <span>Price: {formatPrice(quotation.pricePerUnit || quotation.productPrice)}/unit</span>
-                                      </div>
-                                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                                        <Package className="h-4 w-4" />
-                                        <span>MOQ: {quotation.moq || quotation.productMOQ} units</span>
-                                      </div>
-                                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                                        <Calendar className="h-4 w-4" />
-                                        <span>Created: {formatDate(quotation.createdAt)}</span>
-                                      </div>
-                                      {quotation.productLeadTime && (
-                                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                                          <Truck className="h-4 w-4" />
-                                          <span>Lead Time: {quotation.productLeadTime}</span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Show acceptance/rejection status */}
-                                {quotation.status === 'accepted' && (
-                                  <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                                    <div className="flex items-center justify-between">
-                                      <div>
-                                        <p className="text-sm font-medium text-green-700 dark:text-green-400 flex items-center gap-2">
-                                          <CheckCircle className="h-4 w-4" />
-                                          Quotation Accepted
-                                        </p>
-                                        <p className="text-xs text-green-600 dark:text-green-500 mt-1">
-                                          Order has been created and is being processed
-                                        </p>
-                                      </div>
-                                      {quotation.orderId && (
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() => window.location.href = '/admin/orders'}
-                                        >
-                                          View Order
-                                        </Button>
-                                      )}
-                                    </div>
-                                  </div>
-                                )}
-
-                                {quotation.status === 'rejected' && (
-                                  <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                                    <p className="text-sm font-medium text-red-700 dark:text-red-400 flex items-center gap-2">
-                                      <AlertCircle className="h-4 w-4" />
-                                      Quotation Rejected by Buyer
-                                    </p>
-                                    {quotation.rejectionReason && (
-                                      <p className="text-xs text-red-600 dark:text-red-500 mt-1">
-                                        Reason: {quotation.rejectionReason}
-                                      </p>
-                                    )}
-                                  </div>
-                                )}
-
-                          {quotation.message && (
-                            <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg mb-4">
-                              <p className="text-sm text-gray-700 dark:text-gray-300">
-                                <strong>Message:</strong> {quotation.message}
-                              </p>
-                            </div>
-                          )}
-
-                          <div className="flex flex-wrap gap-2 text-sm">
-                            {quotation.leadTime && (
-                              <Badge variant="outline">
-                                <Truck className="h-3 w-3 mr-1" />
-                                Lead Time: {quotation.leadTime}
-                              </Badge>
-                            )}
-                            {quotation.paymentTerms && (
-                              <Badge variant="outline">
-                                <DollarSign className="h-3 w-3 mr-1" />
-                                {quotation.paymentTerms}
-                              </Badge>
-                            )}
-                            {quotation.validUntil && (
-                              <Badge variant="outline">
-                                <Calendar className="h-3 w-3 mr-1" />
-                                Valid until: {formatDate(quotation.validUntil)}
-                              </Badge>
-                            )}
-                          </div>
                         </div>
 
-                        {/* Enhanced Actions */}
+                        {/* Actions */}
                         <div className="flex flex-col gap-2">
-                          {/* Order Actions */}
-                          {quotation.status === 'accepted' && !quotation.orderId && (
-                            <Button
-                              size="sm"
-                              onClick={() => createOrderMutation.mutate(quotation.id)}
-                              disabled={createOrderMutation.isPending}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              <ShoppingBag className="h-4 w-4 mr-2" />
-                              Create Order
+                          <Link href={`/admin/quotations/${quotation.id}`}>
+                            <Button variant="default" size="sm" className="w-full">
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Details
                             </Button>
-                          )}
-                          {quotation.status === 'accepted' && quotation.orderId && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="bg-green-50 text-green-700 border-green-300"
-                              disabled
-                            >
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              Order Created
-                            </Button>
-                          )}
-                          
-                          {/* Negotiation Actions */}
+                          </Link>
                           {['pending', 'counter_offered', 'negotiating'].includes(quotation.status) && (
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => handleStartNegotiation(quotation)}
-                              className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                              className="w-full"
                             >
                               <TrendingUp className="h-4 w-4 mr-2" />
                               Negotiate
                             </Button>
                           )}
-                          
-                          {/* History Button */}
-                          {quotation.inquiryId && (
+                          {(quotation.inquiryId || quotation.rfqId) && (
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => handleViewNegotiationHistory(quotation)}
-                              className="bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
+                              className="w-full"
                             >
                               <History className="h-4 w-4 mr-2" />
                               History
                             </Button>
                           )}
-                          
-                          {/* Edit Button */}
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleEditQuotation(quotation)}
-                            className="bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100"
+                            className="w-full"
                           >
                             <Edit className="h-4 w-4 mr-2" />
                             Edit
                           </Button>
-                          
-                          {/* Template Button */}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleCreateTemplate(quotation)}
-                            className="bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100"
-                          >
-                            <Copy className="h-4 w-4 mr-2" />
-                            Template
-                          </Button>
-                          
-                          {/* Message Button */}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              // Navigate to conversation
-                              window.location.href = '/messages';
-                            }}
-                            className="bg-cyan-50 border-cyan-200 text-cyan-700 hover:bg-cyan-100"
-                          >
-                            <MessageSquare className="h-4 w-4 mr-2" />
-                            Message
-                          </Button>
-                          
-                          {/* Status Info */}
-                          {quotation.status === 'pending' && (
-                            <div className="text-sm text-gray-500 italic">
-                              Waiting for buyer to accept quotation...
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="rfq" className="space-y-6">
+            {/* Enhanced Filters */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Input
+                      placeholder="Search RFQ quotations..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="negotiating">Negotiating</SelectItem>
+                      <SelectItem value="counter_offered">Counter Offered</SelectItem>
+                      <SelectItem value="revised">Revised</SelectItem>
+                      <SelectItem value="final_offer">Final Offer</SelectItem>
+                      <SelectItem value="accepted">Accepted</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                      <SelectItem value="expired">Expired</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* RFQ Quotations List */}
+            <div className="space-y-4">
+              {quotations.filter((q: any) => q.type === 'rfq' && 
+                (statusFilter === 'all' || q.status === statusFilter) &&
+                (!searchQuery || q.rfqTitle?.toLowerCase().includes(searchQuery.toLowerCase()) || q.buyerName?.toLowerCase().includes(searchQuery.toLowerCase()))
+              ).length === 0 ? (
+                <Card>
+                  <CardContent className="p-12 text-center">
+                    <FileText className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                      No RFQ quotations found
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      No RFQ quotations have been sent yet.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                quotations.filter((q: any) => q.type === 'rfq' && 
+                  (statusFilter === 'all' || q.status === statusFilter) &&
+                  (!searchQuery || q.rfqTitle?.toLowerCase().includes(searchQuery.toLowerCase()) || q.buyerName?.toLowerCase().includes(searchQuery.toLowerCase()))
+                ).map((quotation: any) => (
+                  <Card key={quotation.id} className="hover:shadow-xl transition-all duration-300 border-l-4 border-l-purple-500">
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between gap-6">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-3">
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                              {quotation.rfqTitle || 'RFQ Quotation'}
+                            </h3>
+                            <Badge className="bg-purple-100 text-purple-800 border-purple-300 font-semibold">
+                              RFQ Quotation
+                            </Badge>
+                            <Badge className={getStatusColor(quotation.status)}>
+                              {getStatusIcon(quotation.status)}
+                              <span className="ml-1">{quotation.status}</span>
+                            </Badge>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+                              <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Price/Unit</p>
+                              <p className="text-lg font-bold text-gray-900 dark:text-white">{formatPrice(parseFloat(quotation.pricePerUnit) || 0)}</p>
                             </div>
-                          )}
-                          {quotation.status === 'counter_offered' && (
-                            <div className="text-sm text-blue-600 italic">
-                              Buyer sent counter-offer - respond to negotiate
+                            <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
+                              <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Total Price</p>
+                              <p className="text-lg font-bold text-gray-900 dark:text-white">{formatPrice(parseFloat(quotation.totalPrice) || 0)}</p>
                             </div>
-                          )}
-                          {quotation.status === 'final_offer' && (
-                            <div className="text-sm text-pink-600 italic">
-                              Final offer - no further negotiation
+                            <div className="bg-purple-50 dark:bg-purple-900/20 p-3 rounded-lg">
+                              <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">MOQ</p>
+                              <p className="text-lg font-bold text-gray-900 dark:text-white">{quotation.moq || quotation.quantity || 'N/A'} units</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400 mb-4">
+                            <div className="flex items-center gap-2">
+                              <User className="h-4 w-4" />
+                              <span>{quotation.buyerName || 'Unknown Buyer'}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Building className="h-4 w-4" />
+                              <span>{quotation.buyerCompany || 'Unknown Company'}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Clock className="h-4 w-4" />
+                              <span>{formatDate(quotation.createdAt)}</span>
+                            </div>
+                          </div>
+                          {quotation.leadTime && (
+                            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                              <Truck className="h-4 w-4" />
+                              <span>Lead Time: {quotation.leadTime}</span>
                             </div>
                           )}
                         </div>
+                        <div className="flex flex-col gap-2">
+                          <Link href={`/admin/quotations/${quotation.id}`}>
+                            <Button variant="default" size="sm" className="w-full">
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Details
+                            </Button>
+                          </Link>
+                          {['pending', 'counter_offered', 'negotiating'].includes(quotation.status) && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleStartNegotiation(quotation)}
+                              className="w-full"
+                            >
+                              <TrendingUp className="h-4 w-4 mr-2" />
+                              Negotiate
+                            </Button>
+                          )}
+                        </div>
                       </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="inquiry" className="space-y-6">
+            {/* Enhanced Filters */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Input
+                      placeholder="Search inquiry quotations..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="negotiating">Negotiating</SelectItem>
+                      <SelectItem value="counter_offered">Counter Offered</SelectItem>
+                      <SelectItem value="revised">Revised</SelectItem>
+                      <SelectItem value="final_offer">Final Offer</SelectItem>
+                      <SelectItem value="accepted">Accepted</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                      <SelectItem value="expired">Expired</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Inquiry Quotations List */}
+            <div className="space-y-4">
+              {quotations.filter((q: any) => q.type === 'inquiry' && 
+                (statusFilter === 'all' || q.status === statusFilter) &&
+                (!searchQuery || q.productName?.toLowerCase().includes(searchQuery.toLowerCase()) || q.buyerName?.toLowerCase().includes(searchQuery.toLowerCase()))
+              ).length === 0 ? (
+                <Card>
+                  <CardContent className="p-12 text-center">
+                    <FileText className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                      No inquiry quotations found
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      No inquiry quotations have been sent yet.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                quotations.filter((q: any) => q.type === 'inquiry' && 
+                  (statusFilter === 'all' || q.status === statusFilter) &&
+                  (!searchQuery || q.productName?.toLowerCase().includes(searchQuery.toLowerCase()) || q.buyerName?.toLowerCase().includes(searchQuery.toLowerCase()))
+                ).map((quotation: any) => (
+                  <Card key={quotation.id} className="hover:shadow-xl transition-all duration-300 border-l-4 border-l-blue-500">
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between gap-6">
+                        <div className="flex gap-4 flex-1">
+                          {/* Product Image */}
+                          <div className="flex-shrink-0">
+                            {quotation.productImages && quotation.productImages.length > 0 ? (
+                              <div className="w-24 h-24 rounded-xl overflow-hidden border-2 border-gray-200 shadow-md">
+                                <img 
+                                  src={quotation.productImages[0]} 
+                                  alt={quotation.productName}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            ) : (
+                              <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 rounded-xl flex items-center justify-center shadow-md">
+                                <Package className="h-10 w-10 text-blue-600 dark:text-blue-400" />
+                              </div>
+                            )}
+                          </div>
+                          {/* Content */}
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-3">
+                              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                                {quotation.productName || 'Inquiry Quotation'}
+                              </h3>
+                              <Badge className="bg-blue-100 text-blue-800 border-blue-300 font-semibold">
+                                Inquiry Quotation
+                              </Badge>
+                              <Badge className={getStatusColor(quotation.status)}>
+                                {getStatusIcon(quotation.status)}
+                                <span className="ml-1">{quotation.status}</span>
+                              </Badge>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                              <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+                                <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Price/Unit</p>
+                                <p className="text-lg font-bold text-gray-900 dark:text-white">{formatPrice(parseFloat(quotation.pricePerUnit) || 0)}</p>
+                              </div>
+                              <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
+                                <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Total Price</p>
+                                <p className="text-lg font-bold text-gray-900 dark:text-white">{formatPrice(parseFloat(quotation.totalPrice) || 0)}</p>
+                              </div>
+                              <div className="bg-purple-50 dark:bg-purple-900/20 p-3 rounded-lg">
+                                <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">MOQ</p>
+                                <p className="text-lg font-bold text-gray-900 dark:text-white">{quotation.moq || quotation.inquiryQuantity || quotation.quantity || 'N/A'} units</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400 mb-4">
+                              <div className="flex items-center gap-2">
+                                <User className="h-4 w-4" />
+                                <span>{quotation.buyerName || 'Unknown Buyer'}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Building className="h-4 w-4" />
+                                <span>{quotation.buyerCompany || 'Unknown Company'}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Clock className="h-4 w-4" />
+                                <span>{formatDate(quotation.createdAt)}</span>
+                              </div>
+                            </div>
+                            {quotation.leadTime && (
+                              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                <Truck className="h-4 w-4" />
+                                <span>Lead Time: {quotation.leadTime}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <Link href={`/admin/quotations/${quotation.id}`}>
+                            <Button variant="default" size="sm" className="w-full">
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Details
+                            </Button>
+                          </Link>
+                          {['pending', 'counter_offered', 'negotiating'].includes(quotation.status) && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleStartNegotiation(quotation)}
+                              className="w-full"
+                            >
+                              <TrendingUp className="h-4 w-4 mr-2" />
+                              Negotiate
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Quotation Trends</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Total Quotations</span>
+                      <span className="font-semibold">{stats.total}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Conversion Rate</span>
+                      <span className="font-semibold text-green-600">{stats.conversionRate}%</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Negotiation Success</span>
+                      <span className="font-semibold text-purple-600">{stats.negotiationSuccessRate}%</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Total Value</span>
+                      <span className="font-semibold">${stats.totalValue.toLocaleString()}</span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
-            );
-          })
-        )}
-      </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Performance Metrics</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Accepted</span>
+                      <span className="font-semibold text-green-600">{stats.accepted}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Rejected</span>
+                      <span className="font-semibold text-red-600">{stats.rejected}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Negotiating</span>
+                      <span className="font-semibold text-blue-600">{stats.negotiating}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Pending</span>
+                      <span className="font-semibold text-yellow-600">{stats.pending}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
 
       {/* Enhanced Edit Quotation Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -1195,20 +1565,30 @@ function AdminQuotations() {
                 </h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div className="bg-white p-3 rounded-lg">
-                    <span className="text-gray-600 block">Product:</span>
-                    <span className="font-medium text-gray-900">{selectedQuotation.productName}</span>
+                    <span className="text-gray-600 block">
+                      {selectedQuotation.type === 'rfq' ? 'RFQ Title:' : 'Product:'}
+                    </span>
+                    <span className="font-medium text-gray-900">
+                      {selectedQuotation.type === 'rfq' 
+                        ? (selectedQuotation.rfqTitle || 'RFQ') 
+                        : (selectedQuotation.productName || 'Unknown')}
+                    </span>
                   </div>
                   <div className="bg-white p-3 rounded-lg">
                     <span className="text-gray-600 block">Buyer:</span>
-                    <span className="font-medium text-gray-900">{selectedQuotation.buyerName}</span>
+                    <span className="font-medium text-gray-900">{selectedQuotation.buyerName || 'Unknown'}</span>
                   </div>
                   <div className="bg-white p-3 rounded-lg">
                     <span className="text-gray-600 block">Quantity:</span>
-                    <span className="font-medium text-gray-900">{(selectedQuotation.inquiryQuantity || selectedQuotation.quantity || 0).toLocaleString()}</span>
+                    <span className="font-medium text-gray-900">
+                      {(selectedQuotation.inquiryQuantity || selectedQuotation.quantity || selectedQuotation.moq || 0).toLocaleString()}
+                    </span>
                   </div>
                   <div className="bg-white p-3 rounded-lg">
                     <span className="text-gray-600 block">Current Price:</span>
-                    <span className="font-medium text-gray-900">${selectedQuotation.pricePerUnit || selectedQuotation.unitPrice || 0}</span>
+                    <span className="font-medium text-gray-900">
+                      ${selectedQuotation.pricePerUnit || selectedQuotation.unitPrice || 0}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -1370,21 +1750,38 @@ function AdminQuotations() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
                       <div>
                         <span className="text-sm text-gray-600">Quantity:</span>
-                        <span className="ml-2 font-medium">{revision.quantity?.toLocaleString()}</span>
+                        <span className="ml-2 font-medium">{revision.quantity?.toLocaleString() || revision.moq?.toLocaleString() || 'N/A'}</span>
                       </div>
                       <div>
-                        <span className="text-sm text-gray-600">Target Price:</span>
-                        <span className="ml-2 font-medium">${revision.targetPrice || 'Not specified'}</span>
+                        <span className="text-sm text-gray-600">Price per Unit:</span>
+                        <span className="ml-2 font-medium">${revision.pricePerUnit || revision.targetPrice || 'Not specified'}</span>
+                      </div>
+                      <div>
+                        <span className="text-sm text-gray-600">Total Price:</span>
+                        <span className="ml-2 font-medium">${revision.totalPrice || 'Not specified'}</span>
                       </div>
                       <div>
                         <span className="text-sm text-gray-600">Created By:</span>
-                        <span className="ml-2 font-medium">{revision.createdBy === 'admin' ? 'Admin' : 'Buyer'}</span>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-600">Status:</span>
-                        <span className="ml-2 font-medium">{revision.status}</span>
+                        <span className="ml-2 font-medium">{revision.createdBy === 'admin' || revision.createdBy === 'supplierId' ? 'Admin' : 'Buyer'}</span>
                       </div>
                     </div>
+                    
+                    {(revision.leadTime || revision.paymentTerms) && (
+                      <div className="grid grid-cols-2 gap-4 mb-3">
+                        {revision.leadTime && (
+                          <div>
+                            <span className="text-sm text-gray-600">Lead Time:</span>
+                            <span className="ml-2 font-medium">{revision.leadTime}</span>
+                          </div>
+                        )}
+                        {revision.paymentTerms && (
+                          <div>
+                            <span className="text-sm text-gray-600">Payment Terms:</span>
+                            <span className="ml-2 font-medium">{revision.paymentTerms}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     
                     {revision.message && (
                       <div className="bg-gray-50 p-3 rounded-lg">
@@ -1420,8 +1817,8 @@ function AdminQuotations() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 }
-
 export default AdminQuotations;

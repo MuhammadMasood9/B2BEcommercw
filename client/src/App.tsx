@@ -41,6 +41,9 @@ import Terms from "@/pages/Terms";
 import Privacy from "@/pages/Privacy";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
+import SupplierSignup from "@/pages/SupplierSignup";
+import StorePage from "@/pages/StorePage";
+import SupplierDirectory from "@/pages/SupplierDirectory";
 import MyOrders from "@/pages/MyOrders";
 import MyRFQs from "@/pages/MyRFQs";
 import StartOrder from "@/pages/StartOrder";
@@ -80,6 +83,10 @@ import AdminReports from "@/pages/admin/AdminReports";
 import AdminChat from "@/pages/admin/AdminChat";
 import AdminNotificationPage from "@/pages/admin/AdminNotificationPage";
 import AdminActivityLogPage from "@/pages/admin/AdminActivityLogPage";
+import AdminSuppliers from "@/pages/admin/AdminSuppliers";
+import AdminSuppliersPending from "@/pages/admin/AdminSuppliersPending";
+import AdminCommissionManagement from "@/pages/admin/AdminCommissionManagement";
+import AdminPayoutManagement from "@/pages/admin/AdminPayoutManagement";
 import AdminLogin from "@/pages/admin/AdminLogin";
 import GlobalChatButton from "@/components/GlobalChatButton";
 import FloatingActionButtons from "@/components/FloatingActionButtons";
@@ -201,6 +208,26 @@ function AdminRouter() {
           <AdminActivityLogPage />
         </ProtectedRoute>
       </Route>
+      <Route path="/admin/suppliers">
+        <ProtectedRoute requiredRole="admin">
+          <AdminSuppliers />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/suppliers/pending">
+        <ProtectedRoute requiredRole="admin">
+          <AdminSuppliersPending />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/commission">
+        <ProtectedRoute requiredRole="admin">
+          <AdminCommissionManagement />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/payouts">
+        <ProtectedRoute requiredRole="admin">
+          <AdminPayoutManagement />
+        </ProtectedRoute>
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
@@ -278,6 +305,9 @@ function PublicRouter() {
       <Route path="/privacy" component={Privacy} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
+      <Route path="/supplier/signup" component={SupplierSignup} />
+      <Route path="/stores/:slug" component={StorePage} />
+      <Route path="/suppliers" component={SupplierDirectory} />
       <Route path="/my-orders">
         <ProtectedRoute requiredRole="buyer">
           <MyOrders />

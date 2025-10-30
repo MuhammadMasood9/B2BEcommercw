@@ -7,6 +7,11 @@ import { authMiddleware } from "./auth";
 import categoryRoutes from "./categoryRoutes";
 import uploadRoutes from "./uploadRoutes";
 import chatRoutes from "./chatRoutes";
+import { supplierRoutes } from "./supplierRoutes";
+import { adminSupplierRoutes } from "./adminSupplierRoutes";
+import { staffRoutes } from "./staffRoutes";
+import commissionRoutes from "./commissionRoutes";
+import payoutRoutes from "./payoutRoutes";
 import { upload, uploadUnrestricted } from "./upload";
 import { 
   insertProductSchema, insertCategorySchema, insertCustomerSchema, insertOrderSchema,
@@ -14,7 +19,7 @@ import {
   insertRfqSchema, insertQuotationSchema, insertInquirySchema,
   insertConversationSchema, insertMessageSchema, insertReviewSchema,
   insertFavoriteSchema, insertNotificationSchema, insertActivityLogSchema,
-  users, products, categories, orders, inquiries, quotations, rfqs, notifications, activity_logs, conversations
+  users, products, categories, orders, inquiries, quotations, rfqs, notifications, activity_logs, conversations, supplierProfiles, commissionSettings, favorites
 } from "@shared/schema";
 import { z } from 'zod';
 import { sql, eq, and, gte, desc, or, ilike } from "drizzle-orm";
@@ -39,6 +44,729 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ==================== CHAT ROUTES ====================
   
   app.use('/api/chat', chatRoutes);
+  
+  // ==================== SUPPLIER ROUTES ====================
+  
+  app.use('/api/suppliers', supplierRoutes);
+  
+  // ==================== STAFF MANAGEMENT ROUTES ====================
+  
+  app.use('/api/suppliers/staff', staffRoutes);
+  
+  // ==================== ADMIN SUPPLIER ROUTES ====================
+  
+  app.use('/api/admin/suppliers', adminSupplierRoutes);
+  
+  // ==================== COMMISSION ROUTES ====================
+  
+  app.use('/api/commission', commissionRoutes);
+  
+  // ==================== PAYOUT ROUTES ====================
+  
+  app.use('/api/payouts', payoutRoutes);
+  
+  // ==================== SUPPLIER DISCOVERY ROUTES ====================
+  
+  // GET /api/suppliers - Public supplier directory with advanced filtering
+  app.get("/api/suppliers", async (req, res) => {
+    try {
+      const { 
+        search, 
+        country, 
+        businessType, 
+        verificationLevel, 
+        membershipTier, 
+        minRating,
+        minProducts,
+        maxProducts,
+        minResponseRate,
+        verifiedOnly,
+        tradeAssurance,
+        limit = "20",
+        offset = "0",
+        sortBy = "rating",
+        sortOrder = "desc"
+      } = req.query;
+      
+      // Build query conditions
+      const conditions = [];
+      
+      // Only show approved and active suppliers
+      conditions.push(eq(supplierProfiles.status, 'approved'));
+      conditions.push(eq(supplierProfiles.isActive, true));
+      
+      // Apply filters
+      if (country) {
+        conditions.push(eq(supplierProfiles.country, country as string));
+      }
+      if (businessType) {
+        conditions.push(eq(supplierProfiles.businessType, businessType as string));
+      }
+      if (verificationLevel) {
+        conditions.push(eq(supplierProfiles.verificationLevel, verificationLevel as string));
+      }
+      if (membershipTier) {
+        conditions.push(eq(supplierProfiles.membershipTier, membershipTier as string));
+      }
+      if (minRating) {
+        conditions.push(sql`${supplierProfiles.rating} >= ${parseFloat(minRating as string)}`);
+      }
+      if (minProducts) {
+        conditions.push(sql`${supplierProfiles.totalProducts} >= ${parseInt(minProducts as string)}`);
+      }
+      if (maxProducts) {
+        conditions.push(sql`${supplierProfiles.totalProducts} <= ${parseInt(maxProducts as string)}`);
+      }
+      if (minResponseRate) {
+        conditions.push(sql`${supplierProfiles.responseRate} >= ${parseFloat(minResponseRate as string)}`);
+      }
+      if (verifiedOnly === 'true') {
+        conditions.push(eq(supplierProfiles.isVerified, true));
+      }
+      if (tradeAssurance === 'true') {
+        conditions.push(eq(supplierProfiles.verificationLevel, 'trade_assurance'));
+      }
+      
+      let query = db.select({
+        id: supplierProfiles.id,
+        businessName: supplierProfiles.businessName,
+        storeName: supplierProfiles.storeName,
+        storeSlug: supplierProfiles.storeSlug,
+        storeDescription: supplierProfiles.storeDescription,
+        storeLogo: supplierProfiles.storeLogo,
+        businessType: supplierProfiles.businessType,
+        city: supplierProfiles.city,
+        country: supplierProfiles.country,
+        yearEstablished: supplierProfiles.yearEstablished,
+        mainProducts: supplierProfiles.mainProducts,
+        verificationLevel: supplierProfiles.verificationLevel,
+        isVerified: supplierProfiles.isVerified,
+        membershipTier: supplierProfiles.membershipTier,
+        rating: supplierProfiles.rating,
+        totalReviews: supplierProfiles.totalReviews,
+        responseRate: supplierProfiles.responseRate,
+        responseTime: supplierProfiles.responseTime,
+        totalProducts: supplierProfiles.totalProducts,
+        storeViews: supplierProfiles.storeViews,
+        followers: supplierProfiles.followers,
+        totalSales: supplierProfiles.totalSales,
+        totalOrders: supplierProfiles.totalOrders,
+        createdAt: supplierProfiles.createdAt
+      })
+      .from(supplierProfiles);
+      
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
+      
+      // Add search filter
+      if (search) {
+        const searchPattern = `%${search}%`;
+        query = query.where(and(
+          ...conditions,
+          or(
+            ilike(supplierProfiles.storeName, searchPattern),
+            ilike(supplierProfiles.businessName, searchPattern),
+            sql`EXISTS (
+              SELECT 1 FROM unnest(${supplierProfiles.mainProducts}) AS product 
+              WHERE product ILIKE ${searchPattern}
+            )`
+          )
+        ));
+      }
+      
+      // Add sorting
+      const validSortFields = ['rating', 'totalReviews', 'totalProducts', 'createdAt', 'storeName'];
+      const sortField = validSortFields.includes(sortBy as string) ? sortBy as string : 'rating';
+      const order = sortOrder === 'asc' ? 'asc' : 'desc';
+      
+      if (sortField === 'rating') {
+        query = order === 'desc' ? query.orderBy(desc(supplierProfiles.rating)) : query.orderBy(supplierProfiles.rating);
+      } else if (sortField === 'totalReviews') {
+        query = order === 'desc' ? query.orderBy(desc(supplierProfiles.totalReviews)) : query.orderBy(supplierProfiles.totalReviews);
+      } else if (sortField === 'totalProducts') {
+        query = order === 'desc' ? query.orderBy(desc(supplierProfiles.totalProducts)) : query.orderBy(supplierProfiles.totalProducts);
+      } else if (sortField === 'createdAt') {
+        query = order === 'desc' ? query.orderBy(desc(supplierProfiles.createdAt)) : query.orderBy(supplierProfiles.createdAt);
+      } else if (sortField === 'storeName') {
+        query = order === 'desc' ? query.orderBy(desc(supplierProfiles.storeName)) : query.orderBy(supplierProfiles.storeName);
+      }
+      
+      // Add pagination
+      const limitNum = parseInt(limit as string);
+      const offsetNum = parseInt(offset as string);
+      
+      query = query.limit(limitNum).offset(offsetNum);
+      
+      const result = await query;
+      
+      // Get total count for pagination
+      let countQuery = db.select({ count: sql`count(*)` })
+        .from(supplierProfiles);
+      
+      if (conditions.length > 0) {
+        countQuery = countQuery.where(and(...conditions));
+      }
+      
+      if (search) {
+        const searchPattern = `%${search}%`;
+        countQuery = countQuery.where(and(
+          ...conditions,
+          or(
+            ilike(supplierProfiles.storeName, searchPattern),
+            ilike(supplierProfiles.businessName, searchPattern),
+            sql`EXISTS (
+              SELECT 1 FROM unnest(${supplierProfiles.mainProducts}) AS product 
+              WHERE product ILIKE ${searchPattern}
+            )`
+          )
+        ));
+      }
+      
+      const [{ count }] = await countQuery;
+      const total = parseInt(count as string);
+      
+      console.log(`📊 Supplier Directory API: Returning ${result.length} suppliers with total count: ${total}`);
+      
+      res.json({
+        suppliers: result,
+        total,
+        page: Math.floor(offsetNum / limitNum) + 1,
+        limit: limitNum,
+        hasMore: offsetNum + limitNum < total
+      });
+    } catch (error: any) {
+      console.error('Get suppliers directory error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // GET /api/suppliers/:id/profile - Get detailed supplier profile for comparison
+  app.get("/api/suppliers/:id/profile", async (req, res) => {
+    try {
+      const supplierId = req.params.id;
+      
+      const supplierResult = await db.select({
+        id: supplierProfiles.id,
+        businessName: supplierProfiles.businessName,
+        storeName: supplierProfiles.storeName,
+        storeSlug: supplierProfiles.storeSlug,
+        storeDescription: supplierProfiles.storeDescription,
+        storeLogo: supplierProfiles.storeLogo,
+        storeBanner: supplierProfiles.storeBanner,
+        businessType: supplierProfiles.businessType,
+        contactPerson: supplierProfiles.contactPerson,
+        position: supplierProfiles.position,
+        phone: supplierProfiles.phone,
+        whatsapp: supplierProfiles.whatsapp,
+        wechat: supplierProfiles.wechat,
+        address: supplierProfiles.address,
+        city: supplierProfiles.city,
+        country: supplierProfiles.country,
+        website: supplierProfiles.website,
+        yearEstablished: supplierProfiles.yearEstablished,
+        employees: supplierProfiles.employees,
+        factorySize: supplierProfiles.factorySize,
+        annualRevenue: supplierProfiles.annualRevenue,
+        mainProducts: supplierProfiles.mainProducts,
+        exportMarkets: supplierProfiles.exportMarkets,
+        verificationLevel: supplierProfiles.verificationLevel,
+        isVerified: supplierProfiles.isVerified,
+        verifiedAt: supplierProfiles.verifiedAt,
+        membershipTier: supplierProfiles.membershipTier,
+        rating: supplierProfiles.rating,
+        totalReviews: supplierProfiles.totalReviews,
+        responseRate: supplierProfiles.responseRate,
+        responseTime: supplierProfiles.responseTime,
+        totalProducts: supplierProfiles.totalProducts,
+        totalInquiries: supplierProfiles.totalInquiries,
+        storeViews: supplierProfiles.storeViews,
+        followers: supplierProfiles.followers,
+        totalSales: supplierProfiles.totalSales,
+        totalOrders: supplierProfiles.totalOrders,
+        createdAt: supplierProfiles.createdAt
+      })
+      .from(supplierProfiles)
+      .where(and(
+        eq(supplierProfiles.id, supplierId),
+        eq(supplierProfiles.status, 'approved'),
+        eq(supplierProfiles.isActive, true)
+      ))
+      .limit(1);
+      
+      if (supplierResult.length === 0) {
+        return res.status(404).json({ error: "Supplier not found" });
+      }
+      
+      const supplier = supplierResult[0];
+      
+      // Increment store views
+      await db.update(supplierProfiles)
+        .set({ 
+          storeViews: sql`${supplierProfiles.storeViews} + 1`,
+          updatedAt: new Date()
+        })
+        .where(eq(supplierProfiles.id, supplierId));
+      
+      res.json(supplier);
+    } catch (error: any) {
+      console.error('Get supplier profile error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // GET /api/suppliers/:id/products - Get supplier's products for comparison
+  app.get("/api/suppliers/:id/products", async (req, res) => {
+    try {
+      const supplierId = req.params.id;
+      const { limit = "10", offset = "0", categoryId } = req.query;
+      
+      // Verify supplier exists and is active
+      const supplierExists = await db.select({ id: supplierProfiles.id })
+        .from(supplierProfiles)
+        .where(and(
+          eq(supplierProfiles.id, supplierId),
+          eq(supplierProfiles.status, 'approved'),
+          eq(supplierProfiles.isActive, true)
+        ))
+        .limit(1);
+      
+      if (supplierExists.length === 0) {
+        return res.status(404).json({ error: "Supplier not found" });
+      }
+      
+      const conditions = [
+        eq(products.supplierId, supplierId),
+        eq(products.isApproved, true),
+        eq(products.isPublished, true)
+      ];
+      
+      if (categoryId) {
+        conditions.push(eq(products.categoryId, categoryId as string));
+      }
+      
+      const productsResult = await db.select({
+        id: products.id,
+        name: products.name,
+        slug: products.slug,
+        shortDescription: products.shortDescription,
+        images: products.images,
+        minOrderQuantity: products.minOrderQuantity,
+        priceRanges: products.priceRanges,
+        sampleAvailable: products.sampleAvailable,
+        samplePrice: products.samplePrice,
+        leadTime: products.leadTime,
+        views: products.views,
+        inquiries: products.inquiries,
+        isFeatured: products.isFeatured,
+        createdAt: products.createdAt,
+        categoryName: categories.name
+      })
+      .from(products)
+      .leftJoin(categories, eq(products.categoryId, categories.id))
+      .where(and(...conditions))
+      .orderBy(desc(products.createdAt))
+      .limit(parseInt(limit as string))
+      .offset(parseInt(offset as string));
+      
+      // Get total count
+      const [{ count }] = await db.select({ count: sql`count(*)` })
+        .from(products)
+        .where(and(...conditions));
+      
+      const total = parseInt(count as string);
+      
+      res.json({
+        products: productsResult,
+        total,
+        page: Math.floor(parseInt(offset as string) / parseInt(limit as string)) + 1,
+        limit: parseInt(limit as string)
+      });
+    } catch (error: any) {
+      console.error('Get supplier products error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // GET /api/suppliers/search/suggestions - Get search suggestions for autocomplete
+  app.get("/api/suppliers/search/suggestions", async (req, res) => {
+    try {
+      const { q } = req.query;
+      
+      if (!q || (q as string).length < 2) {
+        return res.json({ suggestions: [] });
+      }
+      
+      const searchPattern = `%${q}%`;
+      
+      // Get supplier name suggestions
+      const supplierSuggestions = await db.select({
+        type: sql`'supplier'`,
+        value: supplierProfiles.storeName,
+        label: supplierProfiles.storeName,
+        meta: supplierProfiles.businessName
+      })
+      .from(supplierProfiles)
+      .where(and(
+        eq(supplierProfiles.status, 'approved'),
+        eq(supplierProfiles.isActive, true),
+        or(
+          ilike(supplierProfiles.storeName, searchPattern),
+          ilike(supplierProfiles.businessName, searchPattern)
+        )
+      ))
+      .limit(5);
+      
+      // Get product suggestions from main products
+      const productSuggestions = await db.select({
+        type: sql`'product'`,
+        value: sql`unnest(${supplierProfiles.mainProducts})`,
+        label: sql`unnest(${supplierProfiles.mainProducts})`,
+        meta: sql`'Product category'`
+      })
+      .from(supplierProfiles)
+      .where(and(
+        eq(supplierProfiles.status, 'approved'),
+        eq(supplierProfiles.isActive, true),
+        sql`EXISTS (
+          SELECT 1 FROM unnest(${supplierProfiles.mainProducts}) AS product 
+          WHERE product ILIKE ${searchPattern}
+        )`
+      ))
+      .limit(5);
+      
+      const allSuggestions = [...supplierSuggestions, ...productSuggestions];
+      
+      res.json({ suggestions: allSuggestions });
+    } catch (error: any) {
+      console.error('Get search suggestions error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // GET /api/suppliers/filters/options - Get available filter options
+  app.get("/api/suppliers/filters/options", async (req, res) => {
+    try {
+      // Get unique countries
+      const countries = await db.selectDistinct({ 
+        value: supplierProfiles.country,
+        label: supplierProfiles.country,
+        count: sql`count(*)`
+      })
+      .from(supplierProfiles)
+      .where(and(
+        eq(supplierProfiles.status, 'approved'),
+        eq(supplierProfiles.isActive, true)
+      ))
+      .groupBy(supplierProfiles.country)
+      .orderBy(desc(sql`count(*)`));
+      
+      // Get business types
+      const businessTypes = await db.selectDistinct({ 
+        value: supplierProfiles.businessType,
+        label: supplierProfiles.businessType,
+        count: sql`count(*)`
+      })
+      .from(supplierProfiles)
+      .where(and(
+        eq(supplierProfiles.status, 'approved'),
+        eq(supplierProfiles.isActive, true)
+      ))
+      .groupBy(supplierProfiles.businessType)
+      .orderBy(desc(sql`count(*)`));
+      
+      // Get verification levels
+      const verificationLevels = await db.selectDistinct({ 
+        value: supplierProfiles.verificationLevel,
+        label: supplierProfiles.verificationLevel,
+        count: sql`count(*)`
+      })
+      .from(supplierProfiles)
+      .where(and(
+        eq(supplierProfiles.status, 'approved'),
+        eq(supplierProfiles.isActive, true)
+      ))
+      .groupBy(supplierProfiles.verificationLevel)
+      .orderBy(desc(sql`count(*)`));
+      
+      // Get membership tiers
+      const membershipTiers = await db.selectDistinct({ 
+        value: supplierProfiles.membershipTier,
+        label: supplierProfiles.membershipTier,
+        count: sql`count(*)`
+      })
+      .from(supplierProfiles)
+      .where(and(
+        eq(supplierProfiles.status, 'approved'),
+        eq(supplierProfiles.isActive, true)
+      ))
+      .groupBy(supplierProfiles.membershipTier)
+      .orderBy(desc(sql`count(*)`));
+      
+      res.json({
+        countries,
+        businessTypes,
+        verificationLevels,
+        membershipTiers
+      });
+    } catch (error: any) {
+      console.error('Get filter options error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // POST /api/suppliers/:id/follow - Follow/unfollow a supplier
+  app.post("/api/suppliers/:id/follow", authMiddleware, async (req, res) => {
+    try {
+      const supplierId = req.params.id;
+      const userId = req.user!.id;
+      
+      // Check if supplier exists and is active
+      const supplierExists = await db.select({ id: supplierProfiles.id })
+        .from(supplierProfiles)
+        .where(and(
+          eq(supplierProfiles.id, supplierId),
+          eq(supplierProfiles.status, 'approved'),
+          eq(supplierProfiles.isActive, true)
+        ))
+        .limit(1);
+      
+      if (supplierExists.length === 0) {
+        return res.status(404).json({ error: "Supplier not found" });
+      }
+      
+      // Check if already following
+      const existingFavorite = await db.select({ id: favorites.id })
+        .from(favorites)
+        .where(and(
+          eq(favorites.userId, userId),
+          eq(favorites.itemId, supplierId),
+          eq(favorites.itemType, 'supplier')
+        ))
+        .limit(1);
+      
+      if (existingFavorite.length > 0) {
+        // Unfollow - remove from favorites
+        await db.delete(favorites)
+          .where(and(
+            eq(favorites.userId, userId),
+            eq(favorites.itemId, supplierId),
+            eq(favorites.itemType, 'supplier')
+          ));
+        
+        // Decrement follower count
+        await db.update(supplierProfiles)
+          .set({ 
+            followers: sql`GREATEST(${supplierProfiles.followers} - 1, 0)`,
+            updatedAt: new Date()
+          })
+          .where(eq(supplierProfiles.id, supplierId));
+        
+        res.json({ following: false, message: "Supplier unfollowed successfully" });
+      } else {
+        // Follow - add to favorites
+        await db.insert(favorites).values({
+          userId,
+          itemId: supplierId,
+          itemType: 'supplier'
+        });
+        
+        // Increment follower count
+        await db.update(supplierProfiles)
+          .set({ 
+            followers: sql`${supplierProfiles.followers} + 1`,
+            updatedAt: new Date()
+          })
+          .where(eq(supplierProfiles.id, supplierId));
+        
+        res.json({ following: true, message: "Supplier followed successfully" });
+      }
+    } catch (error: any) {
+      console.error('Follow supplier error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // GET /api/suppliers/followed - Get user's followed suppliers
+  app.get("/api/suppliers/followed", authMiddleware, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      
+      const followedSuppliers = await db.select({
+        id: supplierProfiles.id,
+        businessName: supplierProfiles.businessName,
+        storeName: supplierProfiles.storeName,
+        storeSlug: supplierProfiles.storeSlug,
+        storeLogo: supplierProfiles.storeLogo,
+        city: supplierProfiles.city,
+        country: supplierProfiles.country,
+        verificationLevel: supplierProfiles.verificationLevel,
+        isVerified: supplierProfiles.isVerified,
+        membershipTier: supplierProfiles.membershipTier,
+        rating: supplierProfiles.rating,
+        totalReviews: supplierProfiles.totalReviews,
+        totalProducts: supplierProfiles.totalProducts,
+        followedAt: favorites.createdAt
+      })
+      .from(favorites)
+      .innerJoin(supplierProfiles, eq(favorites.itemId, supplierProfiles.id))
+      .where(and(
+        eq(favorites.userId, userId),
+        eq(favorites.itemType, 'supplier'),
+        eq(supplierProfiles.status, 'approved'),
+        eq(supplierProfiles.isActive, true)
+      ))
+      .orderBy(desc(favorites.createdAt));
+      
+      res.json({ suppliers: followedSuppliers });
+    } catch (error: any) {
+      console.error('Get followed suppliers error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // GET /api/suppliers/:id/following-status - Check if user is following a supplier
+  app.get("/api/suppliers/:id/following-status", authMiddleware, async (req, res) => {
+    try {
+      const supplierId = req.params.id;
+      const userId = req.user!.id;
+      
+      const isFollowing = await db.select({ id: favorites.id })
+        .from(favorites)
+        .where(and(
+          eq(favorites.userId, userId),
+          eq(favorites.itemId, supplierId),
+          eq(favorites.itemType, 'supplier')
+        ))
+        .limit(1);
+      
+      res.json({ following: isFollowing.length > 0 });
+    } catch (error: any) {
+      console.error('Get following status error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // GET /api/suppliers/recommendations - Get supplier recommendations based on buyer history
+  app.get("/api/suppliers/recommendations", authMiddleware, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const { limit = "5" } = req.query;
+      
+      // Get buyer's inquiry and order history to understand preferences
+      const buyerInquiries = await db.select({
+        productId: inquiries.productId,
+        categoryId: products.categoryId
+      })
+      .from(inquiries)
+      .leftJoin(products, eq(inquiries.productId, products.id))
+      .where(eq(inquiries.buyerId, userId))
+      .limit(50);
+      
+      const buyerOrders = await db.select({
+        productId: orders.productId,
+        categoryId: products.categoryId
+      })
+      .from(orders)
+      .leftJoin(products, eq(orders.productId, products.id))
+      .where(eq(orders.buyerId, userId))
+      .limit(50);
+      
+      // Extract categories from buyer history
+      const categoryIds = new Set([
+        ...buyerInquiries.map(i => i.categoryId).filter(Boolean),
+        ...buyerOrders.map(o => o.categoryId).filter(Boolean)
+      ]);
+      
+      let recommendedSuppliers;
+      
+      if (categoryIds.size > 0) {
+        // Recommend suppliers with products in buyer's preferred categories
+        recommendedSuppliers = await db.select({
+          id: supplierProfiles.id,
+          businessName: supplierProfiles.businessName,
+          storeName: supplierProfiles.storeName,
+          storeSlug: supplierProfiles.storeSlug,
+          storeLogo: supplierProfiles.storeLogo,
+          businessType: supplierProfiles.businessType,
+          city: supplierProfiles.city,
+          country: supplierProfiles.country,
+          verificationLevel: supplierProfiles.verificationLevel,
+          isVerified: supplierProfiles.isVerified,
+          membershipTier: supplierProfiles.membershipTier,
+          rating: supplierProfiles.rating,
+          totalReviews: supplierProfiles.totalReviews,
+          responseRate: supplierProfiles.responseRate,
+          totalProducts: supplierProfiles.totalProducts,
+          relevanceScore: sql`COUNT(DISTINCT ${products.categoryId})`
+        })
+        .from(supplierProfiles)
+        .innerJoin(products, eq(products.supplierId, supplierProfiles.id))
+        .where(and(
+          eq(supplierProfiles.status, 'approved'),
+          eq(supplierProfiles.isActive, true),
+          eq(products.isApproved, true),
+          eq(products.isPublished, true),
+          sql`${products.categoryId} = ANY(${Array.from(categoryIds)})`
+        ))
+        .groupBy(
+          supplierProfiles.id,
+          supplierProfiles.businessName,
+          supplierProfiles.storeName,
+          supplierProfiles.storeSlug,
+          supplierProfiles.storeLogo,
+          supplierProfiles.businessType,
+          supplierProfiles.city,
+          supplierProfiles.country,
+          supplierProfiles.verificationLevel,
+          supplierProfiles.isVerified,
+          supplierProfiles.membershipTier,
+          supplierProfiles.rating,
+          supplierProfiles.totalReviews,
+          supplierProfiles.responseRate,
+          supplierProfiles.totalProducts
+        )
+        .orderBy(desc(sql`COUNT(DISTINCT ${products.categoryId})`), desc(supplierProfiles.rating))
+        .limit(parseInt(limit as string));
+      } else {
+        // Fallback to top-rated suppliers
+        recommendedSuppliers = await db.select({
+          id: supplierProfiles.id,
+          businessName: supplierProfiles.businessName,
+          storeName: supplierProfiles.storeName,
+          storeSlug: supplierProfiles.storeSlug,
+          storeLogo: supplierProfiles.storeLogo,
+          businessType: supplierProfiles.businessType,
+          city: supplierProfiles.city,
+          country: supplierProfiles.country,
+          verificationLevel: supplierProfiles.verificationLevel,
+          isVerified: supplierProfiles.isVerified,
+          membershipTier: supplierProfiles.membershipTier,
+          rating: supplierProfiles.rating,
+          totalReviews: supplierProfiles.totalReviews,
+          responseRate: supplierProfiles.responseRate,
+          totalProducts: supplierProfiles.totalProducts,
+          relevanceScore: sql`0`
+        })
+        .from(supplierProfiles)
+        .where(and(
+          eq(supplierProfiles.status, 'approved'),
+          eq(supplierProfiles.isActive, true),
+          gte(supplierProfiles.rating, 4.0)
+        ))
+        .orderBy(desc(supplierProfiles.rating), desc(supplierProfiles.totalReviews))
+        .limit(parseInt(limit as string));
+      }
+      
+      res.json({ 
+        suppliers: recommendedSuppliers,
+        basedOnHistory: categoryIds.size > 0
+      });
+    } catch (error: any) {
+      console.error('Get supplier recommendations error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
   
   // ==================== LEGACY AUTHENTICATION (TO BE REMOVED) ====================
   
@@ -226,83 +954,254 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get("/api/products", async (req, res) => {
     try {
-      const { categoryId, search, isPublished, minMOQ, maxMOQ, featured, limit, offset } = req.query;
-      const filters: any = {};
-      const countFilters: any = {}; // Separate filters for count (without pagination)
+      const { categoryId, search, isPublished, minMOQ, maxMOQ, featured, supplierId, limit, offset } = req.query;
+      
+      // Build query conditions
+      const conditions = [];
       
       if (categoryId) {
-        filters.categoryId = categoryId as string;
-        countFilters.categoryId = categoryId as string;
-      }
-      if (search) {
-        filters.search = search as string;
-        countFilters.search = search as string;
+        conditions.push(eq(products.categoryId, categoryId as string));
       }
       if (isPublished !== undefined) {
-        filters.isPublished = isPublished === 'true';
-        countFilters.isPublished = isPublished === 'true';
-      }
-      if (minMOQ) {
-        filters.minMOQ = parseInt(minMOQ as string);
-        countFilters.minMOQ = parseInt(minMOQ as string);
-      }
-      if (maxMOQ) {
-        filters.maxMOQ = parseInt(maxMOQ as string);
-        countFilters.maxMOQ = parseInt(maxMOQ as string);
+        conditions.push(eq(products.isPublished, isPublished === 'true'));
       }
       if (featured === 'true') {
-        filters.featured = true;
-        countFilters.featured = true;
+        conditions.push(eq(products.isFeatured, true));
+      }
+      if (supplierId) {
+        conditions.push(eq(products.supplierId, supplierId as string));
       }
       
-      // Add pagination ONLY to the getProducts filters, NOT to countFilters
+      // For public API, only show approved products from active suppliers
+      if (!supplierId) {
+        conditions.push(eq(products.isApproved, true));
+        conditions.push(eq(products.isPublished, true));
+      }
+      
+      let query = db.select({
+        id: products.id,
+        name: products.name,
+        slug: products.slug,
+        shortDescription: products.shortDescription,
+        description: products.description,
+        categoryId: products.categoryId,
+        specifications: products.specifications,
+        images: products.images,
+        videos: products.videos,
+        supplierId: products.supplierId,
+        status: products.status,
+        isApproved: products.isApproved,
+        minOrderQuantity: products.minOrderQuantity,
+        priceRanges: products.priceRanges,
+        sampleAvailable: products.sampleAvailable,
+        samplePrice: products.samplePrice,
+        customizationAvailable: products.customizationAvailable,
+        customizationDetails: products.customizationDetails,
+        leadTime: products.leadTime,
+        port: products.port,
+        paymentTerms: products.paymentTerms,
+        inStock: products.inStock,
+        stockQuantity: products.stockQuantity,
+        isPublished: products.isPublished,
+        isFeatured: products.isFeatured,
+        views: products.views,
+        inquiries: products.inquiries,
+        colors: products.colors,
+        sizes: products.sizes,
+        keyFeatures: products.keyFeatures,
+        certifications: products.certifications,
+        tags: products.tags,
+        hasTradeAssurance: products.hasTradeAssurance,
+        sku: products.sku,
+        createdAt: products.createdAt,
+        updatedAt: products.updatedAt,
+        // Supplier information
+        supplierBusinessName: supplierProfiles.businessName,
+        supplierStoreName: supplierProfiles.storeName,
+        supplierStoreSlug: supplierProfiles.storeSlug,
+        supplierStoreLogo: supplierProfiles.storeLogo,
+        supplierVerificationLevel: supplierProfiles.verificationLevel,
+        supplierIsVerified: supplierProfiles.isVerified,
+        supplierRating: supplierProfiles.rating,
+        supplierResponseRate: supplierProfiles.responseRate,
+        supplierMembershipTier: supplierProfiles.membershipTier,
+        // Category information
+        categoryName: categories.name
+      })
+      .from(products)
+      .leftJoin(supplierProfiles, eq(products.supplierId, supplierProfiles.id))
+      .leftJoin(categories, eq(products.categoryId, categories.id));
+      
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
+      
+      // Add search filter
+      if (search) {
+        const searchPattern = `%${search}%`;
+        query = query.where(and(
+          ...conditions,
+          or(
+            ilike(products.name, searchPattern),
+            ilike(products.description, searchPattern),
+            ilike(products.shortDescription, searchPattern),
+            ilike(supplierProfiles.businessName, searchPattern),
+            ilike(supplierProfiles.storeName, searchPattern)
+          )
+        ));
+      }
+      
+      // Add MOQ filters
+      if (minMOQ) {
+        query = query.where(and(...conditions, gte(products.minOrderQuantity, parseInt(minMOQ as string))));
+      }
+      if (maxMOQ) {
+        query = query.where(and(...conditions, sql`${products.minOrderQuantity} <= ${parseInt(maxMOQ as string)}`));
+      }
+      
+      // Add ordering
+      query = query.orderBy(desc(products.createdAt));
+      
+      // Add pagination
       let hasLimit = false;
       let hasOffset = false;
       
       if (limit) {
-        filters.limit = parseInt(limit as string);
+        query = query.limit(parseInt(limit as string));
         hasLimit = true;
       }
       if (offset !== undefined) {
-        filters.offset = parseInt(offset as string);
+        query = query.offset(parseInt(offset as string));
         hasOffset = true;
       }
       
-      const result = await storage.getProducts(filters);
+      const result = await query;
       
-      // ALWAYS return paginated response structure when limit/offset are provided
-      // Even if total might not be accurate for non-paginated requests
+      // Get total count for pagination
       if (hasLimit || hasOffset) {
-        const total = await storage.getProductsCount(countFilters); // Use countFilters (no pagination params)
+        let countQuery = db.select({ count: sql`count(*)` })
+          .from(products)
+          .leftJoin(supplierProfiles, eq(products.supplierId, supplierProfiles.id));
+        
+        if (conditions.length > 0) {
+          countQuery = countQuery.where(and(...conditions));
+        }
+        
+        if (search) {
+          const searchPattern = `%${search}%`;
+          countQuery = countQuery.where(and(
+            ...conditions,
+            or(
+              ilike(products.name, searchPattern),
+              ilike(products.description, searchPattern),
+              ilike(products.shortDescription, searchPattern),
+              ilike(supplierProfiles.businessName, searchPattern),
+              ilike(supplierProfiles.storeName, searchPattern)
+            )
+          ));
+        }
+        
+        const [{ count }] = await countQuery;
+        const total = parseInt(count as string);
         
         console.log(`📊 Products API Response: Returning ${result.length} products with total count: ${total}`);
-        console.log(`📄 Filters applied:`, countFilters);
         
         res.json({ 
           products: result,
           total,
-          page: filters.offset ? Math.floor(filters.offset / (filters.limit || 20)) + 1 : 1,
-          limit: filters.limit || 20
+          page: offset ? Math.floor(parseInt(offset as string) / (parseInt(limit as string) || 20)) + 1 : 1,
+          limit: limit ? parseInt(limit as string) : 20
         });
       } else {
         // No pagination parameters - return as array directly for backwards compatibility
         res.json(result);
       }
     } catch (error: any) {
+      console.error('Get products error:', error);
       res.status(500).json({ error: error.message });
     }
   });
 
   app.get("/api/products/:id", async (req, res) => {
     try {
-      const product = await storage.getProduct(req.params.id);
-      if (!product) {
+      // Get product with supplier information
+      const productResult = await db.select({
+        id: products.id,
+        name: products.name,
+        slug: products.slug,
+        shortDescription: products.shortDescription,
+        description: products.description,
+        categoryId: products.categoryId,
+        specifications: products.specifications,
+        images: products.images,
+        videos: products.videos,
+        supplierId: products.supplierId,
+        status: products.status,
+        isApproved: products.isApproved,
+        minOrderQuantity: products.minOrderQuantity,
+        priceRanges: products.priceRanges,
+        sampleAvailable: products.sampleAvailable,
+        samplePrice: products.samplePrice,
+        customizationAvailable: products.customizationAvailable,
+        customizationDetails: products.customizationDetails,
+        leadTime: products.leadTime,
+        port: products.port,
+        paymentTerms: products.paymentTerms,
+        inStock: products.inStock,
+        stockQuantity: products.stockQuantity,
+        isPublished: products.isPublished,
+        isFeatured: products.isFeatured,
+        views: products.views,
+        inquiries: products.inquiries,
+        colors: products.colors,
+        sizes: products.sizes,
+        keyFeatures: products.keyFeatures,
+        certifications: products.certifications,
+        tags: products.tags,
+        hasTradeAssurance: products.hasTradeAssurance,
+        sku: products.sku,
+        createdAt: products.createdAt,
+        updatedAt: products.updatedAt,
+        // Supplier information
+        supplierBusinessName: supplierProfiles.businessName,
+        supplierStoreName: supplierProfiles.storeName,
+        supplierStoreSlug: supplierProfiles.storeSlug,
+        supplierStoreLogo: supplierProfiles.storeLogo,
+        supplierVerificationLevel: supplierProfiles.verificationLevel,
+        supplierIsVerified: supplierProfiles.isVerified,
+        supplierRating: supplierProfiles.rating,
+        supplierResponseRate: supplierProfiles.responseRate,
+        supplierMembershipTier: supplierProfiles.membershipTier,
+        supplierPhone: supplierProfiles.phone,
+        supplierWhatsapp: supplierProfiles.whatsapp,
+        supplierCity: supplierProfiles.city,
+        supplierCountry: supplierProfiles.country,
+        // Category information
+        categoryName: categories.name
+      })
+      .from(products)
+      .leftJoin(supplierProfiles, eq(products.supplierId, supplierProfiles.id))
+      .leftJoin(categories, eq(products.categoryId, categories.id))
+      .where(eq(products.id, req.params.id))
+      .limit(1);
+      
+      if (productResult.length === 0) {
         return res.status(404).json({ error: "Product not found" });
       }
+      
+      const product = productResult[0];
+      
+      // Only show approved products to public (unless it's the supplier viewing their own product)
+      if (!product.isApproved && !req.user) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+      
       // Increment view count
       await storage.incrementProductViews(req.params.id);
+      
       res.json(product);
     } catch (error: any) {
+      console.error('Get product error:', error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -323,10 +1222,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/products", async (req, res) => {
     try {
-      const validatedData = insertProductSchema.parse(req.body);
+      // Check if user is authenticated
+      if (!req.user) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+      
+      const productData = { ...req.body };
+      
+      // Handle supplier attribution
+      if (req.user.role === 'supplier') {
+        // Get supplier profile
+        const supplierResult = await db.select()
+          .from(supplierProfiles)
+          .where(eq(supplierProfiles.userId, req.user.id))
+          .limit(1);
+        
+        if (supplierResult.length === 0) {
+          return res.status(404).json({ error: "Supplier profile not found" });
+        }
+        
+        const supplier = supplierResult[0];
+        
+        // Check if supplier is approved and active
+        if (supplier.status !== 'approved' || !supplier.isActive) {
+          return res.status(403).json({ error: "Supplier account must be approved and active to create products" });
+        }
+        
+        // Set supplier attribution and approval workflow
+        productData.supplierId = supplier.id;
+        productData.status = 'pending_approval';
+        productData.isApproved = false;
+        productData.isPublished = false; // Will be published after approval
+      } else if (req.user.role === 'admin') {
+        // Admins can create products directly without approval
+        productData.status = 'approved';
+        productData.isApproved = true;
+        productData.approvedAt = new Date();
+        productData.approvedBy = req.user.id;
+        // supplierId can be null for admin-created products (legacy behavior)
+      } else {
+        return res.status(403).json({ error: "Only suppliers and admins can create products" });
+      }
+      
+      const validatedData = insertProductSchema.parse(productData);
       const product = await storage.createProduct(validatedData);
+      
+      // Update supplier's product count if applicable
+      if (productData.supplierId) {
+        await db.update(supplierProfiles)
+          .set({ 
+            totalProducts: sql`${supplierProfiles.totalProducts} + 1`,
+            updatedAt: new Date()
+          })
+          .where(eq(supplierProfiles.id, productData.supplierId));
+      }
+      
       res.status(201).json(product);
     } catch (error: any) {
+      console.error('Create product error:', error);
       res.status(400).json({ error: error.message });
     }
   });
@@ -2017,11 +2970,28 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       console.log('=== RECEIVED INQUIRY REQUEST ===');
       console.log('Request body:', req.body);
       
+      // Get product information to determine supplier
+      const productResult = await db.select({
+        id: products.id,
+        supplierId: products.supplierId,
+        name: products.name
+      })
+      .from(products)
+      .where(eq(products.id, req.body.productId))
+      .limit(1);
+      
+      if (productResult.length === 0) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+      
+      const product = productResult[0];
+      
       // Clean up the request body - only include fields that exist in schema
       // Note: decimal fields should be strings, not numbers (drizzle-zod requirement)
       const cleanedData: any = {
         productId: req.body.productId,
         buyerId: req.body.buyerId,
+        supplierId: product.supplierId, // Route inquiry to product's supplier
         quantity: req.body.quantity ? parseInt(req.body.quantity) : undefined,
         targetPrice: req.body.targetPrice ? String(req.body.targetPrice) : undefined, // Keep as string for decimal field
         message: req.body.message || null,
@@ -2048,22 +3018,56 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       // Increment product inquiry count
       await storage.incrementProductInquiries(validatedData.productId);
       
-      // Get all admin users to notify them about new inquiry
-      const adminUsers = await db
-        .select({ id: users.id })
-        .from(users)
-        .where(eq(users.role, 'admin'));
+      // Notify the appropriate parties based on supplier
+      if (product.supplierId) {
+        // Get supplier user ID
+        const supplierResult = await db.select({
+          userId: supplierProfiles.userId,
+          businessName: supplierProfiles.businessName
+        })
+        .from(supplierProfiles)
+        .where(eq(supplierProfiles.id, product.supplierId))
+        .limit(1);
+        
+        if (supplierResult.length > 0) {
+          const supplier = supplierResult[0];
+          
+          // Create notification for supplier
+          await createNotification({
+            userId: supplier.userId,
+            type: 'info',
+            title: 'New Inquiry Received',
+            message: `A new inquiry has been received for your product "${product.name}"`,
+            relatedId: inquiry.id,
+            relatedType: 'inquiry'
+          });
+          
+          // Update supplier's total inquiries count
+          await db.update(supplierProfiles)
+            .set({ 
+              totalInquiries: sql`${supplierProfiles.totalInquiries} + 1`,
+              updatedAt: new Date()
+            })
+            .where(eq(supplierProfiles.id, product.supplierId));
+        }
+      } else {
+        // Legacy behavior: notify admins for admin-managed products
+        const adminUsers = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.role, 'admin'));
 
-      // Create notification for each admin
-      for (const admin of adminUsers) {
-        await createNotification({
-          userId: admin.id,
-          type: 'info',
-          title: 'New Inquiry Received',
-          message: `A new inquiry has been received for product ${validatedData.productId}`,
-          relatedId: inquiry.id,
-          relatedType: 'inquiry'
-        });
+        // Create notification for each admin
+        for (const admin of adminUsers) {
+          await createNotification({
+            userId: admin.id,
+            type: 'info',
+            title: 'New Inquiry Received',
+            message: `A new inquiry has been received for product "${product.name}"`,
+            relatedId: inquiry.id,
+            relatedType: 'inquiry'
+          });
+        }
       }
       
       res.status(201).json(inquiry);
@@ -2929,22 +3933,56 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
     }
   });
 
-  // Orders API
+  // Orders API - Enhanced for multi-vendor support
   app.post("/api/orders", async (req, res) => {
     try {
-      const { quotationId, inquiryId, productId, quantity, unitPrice, totalAmount, shippingAddress, paymentMethod, buyerId } = req.body;
+      const { quotationId, inquiryId, productId, quantity, unitPrice, totalAmount, shippingAddress, paymentMethod, buyerId, items } = req.body;
       
-      if (!quotationId || !productId || !quantity || !unitPrice || !totalAmount) {
+      if (!totalAmount) {
+        return res.status(400).json({ error: "Total amount is required" });
+      }
+
+      // Handle multi-vendor cart items
+      if (items && Array.isArray(items) && items.length > 0) {
+        return await handleMultiVendorOrder(req, res);
+      }
+
+      // Single vendor order (legacy support)
+      if (!quotationId || !productId || !quantity || !unitPrice) {
         return res.status(400).json({ error: "Missing required order fields" });
       }
+
+      // Get product to determine supplier
+      const product = await db.select().from(products).where(eq(products.id, productId)).limit(1);
+      if (!product[0]) {
+        return res.status(404).json({ error: "Product not found" });
+      }
+
+      const supplierId = product[0].supplierId;
 
       // Generate order number
       const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
+      // Calculate commission if supplier exists
+      let commissionRate = 0;
+      let commissionAmount = 0;
+      let supplierAmount = parseFloat(totalAmount);
+
+      if (supplierId) {
+        const commissionSettings = await getCommissionSettings();
+        const supplier = await db.select().from(supplierProfiles).where(eq(supplierProfiles.id, supplierId)).limit(1);
+        
+        if (supplier[0]) {
+          commissionRate = supplier[0].customCommissionRate || getCommissionRateByTier(supplier[0].membershipTier, commissionSettings);
+          commissionAmount = (parseFloat(totalAmount) * commissionRate) / 100;
+          supplierAmount = parseFloat(totalAmount) - commissionAmount;
+        }
+      }
+
       // Create order with items
       const orderItems = [{
         productId: productId,
-        productName: 'Product', // Default name since we don't have product details here
+        productName: product[0].name || 'Product',
         quantity: parseInt(quantity),
         unitPrice: parseFloat(unitPrice),
         totalPrice: parseFloat(totalAmount)
@@ -2952,13 +3990,17 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
 
       const order = await storage.createOrder({
         orderNumber,
-        buyerId: buyerId || 'admin-created', // Use provided buyerId or fallback
+        buyerId: buyerId || req.user?.id || 'admin-created',
+        supplierId,
         inquiryId,
         quotationId,
         productId,
         quantity: parseInt(quantity),
         unitPrice: parseFloat(unitPrice).toString(),
         totalAmount: parseFloat(totalAmount).toString(),
+        commissionRate: commissionRate,
+        commissionAmount: commissionAmount.toString(),
+        supplierAmount: supplierAmount.toString(),
         status: 'pending',
         paymentMethod: paymentMethod || 'T/T',
         paymentStatus: 'pending',
@@ -2967,8 +4009,15 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
         items: orderItems
       } as any);
 
-      // Update quotation status to accepted
-      await storage.updateInquiryQuotation(quotationId, { status: 'accepted' });
+      // Update quotation status to accepted if applicable
+      if (quotationId) {
+        await storage.updateInquiryQuotation(quotationId, { status: 'accepted' });
+      }
+
+      // Notify supplier if exists
+      if (supplierId) {
+        await notifySupplierNewOrder(supplierId, order);
+      }
 
       res.status(201).json(order);
     } catch (error: any) {
@@ -4372,6 +5421,582 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       res.status(500).json({ error: error.message });
     }
   });
+
+  // ==================== SUPPLIER ORDER MANAGEMENT ENDPOINTS ====================
+
+  // Get orders for a specific supplier
+  app.get("/api/suppliers/:supplierId/orders", authMiddleware, async (req, res) => {
+    try {
+      const { supplierId } = req.params;
+      const { status, search, limit, offset } = req.query;
+
+      // Check if user has permission to view supplier orders
+      if (req.user?.role === 'supplier') {
+        // Verify supplier owns this profile
+        const [supplierProfile] = await db.select()
+          .from(supplierProfiles)
+          .where(and(
+            eq(supplierProfiles.id, supplierId),
+            eq(supplierProfiles.userId, req.user.id)
+          ))
+          .limit(1);
+
+        if (!supplierProfile) {
+          return res.status(403).json({ error: "Access denied to this supplier's orders" });
+        }
+      } else if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Build query conditions
+      const conditions = [eq(orders.supplierId, supplierId)];
+      
+      if (status && status !== 'all') {
+        conditions.push(eq(orders.status, status as string));
+      }
+
+      let query = db.select({
+        id: orders.id,
+        orderNumber: orders.orderNumber,
+        buyerId: orders.buyerId,
+        parentOrderId: orders.parentOrderId,
+        productId: orders.productId,
+        quantity: orders.quantity,
+        unitPrice: orders.unitPrice,
+        totalAmount: orders.totalAmount,
+        commissionRate: orders.commissionRate,
+        commissionAmount: orders.commissionAmount,
+        supplierAmount: orders.supplierAmount,
+        status: orders.status,
+        paymentMethod: orders.paymentMethod,
+        paymentStatus: orders.paymentStatus,
+        shippingAddress: orders.shippingAddress,
+        trackingNumber: orders.trackingNumber,
+        notes: orders.notes,
+        items: orders.items,
+        createdAt: orders.createdAt,
+        updatedAt: orders.updatedAt,
+        // Buyer information
+        buyerFirstName: users.firstName,
+        buyerLastName: users.lastName,
+        buyerEmail: users.email,
+        buyerCompanyName: users.companyName,
+        buyerPhone: users.phone
+      })
+      .from(orders)
+      .leftJoin(users, eq(orders.buyerId, users.id))
+      .where(and(...conditions));
+
+      // Add search filter
+      if (search) {
+        const searchPattern = `%${search}%`;
+        const searchConditions = [
+          ...conditions,
+          or(
+            ilike(orders.orderNumber, searchPattern),
+            ilike(users.firstName, searchPattern),
+            ilike(users.lastName, searchPattern),
+            ilike(users.companyName, searchPattern)
+          )
+        ];
+        query = query.where(and(...searchConditions));
+      } else if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
+
+      // Add ordering
+      query = query.orderBy(desc(orders.createdAt));
+
+      // Add pagination
+      if (limit) {
+        query = query.limit(parseInt(limit as string));
+      }
+      if (offset) {
+        query = query.offset(parseInt(offset as string));
+      }
+
+      const supplierOrders = await query;
+
+      // Get total count for pagination
+      let countQuery = db.select({ count: sql`count(*)` })
+        .from(orders)
+        .leftJoin(users, eq(orders.buyerId, users.id))
+        .where(and(...conditions));
+
+      if (search) {
+        const searchPattern = `%${search}%`;
+        const searchConditions = [
+          ...conditions,
+          or(
+            ilike(orders.orderNumber, searchPattern),
+            ilike(users.firstName, searchPattern),
+            ilike(users.lastName, searchPattern),
+            ilike(users.companyName, searchPattern)
+          )
+        ];
+        countQuery = countQuery.where(and(...searchConditions));
+      } else if (conditions.length > 0) {
+        countQuery = countQuery.where(and(...conditions));
+      }
+
+      const [{ count }] = await countQuery;
+      const total = parseInt(count as string);
+
+      res.json({
+        orders: supplierOrders,
+        total,
+        page: offset ? Math.floor(parseInt(offset as string) / (parseInt(limit as string) || 20)) + 1 : 1,
+        limit: limit ? parseInt(limit as string) : 20
+      });
+
+    } catch (error: any) {
+      console.error('Error fetching supplier orders:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update order status by supplier
+  app.patch("/api/suppliers/:supplierId/orders/:orderId/status", authMiddleware, async (req, res) => {
+    try {
+      const { supplierId, orderId } = req.params;
+      const { status, trackingNumber, notes } = req.body;
+
+      // Check if user has permission to update supplier orders
+      if (req.user?.role === 'supplier') {
+        // Verify supplier owns this profile
+        const [supplierProfile] = await db.select()
+          .from(supplierProfiles)
+          .where(and(
+            eq(supplierProfiles.id, supplierId),
+            eq(supplierProfiles.userId, req.user.id)
+          ))
+          .limit(1);
+
+        if (!supplierProfile) {
+          return res.status(403).json({ error: "Access denied to this supplier's orders" });
+        }
+      } else if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Verify order belongs to supplier
+      const [order] = await db.select()
+        .from(orders)
+        .where(and(
+          eq(orders.id, orderId),
+          eq(orders.supplierId, supplierId)
+        ))
+        .limit(1);
+
+      if (!order) {
+        return res.status(404).json({ error: "Order not found or access denied" });
+      }
+
+      // Validate status transition
+      const validStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ error: "Invalid order status" });
+      }
+
+      // Update order
+      const updateData: any = { status };
+      if (trackingNumber) updateData.trackingNumber = trackingNumber;
+      if (notes) updateData.notes = notes;
+
+      const [updatedOrder] = await db.update(orders)
+        .set({ ...updateData, updatedAt: new Date() })
+        .where(eq(orders.id, orderId))
+        .returning();
+
+      // Notify buyer of status change
+      await db.insert(notifications).values({
+        userId: order.buyerId,
+        type: 'info',
+        title: 'Order Status Updated',
+        message: `Your order #${order.orderNumber} status has been updated to ${status}`,
+        relatedId: orderId,
+        relatedType: 'order'
+      });
+
+      res.json(updatedOrder);
+
+    } catch (error: any) {
+      console.error('Error updating order status:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get order details for supplier
+  app.get("/api/suppliers/:supplierId/orders/:orderId", authMiddleware, async (req, res) => {
+    try {
+      const { supplierId, orderId } = req.params;
+
+      // Check if user has permission to view supplier orders
+      if (req.user?.role === 'supplier') {
+        // Verify supplier owns this profile
+        const [supplierProfile] = await db.select()
+          .from(supplierProfiles)
+          .where(and(
+            eq(supplierProfiles.id, supplierId),
+            eq(supplierProfiles.userId, req.user.id)
+          ))
+          .limit(1);
+
+        if (!supplierProfile) {
+          return res.status(403).json({ error: "Access denied to this supplier's orders" });
+        }
+      } else if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Get order with buyer and product details
+      const [orderDetails] = await db.select({
+        id: orders.id,
+        orderNumber: orders.orderNumber,
+        buyerId: orders.buyerId,
+        parentOrderId: orders.parentOrderId,
+        productId: orders.productId,
+        quantity: orders.quantity,
+        unitPrice: orders.unitPrice,
+        totalAmount: orders.totalAmount,
+        commissionRate: orders.commissionRate,
+        commissionAmount: orders.commissionAmount,
+        supplierAmount: orders.supplierAmount,
+        status: orders.status,
+        paymentMethod: orders.paymentMethod,
+        paymentStatus: orders.paymentStatus,
+        shippingAddress: orders.shippingAddress,
+        trackingNumber: orders.trackingNumber,
+        notes: orders.notes,
+        items: orders.items,
+        createdAt: orders.createdAt,
+        updatedAt: orders.updatedAt,
+        // Buyer information
+        buyerFirstName: users.firstName,
+        buyerLastName: users.lastName,
+        buyerEmail: users.email,
+        buyerCompanyName: users.companyName,
+        buyerPhone: users.phone,
+        // Product information
+        productName: products.name,
+        productSlug: products.slug,
+        productImages: products.images
+      })
+      .from(orders)
+      .leftJoin(users, eq(orders.buyerId, users.id))
+      .leftJoin(products, eq(orders.productId, products.id))
+      .where(and(
+        eq(orders.id, orderId),
+        eq(orders.supplierId, supplierId)
+      ))
+      .limit(1);
+
+      if (!orderDetails) {
+        return res.status(404).json({ error: "Order not found or access denied" });
+      }
+
+      res.json(orderDetails);
+
+    } catch (error: any) {
+      console.error('Error fetching order details:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Send message to customer for order
+  app.post("/api/suppliers/:supplierId/orders/:orderId/message", authMiddleware, async (req, res) => {
+    try {
+      const { supplierId, orderId } = req.params;
+      const { message, type } = req.body;
+
+      // Check if user has permission to send messages for supplier orders
+      if (req.user?.role === 'supplier') {
+        // Verify supplier owns this profile
+        const [supplierProfile] = await db.select()
+          .from(supplierProfiles)
+          .where(and(
+            eq(supplierProfiles.id, supplierId),
+            eq(supplierProfiles.userId, req.user.id)
+          ))
+          .limit(1);
+
+        if (!supplierProfile) {
+          return res.status(403).json({ error: "Access denied to this supplier's orders" });
+        }
+      } else if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Verify order belongs to supplier
+      const [order] = await db.select()
+        .from(orders)
+        .where(and(
+          eq(orders.id, orderId),
+          eq(orders.supplierId, supplierId)
+        ))
+        .limit(1);
+
+      if (!order) {
+        return res.status(404).json({ error: "Order not found or access denied" });
+      }
+
+      // Create notification for buyer
+      const messageTitle = type === 'shipping' ? 'Shipping Update' : 
+                          type === 'support' ? 'Customer Support Message' : 
+                          'Order Update';
+
+      await db.insert(notifications).values({
+        userId: order.buyerId,
+        type: 'info',
+        title: messageTitle,
+        message: `Message regarding order #${order.orderNumber}: ${message}`,
+        relatedId: orderId,
+        relatedType: 'order'
+      });
+
+      // TODO: In a real implementation, you might want to:
+      // 1. Send email notification to buyer
+      // 2. Create a conversation/message thread
+      // 3. Store the message in a messages table
+
+      res.json({ success: true, message: 'Message sent successfully' });
+
+    } catch (error: any) {
+      console.error('Error sending message:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ==================== HELPER FUNCTIONS FOR MULTI-VENDOR ORDERS ====================
+
+  // Get commission settings from database
+  async function getCommissionSettings() {
+    try {
+      const [settings] = await db.select().from(commissionSettings).limit(1);
+      return settings || {
+        defaultRate: 5.0,
+        freeRate: 5.0,
+        silverRate: 3.0,
+        goldRate: 2.0,
+        platinumRate: 1.5,
+        categoryRates: {},
+        vendorOverrides: {}
+      };
+    } catch (error) {
+      console.error('Error fetching commission settings:', error);
+      return {
+        defaultRate: 5.0,
+        freeRate: 5.0,
+        silverRate: 3.0,
+        goldRate: 2.0,
+        platinumRate: 1.5,
+        categoryRates: {},
+        vendorOverrides: {}
+      };
+    }
+  }
+
+  // Get commission rate by membership tier
+  function getCommissionRateByTier(tier: string, settings: any): number {
+    switch (tier) {
+      case 'free': return settings.freeRate || 5.0;
+      case 'silver': return settings.silverRate || 3.0;
+      case 'gold': return settings.goldRate || 2.0;
+      case 'platinum': return settings.platinumRate || 1.5;
+      default: return settings.defaultRate || 5.0;
+    }
+  }
+
+  // Notify supplier of new order
+  async function notifySupplierNewOrder(supplierId: string, order: any) {
+    try {
+      // Get supplier user ID
+      const [supplier] = await db.select({ userId: supplierProfiles.userId })
+        .from(supplierProfiles)
+        .where(eq(supplierProfiles.id, supplierId))
+        .limit(1);
+
+      if (supplier) {
+        await db.insert(notifications).values({
+          userId: supplier.userId,
+          type: 'info',
+          title: 'New Order Received',
+          message: `You have received a new order #${order.orderNumber}`,
+          relatedId: order.id,
+          relatedType: 'order'
+        });
+      }
+    } catch (error) {
+      console.error('Error notifying supplier:', error);
+    }
+  }
+
+  // Handle multi-vendor order creation
+  async function handleMultiVendorOrder(req: any, res: any) {
+    try {
+      const { items, shippingAddress, paymentMethod, buyerId } = req.body;
+      
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: "Items array is required for multi-vendor orders" });
+      }
+
+      // Group items by supplier
+      const supplierGroups = new Map<string, any[]>();
+      const adminItems: any[] = [];
+
+      for (const item of items) {
+        // Get product to determine supplier
+        const [product] = await db.select().from(products).where(eq(products.id, item.productId)).limit(1);
+        if (!product) {
+          return res.status(404).json({ error: `Product not found: ${item.productId}` });
+        }
+
+        const supplierId = product.supplierId;
+        if (supplierId) {
+          if (!supplierGroups.has(supplierId)) {
+            supplierGroups.set(supplierId, []);
+          }
+          supplierGroups.get(supplierId)!.push({
+            ...item,
+            product,
+            supplierId
+          });
+        } else {
+          // Admin-managed products (legacy)
+          adminItems.push({
+            ...item,
+            product,
+            supplierId: null
+          });
+        }
+      }
+
+      const createdOrders = [];
+      const commissionSettings = await getCommissionSettings();
+
+      // Create parent order for tracking
+      const parentOrderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+      const totalOrderAmount = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+
+      const parentOrder = await storage.createOrder({
+        orderNumber: parentOrderNumber,
+        buyerId: buyerId || req.user?.id || 'admin-created',
+        supplierId: null,
+        parentOrderId: null,
+        productId: null,
+        quantity: null,
+        unitPrice: null,
+        totalAmount: totalOrderAmount.toString(),
+        commissionRate: 0,
+        commissionAmount: "0",
+        supplierAmount: totalOrderAmount.toString(),
+        status: 'pending',
+        paymentMethod: paymentMethod || 'T/T',
+        paymentStatus: 'pending',
+        shippingAddress: shippingAddress || null,
+        notes: 'Multi-vendor parent order',
+        items: items
+      } as any);
+
+      createdOrders.push(parentOrder);
+
+      // Create separate orders for each supplier
+      for (const [supplierId, supplierItems] of Array.from(supplierGroups.entries())) {
+        const supplierOrderTotal = supplierItems.reduce((sum: number, item: any) => sum + (item.quantity * item.unitPrice), 0);
+        
+        // Get supplier info for commission calculation
+        const [supplier] = await db.select().from(supplierProfiles).where(eq(supplierProfiles.id, supplierId)).limit(1);
+        
+        let commissionRate = 0;
+        let commissionAmount = 0;
+        let supplierAmount = supplierOrderTotal;
+
+        if (supplier) {
+          commissionRate = supplier.customCommissionRate || getCommissionRateByTier(supplier.membershipTier, commissionSettings);
+          commissionAmount = (supplierOrderTotal * commissionRate) / 100;
+          supplierAmount = supplierOrderTotal - commissionAmount;
+        }
+
+        const supplierOrderNumber = `${parentOrderNumber}-S${supplierGroups.size > 1 ? Array.from(supplierGroups.keys()).indexOf(supplierId) + 1 : ''}`;
+        
+        const supplierOrder = await storage.createOrder({
+          orderNumber: supplierOrderNumber,
+          buyerId: buyerId || req.user?.id || 'admin-created',
+          supplierId: supplierId,
+          parentOrderId: parentOrder.id,
+          productId: supplierItems[0].productId, // Primary product for compatibility
+          quantity: supplierItems.reduce((sum: number, item: any) => sum + item.quantity, 0),
+          unitPrice: (supplierOrderTotal / supplierItems.reduce((sum: number, item: any) => sum + item.quantity, 0)).toString(),
+          totalAmount: supplierOrderTotal.toString(),
+          commissionRate: commissionRate,
+          commissionAmount: commissionAmount.toString(),
+          supplierAmount: supplierAmount.toString(),
+          status: 'pending',
+          paymentMethod: paymentMethod || 'T/T',
+          paymentStatus: 'pending',
+          shippingAddress: shippingAddress || null,
+          notes: `Split order from parent ${parentOrderNumber}`,
+          items: supplierItems.map((item: any) => ({
+            productId: item.productId,
+            productName: item.product.name,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            totalPrice: item.quantity * item.unitPrice
+          }))
+        } as any);
+
+        createdOrders.push(supplierOrder);
+
+        // Notify supplier
+        await notifySupplierNewOrder(supplierId, supplierOrder);
+      }
+
+      // Handle admin items if any
+      if (adminItems.length > 0) {
+        const adminOrderTotal = adminItems.reduce((sum: number, item: any) => sum + (item.quantity * item.unitPrice), 0);
+        const adminOrderNumber = `${parentOrderNumber}-ADMIN`;
+        
+        const adminOrder = await storage.createOrder({
+          orderNumber: adminOrderNumber,
+          buyerId: buyerId || req.user?.id || 'admin-created',
+          supplierId: null,
+          parentOrderId: parentOrder.id,
+          productId: adminItems[0].productId,
+          quantity: adminItems.reduce((sum: number, item: any) => sum + item.quantity, 0),
+          unitPrice: (adminOrderTotal / adminItems.reduce((sum: number, item: any) => sum + item.quantity, 0)).toString(),
+          totalAmount: adminOrderTotal.toString(),
+          commissionRate: 0,
+          commissionAmount: "0",
+          supplierAmount: adminOrderTotal.toString(),
+          status: 'pending',
+          paymentMethod: paymentMethod || 'T/T',
+          paymentStatus: 'pending',
+          shippingAddress: shippingAddress || null,
+          notes: `Admin items from parent ${parentOrderNumber}`,
+          items: adminItems.map((item: any) => ({
+            productId: item.productId,
+            productName: item.product.name,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            totalPrice: item.quantity * item.unitPrice
+          }))
+        } as any);
+
+        createdOrders.push(adminOrder);
+      }
+
+      res.status(201).json({
+        message: 'Multi-vendor order created successfully',
+        parentOrder,
+        splitOrders: createdOrders.slice(1), // Exclude parent order
+        totalOrders: createdOrders.length
+      });
+
+    } catch (error: any) {
+      console.error('Error creating multi-vendor order:', error);
+      res.status(400).json({ error: error.message });
+    }
+  }
 
   const httpServer = createServer(app);
 

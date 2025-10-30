@@ -13,7 +13,7 @@ export const users = pgTable("users", {
   lastName: text("last_name"),
   companyName: text("company_name"),
   phone: text("phone"),
-  role: text("role").notNull().default("buyer"), // buyer, admin (supplier role replaced with admin)
+  role: text("role").notNull().default("buyer"), // buyer, admin, supplier
   emailVerified: boolean("email_verified").default(false),
   isActive: boolean("is_active").default(true),
   isOnline: boolean("is_online").default(false),
@@ -90,6 +90,14 @@ export const products = pgTable("products", {
   specifications: json("specifications"), // Key-value pairs
   images: text("images").array(),
   videos: text("videos").array(),
+  
+  // Supplier Information
+  supplierId: varchar("supplier_id"),
+  status: varchar("status").default("draft"), // draft, pending_approval, approved, rejected
+  isApproved: boolean("is_approved").default(false),
+  approvedAt: timestamp("approved_at"),
+  approvedBy: varchar("approved_by"),
+  rejectionReason: text("rejection_reason"),
   
   // B2B Pricing
   minOrderQuantity: integer("min_order_quantity").notNull().default(1),
@@ -203,6 +211,7 @@ export const inquiries = pgTable("inquiries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   productId: varchar("product_id").notNull(),
   buyerId: varchar("buyer_id").notNull(),
+  supplierId: varchar("supplier_id"), // Route inquiries to specific suppliers
   quantity: integer("quantity").notNull(),
   targetPrice: decimal("target_price", { precision: 10, scale: 2 }),
   message: text("message"),
@@ -277,13 +286,20 @@ export const orders = pgTable("orders", {
   inquiryId: varchar("inquiry_id"),
   quotationId: varchar("quotation_id"),
   rfqId: varchar("rfq_id"), // For RFQ-based orders
-  supplierId: varchar("supplier_id"), // For RFQ-based orders
+  supplierId: varchar("supplier_id"), // For multivendor orders
+  parentOrderId: varchar("parent_order_id"), // For split orders
   productId: varchar("product_id"), // Made optional for RFQ orders
   quantity: integer("quantity"), // Made optional for RFQ orders
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }), // Made optional for RFQ orders
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
   shippingAmount: decimal("shipping_amount", { precision: 10, scale: 2 }).default("0"),
   taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }).default("0"),
+  
+  // Commission & Financial
+  commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }),
+  commissionAmount: decimal("commission_amount", { precision: 15, scale: 2 }),
+  supplierAmount: decimal("supplier_amount", { precision: 15, scale: 2 }),
+  
   items: json("items").notNull(), // Array of order items
   status: text("status").default("pending"), // pending, confirmed, processing, shipped, delivered, cancelled
   paymentMethod: text("payment_method"),
@@ -476,3 +492,215 @@ export const insertActivityLogSchema = createInsertSchema(activity_logs).omit({
 
 export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
 export type ActivityLog = typeof activity_logs.$inferSelect;
+
+// ==================== SUPPLIER PROFILES ====================
+
+export const supplierProfiles = pgTable("supplier_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().unique(),
+  
+  // Business Information
+  businessName: varchar("business_name").notNull(),
+  businessType: varchar("business_type").notNull(), // manufacturer, trading_company, wholesaler
+  storeName: varchar("store_name").notNull().unique(),
+  storeSlug: varchar("store_slug").notNull().unique(),
+  storeDescription: text("store_description"),
+  storeLogo: varchar("store_logo"),
+  storeBanner: varchar("store_banner"),
+  
+  // Contact Details
+  contactPerson: varchar("contact_person").notNull(),
+  position: varchar("position").notNull(),
+  phone: varchar("phone").notNull(),
+  whatsapp: varchar("whatsapp"),
+  wechat: varchar("wechat"),
+  address: text("address").notNull(),
+  city: varchar("city").notNull(),
+  country: varchar("country").notNull(),
+  website: varchar("website"),
+  
+  // Business Details
+  yearEstablished: integer("year_established"),
+  employees: varchar("employees"),
+  factorySize: varchar("factory_size"),
+  annualRevenue: varchar("annual_revenue"),
+  mainProducts: text("main_products").array(),
+  exportMarkets: text("export_markets").array(),
+  
+  // Verification & Status
+  verificationLevel: varchar("verification_level").default("none"), // none, basic, business, premium, trade_assurance
+  verificationDocs: json("verification_docs"),
+  isVerified: boolean("is_verified").default(false),
+  verifiedAt: timestamp("verified_at"),
+  
+  // Membership & Performance
+  membershipTier: varchar("membership_tier").default("free"), // free, silver, gold, platinum
+  subscriptionId: varchar("subscription_id"),
+  subscriptionStatus: varchar("subscription_status"),
+  subscriptionExpiry: timestamp("subscription_expiry"),
+  
+  rating: decimal("rating", { precision: 3, scale: 2 }).default("0"),
+  totalReviews: integer("total_reviews").default(0),
+  responseRate: decimal("response_rate", { precision: 5, scale: 2 }).default("0"),
+  responseTime: varchar("response_time"),
+  totalSales: decimal("total_sales", { precision: 15, scale: 2 }).default("0"),
+  totalOrders: integer("total_orders").default(0),
+  
+  // Status & Control
+  status: varchar("status").default("pending"), // pending, approved, rejected, suspended
+  isActive: boolean("is_active").default(false),
+  isFeatured: boolean("is_featured").default(false),
+  isSuspended: boolean("is_suspended").default(false),
+  suspensionReason: text("suspension_reason"),
+  
+  // Commission & Payout
+  customCommissionRate: decimal("custom_commission_rate", { precision: 5, scale: 2 }),
+  bankName: varchar("bank_name"),
+  accountNumber: varchar("account_number"),
+  accountName: varchar("account_name"),
+  paypalEmail: varchar("paypal_email"),
+  
+  // Metadata
+  totalProducts: integer("total_products").default(0),
+  totalInquiries: integer("total_inquiries").default(0),
+  storeViews: integer("store_views").default(0),
+  followers: integer("followers").default(0),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertSupplierProfileSchema = createInsertSchema(supplierProfiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSupplierProfile = z.infer<typeof insertSupplierProfileSchema>;
+export type SupplierProfile = typeof supplierProfiles.$inferSelect;
+
+// ==================== COMMISSION SETTINGS ====================
+
+export const commissionSettings = pgTable("commission_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Global Rates
+  defaultRate: decimal("default_rate", { precision: 5, scale: 2 }).default("5.0"),
+  freeRate: decimal("free_rate", { precision: 5, scale: 2 }).default("5.0"),
+  silverRate: decimal("silver_rate", { precision: 5, scale: 2 }).default("3.0"),
+  goldRate: decimal("gold_rate", { precision: 5, scale: 2 }).default("2.0"),
+  platinumRate: decimal("platinum_rate", { precision: 5, scale: 2 }).default("1.5"),
+  
+  // Category & Vendor Overrides
+  categoryRates: json("category_rates"), // {categoryId: rate}
+  vendorOverrides: json("vendor_overrides"), // {vendorId: rate}
+  
+  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedBy: varchar("updated_by"),
+});
+
+export const insertCommissionSettingsSchema = createInsertSchema(commissionSettings).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type InsertCommissionSettings = z.infer<typeof insertCommissionSettingsSchema>;
+export type CommissionSettings = typeof commissionSettings.$inferSelect;
+
+// ==================== PAYOUTS ====================
+
+export const payouts = pgTable("payouts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  supplierId: varchar("supplier_id").notNull(),
+  orderId: varchar("order_id"),
+  
+  amount: decimal("amount", { precision: 15, scale: 2 }).notNull(),
+  commissionAmount: decimal("commission_amount", { precision: 15, scale: 2 }).notNull(),
+  netAmount: decimal("net_amount", { precision: 15, scale: 2 }).notNull(),
+  
+  method: varchar("method").notNull(), // bank_transfer, paypal, stripe
+  status: varchar("status").default("pending"), // pending, processing, completed, failed
+  
+  scheduledDate: timestamp("scheduled_date").notNull(),
+  processedDate: timestamp("processed_date"),
+  
+  transactionId: varchar("transaction_id"),
+  failureReason: text("failure_reason"),
+  invoiceUrl: varchar("invoice_url"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertPayoutSchema = createInsertSchema(payouts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPayout = z.infer<typeof insertPayoutSchema>;
+export type Payout = typeof payouts.$inferSelect;
+
+// ==================== SUPPLIER REVIEWS ====================
+
+export const supplierReviews = pgTable("supplier_reviews", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  supplierId: varchar("supplier_id").notNull(),
+  buyerId: varchar("buyer_id").notNull(),
+  orderId: varchar("order_id"),
+  
+  overallRating: integer("overall_rating").notNull(),
+  productQuality: integer("product_quality"),
+  communication: integer("communication"),
+  shippingSpeed: integer("shipping_speed"),
+  afterSales: integer("after_sales"),
+  
+  comment: text("comment"),
+  images: text("images").array(),
+  
+  supplierResponse: text("supplier_response"),
+  respondedAt: timestamp("responded_at"),
+  
+  isVerified: boolean("is_verified").default(false),
+  isApproved: boolean("is_approved").default(true),
+  helpfulCount: integer("helpful_count").default(0),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertSupplierReviewSchema = createInsertSchema(supplierReviews).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSupplierReview = z.infer<typeof insertSupplierReviewSchema>;
+export type SupplierReview = typeof supplierReviews.$inferSelect;
+
+// ==================== STAFF MEMBERS ====================
+
+export const staffMembers = pgTable("staff_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  supplierId: varchar("supplier_id").notNull(),
+  
+  email: varchar("email").notNull(),
+  name: varchar("name").notNull(),
+  role: varchar("role").notNull(), // owner, manager, product_manager, customer_service, accountant
+  permissions: json("permissions").notNull(),
+  
+  isActive: boolean("is_active").default(true),
+  lastLogin: timestamp("last_login"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertStaffMemberSchema = createInsertSchema(staffMembers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertStaffMember = z.infer<typeof insertStaffMemberSchema>;
+export type StaffMember = typeof staffMembers.$inferSelect;

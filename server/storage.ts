@@ -16,7 +16,8 @@ import {
   type Review, type InsertReview, reviews,
   type Favorite, type InsertFavorite, favorites,
   type Customer, type InsertCustomer, customers,
-  type Notification, notifications
+  type Notification, notifications,
+  type SupplierProfile, supplierProfiles
 } from "@shared/schema";
 import bcrypt from "bcryptjs";
 
@@ -82,7 +83,7 @@ export interface IStorage {
   updateQuotation(id: string, quotation: Partial<InsertQuotation>): Promise<Quotation | undefined>;
   
   // Inquiry operations
-  getInquiries(filters?: { productId?: string; buyerId?: string; status?: string }): Promise<any[]>;
+  getInquiries(filters?: { productId?: string; buyerId?: string; supplierId?: string; status?: string }): Promise<any[]>;
   getInquiry(id: string): Promise<any | undefined>;
   createInquiry(inquiry: InsertInquiry): Promise<Inquiry>;
   updateInquiry(id: string, inquiry: Partial<InsertInquiry>): Promise<Inquiry | undefined>;
@@ -110,6 +111,12 @@ export interface IStorage {
   updateOrder(id: string, order: Partial<InsertOrder>): Promise<Order | undefined>;
   deleteOrder(id: string): Promise<boolean>;
   getAdminOrders(filters?: { status?: string; search?: string }): Promise<any[]>;
+  
+  // Multi-vendor order operations
+  getSupplierOrders(supplierId: string, filters?: { status?: string; search?: string; limit?: number; offset?: number }): Promise<any[]>;
+  getSplitOrders(parentOrderId: string): Promise<any[]>;
+  updateSupplierOrder(orderId: string, supplierId: string, updates: Partial<InsertOrder>): Promise<Order | undefined>;
+  getSupplierOrderStats(supplierId: string): Promise<any>;
   
   // Conversation operations
   getConversations(userId: string, role: 'buyer' | 'admin'): Promise<Conversation[]>;
@@ -549,7 +556,7 @@ export class PostgresStorage implements IStorage {
   }
 
   // Inquiry operations
-  async getInquiries(filters?: { productId?: string; buyerId?: string; status?: string }): Promise<any[]> {
+  async getInquiries(filters?: { productId?: string; buyerId?: string; supplierId?: string; status?: string }): Promise<any[]> {
     let whereConditions = [];
     
     if (filters?.productId) {
@@ -557,6 +564,9 @@ export class PostgresStorage implements IStorage {
     }
     if (filters?.buyerId) {
       whereConditions.push(eq(inquiries.buyerId, filters.buyerId));
+    }
+    if (filters?.supplierId) {
+      whereConditions.push(eq(inquiries.supplierId, filters.supplierId));
     }
     if (filters?.status) {
       whereConditions.push(eq(inquiries.status, filters.status));
@@ -568,6 +578,7 @@ export class PostgresStorage implements IStorage {
       id: inquiries.id,
       productId: inquiries.productId,
       buyerId: inquiries.buyerId,
+      supplierId: inquiries.supplierId,
       quantity: inquiries.quantity,
       targetPrice: inquiries.targetPrice,
       message: inquiries.message,
@@ -578,20 +589,22 @@ export class PostgresStorage implements IStorage {
       productName: products.name,
       productImage: products.images,
       productDescription: products.description,
-      // Join with buyer data (admin name since admin acts as supplier)
+      // Join with buyer data
       buyerName: users.firstName,
       buyerEmail: users.email,
       buyerCompany: buyerProfiles.companyName,
       buyerCountry: buyerProfiles.country,
       buyerPhone: buyerProfiles.phone,
-      supplierName: sql`'Admin Supplier'`.as('supplierName'),
-      supplierCountry: sql`'USA'`.as('supplierCountry'),
-      supplierVerified: sql`true`.as('supplierVerified')
+      // Join with supplier data (fallback to admin for legacy inquiries)
+      supplierName: sql`COALESCE(${supplierProfiles.businessName}, 'Admin Supplier')`.as('supplierName'),
+      supplierCountry: sql`COALESCE(${supplierProfiles.country}, 'USA')`.as('supplierCountry'),
+      supplierVerified: sql`COALESCE(${supplierProfiles.isVerified}, true)`.as('supplierVerified')
     })
     .from(inquiries)
     .leftJoin(products, eq(inquiries.productId, products.id))
     .leftJoin(users, eq(inquiries.buyerId, users.id))
     .leftJoin(buyerProfiles, eq(inquiries.buyerId, buyerProfiles.userId))
+    .leftJoin(supplierProfiles, eq(inquiries.supplierId, supplierProfiles.id))
     .where(whereClause)
     .orderBy(desc(inquiries.createdAt));
     
@@ -627,6 +640,7 @@ export class PostgresStorage implements IStorage {
       id: inquiries.id,
       productId: inquiries.productId,
       buyerId: inquiries.buyerId,
+      supplierId: inquiries.supplierId,
       quantity: inquiries.quantity,
       targetPrice: inquiries.targetPrice,
       message: inquiries.message,
@@ -635,10 +649,14 @@ export class PostgresStorage implements IStorage {
       createdAt: inquiries.createdAt,
       // Join with product data
       productName: products.name,
-      productImage: products.images
+      productImage: products.images,
+      // Join with supplier data
+      supplierBusinessName: supplierProfiles.businessName,
+      supplierStoreName: supplierProfiles.storeName
     })
     .from(inquiries)
     .leftJoin(products, eq(inquiries.productId, products.id))
+    .leftJoin(supplierProfiles, eq(inquiries.supplierId, supplierProfiles.id))
     .where(eq(inquiries.id, id))
     .limit(1);
     return inquiry;
@@ -1345,6 +1363,191 @@ export class PostgresStorage implements IStorage {
     await db.update(inquiries)
       .set({ status })
       .where(eq(inquiries.id, inquiryId));
+  }
+
+  // ==================== MULTI-VENDOR ORDER METHODS ====================
+
+  // Get orders for a specific supplier with enhanced details
+  async getSupplierOrders(supplierId: string, filters?: { status?: string; search?: string; limit?: number; offset?: number }): Promise<any[]> {
+    let whereConditions = [eq(orders.supplierId, supplierId)];
+
+    if (filters?.status && filters.status !== 'all') {
+      whereConditions.push(eq(orders.status, filters.status));
+    }
+
+    if (filters?.search) {
+      whereConditions.push(
+        or(
+          like(orders.orderNumber, `%${filters.search}%`),
+          like(users.firstName, `%${filters.search}%`),
+          like(users.lastName, `%${filters.search}%`),
+          like(users.companyName, `%${filters.search}%`)
+        )
+      );
+    }
+
+    let query = db.select({
+      id: orders.id,
+      orderNumber: orders.orderNumber,
+      buyerId: orders.buyerId,
+      supplierId: orders.supplierId,
+      parentOrderId: orders.parentOrderId,
+      productId: orders.productId,
+      quantity: orders.quantity,
+      unitPrice: orders.unitPrice,
+      totalAmount: orders.totalAmount,
+      commissionRate: orders.commissionRate,
+      commissionAmount: orders.commissionAmount,
+      supplierAmount: orders.supplierAmount,
+      status: orders.status,
+      paymentMethod: orders.paymentMethod,
+      paymentStatus: orders.paymentStatus,
+      shippingAddress: orders.shippingAddress,
+      trackingNumber: orders.trackingNumber,
+      notes: orders.notes,
+      items: orders.items,
+      createdAt: orders.createdAt,
+      updatedAt: orders.updatedAt,
+      // Buyer information
+      buyerFirstName: users.firstName,
+      buyerLastName: users.lastName,
+      buyerEmail: users.email,
+      buyerCompanyName: users.companyName,
+      buyerPhone: users.phone,
+      // Product information
+      productName: products.name,
+      productSlug: products.slug,
+      productImages: products.images
+    })
+    .from(orders)
+    .leftJoin(users, eq(orders.buyerId, users.id))
+    .leftJoin(products, eq(orders.productId, products.id))
+    .where(and(...whereConditions))
+    .orderBy(desc(orders.createdAt));
+
+    if (filters?.limit) {
+      query = query.limit(filters.limit);
+    }
+    if (filters?.offset) {
+      query = query.offset(filters.offset);
+    }
+
+    return await query;
+  }
+
+  // Get split orders for a parent order
+  async getSplitOrders(parentOrderId: string): Promise<any[]> {
+    const results = await db.select({
+      id: orders.id,
+      orderNumber: orders.orderNumber,
+      supplierId: orders.supplierId,
+      totalAmount: orders.totalAmount,
+      commissionAmount: orders.commissionAmount,
+      supplierAmount: orders.supplierAmount,
+      status: orders.status,
+      items: orders.items,
+      createdAt: orders.createdAt,
+      // Supplier information
+      supplierBusinessName: supplierProfiles.businessName,
+      supplierStoreName: supplierProfiles.storeName,
+      supplierStoreSlug: supplierProfiles.storeSlug
+    })
+    .from(orders)
+    .leftJoin(supplierProfiles, eq(orders.supplierId, supplierProfiles.id))
+    .where(eq(orders.parentOrderId, parentOrderId))
+    .orderBy(orders.createdAt);
+
+    return results;
+  }
+
+  // Update order with supplier-specific fields
+  async updateSupplierOrder(orderId: string, supplierId: string, updates: Partial<InsertOrder>): Promise<Order | undefined> {
+    // Verify order belongs to supplier
+    const [existingOrder] = await db.select()
+      .from(orders)
+      .where(and(
+        eq(orders.id, orderId),
+        eq(orders.supplierId, supplierId)
+      ))
+      .limit(1);
+
+    if (!existingOrder) {
+      return undefined;
+    }
+
+    const [updated] = await db.update(orders)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(orders.id, orderId))
+      .returning();
+
+    return updated;
+  }
+
+  // Get order statistics for supplier dashboard
+  async getSupplierOrderStats(supplierId: string): Promise<any> {
+    const [totalOrders] = await db.select({ count: drizzleSql<number>`count(*)::int` })
+      .from(orders)
+      .where(eq(orders.supplierId, supplierId));
+
+    const [pendingOrders] = await db.select({ count: drizzleSql<number>`count(*)::int` })
+      .from(orders)
+      .where(and(
+        eq(orders.supplierId, supplierId),
+        eq(orders.status, 'pending')
+      ));
+
+    const [processingOrders] = await db.select({ count: drizzleSql<number>`count(*)::int` })
+      .from(orders)
+      .where(and(
+        eq(orders.supplierId, supplierId),
+        or(
+          eq(orders.status, 'confirmed'),
+          eq(orders.status, 'processing')
+        )
+      ));
+
+    const [completedOrders] = await db.select({ count: drizzleSql<number>`count(*)::int` })
+      .from(orders)
+      .where(and(
+        eq(orders.supplierId, supplierId),
+        or(
+          eq(orders.status, 'shipped'),
+          eq(orders.status, 'delivered')
+        )
+      ));
+
+    const [totalRevenue] = await db.select({ 
+      sum: drizzleSql<number>`coalesce(sum(cast(supplier_amount as decimal)), 0)::decimal` 
+    })
+    .from(orders)
+    .where(and(
+      eq(orders.supplierId, supplierId),
+      or(
+        eq(orders.status, 'shipped'),
+        eq(orders.status, 'delivered')
+      )
+    ));
+
+    const [pendingRevenue] = await db.select({ 
+      sum: drizzleSql<number>`coalesce(sum(cast(supplier_amount as decimal)), 0)::decimal` 
+    })
+    .from(orders)
+    .where(and(
+      eq(orders.supplierId, supplierId),
+      or(
+        eq(orders.status, 'confirmed'),
+        eq(orders.status, 'processing')
+      )
+    ));
+
+    return {
+      totalOrders: totalOrders.count || 0,
+      pendingOrders: pendingOrders.count || 0,
+      processingOrders: processingOrders.count || 0,
+      completedOrders: completedOrders.count || 0,
+      totalRevenue: parseFloat(totalRevenue.sum?.toString() || '0'),
+      pendingRevenue: parseFloat(pendingRevenue.sum?.toString() || '0')
+    };
   }
 
   // ==================== CHAT SYSTEM METHODS ====================

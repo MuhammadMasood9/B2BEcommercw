@@ -4,14 +4,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+
 import { 
   Eye, 
   MessageSquare, 
   TrendingUp, 
   Package,
-  Plus,
-  FileText
+  Plus
 } from "lucide-react";
+import StoreManagement from "@/components/supplier/StoreManagement";
+import ProductManagement from "@/components/supplier/ProductManagement";
+import InquiryManagement from "@/components/supplier/InquiryManagement";
+import EarningsOverview from "@/components/supplier/EarningsOverview";
+import EnhancedAnalyticsDashboard from "@/components/supplier/EnhancedAnalyticsDashboard";
+import StaffManagement from "@/components/supplier/StaffManagement";
 
 export default function SupplierDashboard() {
   //todo: remove mock functionality
@@ -76,35 +82,14 @@ export default function SupplierDashboard() {
               <TabsTrigger value="inquiries" data-testid="tab-inquiries">Recent Inquiries</TabsTrigger>
               <TabsTrigger value="rfq" data-testid="tab-rfq">Matching RFQs</TabsTrigger>
               <TabsTrigger value="products" data-testid="tab-products">My Products</TabsTrigger>
+              <TabsTrigger value="store" data-testid="tab-store">Store Management</TabsTrigger>
+              <TabsTrigger value="staff" data-testid="tab-staff">Staff Management</TabsTrigger>
+              <TabsTrigger value="earnings" data-testid="tab-earnings">Earnings</TabsTrigger>
               <TabsTrigger value="analytics" data-testid="tab-analytics">Analytics</TabsTrigger>
             </TabsList>
 
             <TabsContent value="inquiries">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Inquiries</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {recentInquiries.map((inquiry) => (
-                      <div key={inquiry.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors" data-testid={`inquiry-${inquiry.id}`}>
-                        <div className="flex-1">
-                          <h4 className="font-medium mb-1">{inquiry.buyer}</h4>
-                          <p className="text-sm text-muted-foreground mb-1">{inquiry.product} • {inquiry.quantity}</p>
-                          <p className="text-xs text-muted-foreground">{inquiry.time}</p>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <Badge variant={inquiry.status === "Replied" ? "default" : inquiry.status === "Quoted" ? "secondary" : "outline"}>
-                            {inquiry.status}
-                          </Badge>
-                          <Button variant="outline" size="sm" data-testid={`button-view-inquiry-${inquiry.id}`}>View</Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <Button className="w-full mt-4" variant="outline" data-testid="button-view-all-inquiries">View All Inquiries</Button>
-                </CardContent>
-              </Card>
+              <InquiryManagement />
             </TabsContent>
 
             <TabsContent value="rfq">
@@ -135,43 +120,23 @@ export default function SupplierDashboard() {
             </TabsContent>
 
             <TabsContent value="products">
-              <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <CardTitle>Product Management</CardTitle>
-                    <Button data-testid="button-bulk-upload">
-                      <FileText className="w-4 h-4 mr-2" />
-                      Bulk Upload
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-12">
-                    <Package className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="font-semibold mb-2">Manage Your Products</h3>
-                    <p className="text-muted-foreground mb-4">Add, edit, or remove products from your catalog</p>
-                    <Button data-testid="button-add-first-product">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Your First Product
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              <ProductManagement />
+            </TabsContent>
+
+            <TabsContent value="store">
+              <StoreManagement />
+            </TabsContent>
+
+            <TabsContent value="staff">
+              <StaffManagement />
+            </TabsContent>
+
+            <TabsContent value="earnings">
+              <EarningsOverview />
             </TabsContent>
 
             <TabsContent value="analytics">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Performance Analytics</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-12">
-                    <TrendingUp className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="font-semibold mb-2">Track Your Performance</h3>
-                    <p className="text-muted-foreground">View detailed analytics and insights about your store</p>
-                  </div>
-                </CardContent>
-              </Card>
+              <EnhancedAnalyticsDashboard />
             </TabsContent>
           </Tabs>
         </div>

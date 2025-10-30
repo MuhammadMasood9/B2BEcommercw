@@ -15,7 +15,11 @@ import {
   MessageSquare,
   FileText,
   Bell,
-  Activity
+  Activity,
+  Store,
+  Clock,
+  DollarSign,
+  CreditCard
 } from "lucide-react";
 import {
   Sidebar,
@@ -81,6 +85,26 @@ const adminMenuItems = [
   //   url: "/admin/customers",
   //   icon: Users,
   // },
+  {
+    title: "Suppliers",
+    url: "/admin/suppliers",
+    icon: Store,
+  },
+  {
+    title: "Pending Approvals",
+    url: "/admin/suppliers/pending",
+    icon: Clock,
+  },
+  {
+    title: "Commission Management",
+    url: "/admin/commission",
+    icon: DollarSign,
+  },
+  {
+    title: "Payout Management",
+    url: "/admin/payouts",
+    icon: CreditCard,
+  },
   {
     title: "Users",
     url: "/admin/users",

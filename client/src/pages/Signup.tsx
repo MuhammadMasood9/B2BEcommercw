@@ -182,10 +182,14 @@ export default function Signup() {
               </CardHeader>
               <CardContent className="px-6 pb-6">
                 <Tabs defaultValue="buyer" className="w-full">
-                  <TabsList className="grid w-full grid-cols-1 mb-6">
+                  <TabsList className="grid w-full grid-cols-2 mb-6">
                     <TabsTrigger value="buyer" className="text-base py-3">
                       <Users className="w-4 h-4 mr-2" />
-                      Sign up as Buyer
+                      Buyer
+                    </TabsTrigger>
+                    <TabsTrigger value="supplier" className="text-base py-3">
+                      <Building2 className="w-4 h-4 mr-2" />
+                      Supplier
                     </TabsTrigger>
                   </TabsList>
 
@@ -348,6 +352,47 @@ export default function Signup() {
                         )}
                       </Button>
                     </form>
+                  </TabsContent>
+
+                  <TabsContent value="supplier">
+                    <div className="text-center space-y-4">
+                      <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 border border-blue-100">
+                        <Building2 className="w-12 h-12 text-blue-600 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                          Ready to Start Selling?
+                        </h3>
+                        <p className="text-gray-600 mb-4">
+                          Join thousands of successful suppliers on our global marketplace
+                        </p>
+                        <div className="grid grid-cols-2 gap-3 text-sm text-gray-600 mb-6">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4 text-green-600" />
+                            Global reach
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4 text-green-600" />
+                            Verified buyers
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4 text-green-600" />
+                            Easy setup
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4 text-green-600" />
+                            Low commission
+                          </div>
+                        </div>
+                        <Link href="/supplier/signup">
+                          <Button className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold">
+                            Start Supplier Registration
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </Button>
+                        </Link>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Supplier registration requires additional verification steps
+                      </p>
+                    </div>
                   </TabsContent>
                 </Tabs>
 

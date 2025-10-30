@@ -143,6 +143,9 @@ export default function Header() {
               <Button size="sm" className="h-8 px-4 text-sm font-semibold bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-200" data-testid="link-join" asChild>
                 <Link href="/signup">Join Free</Link>
               </Button>
+              <Button size="sm" variant="outline" className="h-8 px-4 text-sm font-semibold border-blue-600 text-blue-600 hover:bg-blue-50 transition-all duration-200" asChild>
+                <Link href="/supplier/signup">Sell on Platform</Link>
+              </Button>
             </div>
           </div>
         </div>
@@ -337,6 +340,7 @@ export default function Header() {
                     <>
                       <Link href="/login" className="text-lg font-medium hover:text-primary transition-colors">Sign In</Link>
                       <Link href="/signup" className="text-lg font-medium hover:text-primary transition-colors">Join Free</Link>
+                      <Link href="/supplier/signup" className="text-lg font-medium text-blue-600 hover:text-blue-700 transition-colors">Sell on Platform</Link>
                     </>
                   )}
                   <div className="border-t pt-4">

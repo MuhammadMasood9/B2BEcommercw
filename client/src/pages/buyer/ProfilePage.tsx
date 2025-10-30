@@ -5,7 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { User, Mail, Phone, Building, MapPin, Edit, Save, Lock, X, Camera, Shield, Truck, MessageSquare } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -24,16 +26,53 @@ interface UserProfile {
 
 export default function ProfilePage() {
   const { toast } = useToast();
-  const [profile, setProfile] = useState<UserProfile>({
-    id: 'user123',
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    phone: '+1 (555) 123-4567',
-    company: 'Acme Corporation',
-    address: '123 Main Street, Anytown, USA 12345',
-    avatarUrl: 'https://api.dicebear.com/7.x/initials/svg?seed=JD',
-    role: 'Buyer',
-    joinDate: '2023-01-15'
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  // Fetch base user
+  const { data: baseUser } = useQuery({
+    queryKey: ['/api/users', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const res = await fetch(`/api/users/${user.id}`, { credentials: 'include' });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000
+  });
+
+  // Fetch buyer profile
+  const { data: buyerProfile } = useQuery({
+    queryKey: ['/api/buyers', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const res = await fetch(`/api/buyers/${user.id}`, { credentials: 'include' });
+      if (!res.ok) return null; // 404 when not created yet
+      return res.json();
+    },
+    enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000
+  });
+
+  const initialProfile: UserProfile | null = useMemo(() => {
+    if (!baseUser) return null;
+    const fullName = [baseUser.firstName, baseUser.lastName].filter(Boolean).join(' ').trim() || baseUser.email?.split('@')[0] || 'User';
+    return {
+      id: baseUser.id,
+      name: fullName,
+      email: baseUser.email,
+      phone: baseUser.phone || '',
+      company: baseUser.companyName || buyerProfile?.companyName || '',
+      address: buyerProfile?.country || '',
+      avatarUrl: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(fullName.slice(0,2).toUpperCase())}`,
+      role: (baseUser.role || 'Buyer').toString(),
+      joinDate: baseUser.createdAt || new Date().toISOString(),
+    };
+  }, [baseUser, buyerProfile]);
+
+  const [profile, setProfile] = useState<UserProfile>(initialProfile || {
+    id: '', name: '', email: '', phone: '', company: '', address: '', avatarUrl: '', role: 'Buyer', joinDate: new Date().toISOString()
   });
 
   const [isEditing, setIsEditing] = useState(false);
@@ -44,15 +83,71 @@ export default function ProfilePage() {
     setEditedProfile(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = () => {
-    // In a real application, you would send this data to your backend
-    console.log('Saving profile:', editedProfile);
-    setProfile(editedProfile);
-    setIsEditing(false);
-    toast({
-      title: "Success",
-      description: "Profile updated successfully!",
-    });
+  useEffect(() => {
+    if (initialProfile) {
+      setProfile(initialProfile);
+      setEditedProfile(initialProfile);
+    }
+  }, [initialProfile]);
+
+  // Mutations for user and buyer profile
+  const updateUserMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      const res = await fetch(`/api/users/${profile.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error('Failed to update user');
+      return res.json();
+    },
+  });
+
+  const upsertBuyerProfileMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      const exists = !!buyerProfile;
+      const url = exists ? `/api/buyers/${profile.id}` : `/api/buyers`;
+      const method = exists ? 'PATCH' : 'POST';
+      const body = exists ? payload : { userId: profile.id, ...payload };
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) throw new Error('Failed to update profile');
+      return res.json();
+    },
+  });
+
+  const handleSave = async () => {
+    try {
+      // Split name to first/last best-effort
+      const [firstName, ...rest] = (editedProfile.name || '').split(' ');
+      const lastName = rest.join(' ');
+      await updateUserMutation.mutateAsync({
+        firstName,
+        lastName,
+        phone: editedProfile.phone,
+        companyName: editedProfile.company
+      });
+      await upsertBuyerProfileMutation.mutateAsync({
+        fullName: editedProfile.name,
+        phone: editedProfile.phone,
+        companyName: editedProfile.company,
+        country: editedProfile.address || undefined
+      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['/api/users', user?.id] }),
+        queryClient.invalidateQueries({ queryKey: ['/api/buyers', user?.id] }),
+      ]);
+      setProfile(editedProfile);
+      setIsEditing(false);
+      toast({ title: 'Success', description: 'Profile updated successfully!' });
+    } catch (e: any) {
+      toast({ title: 'Update failed', description: e.message || 'Please try again later', variant: 'destructive' });
+    }
   };
 
   const handleCancel = () => {

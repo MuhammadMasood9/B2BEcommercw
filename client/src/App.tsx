@@ -220,7 +220,11 @@ function PublicRouter() {
       <Route path="/rfq/create" component={RFQCreate} />
       <Route path="/rfq/:id" component={RFQDetail} />
       <Route path="/inquiry-cart" component={Cart} />
-      <Route path="/messages" component={Messages} />
+      <Route path="/messages">
+        <ProtectedRoute>
+          <Messages />
+        </ProtectedRoute>
+      </Route>
       <Route path="/dashboard/buyer">
         <ProtectedRoute requiredRole="buyer">
           <Dashboard />
@@ -274,19 +278,59 @@ function PublicRouter() {
       <Route path="/privacy" component={Privacy} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
-      <Route path="/my-orders" component={MyOrders} />
-      <Route path="/my-rfqs" component={MyRFQs} />
-      <Route path="/favorites" component={Favorites} />
-      <Route path="/cart" component={Cart} />
-      <Route path="/start-order/:productId" component={StartOrder} />
-      <Route path="/order-confirmation/:orderId" component={OrderConfirmation} />
-      <Route path="/track-order/:orderId" component={OrderTracking} />
-      <Route path="/track-order" component={OrderTracking} />
+      <Route path="/my-orders">
+        <ProtectedRoute requiredRole="buyer">
+          <MyOrders />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/my-rfqs">
+        <ProtectedRoute requiredRole="buyer">
+          <MyRFQs />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/favorites">
+        <ProtectedRoute>
+          <Favorites />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/cart">
+        <ProtectedRoute>
+          <Cart />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/start-order/:productId">
+        <ProtectedRoute requiredRole="buyer">
+          <StartOrder />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/order-confirmation/:orderId">
+        <ProtectedRoute requiredRole="buyer">
+          <OrderConfirmation />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/track-order/:orderId">
+        <ProtectedRoute requiredRole="buyer">
+          <OrderTracking />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/track-order">
+        <ProtectedRoute requiredRole="buyer">
+          <OrderTracking />
+        </ProtectedRoute>
+      </Route>
       <Route path="/category/:slug" component={CategoryProducts} />
       <Route path="/subcategory/:slug" component={SubcategoryProducts} />
       <Route path="/get-verified" component={GetVerified} />
-      <Route path="/notifications" component={NotificationPage} />
-      <Route path="/profile" component={ProfilePage} />
+      <Route path="/notifications">
+        <ProtectedRoute>
+          <NotificationPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/profile">
+        <ProtectedRoute>
+          <ProfilePage />
+        </ProtectedRoute>
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );

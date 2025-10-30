@@ -16,6 +16,7 @@ import {
   insertFavoriteSchema, insertNotificationSchema, insertActivityLogSchema,
   users, products, categories, orders, inquiries, quotations, rfqs, notifications, activity_logs, conversations
 } from "@shared/schema";
+import { z } from 'zod';
 import { sql, eq, and, gte, desc, or, ilike } from "drizzle-orm";
 import * as path from 'path';
 import * as fs from 'fs';
@@ -3319,10 +3320,126 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
     }
   });
 
-  app.post("/api/reviews", async (req, res) => {
+  // Product-scoped reviews (fetch by product)
+  app.get("/api/products/:productId/reviews", async (req, res) => {
     try {
-      const validatedData = insertReviewSchema.parse(req.body);
-      const review = await storage.createReview(validatedData);
+      const productId = req.params.productId;
+      const reviews = await storage.getReviews({ productId });
+      res.json(reviews);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create review via product-scoped endpoint to avoid schema mismatches
+  app.post("/api/products/:productId/reviews", authMiddleware, async (req, res) => {
+    try {
+      // @ts-ignore
+      const buyerId = req.user?.id;
+      const productId = req.params.productId;
+      const body = z.object({
+        rating: z.number().int().min(1).max(5),
+        comment: z.string().optional()
+      }).parse(req.body);
+
+      // Prevent duplicate review by same buyer
+      const existing = await storage.getReviews({ productId, buyerId });
+      if (existing && existing.length > 0) {
+        return res.status(409).json({ error: "You have already reviewed this product" });
+      }
+
+      const buyerOrders = await storage.getOrdersWithDetails({ buyerId });
+      const eligibleOrder = (buyerOrders || []).find((o: any) => {
+        const status = String(o.status || '').toLowerCase();
+        if (!(status === 'shipped' || status === 'delivered')) return false;
+        if (o.productId === productId) return true;
+        try {
+          const items = (o as any).items || [];
+          return Array.isArray(items) && items.some((it: any) => it?.productId === productId);
+        } catch {
+          return false;
+        }
+      });
+
+      if (!eligibleOrder) {
+        return res.status(403).json({ error: "You can only review products after they are shipped or delivered" });
+      }
+
+      const created = await storage.createReview({
+        productId,
+        buyerId,
+        rating: body.rating,
+        comment: body.comment,
+        orderReference: eligibleOrder.orderNumber || eligibleOrder.id,
+      } as any);
+      res.status(201).json(created);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Create review - only for authenticated buyers with shipped/delivered orders
+  app.post("/api/reviews", authMiddleware, async (req, res) => {
+    try {
+      // @ts-ignore
+      const buyerId = req.user?.id;
+      // Validate minimal review payload (buyerId injected from session)
+      const body = z.object({
+        productId: z.string(),
+        rating: z.number().int().min(1).max(5),
+        comment: z.string().optional()
+      }).parse(req.body);
+
+      if (body.buyerId && body.buyerId !== buyerId) {
+        return res.status(403).json({ error: "Cannot review as a different user" });
+      }
+
+      if (!body.productId) {
+        return res.status(400).json({ error: "productId is required" });
+      }
+
+      // Check if user already reviewed this product
+      const existing = await storage.getReviews({ productId: body.productId, buyerId });
+      if (existing && existing.length > 0) {
+        return res.status(409).json({ error: "You have already reviewed this product" });
+      }
+
+      // Verify the buyer has an order that includes this product and is shipped or delivered
+      const buyerOrders = await storage.getOrdersWithDetails({ buyerId });
+      const eligibleOrder = (buyerOrders || []).find((o: any) => {
+        const status = String(o.status || '').toLowerCase();
+        if (!(status === 'shipped' || status === 'delivered')) return false;
+        // Direct productId match or within items array
+        if (o.productId === body.productId) return true;
+        try {
+          const items = (o as any).items || [];
+          return Array.isArray(items) && items.some((it: any) => it?.productId === body.productId);
+        } catch {
+          return false;
+        }
+      });
+
+      if (!eligibleOrder) {
+        return res.status(403).json({ error: "You can only review products after they are shipped or delivered" });
+      }
+
+      // Determine supplier id (admin in this app) if not present on order
+      let supplierId: string | undefined = (eligibleOrder as any).supplierId;
+      if (!supplierId) {
+        try {
+          const [adminUser] = await db.select({ id: users.id }).from(users).where(eq(users.role as any, 'admin')).limit(1);
+          supplierId = adminUser?.id;
+        } catch {}
+      }
+
+      const reviewToCreate = {
+        ...body,
+        buyerId,
+        supplierId: supplierId || 'admin',
+        orderReference: eligibleOrder.orderNumber || eligibleOrder.id,
+      } as any;
+
+      const review = await storage.createReview(reviewToCreate);
       res.status(201).json(review);
     } catch (error: any) {
       res.status(400).json({ error: error.message });

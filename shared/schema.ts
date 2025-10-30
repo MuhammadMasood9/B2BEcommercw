@@ -354,6 +354,7 @@ export const reviews = pgTable("reviews", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   productId: varchar("product_id"),
   buyerId: varchar("buyer_id").notNull(),
+  supplierId: varchar("supplier_id").notNull(),
   rating: integer("rating").notNull(), // 1-5
   comment: text("comment"),
   orderReference: text("order_reference"),
@@ -363,6 +364,10 @@ export const reviews = pgTable("reviews", {
 export const insertReviewSchema = createInsertSchema(reviews).omit({
   id: true,
   createdAt: true,
+  // We inject buyerId from the authenticated session on the server
+  buyerId: true,
+  // Supplier is the admin in this app; set on server side
+  supplierId: true,
 });
 
 export type InsertReview = z.infer<typeof insertReviewSchema>;

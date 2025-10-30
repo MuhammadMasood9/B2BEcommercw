@@ -220,7 +220,7 @@ export default function NotificationPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Stats Cards - Only Total, Unread, and Read */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 shadow-lg hover:shadow-xl transition-shadow">
+            <Card className="bg-white  shadow-lg hover:shadow-xl transition-shadow">
               <CardContent className="p-4 text-center">
                 <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center mx-auto mb-3">
                   <Bell className="w-6 h-6 text-white" />
@@ -230,7 +230,7 @@ export default function NotificationPage() {
               </CardContent>
             </Card>
             
-            <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200 shadow-lg hover:shadow-xl transition-shadow">
+            <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow">
               <CardContent className="p-4 text-center">
                 <div className="w-12 h-12 bg-yellow-500 rounded-xl flex items-center justify-center mx-auto mb-3">
                   <AlertTriangle className="w-6 h-6 text-white" />
@@ -240,7 +240,7 @@ export default function NotificationPage() {
               </CardContent>
             </Card>
             
-            <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 shadow-lg hover:shadow-xl transition-shadow">
+            <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow">
               <CardContent className="p-4 text-center">
                 <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center mx-auto mb-3">
                   <CheckCircle className="w-6 h-6 text-white" />

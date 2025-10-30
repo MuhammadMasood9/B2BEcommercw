@@ -33,6 +33,7 @@ import {
 export default function Header() {
   const [location, setLocation] = useLocation();
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
   const { favoriteCount } = useFavorites();
   const { 
@@ -99,7 +100,7 @@ export default function Header() {
               </DropdownMenu>
             </div>
             <div className="flex items-center gap-8 text-sm">
-              <DropdownMenu>
+              {/* <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 hover:bg-white/50 dark:hover:bg-gray-800/50 px-4 py-2 rounded-lg font-medium" data-testid="button-buyer-center">
                     <span>Buyer Center</span>
@@ -129,13 +130,13 @@ export default function Header() {
                     <Link href="/favorites">Favorites</Link>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
-              </DropdownMenu>
+              </DropdownMenu> */}
               <Link href="/help" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 hover:bg-white/50 dark:hover:bg-gray-800/50 px-4 py-2 rounded-lg font-medium" data-testid="link-help">
                 Help
               </Link>
-              <Link href="/chat" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 hover:bg-white/50 dark:hover:bg-gray-800/50 px-4 py-2 rounded-lg font-medium" data-testid="link-chat">
+              {/* <Link href="/chat" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 hover:bg-white/50 dark:hover:bg-gray-800/50 px-4 py-2 rounded-lg font-medium" data-testid="link-chat">
                 Chat
-              </Link>
+              </Link> */}
               <Link href="/login" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 hover:bg-white/50 dark:hover:bg-gray-800/50 px-4 py-2 rounded-lg font-medium" data-testid="link-signin">
                 Sign In
               </Link>
@@ -161,11 +162,11 @@ export default function Header() {
             </div>
           </Link>
 
-          {/* Enhanced Search Bar */}
-          <div className="flex-1 max-w-4xl mx-6 hidden sm:block">
+          {/* Enhanced Search Bar (visible on large screens and above) */}
+          <div className="flex-1 max-w-4xl mx-6 hidden lg:block">
             <div className={`relative transition-all duration-300 ${isSearchFocused ? 'scale-[1.02]' : ''}`} ref={searchRef}>
-              <div className="relative flex items-center bg-white dark:bg-gray-800/90 border-2 border-gray-200/60 dark:border-gray-700/60 rounded-2xl overflow-hidden hover:border-blue-400/60 dark:hover:border-blue-500/60 transition-all duration-300 shadow-lg hover:shadow-xl">
-                <div className="flex items-center pl-4 pr-2">
+              <div className="relative flex items-center bg-white dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700 rounded-full overflow-hidden hover:border-blue-300/80 dark:hover:border-blue-500/60 transition-all duration-300 shadow-sm hover:shadow-md">
+                <div className="flex items-center pl-4 pr-2 text-gray-500">
                   <Search className="w-5 h-5 text-gray-400 dark:text-gray-500" />
                 </div>
                 <Input
@@ -175,7 +176,7 @@ export default function Header() {
                     setSearchQuery(e.target.value);
                     setShowSuggestions(e.target.value.length >= 2);
                   }}
-                  className="flex-1 border-0 focus-visible:ring-0 h-14 bg-transparent text-base placeholder:text-gray-500 dark:placeholder:text-gray-400 px-2 font-medium"
+                  className="flex-1 border-0 focus-visible:ring-0 h-12 bg-transparent text-[15px] placeholder:text-gray-500 dark:placeholder:text-gray-400 px-2 font-medium"
                   data-testid="input-search"
                   onFocus={() => {
                     setIsSearchFocused(true);
@@ -190,10 +191,10 @@ export default function Header() {
                     }
                   }}
                 />
-                <div className="hidden md:block h-8 w-px bg-gray-200 dark:bg-gray-700 mx-3" />
-                <div className="hidden md:block">
+                <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-2" />
+                <div className="hidden md:block pl-1">
                   <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                    <SelectTrigger className="w-40 lg:w-48 border-0 rounded-none focus:ring-0 bg-transparent hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors h-14 text-sm font-medium" data-testid="select-category">
+                    <SelectTrigger className="w-35 lg:w-40 border-0 rounded-full focus:ring-0 bg-transparent hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors h-12 text-sm font-medium px-3" data-testid="select-category">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -208,7 +209,7 @@ export default function Header() {
                 </div>
                 <Button 
                   onClick={() => performSearch(searchQuery, selectedCategory)}
-                  className="h-14 px-8 rounded-none rounded-r-2xl m-0 shadow-none bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold" 
+                  className="h-12 px-6 rounded-full m-1 ml-2 shadow-none bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold" 
                   data-testid="button-search"
                 >
                   <Search className="w-5 h-5 mr-2" />
@@ -224,9 +225,63 @@ export default function Header() {
           {/* User Actions */}
           <div className="flex items-center gap-3 flex-shrink-0">
             {/* Mobile Search Button */}
-            <Button variant="ghost" size="icon" className="sm:hidden h-11 w-11 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800">
-              <Search className="w-5 h-5" />
-            </Button>
+            <Sheet open={isMobileSearchOpen} onOpenChange={setIsMobileSearchOpen}>
+              <SheetTrigger asChild>
+                {/* Show search trigger on < lg screens (small + medium) */}
+                <Button variant="ghost" size="icon" className="lg:hidden h-11 w-11 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800">
+                  <Search className="w-5 h-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="top" className="w-full max-w-full mx-0 px-4 sm:px-6">
+                <div ref={searchRef} className="mt-6">
+                  <div className="relative flex items-center bg-white dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700 rounded-full overflow-hidden hover:border-blue-300/80 dark:hover:border-blue-500/60 transition-all duration-300 shadow-sm">
+                    <div className="flex items-center pl-3 pr-2">
+                      <Search className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                    </div>
+                    <Input
+                      placeholder="Search products, suppliers, categories..."
+                      value={searchQuery}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        setShowSuggestions(e.target.value.length >= 2);
+                      }}
+                      className="flex-1 border-0 focus-visible:ring-0 h-11 bg-transparent text-[15px] placeholder:text-gray-500 dark:placeholder:text-gray-400 px-2 font-medium"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          performSearch(searchQuery, selectedCategory);
+                          setIsMobileSearchOpen(false);
+                        }
+                      }}
+                    />
+                    <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-2" />
+                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                      <SelectTrigger className="w-40 border-0 rounded-full focus:ring-0 bg-transparent hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors h-11 text-sm font-medium px-3">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Categories</SelectItem>
+                        {categories.map((category: any) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button 
+                      onClick={() => { performSearch(searchQuery, selectedCategory); setIsMobileSearchOpen(false); }}
+                      className="h-11 px-6 rounded-full m-1 ml-2 shadow-none bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold"
+                    >
+                      <Search className="w-5 h-5 mr-2" />
+                      Search
+                    </Button>
+                  </div>
+                  {/* Suggestions in mobile search */}
+                  <div className="mt-3">
+                    <SearchSuggestions />
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
             
             {/* Favorites */}
             <Link href="/favorites" data-testid="link-favorites">
@@ -250,35 +305,46 @@ export default function Header() {
                   <Menu className="w-5 h-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-80">
-                <div className="flex flex-col space-y-4 mt-8">
-                  <Link href="/login" className="text-lg font-medium hover:text-primary transition-colors">
-                    Sign In
-                  </Link>
-                  <Link href="/signup" className="text-lg font-medium hover:text-primary transition-colors">
-                    Join Free
-                  </Link>
+              <SheetContent side="right" className="w-80 h-full overflow-y-auto">
+                <div className="flex flex-col space-y-4 mt-8 pb-8">
+                  {isAuthenticated ? (
+                    <>
+                      <div className="px-1">
+                        <div className="text-base font-semibold">{user?.firstName} {user?.lastName}</div>
+                        <div className="text-xs text-muted-foreground">{user?.email}</div>
+                      </div>
+                      <div className="border-t pt-4">
+                        {user?.role === 'admin' && (
+                          <Link href="/admin" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Admin Panel</Link>
+                        )}
+                        {user?.role === 'buyer' && (
+                          <>
+                            <Link href="/buyer/dashboard" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Buyer Dashboard</Link>
+                            <Link href="/my-orders" className="block py-3 text-lg font-medium hover:text-primary transition-colors">My Orders</Link>
+                            <Link href="/buyer/inquiries" className="block py-3 text-lg font-medium hover:text-primary transition-colors">My Inquiries</Link>
+                            <Link href="/buyer/quotations" className="block py-3 text-lg font-medium hover:text-primary transition-colors">My Quotations</Link>
+                            <Link href="/track-order" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Track Order</Link>
+                            <Link href="/buyer/rfqs" className="block py-3 text-lg font-medium hover:text-primary transition-colors">My RFQs</Link>
+                            <Link href="/rfq/create" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Create RFQ</Link>
+                          </>
+                        )}
+                        <Link href="/favorites" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Favorites</Link>
+                        <Link href="/messages" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Messages</Link>
+                        <button onClick={() => logout()} className="text-left w-full py-3 text-lg font-medium text-red-600">Sign Out</button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <Link href="/login" className="text-lg font-medium hover:text-primary transition-colors">Sign In</Link>
+                      <Link href="/signup" className="text-lg font-medium hover:text-primary transition-colors">Join Free</Link>
+                    </>
+                  )}
                   <div className="border-t pt-4">
-                    <Link href="/categories" className="block py-3 text-lg font-medium hover:text-primary transition-colors">
-                      Categories
-                    </Link>
-                    <Link href="/products" className="block py-3 text-lg font-medium hover:text-primary transition-colors">
-                      Products
-                    </Link>
-                    <Link href="/favorites" className="block py-3 text-lg font-medium hover:text-primary transition-colors">
-                      Favorites
-                    </Link>
-                  
-                    <Link href="/ready-to-ship" className="block py-3 text-lg font-medium hover:text-primary transition-colors">
-                      Ready to Ship
-                    </Link>
-                  
-                    <Link href="/buyer-protection" className="block py-3 text-lg font-medium hover:text-primary transition-colors">
-                      Buyer Protection
-                    </Link>
-                    <Link href="/chat" className="block py-3 text-lg font-medium hover:text-primary transition-colors">
-                      Chat Support
-                    </Link>
+                    <Link href="/categories" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Categories</Link>
+                    <Link href="/products" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Products</Link>
+                    {/* <Link href="/ready-to-ship" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Ready to Ship</Link> */}
+                    <Link href="/buyer-protection" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Buyer Protection</Link>
+                    <Link href="/chat" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Chat Support</Link>
                   </div>
                 </div>
               </SheetContent>
@@ -438,7 +504,7 @@ export default function Header() {
             >
               Products
             </Link>
-            <Link 
+            {/* <Link 
               href="/ready-to-ship" 
               className={`text-sm font-semibold transition-all duration-200 hover:text-blue-600 dark:hover:text-blue-400 relative py-4 px-6 rounded-xl ${
                 isActivePath("/ready-to-ship") 
@@ -448,7 +514,7 @@ export default function Header() {
               data-testid="link-ready-ship"
             >
               Ready to Ship
-            </Link>
+            </Link> */}
             <Link 
               href="/buyer-protection" 
               className={`text-sm font-semibold transition-all duration-200 hover:text-blue-600 dark:hover:text-blue-400 relative py-4 px-6 rounded-xl ${

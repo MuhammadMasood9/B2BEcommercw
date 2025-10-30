@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useRoute } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
@@ -71,6 +71,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProduct } from "@/contexts/ProductContext";
 
 export default function ProductDetail() {
+  const queryClient = useQueryClient();
   const { setLoading } = useLoading();
   const { isFavorite, toggleFavorite } = useFavorites();
   const { addToCart } = useCart();
@@ -83,6 +84,8 @@ export default function ProductDetail() {
   const [selectedImage, setSelectedImage] = useState(0);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [isInquiryDialogOpen, setIsInquiryDialogOpen] = useState(false);
+  const [reviewRating, setReviewRating] = useState<number>(5);
+  const [reviewComment, setReviewComment] = useState<string>("");
 
   // Fetch product from API
   const { data: product, isLoading: isProductLoading } = useQuery<Product>({
@@ -114,6 +117,27 @@ export default function ProductDetail() {
       }
     },
   });
+
+  // Fetch product reviews
+  const { data: productReviews = [], isLoading: isReviewsLoading } = useQuery<any[]>({
+    queryKey: ["/api/products", productId, "reviews"],
+    queryFn: async () => {
+      const res = await fetch(`/api/products/${productId}/reviews`, { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Derived review stats
+  const totalReviews = Array.isArray(productReviews) ? productReviews.length : 0;
+  const averageRating = totalReviews > 0 ? (
+    productReviews.reduce((sum: number, r: any) => sum + Number(r.rating || 0), 0) / totalReviews
+  ) : 0;
+  const ratingBuckets = [5,4,3,2,1].map(star => ({
+    star,
+    count: productReviews.filter((r: any) => Number(r.rating) === star).length
+  }));
 
   useEffect(() => {
     if (product) {
@@ -294,6 +318,29 @@ export default function ProductDetail() {
       title: "Email Admin",
       description: "Opening email client to contact admin@globaltradehub.com",
     });
+  };
+
+  const submitReview = async () => {
+    if (!user) {
+      toast({ title: "Please Sign In", description: "Login to leave a review.", variant: "destructive" });
+      return;
+    }
+    try {
+      const res = await fetch(`/api/reviews`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ productId, rating: reviewRating, comment: reviewComment })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Failed to submit review');
+      setReviewComment("");
+      setReviewRating(5);
+      queryClient.invalidateQueries({ queryKey: ["/api/products", productId, "reviews"] });
+      toast({ title: "Review submitted", description: "Thanks for your feedback!" });
+    } catch (e: any) {
+      toast({ title: "Cannot submit review", description: e.message, variant: "destructive" });
+    }
   };
 
   const handleAddToCart = () => {
@@ -906,7 +953,7 @@ export default function ProductDetail() {
               </Card>
 
               {/* Request for Quotation Section */}
-              <Card className="bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200 shadow-xl">
+              <Card className="shadow-xl">
                 <CardHeader className="pb-4">
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <FileText className="w-5 h-5 text-purple-600" />
@@ -922,7 +969,7 @@ export default function ProductDetail() {
                     
                     <Button 
                       asChild
-                      className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                       size="lg"
                     >
                       <Link href={`/rfq/create?productId=${productId}&productName=${encodeURIComponent(product.name)}`}>
@@ -1086,8 +1133,111 @@ export default function ProductDetail() {
         />
       )}
 
+      {/* Reviews Section */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 mb-12">
+        <Card className="shadow-xl">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Star className="w-5 h-5 text-yellow-500" />
+              Customer Reviews
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Summary */}
+              <div className="lg:col-span-1">
+                <div className="rounded-2xl border border-gray-100 p-6 bg-gradient-to-br from-gray-50 to-white">
+                  <div className="text-4xl font-bold text-gray-900 mb-1">{averageRating.toFixed(1)}</div>
+                  <div className="flex items-center gap-1 text-yellow-500 mb-2">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star key={i} className={`w-5 h-5 ${i < Math.round(averageRating) ? 'fill-current' : ''}`} />
+                    ))}
+                  </div>
+                  <div className="text-sm text-gray-600">Based on {totalReviews} review{totalReviews !== 1 ? 's' : ''}</div>
+                  <div className="mt-4 space-y-2">
+                    {ratingBuckets.map(b => {
+                      const pct = totalReviews ? Math.round((b.count / totalReviews) * 100) : 0;
+                      return (
+                        <div key={b.star} className="flex items-center gap-2">
+                          <span className="w-8 text-xs text-gray-700">{b.star}★</span>
+                          <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-yellow-400" style={{ width: pct + '%' }} />
+                          </div>
+                          <span className="w-10 text-xs text-gray-500 text-right">{pct}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Reviews list + form */}
+              <div className="lg:col-span-2 space-y-8">
+                {/* List reviews */}
+                <div className="space-y-4">
+                  {isReviewsLoading ? (
+                    <div className="text-sm text-gray-500">Loading reviews...</div>
+                  ) : productReviews.length === 0 ? (
+                    <div className="text-sm text-gray-500">No reviews yet. Be the first to review this product.</div>
+                  ) : (
+                    productReviews.slice(0, 6).map((r: any) => (
+                      <div key={r.id} className="border border-gray-100 rounded-2xl p-4 bg-white/60">
+                        <div className="flex items-start gap-3">
+                          <div className="h-9 w-9 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-semibold">
+                            {(r.buyerName?.[0] || String(r.buyerId || '?').slice(0,1)).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-semibold text-gray-900">{r.buyerName || 'Verified Buyer'}</span>
+                                {r.orderReference && (
+                                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200">Order #{String(r.orderReference).slice(-6)}</span>
+                                )}
+                              </div>
+                              <div className="text-xs text-gray-500 whitespace-nowrap">{new Date(r.createdAt).toLocaleDateString()}</div>
+                            </div>
+                            <div className="flex items-center gap-1 text-yellow-500 mt-1">
+                              {Array.from({ length: 5 }).map((_, i) => (
+                                <Star key={i} className={`w-4 h-4 ${i < Number(r.rating || 0) ? 'fill-current' : ''}`} />
+                              ))}
+                            </div>
+                            {r.comment && <p className={`text-sm text-gray-700 mt-2 whitespace-pre-wrap ${r.comment.length>180?'leading-6':''}`}>{r.comment}</p>}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Add review */}
+                <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-5">
+                  <h4 className="font-semibold text-gray-900 mb-3">Write a review</h4>
+                  <div className="flex items-center gap-2 mb-3">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <button key={i} onClick={() => setReviewRating(i + 1)} className="focus:outline-none">
+                        <Star className={`w-6 h-6 ${i < reviewRating ? 'text-yellow-500 fill-current' : 'text-gray-300'}`} />
+                      </button>
+                    ))}
+                  </div>
+                  <Textarea
+                    value={reviewComment}
+                    onChange={(e) => setReviewComment(e.target.value)}
+                    placeholder="Share your experience with this product..."
+                    className="min-h-[90px] bg-white"
+                  />
+                  <div className="mt-3">
+                    <Button onClick={submitReview} className="bg-blue-600 hover:bg-blue-700 text-white">Submit Review</Button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">Only buyers with shipped or delivered orders can submit a review. We’ll verify your order automatically.</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <Footer />
-      
+
       {/* Floating Action Buttons for Product Chat */}
       <FloatingActionButtons 
         // unreadCount={0} 

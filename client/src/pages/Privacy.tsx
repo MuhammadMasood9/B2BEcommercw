@@ -152,7 +152,7 @@ export default function Privacy() {
       </section>
 
       <main className="flex-1">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           {/* Introduction */}
           <Card className="mb-8 bg-gradient-to-r from-green-50 to-blue-50 border-green-100">
             <CardContent className="p-6">

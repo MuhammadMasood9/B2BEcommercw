@@ -124,7 +124,7 @@ export default function Terms() {
       </section>
 
       <main className="flex-1">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           {/* Main Sections */}
           <div className="space-y-6 mb-12">
             {sections.map((section, index) => {

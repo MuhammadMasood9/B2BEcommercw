@@ -233,50 +233,61 @@ export default function AdminBulkUpload() {
         throw new Error('No worksheet found in Excel file');
       }
       
-      // Extract images from the workbook
-      const extractedImages: { [key: string]: string } = {};
-      
-      // Get all images from the workbook with error handling
-      let images: any[] = [];
-      try {
-        // Try to access media array safely
-        if (workbook.model && workbook.model.media && Array.isArray(workbook.model.media)) {
-          images = workbook.model.media;
-        }
-      } catch (error) {
-        console.warn('Could not access workbook media (images may not be available):', error);
-        images = [];
-      }
-      
-      console.log(`Found ${images.length} images in workbook`);
-      
-      // Process each image with additional safety checks
-      images.forEach((image: any, imageIndex: number) => {
+      // Helper to convert Excel image to dataURL
+      const toDataUrl = (img: any): string | null => {
         try {
-          // Check if image has valid buffer
-          if (!image || !image.buffer) {
-            console.warn(`Image ${imageIndex + 1} has no valid buffer data`);
-            return;
-          }
-          
-          // Convert image buffer to base64 using browser-compatible method
-          const uint8Array = new Uint8Array(image.buffer);
+          const ext = (img.extension || 'jpeg').toLowerCase();
+          const mimeMap: any = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp' };
+          const mime = mimeMap[ext] || 'image/jpeg';
+          const buf: ArrayBuffer = img.buffer as ArrayBuffer;
+          if (!buf) return null;
+          const uint8Array = new Uint8Array(buf);
           let binary = '';
-          for (let i = 0; i < uint8Array.length; i++) {
-            binary += String.fromCharCode(uint8Array[i]);
-          }
+          for (let i = 0; i < uint8Array.length; i++) binary += String.fromCharCode(uint8Array[i]);
           const base64 = btoa(binary);
-          const mimeType = image.type || 'image/jpeg';
-          const imageData = `data:${mimeType};base64,${base64}`;
-          
-          // Store image with a unique key
-          const imageKey = `image_${imageIndex}`;
-          extractedImages[imageKey] = imageData;
-          console.log(`Extracted image ${imageIndex + 1}: ${imageKey}`);
-        } catch (error) {
-          console.warn(`Failed to extract image ${imageIndex + 1}:`, error);
+          return `data:${mime};base64,${base64}`;
+        } catch {
+          return null;
         }
-      });
+      };
+
+      // Map images to their worksheet rows via anchors if available
+      const imagesByRow: Record<number, string[]> = {};
+      try {
+        const wsAny: any = worksheet as any;
+        const getImagesFn = wsAny.getImages ? wsAny.getImages.bind(wsAny) : null;
+        const sheetImages = getImagesFn ? getImagesFn() : [];
+        if (Array.isArray(sheetImages)) {
+          sheetImages.forEach((imgRef: any, idx: number) => {
+            try {
+              const imageId = imgRef.imageId ?? imgRef.image ?? imgRef.id;
+              // Resolve row from anchor
+              const tl = imgRef.range?.tl || imgRef.range?.nativeTl || imgRef.range; // ExcelJS variants
+              const row0 = (tl?.nativeRow ?? tl?.row ?? 0) as number; // zero-based likely
+              const rowNumber = Math.max(1, row0 + 1); // to 1-based
+              const wbAny: any = workbook as any;
+              let img = wbAny.getImage ? wbAny.getImage(imageId) : null;
+              if (!img && workbook && (workbook as any).model && Array.isArray((workbook as any).model.media)) {
+                // Fallback to media array index
+                const mediaArr = (workbook as any).model.media as any[];
+                img = mediaArr[imageId - 1] || mediaArr[idx];
+                if (img && !img.extension && img.type) {
+                  img.extension = (img.type.split('/')[1] || 'jpeg');
+                }
+              }
+              const dataUrl = img ? toDataUrl(img) : null;
+              if (dataUrl) {
+                if (!imagesByRow[rowNumber]) imagesByRow[rowNumber] = [];
+                imagesByRow[rowNumber].push(dataUrl);
+              }
+            } catch (e) {
+              console.warn('Failed mapping image to row:', e);
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('Worksheet image mapping not available:', e);
+      }
       
       // Convert worksheet to JSON
       const jsonData: any[] = [];
@@ -346,47 +357,15 @@ export default function AdminBulkUpload() {
           }
         }
         
-        // Process images - distribute extracted images more intelligently
+        // Images: prefer images anchored to this row; else use filename columns
         const imageData: string[] = [];
+        const rowNumber = row.__rowNum__ || (index + 2); // excel row, default header+index
+        const anchored = imagesByRow[rowNumber] || [];
+        anchored.forEach((d) => imageData.push(d));
+
+        // Expected filenames from columns, used later to upload real files
         const imageFields = ['mainImage', 'image1', 'image2', 'image3', 'image4', 'image5'];
-        
-        console.log(`Image fields for product ${index + 1}:`, imageFields.map(field => ({ field, value: row[field], type: typeof row[field] })));
-        
-        // Get all available extracted images
-        const availableImages = Object.values(extractedImages).filter(img => img);
-        console.log(`Available extracted images: ${availableImages.length}`);
-        
-        // Distribute images more intelligently based on product index
-        // Each product gets at least 1 image, and we distribute the rest
-        const totalImages = availableImages.length;
-        const totalProducts = jsonData.length;
-        
-        if (totalImages > 0) {
-          // Calculate how many images this product should get
-          let imagesForThisProduct = 1; // Each product gets at least 1 image
-          
-          // If we have more images than products, distribute the extra images
-          if (totalImages > totalProducts) {
-            const extraImages = totalImages - totalProducts;
-            // Give extra images to products in order
-            if (index < extraImages) {
-              imagesForThisProduct = 2; // This product gets 2 images
-            }
-          }
-          
-          // Assign images to this product
-          const startIndex = index * imagesForThisProduct;
-          const endIndex = Math.min(startIndex + imagesForThisProduct, totalImages);
-          
-          for (let i = startIndex; i < endIndex; i++) {
-            if (availableImages[i] && !imageData.includes(availableImages[i])) {
-              imageData.push(availableImages[i]);
-              console.log(`Assigned image ${i + 1} to product ${index + 1} (${row.name})`);
-            }
-          }
-        }
-        
-        console.log(`Product ${index + 1} (${row.name}) got ${imageData.length} images`);
+        const imageFilenames = imageFields.map((f) => (row[f] || '').toString().trim()).filter(Boolean);
         
         return {
           id: index + 1,
@@ -415,8 +394,9 @@ export default function AdminBulkUpload() {
           hasTradeAssurance: row.hasTradeAssurance === 'TRUE' || row.hasTradeAssurance === true,
           specifications,
           priceTiers,
-          images: imageData, // Store actual image data
-          imageData // Keep track of extracted image data
+          images: imageData, // Store actual image data for preview
+          imageData, // Keep for conversion later
+          imageFilenames
         };
       });
       

@@ -1,185 +1,66 @@
-import { 
-  LayoutDashboard, 
-  Package, 
-  FolderTree, 
-  Users, 
-  ShoppingCart,
-  Upload,
-  Settings,
-  UserCog,
-  Shield,
-  BarChart3,
-  UserPlus,
-  FileSpreadsheet,
-  UserCheck,
-  MessageSquare,
-  FileText,
-  Bell,
-  Activity,
-  Store,
-  Clock,
-  DollarSign,
-  CreditCard
-} from "lucide-react";
+import React from "react";
 import {
   Sidebar,
   SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
   SidebarHeader,
 } from "@/components/ui/sidebar";
-import { Link, useLocation } from "wouter";
-
-const adminMenuItems = [
-  {
-    title: "Dashboard",
-    url: "/admin",
-    icon: LayoutDashboard,
-  },
-  {
-    title: "Products",
-    url: "/admin/products",
-    icon: Package,
-  },
-  {
-    title: "Bulk Upload",
-    url: "/admin/bulk-upload",
-    icon: Upload,
-  },
-  {
-    title: "Categories",
-    url: "/admin/categories",
-    icon: FolderTree,
-  },
-  {
-    title: "Customer Inquiries",
-    url: "/admin/inquiries",
-    icon: MessageSquare,
-  },
-  {
-    title: "Quotations",
-    url: "/admin/quotations",
-    icon: FileSpreadsheet,
-  },
-  {
-    title: "RFQs",
-    url: "/admin/rfqs",
-    icon: FileText,
-  },
-  {
-    title: "Orders",
-    url: "/admin/orders",
-    icon: ShoppingCart,
-  },
-  // {
-  //   title: "Order Management",
-  //   url: "/admin/order-management",
-  //   icon: ShoppingCart,
-  // },
-  // {
-  //   title: "Customers",
-  //   url: "/admin/customers",
-  //   icon: Users,
-  // },
-  {
-    title: "Suppliers",
-    url: "/admin/suppliers",
-    icon: Store,
-  },
-  {
-    title: "Pending Approvals",
-    url: "/admin/suppliers/pending",
-    icon: Clock,
-  },
-  {
-    title: "Commission Management",
-    url: "/admin/commission",
-    icon: DollarSign,
-  },
-  {
-    title: "Payout Management",
-    url: "/admin/payouts",
-    icon: CreditCard,
-  },
-  {
-    title: "Users",
-    url: "/admin/users",
-    icon: UserCog,
-    children: [
-      {
-        title: "All Users",
-        url: "/admin/users",
-        icon: Users,
-      },
-      {
-        title: "Add User",
-        url: "/admin/users/add",
-        icon: UserPlus,
-      },
-      {
-        title: "Import/Export",
-        url: "/admin/users/import-export",
-        icon: FileSpreadsheet,
-      },
-    ]
-  },
-  {
-    title: "Reports",
-    url: "/admin/reports",
-    icon: BarChart3,
-  },
-  {
-    title: "Chat Management",
-    url: "/admin/chat",
-    icon: MessageSquare,
-  },
-  {
-    title: "Notifications",
-    url: "/admin/notifications",
-    icon: Bell,
-  },
-  {
-    title: "Activity Log",
-    url: "/admin/activity-log",
-    icon: Activity,
-  },
-  {
-    title: "Settings",
-    url: "/admin/settings",
-    icon: Settings,
-  },
-];
+import { AdminNavigation } from "@/components/admin/AdminNavigation";
+import { Button } from "@/components/ui/button";
+import { Settings, Minimize2, Maximize2 } from "lucide-react";
+import { useAdminNavigation } from "@/hooks/useAdminNavigation";
+import { cn } from "@/lib/utils";
 
 export function AdminSidebar() {
-  const [location] = useLocation();
+  const { 
+    navigationState, 
+    toggleCompactMode, 
+    toggleSidebarCollapsed 
+  } = useAdminNavigation();
   
   return (
-    <Sidebar>
-      <SidebarHeader className="p-4">
-        <h2 className="text-lg font-semibold">Admin Panel</h2>
+    <Sidebar 
+      className={cn(
+        "transition-all duration-300",
+        navigationState.sidebarCollapsed && "w-16"
+      )}
+    >
+      <SidebarHeader className="p-4 border-b">
+        <div className="flex items-center justify-between">
+          {!navigationState.sidebarCollapsed && (
+            <h2 className="text-lg font-semibold">Admin Panel</h2>
+          )}
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              onClick={toggleCompactMode}
+              title={navigationState.compactMode ? "Expand view" : "Compact view"}
+            >
+              {navigationState.compactMode ? (
+                <Maximize2 className="h-3 w-3" />
+              ) : (
+                <Minimize2 className="h-3 w-3" />
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              onClick={toggleSidebarCollapsed}
+              title={navigationState.sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              <Settings className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
       </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Management</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {adminMenuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={location === item.url}>
-                    <Link href={item.url} data-testid={`link-admin-${item.title.toLowerCase().replace(' ', '-')}`}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+      
+      <SidebarContent className="p-0">
+        <AdminNavigation 
+          compact={navigationState.compactMode || navigationState.sidebarCollapsed}
+          className="h-full"
+        />
       </SidebarContent>
     </Sidebar>
   );

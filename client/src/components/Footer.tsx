@@ -47,8 +47,19 @@ export default function Footer() {
             <ul className="space-y-4 text-sm">
               <li><Link href="/products" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 font-medium" data-testid="link-footer-products">Products</Link></li>
               <li><Link href="/categories" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 font-medium" data-testid="link-footer-categories">Categories</Link></li>
+              <li><Link href="/suppliers" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 font-medium" data-testid="link-footer-suppliers">Suppliers</Link></li>
               <li><Link href="/rfq/create" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 font-medium" data-testid="link-footer-rfq">Post RFQ</Link></li>
               <li><Link href="/buyer-protection" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 font-medium" data-testid="link-footer-protection">Buyer Protection</Link></li>
+            </ul>
+          </div>
+          
+          <div>
+            <h4 className="font-bold mb-6 text-lg text-gray-900 dark:text-white">For Suppliers</h4>
+            <ul className="space-y-4 text-sm">
+              <li><Link href="/supplier/signup" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 font-medium" data-testid="link-footer-supplier-signup">Sell on Platform</Link></li>
+              <li><Link href="/supplier/dashboard" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 font-medium" data-testid="link-footer-supplier-dashboard">Supplier Dashboard</Link></li>
+              <li><Link href="/help" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 font-medium" data-testid="link-footer-supplier-help">Supplier Resources</Link></li>
+              <li><Link href="/get-verified" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200 font-medium" data-testid="link-footer-verification">Get Verified</Link></li>
             </ul>
           </div>
           

@@ -42,6 +42,7 @@ import Privacy from "@/pages/Privacy";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
 import SupplierSignup from "@/pages/SupplierSignup";
+import SupplierDashboard from "@/pages/SupplierDashboard";
 import StorePage from "@/pages/StorePage";
 import SupplierDirectory from "@/pages/SupplierDirectory";
 import MyOrders from "@/pages/MyOrders";
@@ -78,6 +79,7 @@ import OrderDetail from "@/pages/buyer/OrderDetail";
 import AdminUsers from "@/pages/admin/AdminUsers";
 import AdminUserDetails from "@/pages/admin/AdminUserDetails";
 import AdminUserImportExport from "@/pages/admin/AdminUserImportExport";
+import AdminContentModeration from "@/pages/admin/AdminContentModeration";
 import AdminSettings from "@/pages/admin/AdminSettings";
 import AdminReports from "@/pages/admin/AdminReports";
 import AdminChat from "@/pages/admin/AdminChat";
@@ -87,6 +89,10 @@ import AdminSuppliers from "@/pages/admin/AdminSuppliers";
 import AdminSuppliersPending from "@/pages/admin/AdminSuppliersPending";
 import AdminCommissionManagement from "@/pages/admin/AdminCommissionManagement";
 import AdminPayoutManagement from "@/pages/admin/AdminPayoutManagement";
+import AdminMonitoringDashboard from "@/pages/admin/AdminMonitoringDashboard";
+import AdminVerification from "@/pages/admin/AdminVerification";
+import AdminAccessManagement from "@/pages/admin/AdminAccessManagement";
+import AdminCompliance from "@/pages/admin/AdminCompliance";
 import AdminLogin from "@/pages/admin/AdminLogin";
 import GlobalChatButton from "@/components/GlobalChatButton";
 import FloatingActionButtons from "@/components/FloatingActionButtons";
@@ -183,6 +189,11 @@ function AdminRouter() {
           <AdminUserImportExport />
         </ProtectedRoute>
       </Route>
+      <Route path="/admin/content-moderation">
+        <ProtectedRoute requiredRole="admin">
+          <AdminContentModeration />
+        </ProtectedRoute>
+      </Route>
       <Route path="/admin/settings">
         <ProtectedRoute requiredRole="admin">
           <AdminSettings />
@@ -226,6 +237,26 @@ function AdminRouter() {
       <Route path="/admin/payouts">
         <ProtectedRoute requiredRole="admin">
           <AdminPayoutManagement />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/monitoring">
+        <ProtectedRoute requiredRole="admin">
+          <AdminMonitoringDashboard />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/verification">
+        <ProtectedRoute requiredRole="admin">
+          <AdminVerification />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/access-management">
+        <ProtectedRoute requiredRole="admin">
+          <AdminAccessManagement />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/compliance">
+        <ProtectedRoute requiredRole="admin">
+          <AdminCompliance />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />
@@ -306,6 +337,11 @@ function PublicRouter() {
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
       <Route path="/supplier/signup" component={SupplierSignup} />
+      <Route path="/supplier/dashboard">
+        <ProtectedRoute requiredRole="supplier">
+          <SupplierDashboard />
+        </ProtectedRoute>
+      </Route>
       <Route path="/stores/:slug" component={StorePage} />
       <Route path="/suppliers" component={SupplierDirectory} />
       <Route path="/my-orders">

@@ -6,6 +6,9 @@ import path from 'path';
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { passport } from "./auth";
+import './alertScheduler'; // Initialize alert scheduler
+import './securityScheduler'; // Initialize security monitoring scheduler
+import './notificationProcessor'; // Initialize notification processor
 
 const app = express();
 

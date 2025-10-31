@@ -34,6 +34,7 @@ import {
   BarChart3
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { VerificationBadge } from "@/components/ui/VerificationBadge";
 
 interface StoreData {
   id: string;
@@ -117,46 +118,17 @@ export default function StorePage() {
   const fetchStoreData = async (storeSlug: string) => {
     setIsLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // const response = await fetch(`/api/suppliers/store/${storeSlug}`);
-      // const data = await response.json();
+      // Fetch store data from API
+      const response = await fetch(`/api/suppliers/store/${storeSlug}`);
+      if (!response.ok) {
+        throw new Error('Store not found');
+      }
+      const data = await response.json();
       
-      // Mock data for now
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const mockStore: StoreData = {
-        id: "1",
-        businessName: "TechWorld Electronics Co., Ltd.",
-        storeName: "TechWorld Electronics",
-        storeSlug: storeSlug,
-        storeDescription: "Leading manufacturer of high-quality electronics with 15+ years of experience in global markets. We specialize in consumer electronics, smart devices, and innovative technology solutions for businesses worldwide.",
-        storeLogo: "/api/placeholder/120/120",
-        storeBanner: "/api/placeholder/1200/300",
-        businessType: "manufacturer",
-        contactPerson: "John Smith",
-        phone: "+86-755-1234567",
-        whatsapp: "+86-138-0013-8000",
-        wechat: "techworld_sales",
-        address: "Building A, Tech Park, Nanshan District",
-        city: "Shenzhen",
-        country: "China",
-        website: "https://techworld-electronics.com",
-        yearEstablished: 2008,
-        employees: "51-100",
-        mainProducts: ["Wireless Headphones", "Bluetooth Speakers", "Smart Watches", "Phone Accessories"],
-        exportMarkets: ["North America", "Europe", "Southeast Asia", "Middle East"],
-        verificationLevel: "business",
-        isVerified: true,
-        membershipTier: "gold",
-        rating: 4.8,
-        totalReviews: 247,
-        responseRate: 95,
-        responseTime: "< 2 hours",
-        totalProducts: 124,
-        storeViews: 15420,
-        followers: 892,
-        createdAt: "2008-03-15T00:00:00Z"
-      };
+      setStoreData(data.store);
+      setProducts(data.products || []);
+      setReviews(data.reviews || []);
+      setIsFollowing(data.isFollowing || false);
 
       const mockProducts: Product[] = [
         {
@@ -256,21 +228,15 @@ export default function StorePage() {
   };
 
   const renderVerificationBadge = () => {
-    if (!storeData?.isVerified) return null;
-    
-    const badgeConfig = {
-      basic: { label: "Verified", color: "bg-blue-100 text-blue-800" },
-      business: { label: "Business Verified", color: "bg-green-100 text-green-800" },
-      premium: { label: "Premium Verified", color: "bg-purple-100 text-purple-800" },
-      trade_assurance: { label: "Trade Assurance", color: "bg-gold-100 text-gold-800" }
-    };
-    
-    const config = badgeConfig[storeData.verificationLevel as keyof typeof badgeConfig] || badgeConfig.basic;
+    if (!storeData) return null;
     
     return (
-      <Badge className={`${config.color} border-0`}>
-        {config.label}
-      </Badge>
+      <VerificationBadge 
+        level={storeData.verificationLevel} 
+        isVerified={storeData.isVerified}
+        size="md"
+        className="text-white border-white/30"
+      />
     );
   };
 

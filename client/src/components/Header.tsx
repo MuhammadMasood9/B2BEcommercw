@@ -36,14 +36,14 @@ export default function Header() {
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
   const { favoriteCount } = useFavorites();
-  const { 
-    searchQuery, 
-    setSearchQuery, 
+  const {
+    searchQuery,
+    setSearchQuery,
     selectedCategory,
     setSelectedCategory,
-    showSuggestions, 
+    showSuggestions,
     setShowSuggestions,
-    performSearch 
+    performSearch
   } = useSearch();
   const searchRef = useRef<HTMLDivElement>(null);
 
@@ -210,16 +210,16 @@ export default function Header() {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button 
+                <Button
                   onClick={() => performSearch(searchQuery, selectedCategory)}
-                  className="h-12 px-6 rounded-full m-1 ml-2 shadow-none bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold" 
+                  className="h-12 px-6 rounded-full m-1 ml-2 shadow-none bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold"
                   data-testid="button-search"
                 >
                   <Search className="w-5 h-5 mr-2" />
                   <span className="hidden sm:inline">Search</span>
                 </Button>
               </div>
-              
+
               {/* Search Suggestions */}
               <SearchSuggestions />
             </div>
@@ -270,7 +270,7 @@ export default function Header() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button 
+                    <Button
                       onClick={() => { performSearch(searchQuery, selectedCategory); setIsMobileSearchOpen(false); }}
                       className="h-11 px-6 rounded-full m-1 ml-2 shadow-none bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold"
                     >
@@ -285,7 +285,7 @@ export default function Header() {
                 </div>
               </SheetContent>
             </Sheet>
-            
+
             {/* Favorites */}
             <Link href="/favorites" data-testid="link-favorites">
               <Button variant="ghost" size="icon" className="relative h-11 w-11 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200">
@@ -331,6 +331,15 @@ export default function Header() {
                             <Link href="/rfq/create" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Create RFQ</Link>
                           </>
                         )}
+                        {user?.role === 'supplier' && (
+                          <>
+                            <Link href="/supplier/dashboard" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Supplier Dashboard</Link>
+                            <Link href="/supplier/dashboard" className="block py-3 text-lg font-medium hover:text-primary transition-colors">My Products</Link>
+                            <Link href="/supplier/dashboard" className="block py-3 text-lg font-medium hover:text-primary transition-colors">My Orders</Link>
+                            <Link href="/supplier/dashboard" className="block py-3 text-lg font-medium hover:text-primary transition-colors">My Store</Link>
+                            <Link href="/supplier/dashboard" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Analytics</Link>
+                          </>
+                        )}
                         <Link href="/favorites" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Favorites</Link>
                         <Link href="/messages" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Messages</Link>
                         <button onClick={() => logout()} className="text-left w-full py-3 text-lg font-medium text-red-600">Sign Out</button>
@@ -346,6 +355,7 @@ export default function Header() {
                   <div className="border-t pt-4">
                     <Link href="/categories" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Categories</Link>
                     <Link href="/products" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Products</Link>
+                    <Link href="/suppliers" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Suppliers</Link>
                     {/* <Link href="/ready-to-ship" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Ready to Ship</Link> */}
                     <Link href="/buyer-protection" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Buyer Protection</Link>
                     <Link href="/chat" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Chat Support</Link>
@@ -376,7 +386,7 @@ export default function Header() {
                     {user?.email}
                   </div>
                   <DropdownMenuSeparator />
-                  
+
                   {user?.role === 'admin' && (
                     <>
                       <Link href="/admin">
@@ -388,7 +398,7 @@ export default function Header() {
                       <DropdownMenuSeparator />
                     </>
                   )}
-                  
+
                   {user?.role === 'buyer' && (
                     <>
                       <Link href="/buyer/dashboard">
@@ -435,8 +445,36 @@ export default function Header() {
                       </Link>
                     </>
                   )}
-                  
-                  
+
+                  {user?.role === 'supplier' && (
+                    <>
+                      <Link href="/supplier/dashboard">
+                        <DropdownMenuItem>
+                          <User className="w-4 h-4 mr-2" />
+                          Supplier Dashboard
+                        </DropdownMenuItem>
+                      </Link>
+                      <Link href="/supplier/dashboard">
+                        <DropdownMenuItem>
+                          <Package className="w-4 h-4 mr-2" />
+                          My Products
+                        </DropdownMenuItem>
+                      </Link>
+                      <Link href="/supplier/dashboard">
+                        <DropdownMenuItem>
+                          <FileText className="w-4 h-4 mr-2" />
+                          My Orders
+                        </DropdownMenuItem>
+                      </Link>
+                      <Link href="/supplier/dashboard">
+                        <DropdownMenuItem>
+                          <Settings className="w-4 h-4 mr-2" />
+                          My Store
+                        </DropdownMenuItem>
+                      </Link>
+                    </>
+                  )}
+
                   <Link href="/favorites">
                     <DropdownMenuItem>
                       <Heart className="w-4 h-4 mr-2" />
@@ -450,7 +488,7 @@ export default function Header() {
                     </DropdownMenuItem>
                   </Link>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onClick={() => logout()}
                     className="text-red-600"
                   >
@@ -486,27 +524,35 @@ export default function Header() {
       <div className="bg-gradient-to-r from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 border-t border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="hidden lg:flex items-center gap-2 h-14">
-            <Link 
-              href="/categories" 
-              className={`text-sm font-semibold transition-all duration-200 hover:text-blue-600 dark:hover:text-blue-400 relative py-4 px-6 rounded-xl ${
-                isActivePath("/categories") 
-                  ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20" 
-                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50"
-              }`}
+            <Link
+              href="/categories"
+              className={`text-sm font-semibold transition-all duration-200 hover:text-blue-600 dark:hover:text-blue-400 relative py-4 px-6 rounded-xl ${isActivePath("/categories")
+                ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
+                : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50"
+                }`}
               data-testid="link-categories"
             >
               Categories
             </Link>
-            <Link 
-              href="/products" 
-              className={`text-sm font-semibold transition-all duration-200 hover:text-blue-600 dark:hover:text-blue-400 relative py-4 px-6 rounded-xl ${
-                isActivePath("/products") 
-                  ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20" 
-                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50"
-              }`}
+            <Link
+              href="/products"
+              className={`text-sm font-semibold transition-all duration-200 hover:text-blue-600 dark:hover:text-blue-400 relative py-4 px-6 rounded-xl ${isActivePath("/products")
+                ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
+                : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50"
+                }`}
               data-testid="link-products"
             >
               Products
+            </Link>
+            <Link
+              href="/suppliers"
+              className={`text-sm font-semibold transition-all duration-200 hover:text-blue-600 dark:hover:text-blue-400 relative py-4 px-6 rounded-xl ${isActivePath("/suppliers")
+                ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
+                : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50"
+                }`}
+              data-testid="link-suppliers"
+            >
+              Suppliers
             </Link>
             {/* <Link 
               href="/ready-to-ship" 
@@ -519,13 +565,12 @@ export default function Header() {
             >
               Ready to Ship
             </Link> */}
-            <Link 
-              href="/buyer-protection" 
-              className={`text-sm font-semibold transition-all duration-200 hover:text-blue-600 dark:hover:text-blue-400 relative py-4 px-6 rounded-xl ${
-                isActivePath("/buyer-protection") 
-                  ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20" 
-                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50"
-              }`}
+            <Link
+              href="/buyer-protection"
+              className={`text-sm font-semibold transition-all duration-200 hover:text-blue-600 dark:hover:text-blue-400 relative py-4 px-6 rounded-xl ${isActivePath("/buyer-protection")
+                ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
+                : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50"
+                }`}
               data-testid="link-buyer-protection"
             >
               Buyer Protection

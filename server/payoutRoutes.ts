@@ -44,6 +44,173 @@ router.get("/admin/summary", requireAuth, requireRole(["admin"]), async (req, re
 });
 
 /**
+ * Advanced automated payout processing endpoint
+ */
+router.post("/admin/financial/payouts/automated-processing", requireAuth, requireRole(["admin"]), async (req, res) => {
+  try {
+    const { supplierIds, approveAll } = req.body;
+    
+    // Create payout batch
+    const batch = await payoutService.createPayoutBatch(
+      supplierIds,
+      req.user!.id
+    );
+    
+    if (!batch) {
+      return res.status(400).json({ error: "No eligible suppliers for payout" });
+    }
+    
+    // If approveAll is true, process the batch immediately
+    if (approveAll) {
+      const result = await payoutService.processPayoutBatch(batch.id);
+      res.json({
+        batch,
+        processingResult: result,
+        message: "Automated payout batch created and processed"
+      });
+    } else {
+      res.json({
+        batch,
+        message: "Automated payout batch created and queued for approval"
+      });
+    }
+  } catch (error) {
+    console.error("Error processing automated payouts:", error);
+    res.status(500).json({ error: "Failed to process automated payouts" });
+  }
+});
+
+/**
+ * Get payout processing queue with priority
+ */
+router.get("/admin/payouts/queue", requireAuth, requireRole(["admin"]), async (req, res) => {
+  try {
+    const { limit } = paginationSchema.parse(req.query);
+    const limitNum = limit ? parseInt(limit) : 50;
+    
+    const queue = await payoutService.getPayoutProcessingQueue(limitNum);
+    res.json(queue);
+  } catch (error) {
+    console.error("Error fetching payout queue:", error);
+    res.status(500).json({ error: "Failed to fetch payout queue" });
+  }
+});
+
+/**
+ * Bulk approve payouts
+ */
+router.post("/admin/payouts/bulk-approve", requireAuth, requireRole(["admin"]), async (req, res) => {
+  try {
+    const { payoutIds } = req.body;
+    
+    if (!Array.isArray(payoutIds) || payoutIds.length === 0) {
+      return res.status(400).json({ error: "Payout IDs array is required" });
+    }
+    
+    const result = await payoutService.bulkApprovePayouts(payoutIds, req.user!.id);
+    res.json(result);
+  } catch (error) {
+    console.error("Error bulk approving payouts:", error);
+    res.status(500).json({ error: "Failed to bulk approve payouts" });
+  }
+});
+
+/**
+ * Get payment method configurations
+ */
+router.get("/admin/payouts/payment-methods", requireAuth, requireRole(["admin"]), async (req, res) => {
+  try {
+    const methods = payoutService.getPaymentMethods();
+    res.json(methods);
+  } catch (error) {
+    console.error("Error fetching payment methods:", error);
+    res.status(500).json({ error: "Failed to fetch payment methods" });
+  }
+});
+
+/**
+ * Validate payment method for supplier
+ */
+router.post("/admin/payouts/validate-method", requireAuth, requireRole(["admin"]), async (req, res) => {
+  try {
+    const { supplierId, method } = req.body;
+    
+    if (!supplierId || !method) {
+      return res.status(400).json({ error: "Supplier ID and payment method are required" });
+    }
+    
+    const validation = await payoutService.validatePaymentMethod(supplierId, method);
+    res.json(validation);
+  } catch (error) {
+    console.error("Error validating payment method:", error);
+    res.status(500).json({ error: "Failed to validate payment method" });
+  }
+});
+
+/**
+ * Get payout failure analysis
+ */
+router.get("/admin/payouts/failure-analysis", requireAuth, requireRole(["admin"]), async (req, res) => {
+  try {
+    const { startDate, endDate } = dateRangeSchema.parse(req.query);
+    
+    const start = startDate ? new Date(startDate) : undefined;
+    const end = endDate ? new Date(endDate) : undefined;
+    
+    const analysis = await payoutService.getPayoutFailureAnalysis(start, end);
+    res.json(analysis);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: "Invalid date range", details: error.errors });
+    }
+    console.error("Error fetching failure analysis:", error);
+    res.status(500).json({ error: "Failed to fetch failure analysis" });
+  }
+});
+
+/**
+ * Get automated payout configuration
+ */
+router.get("/admin/payouts/config", requireAuth, requireRole(["admin"]), async (req, res) => {
+  try {
+    const config = payoutService.getAutomatedPayoutConfig();
+    res.json(config);
+  } catch (error) {
+    console.error("Error fetching payout config:", error);
+    res.status(500).json({ error: "Failed to fetch payout configuration" });
+  }
+});
+
+/**
+ * Update automated payout configuration
+ */
+router.put("/admin/payouts/config", requireAuth, requireRole(["admin"]), async (req, res) => {
+  try {
+    const configSchema = z.object({
+      enabled: z.boolean().optional(),
+      schedule: z.enum(['daily', 'weekly', 'biweekly', 'monthly']).optional(),
+      minAmount: z.number().min(0).optional(),
+      maxBatchSize: z.number().min(1).optional(),
+      requireApproval: z.boolean().optional(),
+      approvalThreshold: z.number().min(0).optional(),
+      retryAttempts: z.number().min(0).optional(),
+      retryDelay: z.number().min(1).optional(),
+    });
+    
+    const validatedConfig = configSchema.parse(req.body);
+    await payoutService.updateAutomatedPayoutConfig(validatedConfig);
+    
+    res.json({ message: "Payout configuration updated successfully" });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: "Invalid configuration", details: error.errors });
+    }
+    console.error("Error updating payout config:", error);
+    res.status(500).json({ error: "Failed to update payout configuration" });
+  }
+});
+
+/**
  * Get all pending payouts for processing
  */
 router.get("/admin/pending", requireAuth, requireRole(["admin"]), async (req, res) => {

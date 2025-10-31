@@ -29,6 +29,43 @@ export interface PayoutSummary {
   failedAmount: number;
 }
 
+export interface PayoutBatch {
+  id: string;
+  batchNumber: string;
+  totalAmount: number;
+  totalPayouts: number;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  payouts: string[];
+  scheduledDate: Date;
+  processedDate?: Date;
+  completedDate?: Date;
+  processedBy?: string;
+  approvedBy?: string;
+  failureReason?: string;
+  retryCount: number;
+}
+
+export interface PaymentMethodConfig {
+  type: 'bank_transfer' | 'paypal' | 'crypto' | 'stripe';
+  enabled: boolean;
+  minAmount: number;
+  maxAmount: number;
+  processingFee: number;
+  processingTime: string;
+  requirements: string[];
+}
+
+export interface AutomatedPayoutConfig {
+  enabled: boolean;
+  schedule: 'daily' | 'weekly' | 'biweekly' | 'monthly';
+  minAmount: number;
+  maxBatchSize: number;
+  requireApproval: boolean;
+  approvalThreshold: number;
+  retryAttempts: number;
+  retryDelay: number; // hours
+}
+
 export class PayoutService {
   private static instance: PayoutService;
   
@@ -36,6 +73,57 @@ export class PayoutService {
   private readonly DEFAULT_PAYOUT_SCHEDULE = 'weekly'; // weekly, biweekly, monthly
   private readonly MINIMUM_PAYOUT_AMOUNT = 50; // Minimum amount for payout
   private readonly PAYOUT_PROCESSING_FEE = 2.5; // Processing fee percentage
+  
+  // Advanced configuration
+  private readonly PAYMENT_METHODS: PaymentMethodConfig[] = [
+    {
+      type: 'bank_transfer',
+      enabled: true,
+      minAmount: 50,
+      maxAmount: 50000,
+      processingFee: 2.5,
+      processingTime: '1-3 business days',
+      requirements: ['Bank name', 'Account number', 'Account holder name', 'Routing number'],
+    },
+    {
+      type: 'paypal',
+      enabled: true,
+      minAmount: 10,
+      maxAmount: 10000,
+      processingFee: 3.5,
+      processingTime: 'Instant',
+      requirements: ['PayPal email address'],
+    },
+    {
+      type: 'crypto',
+      enabled: false,
+      minAmount: 100,
+      maxAmount: 25000,
+      processingFee: 1.0,
+      processingTime: '10-30 minutes',
+      requirements: ['Crypto wallet address', 'Wallet type'],
+    },
+    {
+      type: 'stripe',
+      enabled: true,
+      minAmount: 25,
+      maxAmount: 15000,
+      processingFee: 2.9,
+      processingTime: '1-2 business days',
+      requirements: ['Bank account details'],
+    },
+  ];
+
+  private readonly AUTOMATED_CONFIG: AutomatedPayoutConfig = {
+    enabled: true,
+    schedule: 'weekly',
+    minAmount: 50,
+    maxBatchSize: 100,
+    requireApproval: true,
+    approvalThreshold: 10000,
+    retryAttempts: 3,
+    retryDelay: 24, // hours
+  };
   
   public static getInstance(): PayoutService {
     if (!PayoutService.instance) {
@@ -575,6 +663,320 @@ export class PayoutService {
         totalCommission: 0,
         avgCommissionRate: 0,
       };
+    }
+  }
+
+  /**
+   * Create automated payout batch
+   */
+  async createPayoutBatch(
+    supplierIds?: string[],
+    approvedBy?: string
+  ): Promise<PayoutBatch | null> {
+    try {
+      // Get all suppliers eligible for payout
+      let eligibleSuppliers: string[] = [];
+      
+      if (supplierIds && supplierIds.length > 0) {
+        eligibleSuppliers = supplierIds;
+      } else {
+        // Get all suppliers with pending payouts above minimum threshold
+        const suppliersWithPending = await db
+          .select({ supplierId: orders.supplierId })
+          .from(orders)
+          .where(
+            and(
+              eq(orders.paymentStatus, "paid"),
+              sql`${orders.id} NOT IN (SELECT order_id FROM payouts WHERE order_id IS NOT NULL AND status IN ('completed', 'processing'))`
+            )
+          )
+          .groupBy(orders.supplierId);
+
+        for (const supplier of suppliersWithPending) {
+          const pendingPayout = await this.calculatePendingPayouts(supplier.supplierId);
+          if (pendingPayout && pendingPayout.netAmount >= this.AUTOMATED_CONFIG.minAmount) {
+            eligibleSuppliers.push(supplier.supplierId);
+          }
+        }
+      }
+
+      if (eligibleSuppliers.length === 0) {
+        return null;
+      }
+
+      // Limit batch size
+      const batchSuppliers = eligibleSuppliers.slice(0, this.AUTOMATED_CONFIG.maxBatchSize);
+      
+      // Create payouts for each supplier
+      const payoutIds: string[] = [];
+      let totalBatchAmount = 0;
+
+      for (const supplierId of batchSuppliers) {
+        const payoutId = await this.schedulePayout(supplierId);
+        if (payoutId) {
+          payoutIds.push(payoutId);
+          const pendingPayout = await this.calculatePendingPayouts(supplierId);
+          if (pendingPayout) {
+            totalBatchAmount += pendingPayout.netAmount;
+          }
+        }
+      }
+
+      if (payoutIds.length === 0) {
+        return null;
+      }
+
+      // Create batch record
+      const batchNumber = `BATCH_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+      
+      const batch: PayoutBatch = {
+        id: `batch_${Date.now()}`,
+        batchNumber,
+        totalAmount: totalBatchAmount,
+        totalPayouts: payoutIds.length,
+        status: this.AUTOMATED_CONFIG.requireApproval && totalBatchAmount > this.AUTOMATED_CONFIG.approvalThreshold 
+          ? 'pending' 
+          : 'processing',
+        payouts: payoutIds,
+        scheduledDate: new Date(),
+        approvedBy,
+        retryCount: 0,
+      };
+
+      return batch;
+    } catch (error) {
+      console.error("Error creating payout batch:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Process automated payout batch
+   */
+  async processPayoutBatch(batchId: string): Promise<{
+    success: boolean;
+    processed: number;
+    successful: number;
+    failed: number;
+    results: PayoutProcessingResult[];
+  }> {
+    try {
+      // This would retrieve batch from database in real implementation
+      // For now, we'll process all pending payouts as a batch
+      return await this.processAllPendingPayouts();
+    } catch (error) {
+      console.error("Error processing payout batch:", error);
+      throw new Error("Failed to process payout batch");
+    }
+  }
+
+  /**
+   * Get payment method configurations
+   */
+  getPaymentMethods(): PaymentMethodConfig[] {
+    return this.PAYMENT_METHODS.filter(method => method.enabled);
+  }
+
+  /**
+   * Validate payment method for supplier
+   */
+  async validatePaymentMethod(
+    supplierId: string,
+    method: 'bank_transfer' | 'paypal' | 'crypto' | 'stripe'
+  ): Promise<{ valid: boolean; missingRequirements: string[] }> {
+    try {
+      const methodConfig = this.PAYMENT_METHODS.find(m => m.type === method);
+      if (!methodConfig || !methodConfig.enabled) {
+        return { valid: false, missingRequirements: ['Payment method not supported'] };
+      }
+
+      // Get supplier payment details
+      const supplierResult = await db
+        .select({
+          bankName: supplierProfiles.bankName,
+          accountNumber: supplierProfiles.accountNumber,
+          accountName: supplierProfiles.accountName,
+          paypalEmail: supplierProfiles.paypalEmail,
+        })
+        .from(supplierProfiles)
+        .where(eq(supplierProfiles.id, supplierId))
+        .limit(1);
+
+      if (supplierResult.length === 0) {
+        return { valid: false, missingRequirements: ['Supplier not found'] };
+      }
+
+      const supplier = supplierResult[0];
+      const missingRequirements: string[] = [];
+
+      switch (method) {
+        case 'bank_transfer':
+          if (!supplier.bankName) missingRequirements.push('Bank name');
+          if (!supplier.accountNumber) missingRequirements.push('Account number');
+          if (!supplier.accountName) missingRequirements.push('Account holder name');
+          break;
+        case 'paypal':
+          if (!supplier.paypalEmail) missingRequirements.push('PayPal email address');
+          break;
+        case 'crypto':
+          // Would check crypto wallet details
+          missingRequirements.push('Crypto wallet configuration not implemented');
+          break;
+        case 'stripe':
+          // Would check Stripe account details
+          if (!supplier.bankName || !supplier.accountNumber) {
+            missingRequirements.push('Bank account details for Stripe');
+          }
+          break;
+      }
+
+      return {
+        valid: missingRequirements.length === 0,
+        missingRequirements,
+      };
+    } catch (error) {
+      console.error("Error validating payment method:", error);
+      return { valid: false, missingRequirements: ['Validation error'] };
+    }
+  }
+
+  /**
+   * Get payout failure analysis
+   */
+  async getPayoutFailureAnalysis(startDate?: Date, endDate?: Date) {
+    try {
+      let query = db
+        .select({
+          failureReason: payouts.failureReason,
+          method: payouts.method,
+          count: sql<number>`count(*)`,
+          totalAmount: sql<number>`sum(${payouts.netAmount})`,
+        })
+        .from(payouts)
+        .where(eq(payouts.status, 'failed'))
+        .groupBy(payouts.failureReason, payouts.method);
+
+      if (startDate && endDate) {
+        query = query.where(
+          and(
+            eq(payouts.status, 'failed'),
+            gte(payouts.createdAt, startDate),
+            lte(payouts.createdAt, endDate)
+          )
+        );
+      }
+
+      const result = await query;
+
+      return result.map(row => ({
+        failureReason: row.failureReason,
+        method: row.method,
+        count: Number(row.count),
+        totalAmount: Number(row.totalAmount),
+      }));
+    } catch (error) {
+      console.error("Error getting payout failure analysis:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Get automated payout configuration
+   */
+  getAutomatedPayoutConfig(): AutomatedPayoutConfig {
+    return this.AUTOMATED_CONFIG;
+  }
+
+  /**
+   * Update automated payout configuration
+   */
+  async updateAutomatedPayoutConfig(config: Partial<AutomatedPayoutConfig>): Promise<void> {
+    // In a real implementation, this would update the configuration in the database
+    // For now, we'll just log the update
+    console.log("Automated payout configuration updated:", config);
+  }
+
+  /**
+   * Get payout processing queue with priority
+   */
+  async getPayoutProcessingQueue(limit: number = 50) {
+    try {
+      const queue = await db
+        .select({
+          id: payouts.id,
+          supplierId: payouts.supplierId,
+          amount: payouts.amount,
+          netAmount: payouts.netAmount,
+          method: payouts.method,
+          scheduledDate: payouts.scheduledDate,
+          createdAt: payouts.createdAt,
+          supplierName: supplierProfiles.businessName,
+          membershipTier: supplierProfiles.membershipTier,
+        })
+        .from(payouts)
+        .leftJoin(supplierProfiles, eq(payouts.supplierId, supplierProfiles.id))
+        .where(eq(payouts.status, 'pending'))
+        .orderBy(
+          // Priority: higher tier suppliers first, then by amount, then by date
+          sql`CASE ${supplierProfiles.membershipTier} 
+            WHEN 'platinum' THEN 1 
+            WHEN 'gold' THEN 2 
+            WHEN 'silver' THEN 3 
+            ELSE 4 END`,
+          desc(payouts.netAmount),
+          payouts.scheduledDate
+        )
+        .limit(limit);
+
+      return queue.map(item => ({
+        ...item,
+        amount: Number(item.amount),
+        netAmount: Number(item.netAmount),
+      }));
+    } catch (error) {
+      console.error("Error getting payout processing queue:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Bulk approve payouts
+   */
+  async bulkApprovePayouts(payoutIds: string[], approvedBy: string): Promise<{
+    approved: number;
+    failed: number;
+    errors: string[];
+  }> {
+    try {
+      let approved = 0;
+      let failed = 0;
+      const errors: string[] = [];
+
+      for (const payoutId of payoutIds) {
+        try {
+          await db
+            .update(payouts)
+            .set({
+              status: 'processing',
+              updatedAt: new Date(),
+            })
+            .where(
+              and(
+                eq(payouts.id, payoutId),
+                eq(payouts.status, 'pending')
+              )
+            );
+          approved++;
+        } catch (error) {
+          failed++;
+          errors.push(`Failed to approve payout ${payoutId}: ${(error as Error).message}`);
+        }
+      }
+
+      return { approved, failed, errors };
+    } catch (error) {
+      console.error("Error bulk approving payouts:", error);
+      throw new Error("Failed to bulk approve payouts");
     }
   }
 }

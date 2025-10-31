@@ -209,7 +209,7 @@ export default function AdminSuppliers() {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedSuppliers(suppliers.map(supplier => supplier.id));
+      setSelectedSuppliers(suppliers.map((supplier: { id: any; }) => supplier.id));
     } else {
       setSelectedSuppliers([]);
     }

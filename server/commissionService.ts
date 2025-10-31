@@ -22,6 +22,43 @@ export interface CommissionRates {
   vendorOverrides?: Record<string, number>;
 }
 
+export interface CommissionHistory {
+  id: string;
+  changeType: 'rate_update' | 'tier_change' | 'category_update' | 'supplier_override';
+  entityId?: string;
+  entityType?: string;
+  previousValue: any;
+  newValue: any;
+  changedBy: string;
+  reason?: string;
+  effectiveDate: Date;
+  createdAt: Date;
+}
+
+export interface CommissionImpactAnalysis {
+  affectedSuppliers: number;
+  estimatedRevenueChange: number;
+  estimatedSupplierImpact: number;
+  projectedMonthlyChange: number;
+  riskLevel: 'low' | 'medium' | 'high';
+  recommendations: string[];
+}
+
+export interface CommissionSimulation {
+  currentRevenue: number;
+  projectedRevenue: number;
+  revenueChange: number;
+  revenueChangePercent: number;
+  affectedOrders: number;
+  supplierImpact: {
+    supplierId: string;
+    supplierName: string;
+    currentCommission: number;
+    newCommission: number;
+    impact: number;
+  }[];
+}
+
 export class CommissionService {
   private static instance: CommissionService;
   private cachedRates: CommissionRates | null = null;
@@ -440,6 +477,372 @@ export class CommissionService {
     } catch (error) {
       console.error("Error getting commission tracking report:", error);
       return [];
+    }
+  }
+
+  /**
+   * Analyze impact of commission rate changes
+   */
+  async analyzeCommissionImpact(
+    rateChanges: Partial<CommissionRates>
+  ): Promise<CommissionImpactAnalysis> {
+    try {
+      // Get current rates for comparison
+      const currentRates = await this.getCommissionRates();
+      
+      // Calculate affected suppliers
+      const suppliersQuery = await db
+        .select({
+          id: supplierProfiles.id,
+          membershipTier: supplierProfiles.membershipTier,
+          customCommissionRate: supplierProfiles.customCommissionRate,
+        })
+        .from(supplierProfiles)
+        .where(eq(supplierProfiles.isApproved, true));
+
+      let affectedSuppliers = 0;
+      let estimatedRevenueChange = 0;
+      let estimatedSupplierImpact = 0;
+
+      // Get recent order data for impact calculation (last 30 days)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const recentOrders = await db
+        .select({
+          supplierId: orders.supplierId,
+          totalAmount: orders.totalAmount,
+          commissionAmount: orders.commissionAmount,
+        })
+        .from(orders)
+        .where(
+          and(
+            eq(orders.paymentStatus, "paid"),
+            sql`${orders.createdAt} >= ${thirtyDaysAgo}`
+          )
+        );
+
+      // Calculate impact for each supplier
+      for (const supplier of suppliersQuery) {
+        const currentRate = supplier.customCommissionRate 
+          ? Number(supplier.customCommissionRate)
+          : this.getTierRate(supplier.membershipTier, currentRates);
+
+        let newRate = currentRate;
+        
+        // Check if this supplier is affected by rate changes
+        if (!supplier.customCommissionRate) {
+          newRate = this.getTierRate(supplier.membershipTier, { ...currentRates, ...rateChanges });
+        }
+
+        if (currentRate !== newRate) {
+          affectedSuppliers++;
+          
+          // Calculate impact based on recent orders
+          const supplierOrders = recentOrders.filter(order => order.supplierId === supplier.id);
+          const supplierRevenue = supplierOrders.reduce((sum, order) => sum + Number(order.totalAmount), 0);
+          
+          const currentCommission = (supplierRevenue * currentRate) / 100;
+          const newCommission = (supplierRevenue * newRate) / 100;
+          const commissionDiff = newCommission - currentCommission;
+          
+          estimatedRevenueChange += commissionDiff;
+          estimatedSupplierImpact += -commissionDiff; // Inverse for suppliers
+        }
+      }
+
+      // Project monthly change (multiply by ~30/30 = 1 for monthly estimate)
+      const projectedMonthlyChange = estimatedRevenueChange;
+
+      // Determine risk level
+      const revenueChangePercent = Math.abs(estimatedRevenueChange) / Math.max(1, Math.abs(estimatedRevenueChange + estimatedSupplierImpact)) * 100;
+      let riskLevel: 'low' | 'medium' | 'high' = 'low';
+      
+      if (revenueChangePercent > 20 || affectedSuppliers > 100) {
+        riskLevel = 'high';
+      } else if (revenueChangePercent > 10 || affectedSuppliers > 50) {
+        riskLevel = 'medium';
+      }
+
+      // Generate recommendations
+      const recommendations: string[] = [];
+      
+      if (riskLevel === 'high') {
+        recommendations.push('Consider phased rollout of rate changes');
+        recommendations.push('Notify affected suppliers in advance');
+        recommendations.push('Monitor supplier retention closely');
+      }
+      
+      if (estimatedRevenueChange < 0) {
+        recommendations.push('Revenue decrease expected - ensure business case is justified');
+      }
+      
+      if (affectedSuppliers > 50) {
+        recommendations.push('Prepare customer support for increased inquiries');
+      }
+
+      return {
+        affectedSuppliers,
+        estimatedRevenueChange: Math.round(estimatedRevenueChange * 100) / 100,
+        estimatedSupplierImpact: Math.round(estimatedSupplierImpact * 100) / 100,
+        projectedMonthlyChange: Math.round(projectedMonthlyChange * 100) / 100,
+        riskLevel,
+        recommendations,
+      };
+    } catch (error) {
+      console.error("Error analyzing commission impact:", error);
+      return {
+        affectedSuppliers: 0,
+        estimatedRevenueChange: 0,
+        estimatedSupplierImpact: 0,
+        projectedMonthlyChange: 0,
+        riskLevel: 'low',
+        recommendations: ['Unable to calculate impact - proceed with caution'],
+      };
+    }
+  }
+
+  /**
+   * Simulate commission changes on historical data
+   */
+  async simulateCommissionChanges(
+    rateChanges: Partial<CommissionRates>,
+    startDate?: Date,
+    endDate?: Date
+  ): Promise<CommissionSimulation> {
+    try {
+      const currentRates = await this.getCommissionRates();
+      const newRates = { ...currentRates, ...rateChanges };
+
+      // Default to last 30 days if no date range provided
+      if (!startDate) {
+        startDate = new Date();
+        startDate.setDate(startDate.getDate() - 30);
+      }
+      if (!endDate) {
+        endDate = new Date();
+      }
+
+      // Get historical orders for simulation
+      const historicalOrders = await db
+        .select({
+          id: orders.id,
+          supplierId: orders.supplierId,
+          totalAmount: orders.totalAmount,
+          commissionAmount: orders.commissionAmount,
+          supplierName: supplierProfiles.businessName,
+        })
+        .from(orders)
+        .leftJoin(supplierProfiles, eq(orders.supplierId, supplierProfiles.id))
+        .where(
+          and(
+            eq(orders.paymentStatus, "paid"),
+            sql`${orders.createdAt} >= ${startDate}`,
+            sql`${orders.createdAt} <= ${endDate}`
+          )
+        );
+
+      let currentRevenue = 0;
+      let projectedRevenue = 0;
+      const supplierImpacts: { [key: string]: any } = {};
+
+      // Calculate current and projected revenue
+      for (const order of historicalOrders) {
+        const currentCommission = Number(order.commissionAmount || 0);
+        currentRevenue += currentCommission;
+
+        // Calculate new commission rate for this supplier
+        const newRate = await this.calculateCommissionRate(order.supplierId);
+        const newCommission = (Number(order.totalAmount) * newRate) / 100;
+        projectedRevenue += newCommission;
+
+        // Track supplier impact
+        if (!supplierImpacts[order.supplierId]) {
+          supplierImpacts[order.supplierId] = {
+            supplierId: order.supplierId,
+            supplierName: order.supplierName,
+            currentCommission: 0,
+            newCommission: 0,
+            impact: 0,
+          };
+        }
+
+        supplierImpacts[order.supplierId].currentCommission += currentCommission;
+        supplierImpacts[order.supplierId].newCommission += newCommission;
+        supplierImpacts[order.supplierId].impact = 
+          supplierImpacts[order.supplierId].newCommission - supplierImpacts[order.supplierId].currentCommission;
+      }
+
+      const revenueChange = projectedRevenue - currentRevenue;
+      const revenueChangePercent = currentRevenue > 0 ? (revenueChange / currentRevenue) * 100 : 0;
+
+      return {
+        currentRevenue: Math.round(currentRevenue * 100) / 100,
+        projectedRevenue: Math.round(projectedRevenue * 100) / 100,
+        revenueChange: Math.round(revenueChange * 100) / 100,
+        revenueChangePercent: Math.round(revenueChangePercent * 100) / 100,
+        affectedOrders: historicalOrders.length,
+        supplierImpact: Object.values(supplierImpacts).map(impact => ({
+          ...impact,
+          currentCommission: Math.round(impact.currentCommission * 100) / 100,
+          newCommission: Math.round(impact.newCommission * 100) / 100,
+          impact: Math.round(impact.impact * 100) / 100,
+        })),
+      };
+    } catch (error) {
+      console.error("Error simulating commission changes:", error);
+      return {
+        currentRevenue: 0,
+        projectedRevenue: 0,
+        revenueChange: 0,
+        revenueChangePercent: 0,
+        affectedOrders: 0,
+        supplierImpact: [],
+      };
+    }
+  }
+
+  /**
+   * Get commission rate history for tracking changes
+   */
+  async getCommissionHistory(
+    entityType?: string,
+    entityId?: string,
+    limit: number = 50
+  ): Promise<CommissionHistory[]> {
+    try {
+      // This would require a commission_history table in a real implementation
+      // For now, we'll return a placeholder structure
+      return [];
+    } catch (error) {
+      console.error("Error getting commission history:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Helper method to get tier rate from rates object
+   */
+  private getTierRate(tier: string, rates: CommissionRates): number {
+    switch (tier) {
+      case "platinum":
+        return rates.platinumRate;
+      case "gold":
+        return rates.goldRate;
+      case "silver":
+        return rates.silverRate;
+      case "free":
+      default:
+        return rates.freeRate;
+    }
+  }
+
+  /**
+   * Bulk update commission rates for multiple suppliers
+   */
+  async bulkUpdateSupplierRates(
+    updates: { supplierId: string; customRate: number }[],
+    updatedBy: string
+  ): Promise<void> {
+    try {
+      for (const update of updates) {
+        await this.setSupplierCommissionRate(update.supplierId, update.customRate);
+      }
+      
+      // Clear cache to force refresh
+      this.cachedRates = null;
+      this.cacheExpiry = null;
+    } catch (error) {
+      console.error("Error bulk updating supplier rates:", error);
+      throw new Error("Failed to bulk update supplier rates");
+    }
+  }
+
+  /**
+   * Get advanced commission analytics
+   */
+  async getAdvancedCommissionAnalytics(
+    startDate?: Date,
+    endDate?: Date
+  ) {
+    try {
+      // Default to last 90 days if no date range provided
+      if (!startDate) {
+        startDate = new Date();
+        startDate.setDate(startDate.getDate() - 90);
+      }
+      if (!endDate) {
+        endDate = new Date();
+      }
+
+      // Get commission data by tier
+      const tierAnalytics = await db
+        .select({
+          membershipTier: supplierProfiles.membershipTier,
+          totalOrders: sql<number>`count(${orders.id})`,
+          totalRevenue: sql<number>`sum(${orders.totalAmount})`,
+          totalCommission: sql<number>`sum(${orders.commissionAmount})`,
+          avgOrderValue: sql<number>`avg(${orders.totalAmount})`,
+          avgCommissionRate: sql<number>`avg(${orders.commissionRate})`,
+        })
+        .from(orders)
+        .leftJoin(supplierProfiles, eq(orders.supplierId, supplierProfiles.id))
+        .where(
+          and(
+            eq(orders.paymentStatus, "paid"),
+            sql`${orders.createdAt} >= ${startDate}`,
+            sql`${orders.createdAt} <= ${endDate}`
+          )
+        )
+        .groupBy(supplierProfiles.membershipTier);
+
+      // Get top performing suppliers by commission
+      const topSuppliers = await db
+        .select({
+          supplierId: orders.supplierId,
+          supplierName: supplierProfiles.businessName,
+          membershipTier: supplierProfiles.membershipTier,
+          totalOrders: sql<number>`count(${orders.id})`,
+          totalCommission: sql<number>`sum(${orders.commissionAmount})`,
+          avgCommissionRate: sql<number>`avg(${orders.commissionRate})`,
+        })
+        .from(orders)
+        .leftJoin(supplierProfiles, eq(orders.supplierId, supplierProfiles.id))
+        .where(
+          and(
+            eq(orders.paymentStatus, "paid"),
+            sql`${orders.createdAt} >= ${startDate}`,
+            sql`${orders.createdAt} <= ${endDate}`
+          )
+        )
+        .groupBy(orders.supplierId, supplierProfiles.businessName, supplierProfiles.membershipTier)
+        .orderBy(sql`sum(${orders.commissionAmount}) DESC`)
+        .limit(10);
+
+      return {
+        tierAnalytics: tierAnalytics.map(row => ({
+          membershipTier: row.membershipTier,
+          totalOrders: Number(row.totalOrders || 0),
+          totalRevenue: Number(row.totalRevenue || 0),
+          totalCommission: Number(row.totalCommission || 0),
+          avgOrderValue: Number(row.avgOrderValue || 0),
+          avgCommissionRate: Number(row.avgCommissionRate || 0),
+        })),
+        topSuppliers: topSuppliers.map(row => ({
+          supplierId: row.supplierId,
+          supplierName: row.supplierName,
+          membershipTier: row.membershipTier,
+          totalOrders: Number(row.totalOrders || 0),
+          totalCommission: Number(row.totalCommission || 0),
+          avgCommissionRate: Number(row.avgCommissionRate || 0),
+        })),
+      };
+    } catch (error) {
+      console.error("Error getting advanced commission analytics:", error);
+      return {
+        tierAnalytics: [],
+        topSuppliers: [],
+      };
     }
   }
 }

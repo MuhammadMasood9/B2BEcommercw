@@ -4,11 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useQuery } from "@tanstack/react-query";
 
-import { 
-  Eye, 
-  MessageSquare, 
-  TrendingUp, 
+import {
+  Eye,
+  MessageSquare,
+  TrendingUp,
   Package,
   Plus
 } from "lucide-react";
@@ -18,26 +19,51 @@ import InquiryManagement from "@/components/supplier/InquiryManagement";
 import EarningsOverview from "@/components/supplier/EarningsOverview";
 import EnhancedAnalyticsDashboard from "@/components/supplier/EnhancedAnalyticsDashboard";
 import StaffManagement from "@/components/supplier/StaffManagement";
+import { VerificationDashboard } from "@/components/supplier/VerificationDashboard";
+import { Key, ReactElement, JSXElementConstructor, ReactNode, ReactPortal } from "react";
 
 export default function SupplierDashboard() {
-  //todo: remove mock functionality
-  const stats = [
-    { label: "Product Views", value: "12.5K", icon: Eye, change: "+15%", color: "text-gray-600" },
-    { label: "Inquiries Received", value: "48", icon: MessageSquare, change: "+8%", color: "text-green-600" },
-    { label: "Response Rate", value: "95%", icon: TrendingUp, change: "+2%", color: "text-primary" },
-    { label: "Active Products", value: "124", icon: Package, change: "+5", color: "text-amber-600" },
+  // Fetch real supplier stats
+  const { data: supplierStats, isLoading: statsLoading } = useQuery({
+    queryKey: ['/api/suppliers/dashboard/stats'],
+    queryFn: async () => {
+      const response = await fetch('/api/suppliers/dashboard/stats');
+      if (!response.ok) throw new Error('Failed to fetch supplier stats');
+      return response.json();
+    }
+  });
+
+  const stats = supplierStats ? [
+    { label: "Product Views", value: supplierStats.productViews || "0", icon: Eye, change: supplierStats.viewsChange || "0%", color: "text-gray-600" },
+    { label: "Inquiries Received", value: supplierStats.inquiriesReceived || "0", icon: MessageSquare, change: supplierStats.inquiriesChange || "0%", color: "text-green-600" },
+    { label: "Response Rate", value: `${supplierStats.responseRate || 0}%`, icon: TrendingUp, change: supplierStats.responseRateChange || "0%", color: "text-primary" },
+    { label: "Active Products", value: supplierStats.activeProducts || "0", icon: Package, change: supplierStats.productsChange || "0", color: "text-amber-600" },
+  ] : [
+    { label: "Product Views", value: "0", icon: Eye, change: "0%", color: "text-gray-600" },
+    { label: "Inquiries Received", value: "0", icon: MessageSquare, change: "0%", color: "text-green-600" },
+    { label: "Response Rate", value: "0%", icon: TrendingUp, change: "0%", color: "text-primary" },
+    { label: "Active Products", value: "0", icon: Package, change: "0", color: "text-amber-600" },
   ];
 
-  const recentInquiries = [
-    { id: 1, buyer: "ABC Trading Co.", product: "Wireless Headphones", quantity: "5,000 units", status: "Pending", time: "2h ago" },
-    { id: 2, buyer: "Global Imports Ltd", product: "Bluetooth Speakers", quantity: "2,000 units", status: "Replied", time: "5h ago" },
-    { id: 3, buyer: "Tech Solutions Inc", product: "Smart Watches", quantity: "1,000 units", status: "Quoted", time: "1d ago" },
-  ];
+  // Fetch recent inquiries
+  const { data: recentInquiries = [] } = useQuery({
+    queryKey: ['/api/suppliers/inquiries', 'recent'],
+    queryFn: async () => {
+      const response = await fetch('/api/suppliers/inquiries?limit=5&sort=recent');
+      if (!response.ok) throw new Error('Failed to fetch recent inquiries');
+      return response.json();
+    }
+  });
 
-  const rfqMatches = [
-    { id: 1, title: "Looking for Wireless Earbuds - 10K units", category: "Electronics", location: "USA", timeLeft: "2 days" },
-    { id: 2, title: "Need Bluetooth Speakers for Retail", category: "Electronics", location: "UK", timeLeft: "5 days" },
-  ];
+  // Fetch matching RFQs
+  const { data: rfqMatches = [] } = useQuery({
+    queryKey: ['/api/suppliers/rfqs/matching'],
+    queryFn: async () => {
+      const response = await fetch('/api/suppliers/rfqs/matching?limit=5');
+      if (!response.ok) throw new Error('Failed to fetch matching RFQs');
+      return response.json();
+    }
+  });
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -83,6 +109,7 @@ export default function SupplierDashboard() {
               <TabsTrigger value="rfq" data-testid="tab-rfq">Matching RFQs</TabsTrigger>
               <TabsTrigger value="products" data-testid="tab-products">My Products</TabsTrigger>
               <TabsTrigger value="store" data-testid="tab-store">Store Management</TabsTrigger>
+              <TabsTrigger value="verification" data-testid="tab-verification">Verification</TabsTrigger>
               <TabsTrigger value="staff" data-testid="tab-staff">Staff Management</TabsTrigger>
               <TabsTrigger value="earnings" data-testid="tab-earnings">Earnings</TabsTrigger>
               <TabsTrigger value="analytics" data-testid="tab-analytics">Analytics</TabsTrigger>
@@ -99,7 +126,7 @@ export default function SupplierDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {rfqMatches.map((rfq) => (
+                    {rfqMatches.map((rfq: { id: Key | null | undefined; title: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | null | undefined; category: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | null | undefined; location: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | null | undefined; timeLeft: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | null | undefined; }) => (
                       <div key={rfq.id} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors" data-testid={`rfq-${rfq.id}`}>
                         <div className="flex justify-between items-start mb-3">
                           <h4 className="font-medium">{rfq.title}</h4>
@@ -125,6 +152,10 @@ export default function SupplierDashboard() {
 
             <TabsContent value="store">
               <StoreManagement />
+            </TabsContent>
+
+            <TabsContent value="verification">
+              <VerificationDashboard />
             </TabsContent>
 
             <TabsContent value="staff">

@@ -598,8 +598,8 @@ function personalizeContent(content: string, personalizationData: any): string {
 }
 
 export default router;
-// 
-==================== NOTIFICATION MANAGEMENT API ENDPOINTS ====================
+
+// ==================== NOTIFICATION MANAGEMENT API ENDPOINTS ====================
 
 // GET /api/admin/communications/notifications/preferences
 router.get('/notifications/preferences', async (req, res) => {
@@ -1221,5 +1221,3 @@ router.post('/unsubscribes/:id/resubscribe', async (req, res) => {
     res.status(500).json({ error: 'Failed to resubscribe user' });
   }
 });
-
-export default router;

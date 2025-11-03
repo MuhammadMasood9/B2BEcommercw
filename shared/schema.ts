@@ -31,7 +31,30 @@ export const insertUserSchema = createInsertSchema(users).omit({
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
-// ==================== BUYER PROFILES ====================
+// ==================== BUYERS TABLE (Enhanced) ====================
+
+export const buyers = pgTable("buyers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().unique(),
+  companyName: varchar("company_name", { length: 255 }),
+  industry: varchar("industry", { length: 100 }),
+  businessType: varchar("business_type", { length: 50 }),
+  annualVolume: decimal("annual_volume", { precision: 15, scale: 2 }),
+  preferredPaymentTerms: text("preferred_payment_terms").array(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertBuyerSchema = createInsertSchema(buyers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertBuyer = z.infer<typeof insertBuyerSchema>;
+export type Buyer = typeof buyers.$inferSelect;
+
+// ==================== BUYER PROFILES (Legacy - Keep for compatibility) ====================
 
 export const buyerProfiles = pgTable("buyer_profiles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -151,130 +174,109 @@ export const insertProductSchema = createInsertSchema(products).omit({
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Product = typeof products.$inferSelect;
 
-// ==================== RFQs (Request for Quotation) ====================
+// ==================== PRODUCT ATTRIBUTES (Advanced Filtering) ====================
+
+export const productAttributes = pgTable("product_attributes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  productId: varchar("product_id").notNull(),
+  attributeName: varchar("attribute_name", { length: 100 }).notNull(),
+  attributeValue: text("attribute_value").notNull(),
+  isFilterable: boolean("is_filterable").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertProductAttributeSchema = createInsertSchema(productAttributes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertProductAttribute = z.infer<typeof insertProductAttributeSchema>;
+export type ProductAttribute = typeof productAttributes.$inferSelect;
+
+// ==================== RFQs (Request for Quotation) - Enhanced ====================
 
 export const rfqs = pgTable("rfqs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   buyerId: varchar("buyer_id").notNull(),
-  productId: varchar("product_id"), // Product-specific RFQ
-  title: text("title").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
   categoryId: varchar("category_id"),
-  description: text("description").notNull(),
+  specifications: json("specifications"),
   quantity: integer("quantity").notNull(),
   targetPrice: decimal("target_price", { precision: 10, scale: 2 }),
-  deliveryLocation: text("delivery_location"),
-  expectedDate: timestamp("expected_date"),
-  attachments: text("attachments").array(),
-  status: text("status").default("open"), // open, closed
-  quotationsCount: integer("quotations_count").default(0),
-  createdAt: timestamp("created_at").defaultNow(),
+  budgetRange: json("budget_range"), // {min: 1000, max: 5000}
+  deliveryLocation: varchar("delivery_location", { length: 255 }),
+  requiredDeliveryDate: timestamp("required_delivery_date"),
+  paymentTerms: varchar("payment_terms", { length: 100 }),
+  status: varchar("status", { length: 50 }).default("open"), // open, closed, expired
   expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const insertRfqSchema = createInsertSchema(rfqs).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
 });
 
 export type InsertRfq = z.infer<typeof insertRfqSchema>;
 export type Rfq = typeof rfqs.$inferSelect;
 
-// ==================== QUOTATIONS ====================
+// ==================== QUOTATIONS - Enhanced ====================
 
 export const quotations = pgTable("quotations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  rfqId: varchar("rfq_id").notNull(),
-  supplierId: varchar("supplier_id").notNull(), // Admin is the supplier
-  pricePerUnit: decimal("price_per_unit", { precision: 10, scale: 2 }).notNull(),
-  totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
+  supplierId: varchar("supplier_id").notNull(),
+  rfqId: varchar("rfq_id"),
+  inquiryId: varchar("inquiry_id"),
+  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
+  totalPrice: decimal("total_price", { precision: 15, scale: 2 }).notNull(),
   moq: integer("moq").notNull(),
-  leadTime: text("lead_time"),
-  paymentTerms: text("payment_terms"),
-  validUntil: timestamp("valid_until"),
-  message: text("message"),
+  leadTime: varchar("lead_time", { length: 50 }),
+  paymentTerms: varchar("payment_terms", { length: 100 }),
+  validityPeriod: integer("validity_period"), // days
+  termsConditions: text("terms_conditions"),
   attachments: text("attachments").array(),
-  status: text("status").default("pending"), // pending, accepted, rejected
+  status: varchar("status", { length: 50 }).default("sent"), // sent, accepted, rejected, expired
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const insertQuotationSchema = createInsertSchema(quotations).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
 });
 
 export type InsertQuotation = z.infer<typeof insertQuotationSchema>;
 export type Quotation = typeof quotations.$inferSelect;
 
-// ==================== INQUIRIES ====================
+// ==================== INQUIRIES - Enhanced ====================
 
 export const inquiries = pgTable("inquiries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  productId: varchar("product_id").notNull(),
   buyerId: varchar("buyer_id").notNull(),
-  supplierId: varchar("supplier_id"), // Route inquiries to specific suppliers
-  quantity: integer("quantity").notNull(),
-  targetPrice: decimal("target_price", { precision: 10, scale: 2 }),
-  message: text("message"),
-  requirements: text("requirements"),
-  status: text("status").default("pending"), // pending, replied, negotiating, closed
+  supplierId: varchar("supplier_id"),
+  productId: varchar("product_id"),
+  subject: varchar("subject", { length: 255 }),
+  message: text("message").notNull(),
+  quantity: integer("quantity"),
+  status: varchar("status", { length: 50 }).default("pending"), // pending, responded, closed
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const insertInquirySchema = createInsertSchema(inquiries).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
 });
 
 export type InsertInquiry = z.infer<typeof insertInquirySchema>;
 export type Inquiry = typeof inquiries.$inferSelect;
 
-// ==================== INQUIRY QUOTATIONS ====================
 
-export const inquiryQuotations = pgTable("inquiry_quotations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  inquiryId: varchar("inquiry_id").notNull(),
-  pricePerUnit: decimal("price_per_unit", { precision: 10, scale: 2 }).notNull(),
-  totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
-  moq: integer("moq").notNull(),
-  leadTime: text("lead_time"),
-  paymentTerms: text("payment_terms"),
-  validUntil: timestamp("valid_until"),
-  message: text("message"),
-  attachments: text("attachments").array(),
-  status: text("status").default("pending"), // pending, accepted, rejected
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const insertInquiryQuotationSchema = createInsertSchema(inquiryQuotations).omit({
-  id: true,
-  createdAt: true,
-});
-
-export type InsertInquiryQuotation = z.infer<typeof insertInquiryQuotationSchema>;
-export type InquiryQuotation = typeof inquiryQuotations.$inferSelect;
-
-// ==================== INQUIRY REVISIONS ====================
-
-export const inquiryRevisions = pgTable("inquiry_revisions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  inquiryId: varchar("inquiry_id").notNull(),
-  revisionNumber: integer("revision_number").notNull(),
-  quantity: integer("quantity").notNull(),
-  targetPrice: decimal("target_price", { precision: 10, scale: 2 }),
-  message: text("message"),
-  requirements: text("requirements"),
-  status: text("status").default("pending"), // pending, replied, negotiating, closed
-  createdBy: varchar("created_by").notNull(), // buyer_id or admin_id
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const insertInquiryRevisionSchema = createInsertSchema(inquiryRevisions).omit({
-  id: true,
-  createdAt: true,
-});
-
-export type InsertInquiryRevision = z.infer<typeof insertInquiryRevisionSchema>;
-export type InquiryRevision = typeof inquiryRevisions.$inferSelect;
 
 // ==================== ORDERS ====================
 
@@ -321,37 +323,40 @@ export const insertOrderSchema = createInsertSchema(orders).omit({
 export type InsertOrder = z.infer<typeof insertOrderSchema>;
 export type Order = typeof orders.$inferSelect;
 
-// ==================== CONVERSATIONS ====================
+// ==================== CONVERSATIONS - Enhanced ====================
 
 export const conversations = pgTable("conversations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  buyerId: varchar("buyer_id").notNull(),
-  unreadCountAdmin: varchar("unread_count_admin").notNull(), // This is actually adminId in existing table
-  lastMessage: text("last_message"),
+  type: varchar("type", { length: 50 }).notNull(), // buyer_supplier, buyer_admin, supplier_admin
+  buyerId: varchar("buyer_id"),
+  supplierId: varchar("supplier_id"),
+  adminId: varchar("admin_id"),
+  subject: varchar("subject", { length: 255 }),
+  status: varchar("status", { length: 50 }).default("active"), // active, archived, closed
   lastMessageAt: timestamp("last_message_at"),
-  unreadCountBuyer: integer("unread_count_buyer").default(0),
-  unreadCountSupplier: integer("unread_count_supplier").default(0),
-  productId: varchar("product_id"), // Add productId for product-based conversations
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const insertConversationSchema = createInsertSchema(conversations).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
 });
 
 export type InsertConversation = z.infer<typeof insertConversationSchema>;
 export type Conversation = typeof conversations.$inferSelect;
 
-// ==================== MESSAGES ====================
+// ==================== MESSAGES - Enhanced ====================
 
 export const messages = pgTable("messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   conversationId: varchar("conversation_id").notNull(),
   senderId: varchar("sender_id").notNull(),
-  receiverId: varchar("receiver_id").notNull(),
+  senderType: varchar("sender_type", { length: 20 }).notNull(), // buyer, supplier, admin
   message: text("message").notNull(),
   attachments: text("attachments").array(),
+  productReferences: varchar("product_references").array(), // Array of product IDs referenced in message
   isRead: boolean("is_read").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -1529,7 +1534,7 @@ export type SecurityAuditEvent = typeof securityAuditEvents.$inferSelect;
 export type InsertAccessPatternAnalysis = z.infer<typeof insertAccessPatternAnalysisSchema>;
 export type AccessPatternAnalysis = typeof accessPatternAnalysis.$inferSelect;
 
-================ ====NTAGEME MANIONATOTIFIC NCATION ANDCOMMUNI==== =============// ===
+// ================ COMMUNICATION AND NOTIFICATION MANAGEMENT ================
 
 export const communicationTemplates = pgTable("communication_templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1921,8 +1926,7 @@ export type InsertNotificationQueue = z.infer<typeof insertNotificationQueueSche
 export type NotificationQueue = typeof notificationQueue.$inferSelect;
 export type InsertUnsubscribeRequest = z.infer<typeof insertUnsubscribeRequestSchema>;
 export type UnsubscribeRequest = typeof unsubscribeRequests.$inferSelect;
-// =
-=================== COMPLIANCE AND AUDIT MANAGEMENT SYSTEM ====================
+// =================== COMPLIANCE AND AUDIT MANAGEMENT SYSTEM ====================
 
 export const comprehensiveAuditLogs = pgTable("comprehensive_audit_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

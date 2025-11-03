@@ -1044,6 +1044,32 @@ router.post('/products', supplierMiddleware, productImageUpload.array('images', 
     const uploadedFiles = req.files as Express.Multer.File[] || [];
     const imagePaths = uploadedFiles.map(file => `/uploads/${file.filename}`);
 
+    // Helper function to convert string booleans to actual booleans
+    const toBool = (value: any): boolean => {
+      if (typeof value === 'boolean') return value;
+      if (typeof value === 'string') return value.toLowerCase() === 'true';
+      return false;
+    };
+
+    // Debug: Log original request body
+    console.log('📥 Original req.body:', {
+      hasTradeAssurance: req.body.hasTradeAssurance,
+      hasTradeAssuranceType: typeof req.body.hasTradeAssurance,
+      sampleAvailable: req.body.sampleAvailable,
+      sampleAvailableType: typeof req.body.sampleAvailable,
+      inStock: req.body.inStock,
+      inStockType: typeof req.body.inStock,
+      customizationAvailable: req.body.customizationAvailable,
+      customizationAvailableType: typeof req.body.customizationAvailable
+    });
+
+    // Helper function to convert empty strings to null for decimal fields (returns string for database)
+    const toDecimal = (value: any): string | null => {
+      if (value === '' || value === null || value === undefined) return null;
+      const parsed = parseFloat(value);
+      return isNaN(parsed) ? null : parsed.toString();
+    };
+
     // Parse and validate product data
     const productData = {
       ...req.body,
@@ -1054,9 +1080,11 @@ router.post('/products', supplierMiddleware, productImageUpload.array('images', 
       isPublished: false, // Will be published after approval
       minOrderQuantity: parseInt(req.body.minOrderQuantity || '1'),
       stockQuantity: parseInt(req.body.stockQuantity || '0'),
-      inStock: req.body.inStock === 'true' || req.body.inStock === true,
-      sampleAvailable: req.body.sampleAvailable === 'true' || req.body.sampleAvailable === true,
-      customizationAvailable: req.body.customizationAvailable === 'true' || req.body.customizationAvailable === true,
+      samplePrice: toDecimal(req.body.samplePrice),
+      inStock: toBool(req.body.inStock),
+      sampleAvailable: toBool(req.body.sampleAvailable),
+      customizationAvailable: toBool(req.body.customizationAvailable),
+      hasTradeAssurance: toBool(req.body.hasTradeAssurance),
       isFeatured: false, // Only admins can feature products
     };
 
@@ -1103,8 +1131,67 @@ router.post('/products', supplierMiddleware, productImageUpload.array('images', 
       }
     }
 
-    // Validate with schema
-    const validatedData = insertProductSchema.parse(productData);
+    // Debug: Log the data before validation
+    console.log('🔍 Product data before validation:', {
+      hasTradeAssurance: productData.hasTradeAssurance,
+      hasTradeAssuranceType: typeof productData.hasTradeAssurance,
+      sampleAvailable: productData.sampleAvailable,
+      sampleAvailableType: typeof productData.sampleAvailable,
+      inStock: productData.inStock,
+      inStockType: typeof productData.inStock,
+      customizationAvailable: productData.customizationAvailable,
+      customizationAvailableType: typeof productData.customizationAvailable
+    });
+
+    // Validate with schema - create a custom schema that handles string-to-boolean conversion and nullable numerics
+    const productValidationSchema = insertProductSchema.extend({
+      hasTradeAssurance: z.union([z.boolean(), z.string()]).transform(val => {
+        if (typeof val === 'boolean') return val;
+        if (typeof val === 'string') return val.toLowerCase() === 'true';
+        return false;
+      }),
+      sampleAvailable: z.union([z.boolean(), z.string()]).transform(val => {
+        if (typeof val === 'boolean') return val;
+        if (typeof val === 'string') return val.toLowerCase() === 'true';
+        return false;
+      }),
+      customizationAvailable: z.union([z.boolean(), z.string()]).transform(val => {
+        if (typeof val === 'boolean') return val;
+        if (typeof val === 'string') return val.toLowerCase() === 'true';
+        return false;
+      }),
+      inStock: z.union([z.boolean(), z.string()]).transform(val => {
+        if (typeof val === 'boolean') return val;
+        if (typeof val === 'string') return val.toLowerCase() === 'true';
+        return false;
+      }),
+      isPublished: z.union([z.boolean(), z.string()]).transform(val => {
+        if (typeof val === 'boolean') return val;
+        if (typeof val === 'string') return val.toLowerCase() === 'true';
+        return false;
+      }),
+      isFeatured: z.union([z.boolean(), z.string()]).transform(val => {
+        if (typeof val === 'boolean') return val;
+        if (typeof val === 'string') return val.toLowerCase() === 'true';
+        return false;
+      }),
+      isApproved: z.union([z.boolean(), z.string()]).transform(val => {
+        if (typeof val === 'boolean') return val;
+        if (typeof val === 'string') return val.toLowerCase() === 'true';
+        return false;
+      }),
+      samplePrice: z.union([z.number(), z.string(), z.null()]).transform(val => {
+        if (val === null || val === undefined || val === '') return null;
+        if (typeof val === 'number') return val.toString();
+        if (typeof val === 'string') {
+          const parsed = parseFloat(val);
+          return isNaN(parsed) ? null : parsed.toString();
+        }
+        return null;
+      }).nullable()
+    });
+    
+    const validatedData = productValidationSchema.parse(productData);
 
     // Create product
     const [newProduct] = await db.insert(products).values(validatedData).returning();
@@ -1235,15 +1322,25 @@ router.patch('/products/:id', supplierMiddleware, productImageUpload.array('imag
       updateData.stockQuantity = parseInt(updateData.stockQuantity);
     }
 
+    // Helper function to convert string booleans to actual booleans
+    const toBool = (value: any): boolean => {
+      if (typeof value === 'boolean') return value;
+      if (typeof value === 'string') return value.toLowerCase() === 'true';
+      return false;
+    };
+
     // Convert boolean fields
     if (updateData.inStock !== undefined) {
-      updateData.inStock = updateData.inStock === 'true' || updateData.inStock === true;
+      updateData.inStock = toBool(updateData.inStock);
     }
     if (updateData.sampleAvailable !== undefined) {
-      updateData.sampleAvailable = updateData.sampleAvailable === 'true' || updateData.sampleAvailable === true;
+      updateData.sampleAvailable = toBool(updateData.sampleAvailable);
     }
     if (updateData.customizationAvailable !== undefined) {
-      updateData.customizationAvailable = updateData.customizationAvailable === 'true' || updateData.customizationAvailable === true;
+      updateData.customizationAvailable = toBool(updateData.customizationAvailable);
+    }
+    if (updateData.hasTradeAssurance !== undefined) {
+      updateData.hasTradeAssurance = toBool(updateData.hasTradeAssurance);
     }
 
     // Suppliers cannot set featured status
@@ -1426,7 +1523,55 @@ router.post('/products/bulk-upload', supplierMiddleware, productImageUpload.arra
           metaData: null,
         };
 
-        const validated = insertProductSchema.parse(productData);
+        // Use the same validation schema that handles string-to-boolean conversion
+        const productValidationSchema = insertProductSchema.extend({
+          hasTradeAssurance: z.union([z.boolean(), z.string()]).transform(val => {
+            if (typeof val === 'boolean') return val;
+            if (typeof val === 'string') return val.toLowerCase() === 'true';
+            return false;
+          }),
+          sampleAvailable: z.union([z.boolean(), z.string()]).transform(val => {
+            if (typeof val === 'boolean') return val;
+            if (typeof val === 'string') return val.toLowerCase() === 'true';
+            return false;
+          }),
+          customizationAvailable: z.union([z.boolean(), z.string()]).transform(val => {
+            if (typeof val === 'boolean') return val;
+            if (typeof val === 'string') return val.toLowerCase() === 'true';
+            return false;
+          }),
+          inStock: z.union([z.boolean(), z.string()]).transform(val => {
+            if (typeof val === 'boolean') return val;
+            if (typeof val === 'string') return val.toLowerCase() === 'true';
+            return false;
+          }),
+          isPublished: z.union([z.boolean(), z.string()]).transform(val => {
+            if (typeof val === 'boolean') return val;
+            if (typeof val === 'string') return val.toLowerCase() === 'true';
+            return false;
+          }),
+          isFeatured: z.union([z.boolean(), z.string()]).transform(val => {
+            if (typeof val === 'boolean') return val;
+            if (typeof val === 'string') return val.toLowerCase() === 'true';
+            return false;
+          }),
+          isApproved: z.union([z.boolean(), z.string()]).transform(val => {
+            if (typeof val === 'boolean') return val;
+            if (typeof val === 'string') return val.toLowerCase() === 'true';
+            return false;
+          }),
+          samplePrice: z.union([z.number(), z.string(), z.null()]).transform(val => {
+            if (val === null || val === undefined || val === '') return null;
+            if (typeof val === 'number') return val.toString();
+            if (typeof val === 'string') {
+              const parsed = parseFloat(val);
+              return isNaN(parsed) ? null : parsed.toString();
+            }
+            return null;
+          }).nullable()
+        });
+        
+        const validated = productValidationSchema.parse(productData);
         validatedProducts.push(validated);
       } catch (error: any) {
         errors.push({ row: i + 1, error: error.message });

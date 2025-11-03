@@ -60,11 +60,6 @@ import InquiryDetail from "@/pages/buyer/InquiryDetail";
 import BuyerQuotations from "@/pages/buyer/BuyerQuotations";
 import QuotationDetail from "@/pages/QuotationDetail";
 import BuyerRFQs from "@/pages/buyer/BuyerRFQs";
-import AdminInquiries from "@/pages/admin/AdminInquiries";
-import AdminQuotations from "@/pages/admin/AdminQuotations";
-import AdminQuotationDetail from "@/pages/admin/AdminQuotationDetail";
-import AdminRFQs from "@/pages/admin/AdminRFQs";
-import AdminRFQDetail from "@/pages/admin/AdminRFQDetail";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminProducts from "@/pages/admin/AdminProducts";
 import AdminProductDetail from "@/pages/admin/AdminProductDetail";
@@ -93,6 +88,7 @@ import AdminMonitoringDashboard from "@/pages/admin/AdminMonitoringDashboard";
 import AdminVerification from "@/pages/admin/AdminVerification";
 import AdminAccessManagement from "@/pages/admin/AdminAccessManagement";
 import AdminCompliance from "@/pages/admin/AdminCompliance";
+import AdminDisputes from "@/pages/admin/AdminDisputes";
 import AdminLogin from "@/pages/admin/AdminLogin";
 import GlobalChatButton from "@/components/GlobalChatButton";
 import FloatingActionButtons from "@/components/FloatingActionButtons";
@@ -134,34 +130,9 @@ function AdminRouter() {
           <AdminCategories />
         </ProtectedRoute>
       </Route>
-      <Route path="/admin/inquiries">
-        <ProtectedRoute requiredRole="admin">
-          <AdminInquiries />
-        </ProtectedRoute>
-      </Route>
       <Route path="/admin/order-management">
         <ProtectedRoute requiredRole="admin">
           <AdminOrderManagement userRole="admin" />
-        </ProtectedRoute>
-      </Route>
-      <Route path="/admin/quotations">
-        <ProtectedRoute requiredRole="admin">
-          <AdminQuotations />
-        </ProtectedRoute>
-      </Route>
-      <Route path="/admin/quotations/:id">
-        <ProtectedRoute requiredRole="admin">
-          <AdminQuotationDetail />
-        </ProtectedRoute>
-      </Route>
-      <Route path="/admin/rfqs">
-        <ProtectedRoute requiredRole="admin">
-          <AdminRFQs />
-        </ProtectedRoute>
-      </Route>
-      <Route path="/admin/rfqs/:id">
-        <ProtectedRoute requiredRole="admin">
-          <AdminRFQDetail />
         </ProtectedRoute>
       </Route>
       <Route path="/admin/orders">
@@ -257,6 +228,11 @@ function AdminRouter() {
       <Route path="/admin/compliance">
         <ProtectedRoute requiredRole="admin">
           <AdminCompliance />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/disputes">
+        <ProtectedRoute requiredRole="admin">
+          <AdminDisputes />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />

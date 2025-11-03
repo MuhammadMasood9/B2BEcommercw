@@ -81,37 +81,7 @@ export default function AdminOrders() {
     }
   });
 
-  // Fetch inquiries for analytics
-  const { data: inquiries = [] } = useQuery({
-    queryKey: ['/api/admin/inquiries'],
-    queryFn: async () => {
-      try {
-        const response = await fetch('/api/admin/inquiries');
-        if (!response.ok) throw new Error('Failed to fetch inquiries');
-        const data = await response.json();
-        return data.inquiries || [];
-      } catch (error) {
-        console.error('Error fetching inquiries:', error);
-        return [];
-      }
-    }
-  });
 
-  // Fetch quotations for analytics
-  const { data: quotations = [] } = useQuery({
-    queryKey: ['/api/admin/quotations'],
-    queryFn: async () => {
-      try {
-        const response = await fetch('/api/admin/quotations');
-        if (!response.ok) throw new Error('Failed to fetch quotations');
-        const data = await response.json();
-        return data.quotations || [];
-      } catch (error) {
-        console.error('Error fetching quotations:', error);
-        return [];
-      }
-    }
-  });
 
   // Ensure orders is always an array
   const orders = Array.isArray(ordersData) ? ordersData : [];
@@ -242,28 +212,7 @@ export default function AdminOrders() {
         const amount = parseFloat(order.totalAmount) || 0;
         return sum + amount;
       }, 0)
-    },
-    inquiries: {
-      total: inquiries.length,
-      pending: inquiries.filter((i: any) => i.status === 'pending').length,
-      replied: inquiries.filter((i: any) => i.status === 'replied').length,
-      negotiating: inquiries.filter((i: any) => i.status === 'negotiating').length,
-      closed: inquiries.filter((i: any) => i.status === 'closed').length
-    },
-    quotations: {
-      total: quotations.length,
-      pending: quotations.filter((q: any) => q.status === 'pending').length,
-      accepted: quotations.filter((q: any) => q.status === 'accepted').length,
-      rejected: quotations.filter((q: any) => q.status === 'rejected').length,
-      totalValue: quotations.reduce((sum: number, q: any) => sum + (q.totalPrice || 0), 0)
     }
-  };
-
-  // Calculate conversion rates
-  const conversionRates = {
-    inquiryToQuotation: inquiries.length > 0 ? (quotations.length / inquiries.length * 100).toFixed(1) : '0',
-    quotationToOrder: quotations.length > 0 ? (orders.length / quotations.length * 100).toFixed(1) : '0',
-    inquiryToOrder: inquiries.length > 0 ? (orders.length / inquiries.length * 100).toFixed(1) : '0'
   };
 
   return (
@@ -279,7 +228,7 @@ export default function AdminOrders() {
               Orders Management
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
-              Comprehensive management dashboard for inquiries, quotations, and orders
+              Comprehensive management dashboard for orders and fulfillment
             </p>
           </div>
           <div className="flex gap-2">
@@ -310,44 +259,7 @@ export default function AdminOrders() {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-green-100 text-sm font-medium">Active Inquiries</p>
-                <p className="text-3xl font-bold">{stats.inquiries.total}</p>
-                <p className="text-green-100 text-sm">{stats.inquiries.pending} pending</p>
-              </div>
-              <MessageSquare className="h-12 w-12 text-green-200" />
-            </div>
-          </CardContent>
-        </Card>
 
-        <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-purple-100 text-sm font-medium">Quotations Sent</p>
-                <p className="text-3xl font-bold">{stats.quotations.total}</p>
-                <p className="text-purple-100 text-sm">{stats.quotations.pending} pending</p>
-              </div>
-              <FileSpreadsheet className="h-12 w-12 text-purple-200" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-orange-100 text-sm font-medium">Conversion Rate</p>
-                <p className="text-3xl font-bold">{conversionRates.inquiryToOrder}%</p>
-                <p className="text-orange-100 text-sm">Inquiry to Order</p>
-              </div>
-              <Target className="h-12 w-12 text-orange-200" />
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Detailed Analytics */}
@@ -389,39 +301,7 @@ export default function AdminOrders() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Conversion Funnel
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Inquiries</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">{stats.inquiries.total}</span>
-                  <ArrowDownRight className="h-4 w-4 text-gray-400" />
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Quotations</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">{stats.quotations.total}</span>
-                  <span className="text-xs text-gray-500">({conversionRates.inquiryToQuotation}%)</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Orders</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">{stats.orders.total}</span>
-                  <span className="text-xs text-gray-500">({conversionRates.quotationToOrder}%)</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+
 
         <Card>
           <CardHeader>
@@ -432,14 +312,7 @@ export default function AdminOrders() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <Button variant="outline" className="w-full justify-start" size="sm">
-                <MessageSquare className="h-4 w-4 mr-2" />
-                View Inquiries ({stats.inquiries.pending} pending)
-              </Button>
-              <Button variant="outline" className="w-full justify-start" size="sm">
-                <FileSpreadsheet className="h-4 w-4 mr-2" />
-                Manage Quotations ({stats.quotations.pending} pending)
-              </Button>
+
               <Button variant="outline" className="w-full justify-start" size="sm">
                 <Package className="h-4 w-4 mr-2" />
                 Process Orders ({stats.orders.pending} pending)
@@ -455,18 +328,10 @@ export default function AdminOrders() {
 
       {/* Main Management Interface */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             Overview
-          </TabsTrigger>
-          <TabsTrigger value="inquiries" className="flex items-center gap-2">
-            <MessageSquare className="h-4 w-4" />
-            Inquiries ({stats.inquiries.pending})
-          </TabsTrigger>
-          <TabsTrigger value="quotations" className="flex items-center gap-2">
-            <FileSpreadsheet className="h-4 w-4" />
-            Quotations ({stats.quotations.pending})
           </TabsTrigger>
           <TabsTrigger value="orders" className="flex items-center gap-2">
             <Package className="h-4 w-4" />
@@ -547,83 +412,7 @@ export default function AdminOrders() {
           </div>
         </TabsContent>
 
-        <TabsContent value="inquiries" className="mt-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Customer Inquiries</CardTitle>
-                <Button size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Inquiry
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {inquiries.slice(0, 5).map((inquiry: any) => (
-                  <div key={inquiry.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center gap-4">
-                      <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-full">
-                        <MessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{inquiry.productName || 'Product Inquiry'}</p>
-                        <p className="text-sm text-gray-500">From: {inquiry.buyerName || 'Unknown Buyer'}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className={getStatusColor(inquiry.status)}>
-                        {inquiry.status}
-                      </Badge>
-                      <Button variant="outline" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
-        <TabsContent value="quotations" className="mt-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Quotations Management</CardTitle>
-                <Button size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Send Quotation
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {quotations.slice(0, 5).map((quotation: any) => (
-                  <div key={quotation.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center gap-4">
-                      <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-full">
-                        <FileSpreadsheet className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Quotation #{quotation.id.slice(0, 8)}</p>
-                        <p className="text-sm text-gray-500">Value: {formatPrice(quotation.totalPrice)}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className={getStatusColor(quotation.status)}>
-                        {quotation.status}
-                      </Badge>
-                      <Button variant="outline" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="orders" className="mt-6">
           <Card>

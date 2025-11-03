@@ -845,6 +845,173 @@ export class CommissionService {
       };
     }
   }
+  /**
+   * Create commission adjustment for dispute resolution
+   */
+  async createCommissionAdjustment(adjustmentData: {
+    orderId: string;
+    disputeId?: string;
+    adjustmentType: 'refund' | 'penalty' | 'bonus' | 'correction';
+    adjustmentAmount: number;
+    reason: string;
+    adminId: string;
+  }) {
+    try {
+      // Get the original order to calculate impact
+      const order = await db
+        .select()
+        .from(orders)
+        .where(eq(orders.id, adjustmentData.orderId))
+        .limit(1);
+
+      if (order.length === 0) {
+        throw new Error("Order not found");
+      }
+
+      const originalOrder = order[0];
+      const originalCommission = Number(originalOrder.commissionAmount || 0);
+      
+      // Calculate new commission based on adjustment
+      let newCommissionAmount = originalCommission;
+      let newSupplierAmount = Number(originalOrder.supplierAmount || 0);
+      
+      switch (adjustmentData.adjustmentType) {
+        case 'refund':
+          // Reduce commission proportionally to refund
+          const refundRatio = adjustmentData.adjustmentAmount / Number(originalOrder.totalAmount);
+          newCommissionAmount = originalCommission * (1 - refundRatio);
+          newSupplierAmount = newSupplierAmount - (adjustmentData.adjustmentAmount - (originalCommission * refundRatio));
+          break;
+        case 'penalty':
+          // Reduce supplier amount, increase commission
+          newSupplierAmount = newSupplierAmount - adjustmentData.adjustmentAmount;
+          newCommissionAmount = originalCommission + adjustmentData.adjustmentAmount;
+          break;
+        case 'bonus':
+          // Increase supplier amount, reduce commission
+          newSupplierAmount = newSupplierAmount + adjustmentData.adjustmentAmount;
+          newCommissionAmount = Math.max(0, originalCommission - adjustmentData.adjustmentAmount);
+          break;
+        case 'correction':
+          // Direct commission adjustment
+          newCommissionAmount = originalCommission + adjustmentData.adjustmentAmount;
+          newSupplierAmount = newSupplierAmount - adjustmentData.adjustmentAmount;
+          break;
+      }
+
+      // Update the order with new commission amounts
+      await db
+        .update(orders)
+        .set({
+          commissionAmount: newCommissionAmount.toString(),
+          supplierAmount: newSupplierAmount.toString(),
+          updatedAt: new Date(),
+        })
+        .where(eq(orders.id, adjustmentData.orderId));
+
+      // Create adjustment record (you would need to create this table)
+      const adjustmentRecord = {
+        id: Math.random().toString(36).substring(2, 15),
+        orderId: adjustmentData.orderId,
+        disputeId: adjustmentData.disputeId,
+        adjustmentType: adjustmentData.adjustmentType,
+        originalCommission: originalCommission,
+        adjustmentAmount: adjustmentData.adjustmentAmount,
+        newCommission: newCommissionAmount,
+        reason: adjustmentData.reason,
+        adminId: adjustmentData.adminId,
+        createdAt: new Date(),
+      };
+
+      return adjustmentRecord;
+    } catch (error) {
+      console.error("Error creating commission adjustment:", error);
+      throw new Error("Failed to create commission adjustment");
+    }
+  }
+
+  /**
+   * Get commission adjustments
+   */
+  async getCommissionAdjustments(filters: {
+    orderId?: string;
+    disputeId?: string;
+    limit: number;
+    offset: number;
+  }) {
+    try {
+      // This would require a commission_adjustments table
+      // For now, return empty array as placeholder
+      return [];
+    } catch (error) {
+      console.error("Error getting commission adjustments:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Generate commission report with export functionality
+   */
+  async generateCommissionReport(options: {
+    startDate?: Date;
+    endDate?: Date;
+    includeAdjustments: boolean;
+  }) {
+    try {
+      // Get commission data
+      const trackingData = await this.getCommissionTrackingReport(
+        undefined,
+        options.startDate,
+        options.endDate,
+        1000, // Large limit for export
+        0
+      );
+
+      // Generate CSV format
+      const csvHeaders = [
+        'Order ID',
+        'Order Number',
+        'Supplier ID',
+        'Supplier Name',
+        'Total Amount',
+        'Commission Rate',
+        'Commission Amount',
+        'Supplier Amount',
+        'Payment Status',
+        'Created At'
+      ];
+
+      const csvRows = trackingData.map(record => [
+        record.orderId,
+        record.orderNumber,
+        record.supplierId,
+        record.supplierName,
+        record.totalAmount.toFixed(2),
+        (record.commissionRate * 100).toFixed(2) + '%',
+        record.commissionAmount.toFixed(2),
+        record.supplierAmount.toFixed(2),
+        record.paymentStatus,
+        record.createdAt.toISOString()
+      ]);
+
+      const csv = [csvHeaders, ...csvRows]
+        .map(row => row.map(cell => `"${cell}"`).join(','))
+        .join('\n');
+
+      return {
+        data: trackingData,
+        csv: csv,
+        summary: {
+          totalRecords: trackingData.length,
+          totalCommission: trackingData.reduce((sum, record) => sum + record.commissionAmount, 0),
+          totalSupplierAmount: trackingData.reduce((sum, record) => sum + record.supplierAmount, 0),
+        }
+      };
+    } catch (error) {
+      console.error("Error generating commission report:", error);
+      throw new Error("Failed to generate commission report");
+    }
+  }
 }
 
 export const commissionService = CommissionService.getInstance();

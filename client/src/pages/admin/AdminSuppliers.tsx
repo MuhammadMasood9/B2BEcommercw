@@ -8,17 +8,17 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { 
-  Search, 
-  Eye, 
-  CheckCircle, 
-  XCircle, 
-  Ban, 
-  Shield, 
-  Store, 
-  Building, 
-  Mail, 
-  Phone, 
+import {
+  Search,
+  Eye,
+  CheckCircle,
+  XCircle,
+  Ban,
+  Shield,
+  Store,
+  Building,
+  Mail,
+  Phone,
   MapPin,
   MoreHorizontal,
   Download,
@@ -95,24 +95,55 @@ export default function AdminSuppliers() {
 
   // Fetch suppliers from API
   const { data: suppliersResponse, isLoading, error } = useQuery({
-    queryKey: ["/api/admin/suppliers", { 
-      search, 
-      status: filterStatus === "all" ? undefined : filterStatus,
-      membershipTier: filterTier === "all" ? undefined : filterTier,
-      verificationLevel: filterVerification === "all" ? undefined : filterVerification,
-      country: filterCountry === "all" ? undefined : filterCountry,
-      limit: pageSize,
-      offset: (currentPage - 1) * pageSize
-    }],
-    queryFn: getQueryFn({ on401: "throw" }),
+    queryKey: [
+      "/api/admin/suppliers",
+      search,
+      filterStatus,
+      filterTier,
+      filterVerification,
+      filterCountry,
+      pageSize,
+      currentPage
+    ],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (search) params.append('search', search);
+      if (filterStatus !== "all") params.append('status', filterStatus);
+      if (filterTier !== "all") params.append('membershipTier', filterTier);
+      if (filterVerification !== "all") params.append('verificationLevel', filterVerification);
+      if (filterCountry !== "all") params.append('country', filterCountry);
+      params.append('limit', pageSize.toString());
+      params.append('offset', ((currentPage - 1) * pageSize).toString());
+
+      const url = `/api/admin/suppliers?${params.toString()}`;
+      const res = await fetch(url, { credentials: "include" });
+
+      if (!res.ok) {
+        throw new Error(`${res.status}: ${res.statusText}`);
+      }
+
+      return await res.json();
+    },
     retry: 2,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   // Fetch pending suppliers
   const { data: pendingSuppliersResponse } = useQuery({
-    queryKey: ["/api/admin/suppliers/pending", { limit: 100 }],
-    queryFn: getQueryFn({ on401: "throw" }),
+    queryKey: ["/api/admin/suppliers/pending"],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      params.append('limit', '100');
+
+      const url = `/api/admin/suppliers/pending?${params.toString()}`;
+      const res = await fetch(url, { credentials: "include" });
+
+      if (!res.ok) {
+        throw new Error(`${res.status}: ${res.statusText}`);
+      }
+
+      return await res.json();
+    },
     retry: 2,
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
@@ -149,9 +180,9 @@ export default function AdminSuppliers() {
   // Reject Supplier Mutation
   const rejectSupplierMutation = useMutation({
     mutationFn: async ({ id, reason, notes }: { id: string; reason: string; notes?: string }) => {
-      return await apiRequest("POST", `/api/admin/suppliers/${id}/reject`, { 
-        rejectionReason: reason, 
-        rejectionNotes: notes 
+      return await apiRequest("POST", `/api/admin/suppliers/${id}/reject`, {
+        rejectionReason: reason,
+        rejectionNotes: notes
       });
     },
     onSuccess: () => {
@@ -169,9 +200,9 @@ export default function AdminSuppliers() {
   // Suspend Supplier Mutation
   const suspendSupplierMutation = useMutation({
     mutationFn: async ({ id, reason }: { id: string; reason?: string }) => {
-      return await apiRequest("POST", `/api/admin/suppliers/${id}/suspend`, { 
+      return await apiRequest("POST", `/api/admin/suppliers/${id}/suspend`, {
         status: 'suspended',
-        reason 
+        reason
       });
     },
     onSuccess: () => {
@@ -257,7 +288,7 @@ export default function AdminSuppliers() {
     <div className="p-8 space-y-6">
       {/* Breadcrumb */}
       <Breadcrumb items={[{ label: "Suppliers" }]} />
-      
+
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -291,7 +322,7 @@ export default function AdminSuppliers() {
             <p className="text-sm text-blue-100 mt-1">All registered suppliers</p>
           </CardContent>
         </Card>
-        
+
         {/* Active Suppliers - Green */}
         <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -305,7 +336,7 @@ export default function AdminSuppliers() {
             <p className="text-sm text-green-100 mt-1">Currently active</p>
           </CardContent>
         </Card>
-        
+
         {/* Pending Approvals - Orange */}
         <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -319,7 +350,7 @@ export default function AdminSuppliers() {
             <p className="text-sm text-orange-100 mt-1">Awaiting review</p>
           </CardContent>
         </Card>
-        
+
         {/* Recent Registrations - Purple */}
         <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -387,7 +418,7 @@ export default function AdminSuppliers() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             {/* Bulk Actions */}
             {selectedSuppliers.length > 0 && (
               <div className="flex gap-2">
@@ -493,7 +524,7 @@ export default function AdminSuppliers() {
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
                               <Building className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm capitalize">{supplier.businessType.replace('_', ' ')}</span>
+                              <span className="text-sm capitalize">{(supplier.businessType || '').replace('_', ' ')}</span>
                             </div>
                             <div className="flex items-center gap-2">
                               <Mail className="h-4 w-4 text-muted-foreground" />
@@ -520,7 +551,7 @@ export default function AdminSuppliers() {
                               {supplier.status}
                             </Badge>
                             <Badge variant={getVerificationBadgeVariant(supplier.verificationLevel)} className="text-xs">
-                              {supplier.verificationLevel.replace('_', ' ')}
+                              {(supplier.verificationLevel || '').replace('_', ' ')}
                             </Badge>
                           </div>
                         </TableCell>
@@ -533,25 +564,25 @@ export default function AdminSuppliers() {
                           <div className="space-y-1">
                             <div className="flex items-center gap-1">
                               <Star className="h-3 w-3 text-yellow-500" />
-                              <span className="text-sm">{supplier.rating.toFixed(1)}</span>
-                              <span className="text-xs text-muted-foreground">({supplier.totalReviews})</span>
+                              <span className="text-sm">{Number(supplier.rating || 0).toFixed(1)}</span>
+                              <span className="text-xs text-muted-foreground">({Number(supplier.totalReviews || 0)})</span>
                             </div>
                             <div className="flex items-center gap-1">
                               <Package className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-xs">{supplier.totalProducts} products</span>
+                              <span className="text-xs">{Number(supplier.totalProducts || 0)} products</span>
                             </div>
                             <div className="flex items-center gap-1">
                               <TrendingUp className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-xs">{supplier.totalOrders} orders</span>
+                              <span className="text-xs">{Number(supplier.totalOrders || 0)} orders</span>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">
-                            {new Date(supplier.createdAt).toLocaleDateString()}
+                            {supplier.createdAt ? new Date(supplier.createdAt).toLocaleDateString() : 'N/A'}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {new Date(supplier.createdAt).toLocaleTimeString()}
+                            {supplier.createdAt ? new Date(supplier.createdAt).toLocaleTimeString() : 'N/A'}
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
@@ -562,39 +593,39 @@ export default function AdminSuppliers() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => { 
-                                setSelectedSupplier(supplier); 
-                                setIsDetailDialogOpen(true); 
+                              <DropdownMenuItem onClick={() => {
+                                setSelectedSupplier(supplier);
+                                setIsDetailDialogOpen(true);
                               }}>
                                 <Eye className="w-4 h-4 mr-2" />
                                 View Details
                               </DropdownMenuItem>
-                              
+
                               {supplier.status === 'pending' && (
                                 <>
-                                  <DropdownMenuItem onClick={() => { 
-                                    setSelectedSupplier(supplier); 
-                                    setIsApprovalDialogOpen(true); 
+                                  <DropdownMenuItem onClick={() => {
+                                    setSelectedSupplier(supplier);
+                                    setIsApprovalDialogOpen(true);
                                   }}>
                                     <CheckCircle className="w-4 h-4 mr-2" />
                                     Approve
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => { 
-                                    setSelectedSupplier(supplier); 
-                                    setIsRejectionDialogOpen(true); 
+                                  <DropdownMenuItem onClick={() => {
+                                    setSelectedSupplier(supplier);
+                                    setIsRejectionDialogOpen(true);
                                   }}>
                                     <XCircle className="w-4 h-4 mr-2" />
                                     Reject
                                   </DropdownMenuItem>
                                 </>
                               )}
-                              
+
                               {supplier.status === 'approved' && !supplier.isSuspended && (
                                 <DropdownMenuItem onClick={() => {
                                   if (confirm(`Are you sure you want to suspend ${supplier.businessName}?`)) {
-                                    suspendSupplierMutation.mutate({ 
-                                      id: supplier.id, 
-                                      reason: 'Suspended by administrator' 
+                                    suspendSupplierMutation.mutate({
+                                      id: supplier.id,
+                                      reason: 'Suspended by administrator'
                                     });
                                   }
                                 }}>
@@ -602,7 +633,7 @@ export default function AdminSuppliers() {
                                   Suspend
                                 </DropdownMenuItem>
                               )}
-                              
+
                               {supplier.isSuspended && (
                                 <DropdownMenuItem onClick={() => {
                                   if (confirm(`Are you sure you want to activate ${supplier.businessName}?`)) {
@@ -613,7 +644,7 @@ export default function AdminSuppliers() {
                                   Activate
                                 </DropdownMenuItem>
                               )}
-                              
+
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => setLocation(`/admin/suppliers/${supplier.id}`)}>
                                 <Globe className="w-4 h-4 mr-2" />
@@ -627,7 +658,7 @@ export default function AdminSuppliers() {
                   })}
                 </TableBody>
               </Table>
-              
+
               {/* Pagination */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-between mt-4">
@@ -635,17 +666,17 @@ export default function AdminSuppliers() {
                     Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalSuppliers)} of {totalSuppliers} suppliers
                   </div>
                   <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
                     >
                       Previous
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
                     >
@@ -669,14 +700,14 @@ export default function AdminSuppliers() {
       </Card>
 
       {/* Supplier Detail Dialog */}
-      <SupplierDetailDialog 
+      <SupplierDetailDialog
         supplier={selectedSupplier}
         isOpen={isDetailDialogOpen}
         onClose={() => setIsDetailDialogOpen(false)}
       />
 
       {/* Approval Dialog */}
-      <ApprovalDialog 
+      <ApprovalDialog
         supplier={selectedSupplier}
         isOpen={isApprovalDialogOpen}
         onClose={() => setIsApprovalDialogOpen(false)}
@@ -685,7 +716,7 @@ export default function AdminSuppliers() {
       />
 
       {/* Rejection Dialog */}
-      <RejectionDialog 
+      <RejectionDialog
         supplier={selectedSupplier}
         isOpen={isRejectionDialogOpen}
         onClose={() => setIsRejectionDialogOpen(false)}
@@ -697,14 +728,14 @@ export default function AdminSuppliers() {
 }
 
 // Supplier Detail Dialog Component
-function SupplierDetailDialog({ 
-  supplier, 
-  isOpen, 
-  onClose 
-}: { 
-  supplier: Supplier | null; 
-  isOpen: boolean; 
-  onClose: () => void; 
+function SupplierDetailDialog({
+  supplier,
+  isOpen,
+  onClose
+}: {
+  supplier: Supplier | null;
+  isOpen: boolean;
+  onClose: () => void;
 }) {
   if (!supplier) return null;
 
@@ -714,7 +745,7 @@ function SupplierDetailDialog({
         <DialogHeader>
           <DialogTitle>Supplier Details - {supplier.businessName}</DialogTitle>
         </DialogHeader>
-        
+
         <Tabs defaultValue="basic" className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="basic">Basic Info</TabsTrigger>
@@ -722,7 +753,7 @@ function SupplierDetailDialog({
             <TabsTrigger value="performance">Performance</TabsTrigger>
             <TabsTrigger value="verification">Verification</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="basic" className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -739,13 +770,13 @@ function SupplierDetailDialog({
                 <div className="space-y-2 text-sm">
                   <div><strong>Store Name:</strong> {supplier.storeName}</div>
                   <div><strong>Store Slug:</strong> {supplier.storeSlug}</div>
-                  <div><strong>Business Type:</strong> {supplier.businessType.replace('_', ' ')}</div>
+                  <div><strong>Business Type:</strong> {(supplier.businessType || '').replace('_', ' ')}</div>
                   <div><strong>Membership:</strong> {supplier.membershipTier}</div>
                 </div>
               </div>
             </div>
           </TabsContent>
-          
+
           <TabsContent value="business" className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -767,7 +798,7 @@ function SupplierDetailDialog({
               </div>
             </div>
           </TabsContent>
-          
+
           <TabsContent value="performance" className="space-y-4">
             <div className="grid grid-cols-3 gap-4">
               <Card>
@@ -775,8 +806,8 @@ function SupplierDetailDialog({
                   <CardTitle className="text-sm">Rating</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{supplier.rating.toFixed(1)}</div>
-                  <p className="text-xs text-muted-foreground">{supplier.totalReviews} reviews</p>
+                  <div className="text-2xl font-bold">{Number(supplier.rating || 0).toFixed(1)}</div>
+                  <p className="text-xs text-muted-foreground">{Number(supplier.totalReviews || 0)} reviews</p>
                 </CardContent>
               </Card>
               <Card>
@@ -784,7 +815,7 @@ function SupplierDetailDialog({
                   <CardTitle className="text-sm">Products</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{supplier.totalProducts}</div>
+                  <div className="text-2xl font-bold">{Number(supplier.totalProducts || 0)}</div>
                   <p className="text-xs text-muted-foreground">Listed products</p>
                 </CardContent>
               </Card>
@@ -793,18 +824,18 @@ function SupplierDetailDialog({
                   <CardTitle className="text-sm">Orders</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{supplier.totalOrders}</div>
+                  <div className="text-2xl font-bold">{Number(supplier.totalOrders || 0)}</div>
                   <p className="text-xs text-muted-foreground">Total orders</p>
                 </CardContent>
               </Card>
             </div>
           </TabsContent>
-          
+
           <TabsContent value="verification" className="space-y-4">
             <div>
               <h4 className="font-semibold mb-2">Verification Status</h4>
               <Badge variant={getVerificationBadgeVariant(supplier.verificationLevel)}>
-                {supplier.verificationLevel.replace('_', ' ')}
+                {(supplier.verificationLevel || '').replace('_', ' ')}
               </Badge>
             </div>
           </TabsContent>
@@ -815,18 +846,18 @@ function SupplierDetailDialog({
 }
 
 // Approval Dialog Component
-function ApprovalDialog({ 
-  supplier, 
-  isOpen, 
-  onClose, 
-  onApprove, 
-  isLoading 
-}: { 
-  supplier: Supplier | null; 
-  isOpen: boolean; 
-  onClose: () => void; 
-  onApprove: (notes?: string) => void; 
-  isLoading: boolean; 
+function ApprovalDialog({
+  supplier,
+  isOpen,
+  onClose,
+  onApprove,
+  isLoading
+}: {
+  supplier: Supplier | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onApprove: (notes?: string) => void;
+  isLoading: boolean;
 }) {
   const [notes, setNotes] = useState("");
 
@@ -838,22 +869,22 @@ function ApprovalDialog({
         <DialogHeader>
           <DialogTitle>Approve Supplier - {supplier.businessName}</DialogTitle>
         </DialogHeader>
-        
+
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
             Are you sure you want to approve this supplier? They will be able to start listing products and managing their store.
           </p>
-          
+
           <div>
             <label className="text-sm font-medium">Approval Notes (Optional)</label>
-            <Textarea 
+            <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Add any notes about the approval..."
               className="mt-1"
             />
           </div>
-          
+
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={onClose} disabled={isLoading}>
               Cancel
@@ -869,18 +900,18 @@ function ApprovalDialog({
 }
 
 // Rejection Dialog Component
-function RejectionDialog({ 
-  supplier, 
-  isOpen, 
-  onClose, 
-  onReject, 
-  isLoading 
-}: { 
-  supplier: Supplier | null; 
-  isOpen: boolean; 
-  onClose: () => void; 
-  onReject: (reason: string, notes?: string) => void; 
-  isLoading: boolean; 
+function RejectionDialog({
+  supplier,
+  isOpen,
+  onClose,
+  onReject,
+  isLoading
+}: {
+  supplier: Supplier | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onReject: (reason: string, notes?: string) => void;
+  isLoading: boolean;
 }) {
   const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
@@ -893,12 +924,12 @@ function RejectionDialog({
         <DialogHeader>
           <DialogTitle>Reject Supplier - {supplier.businessName}</DialogTitle>
         </DialogHeader>
-        
+
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
             Please provide a reason for rejecting this supplier application.
           </p>
-          
+
           <div>
             <label className="text-sm font-medium">Rejection Reason *</label>
             <Select value={reason} onValueChange={setReason}>
@@ -915,24 +946,24 @@ function RejectionDialog({
               </SelectContent>
             </Select>
           </div>
-          
+
           <div>
             <label className="text-sm font-medium">Additional Notes (Optional)</label>
-            <Textarea 
+            <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Add any additional details about the rejection..."
               className="mt-1"
             />
           </div>
-          
+
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={onClose} disabled={isLoading}>
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
-              onClick={() => onReject(reason, notes)} 
+            <Button
+              variant="destructive"
+              onClick={() => onReject(reason, notes)}
               disabled={isLoading || !reason}
             >
               {isLoading ? "Rejecting..." : "Reject Supplier"}

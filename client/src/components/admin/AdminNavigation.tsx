@@ -38,7 +38,10 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
-  Info
+  Info,
+  Book,
+  GraduationCap,
+  Code
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -453,6 +456,54 @@ const adminMenuStructure: AdminMenuItem[] = [
         category: 'settings',
         priority: 2,
         keywords: ['compliance', 'reports', 'regulatory'],
+        roles: ['admin']
+      }
+    ]
+  },
+
+  // Documentation & Training
+  {
+    id: 'documentation',
+    title: 'Documentation & Training',
+    url: '/admin/documentation',
+    icon: Book,
+    description: 'Access documentation, training, and help resources',
+    category: 'tools',
+    priority: 9,
+    keywords: ['documentation', 'training', 'help', 'guides', 'tutorials'],
+    roles: ['admin', 'manager', 'operator'],
+    children: [
+      {
+        id: 'documentation-guides',
+        title: 'Documentation',
+        url: '/admin/documentation',
+        icon: Book,
+        description: 'Comprehensive admin guides and references',
+        category: 'tools',
+        priority: 1,
+        keywords: ['documentation', 'guides', 'help'],
+        roles: ['admin', 'manager', 'operator']
+      },
+      {
+        id: 'training-modules',
+        title: 'Training & Certification',
+        url: '/admin/training',
+        icon: GraduationCap,
+        description: 'Interactive training modules and certifications',
+        category: 'tools',
+        priority: 2,
+        keywords: ['training', 'certification', 'learning'],
+        roles: ['admin', 'manager', 'operator']
+      },
+      {
+        id: 'api-documentation',
+        title: 'API Reference',
+        url: '/admin/api-docs',
+        icon: Code,
+        description: 'Complete API documentation for developers',
+        category: 'tools',
+        priority: 3,
+        keywords: ['api', 'reference', 'developers', 'endpoints'],
         roles: ['admin']
       }
     ]

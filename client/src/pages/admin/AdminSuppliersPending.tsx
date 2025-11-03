@@ -65,8 +65,21 @@ export default function AdminSuppliersPending() {
 
   // Fetch pending suppliers from API
   const { data: pendingSuppliersResponse, isLoading, error } = useQuery({
-    queryKey: ["/api/admin/suppliers/pending", { search, limit: 100 }],
-    queryFn: getQueryFn({ on401: "throw" }),
+    queryKey: ["/api/admin/suppliers/pending", search],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (search) params.append('search', search);
+      params.append('limit', '100');
+      
+      const url = `/api/admin/suppliers/pending?${params.toString()}`;
+      const res = await fetch(url, { credentials: "include" });
+      
+      if (!res.ok) {
+        throw new Error(`${res.status}: ${res.statusText}`);
+      }
+      
+      return await res.json();
+    },
     retry: 2,
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
@@ -268,7 +281,7 @@ export default function AdminSuppliersPending() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAndSortedSuppliers.map((supplier) => (
+                {filteredAndSortedSuppliers.map((supplier: PendingSupplier) => (
                   <TableRow key={supplier.id}>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-3">

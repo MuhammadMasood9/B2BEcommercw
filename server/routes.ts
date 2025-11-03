@@ -9,6 +9,7 @@ import uploadRoutes from "./uploadRoutes";
 import chatRoutes from "./chatRoutes";
 import { supplierRoutes } from "./supplierRoutes";
 import { adminSupplierRoutes } from "./adminSupplierRoutes";
+import { adminProductRoutes } from "./adminProductRoutes";
 import { adminOversightRoutes } from "./adminOversightRoutes";
 import { systemMonitoringRoutes } from "./systemMonitoringRoutes";
 import { automatedAlertingRoutes } from "./automatedAlertingRoutes";
@@ -70,6 +71,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ==================== ADMIN SUPPLIER ROUTES ====================
 
   app.use('/api/admin/suppliers', adminSupplierRoutes);
+
+  // ==================== ADMIN PRODUCT ROUTES ====================
+
+  app.use('/api/admin/products', adminProductRoutes);
 
   // ==================== ADMIN OVERSIGHT ROUTES ====================
 
@@ -1472,7 +1477,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Authentication required" });
       }
 
-      const productData = { ...req.body };
+      // Helper function to convert empty strings to null for decimal fields (returns string for database)
+      const toDecimal = (value: any): string | null => {
+        if (value === '' || value === null || value === undefined) return null;
+        const parsed = parseFloat(value);
+        return isNaN(parsed) ? null : parsed.toString();
+      };
+
+      const productData = { 
+        ...req.body,
+        samplePrice: toDecimal(req.body.samplePrice)
+      };
 
       // Handle supplier attribution
       if (req.user.role === 'supplier') {
@@ -1509,7 +1524,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Only suppliers and admins can create products" });
       }
 
-      const validatedData = insertProductSchema.parse(productData);
+      // Create validation schema that handles string-to-boolean conversion
+      const productValidationSchema = insertProductSchema.extend({
+        hasTradeAssurance: z.union([z.boolean(), z.string()]).transform(val => {
+          if (typeof val === 'boolean') return val;
+          if (typeof val === 'string') return val.toLowerCase() === 'true';
+          return false;
+        }),
+        sampleAvailable: z.union([z.boolean(), z.string()]).transform(val => {
+          if (typeof val === 'boolean') return val;
+          if (typeof val === 'string') return val.toLowerCase() === 'true';
+          return false;
+        }),
+        customizationAvailable: z.union([z.boolean(), z.string()]).transform(val => {
+          if (typeof val === 'boolean') return val;
+          if (typeof val === 'string') return val.toLowerCase() === 'true';
+          return false;
+        }),
+        inStock: z.union([z.boolean(), z.string()]).transform(val => {
+          if (typeof val === 'boolean') return val;
+          if (typeof val === 'string') return val.toLowerCase() === 'true';
+          return false;
+        }),
+        isPublished: z.union([z.boolean(), z.string()]).transform(val => {
+          if (typeof val === 'boolean') return val;
+          if (typeof val === 'string') return val.toLowerCase() === 'true';
+          return false;
+        }),
+        isFeatured: z.union([z.boolean(), z.string()]).transform(val => {
+          if (typeof val === 'boolean') return val;
+          if (typeof val === 'string') return val.toLowerCase() === 'true';
+          return false;
+        }),
+        isApproved: z.union([z.boolean(), z.string()]).transform(val => {
+          if (typeof val === 'boolean') return val;
+          if (typeof val === 'string') return val.toLowerCase() === 'true';
+          return false;
+        }),
+        samplePrice: z.union([z.number(), z.string(), z.null()]).transform(val => {
+          if (val === null || val === undefined || val === '') return null;
+          if (typeof val === 'number') return val.toString();
+          if (typeof val === 'string') {
+            const parsed = parseFloat(val);
+            return isNaN(parsed) ? null : parsed.toString();
+          }
+          return null;
+        }).nullable()
+      });
+      
+      const validatedData = productValidationSchema.parse(productData);
       const product = await storage.createProduct(validatedData);
 
       // Update supplier's product count if applicable
@@ -1613,7 +1676,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/products/:id", async (req, res) => {
     try {
-      const validatedData = insertProductSchema.partial().parse(req.body);
+      // Create validation schema that handles string-to-boolean conversion
+      const productValidationSchema = insertProductSchema.extend({
+        hasTradeAssurance: z.union([z.boolean(), z.string()]).transform(val => {
+          if (typeof val === 'boolean') return val;
+          if (typeof val === 'string') return val.toLowerCase() === 'true';
+          return false;
+        }),
+        sampleAvailable: z.union([z.boolean(), z.string()]).transform(val => {
+          if (typeof val === 'boolean') return val;
+          if (typeof val === 'string') return val.toLowerCase() === 'true';
+          return false;
+        }),
+        customizationAvailable: z.union([z.boolean(), z.string()]).transform(val => {
+          if (typeof val === 'boolean') return val;
+          if (typeof val === 'string') return val.toLowerCase() === 'true';
+          return false;
+        }),
+        inStock: z.union([z.boolean(), z.string()]).transform(val => {
+          if (typeof val === 'boolean') return val;
+          if (typeof val === 'string') return val.toLowerCase() === 'true';
+          return false;
+        }),
+        isPublished: z.union([z.boolean(), z.string()]).transform(val => {
+          if (typeof val === 'boolean') return val;
+          if (typeof val === 'string') return val.toLowerCase() === 'true';
+          return false;
+        }),
+        isFeatured: z.union([z.boolean(), z.string()]).transform(val => {
+          if (typeof val === 'boolean') return val;
+          if (typeof val === 'string') return val.toLowerCase() === 'true';
+          return false;
+        }),
+        isApproved: z.union([z.boolean(), z.string()]).transform(val => {
+          if (typeof val === 'boolean') return val;
+          if (typeof val === 'string') return val.toLowerCase() === 'true';
+          return false;
+        }),
+        samplePrice: z.union([z.number(), z.string(), z.null()]).transform(val => {
+          if (val === null || val === undefined || val === '') return null;
+          if (typeof val === 'number') return val.toString();
+          if (typeof val === 'string') {
+            const parsed = parseFloat(val);
+            return isNaN(parsed) ? null : parsed.toString();
+          }
+          return null;
+        }).nullable()
+      });
+      
+      const validatedData = productValidationSchema.partial().parse(req.body);
       const product = await storage.updateProduct(req.params.id, validatedData);
       if (!product) {
         return res.status(404).json({ error: "Product not found" });
@@ -1733,6 +1844,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Products must be an array" });
       }
 
+      // Helper function to convert empty strings to null for decimal fields (returns string for database)
+      const toDecimal = (value: any): string | null => {
+        if (value === '' || value === null || value === undefined) return null;
+        const parsed = parseFloat(value);
+        return isNaN(parsed) ? null : parsed.toString();
+      };
+
       const validatedProducts = [];
       const errors = [];
 
@@ -1755,7 +1873,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             minOrderQuantity: parseInt(p.minOrderQuantity || p.MOQ || '1'),
             priceRanges: p.priceRanges || null,
             sampleAvailable: p.sampleAvailable === 'true' || p.sampleAvailable === true,
-            samplePrice: p.samplePrice,
+            samplePrice: toDecimal(p.samplePrice),
             customizationAvailable: p.customizationAvailable === 'true' || p.customizationAvailable === true,
             leadTime: p.leadTime || p['Lead Time'],
             port: p.port || p.Port,
@@ -1769,7 +1887,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
             metaData: p.metaData || null,
           };
 
-          const validated = insertProductSchema.parse(productData);
+          // Create validation schema that handles string-to-boolean conversion
+          const productValidationSchema = insertProductSchema.extend({
+            hasTradeAssurance: z.union([z.boolean(), z.string()]).transform(val => {
+              if (typeof val === 'boolean') return val;
+              if (typeof val === 'string') return val.toLowerCase() === 'true';
+              return false;
+            }),
+            sampleAvailable: z.union([z.boolean(), z.string()]).transform(val => {
+              if (typeof val === 'boolean') return val;
+              if (typeof val === 'string') return val.toLowerCase() === 'true';
+              return false;
+            }),
+            customizationAvailable: z.union([z.boolean(), z.string()]).transform(val => {
+              if (typeof val === 'boolean') return val;
+              if (typeof val === 'string') return val.toLowerCase() === 'true';
+              return false;
+            }),
+            inStock: z.union([z.boolean(), z.string()]).transform(val => {
+              if (typeof val === 'boolean') return val;
+              if (typeof val === 'string') return val.toLowerCase() === 'true';
+              return false;
+            }),
+            isPublished: z.union([z.boolean(), z.string()]).transform(val => {
+              if (typeof val === 'boolean') return val;
+              if (typeof val === 'string') return val.toLowerCase() === 'true';
+              return false;
+            }),
+            isFeatured: z.union([z.boolean(), z.string()]).transform(val => {
+              if (typeof val === 'boolean') return val;
+              if (typeof val === 'string') return val.toLowerCase() === 'true';
+              return false;
+            }),
+            isApproved: z.union([z.boolean(), z.string()]).transform(val => {
+              if (typeof val === 'boolean') return val;
+              if (typeof val === 'string') return val.toLowerCase() === 'true';
+              return false;
+            }),
+            samplePrice: z.union([z.number(), z.string(), z.null()]).transform(val => {
+              if (val === null || val === undefined || val === '') return null;
+              if (typeof val === 'number') return val.toString();
+              if (typeof val === 'string') {
+                const parsed = parseFloat(val);
+                return isNaN(parsed) ? null : parsed.toString();
+              }
+              return null;
+            }).nullable()
+          });
+          
+          const validated = productValidationSchema.parse(productData);
           validatedProducts.push(validated);
         } catch (error: any) {
           errors.push({ row: i + 1, error: error.message });
@@ -1795,6 +1961,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Bulk upload with Excel/JSON and actual image files - NO LIMITS
   app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (req, res) => {
     try {
+      // Helper function to convert empty strings to null for decimal fields (returns string for database)
+      const toDecimal = (value: any): string | null => {
+        if (value === '' || value === null || value === undefined) return null;
+        const parsed = parseFloat(value);
+        return isNaN(parsed) ? null : parsed.toString();
+      };
+
       const { products } = req.body;
       const imageFiles = req.files as Express.Multer.File[];
 
@@ -2014,7 +2187,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               minOrderQuantity: parseInt(p.minOrderQuantity || '1'),
               priceRanges: priceRanges.length > 0 ? priceRanges : null,
               sampleAvailable: p.sampleAvailable === 'true' || p.sampleAvailable === true,
-              samplePrice: p.samplePrice ? p.samplePrice.toString() : null,
+              samplePrice: toDecimal(p.samplePrice),
               customizationAvailable: p.customizationAvailable === 'true' || p.customizationAvailable === true,
               customizationDetails: p.customizationDetails,
               leadTime: p.leadTime,
@@ -2041,7 +2214,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log(`💰 samplePrice before processing: ${p.samplePrice} (type: ${typeof p.samplePrice})`);
             console.log(`💰 samplePrice after processing: ${productData.samplePrice} (type: ${typeof productData.samplePrice})`);
 
-            const validated = insertProductSchema.parse(productData);
+            // Create validation schema that handles string-to-boolean conversion
+            const productValidationSchema = insertProductSchema.extend({
+              hasTradeAssurance: z.union([z.boolean(), z.string()]).transform(val => {
+                if (typeof val === 'boolean') return val;
+                if (typeof val === 'string') return val.toLowerCase() === 'true';
+                return false;
+              }),
+              sampleAvailable: z.union([z.boolean(), z.string()]).transform(val => {
+                if (typeof val === 'boolean') return val;
+                if (typeof val === 'string') return val.toLowerCase() === 'true';
+                return false;
+              }),
+              customizationAvailable: z.union([z.boolean(), z.string()]).transform(val => {
+                if (typeof val === 'boolean') return val;
+                if (typeof val === 'string') return val.toLowerCase() === 'true';
+                return false;
+              }),
+              inStock: z.union([z.boolean(), z.string()]).transform(val => {
+                if (typeof val === 'boolean') return val;
+                if (typeof val === 'string') return val.toLowerCase() === 'true';
+                return false;
+              }),
+              isPublished: z.union([z.boolean(), z.string()]).transform(val => {
+                if (typeof val === 'boolean') return val;
+                if (typeof val === 'string') return val.toLowerCase() === 'true';
+                return false;
+              }),
+              isFeatured: z.union([z.boolean(), z.string()]).transform(val => {
+                if (typeof val === 'boolean') return val;
+                if (typeof val === 'string') return val.toLowerCase() === 'true';
+                return false;
+              }),
+              isApproved: z.union([z.boolean(), z.string()]).transform(val => {
+                if (typeof val === 'boolean') return val;
+                if (typeof val === 'string') return val.toLowerCase() === 'true';
+                return false;
+              }),
+              samplePrice: z.union([z.number(), z.string(), z.null()]).transform(val => {
+                if (val === null || val === undefined || val === '') return null;
+                if (typeof val === 'number') return val.toString();
+                if (typeof val === 'string') {
+                  const parsed = parseFloat(val);
+                  return isNaN(parsed) ? null : parsed.toString();
+                }
+                return null;
+              }).nullable()
+            });
+            
+            const validated = productValidationSchema.parse(productData);
             validatedProducts.push(validated);
           } catch (error: any) {
             errors.push({ row: i + 1, error: error.message });
@@ -3379,165 +3600,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ==================== ADMIN INQUIRIES ====================
 
-  app.get("/api/admin/inquiries", async (req, res) => {
-    try {
-      const { status, search } = req.query;
-      const filters: any = {};
-
-      if (status && status !== 'all') {
-        filters.status = status;
-      }
-
-      if (search) {
-        filters.search = search as string;
-      }
-
-      const inquiries = await storage.getAdminInquiries(filters);
-      res.json({ inquiries });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.post("/api/admin/inquiries/quotation", async (req, res) => {
-    try {
-      const { inquiryId, quotation } = req.body;
-
-      if (!inquiryId || !quotation) {
-        return res.status(400).json({ error: "Inquiry ID and quotation data are required" });
-      }
-
-      // Create quotation
-      const createdQuotation = await storage.createInquiryQuotation({
-        inquiryId,
-        pricePerUnit: quotation.pricePerUnit ? quotation.pricePerUnit.toString() : null,
-        totalPrice: quotation.totalPrice ? quotation.totalPrice.toString() : null,
-        moq: quotation.moq,
-        leadTime: quotation.leadTime,
-        paymentTerms: quotation.paymentTerms,
-        validUntil: quotation.validUntil ? new Date(quotation.validUntil) : null,
-        message: quotation.message,
-        attachments: quotation.attachments || [],
-        status: 'pending'
-      });
-
-      // Update inquiry status to 'replied'
-      await storage.updateInquiry(inquiryId, { status: 'replied' });
-
-      res.json({ success: true, quotation: createdQuotation });
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  });
-
-  // Get all quotations
-  app.get("/api/admin/quotations", async (req, res) => {
-    try {
-      const { status, search, type } = req.query;
-
-      // Get both RFQ quotations and Inquiry quotations
-      const [rfqQuotations, inquiryQuotations] = await Promise.all([
-        storage.getQuotations(status ? { status: status as string } : {}),
-        storage.getInquiryQuotations()
-      ]);
-
-      // Mark each quotation with its type and enhance with related data
-      const enhancedRfqQuotations = await Promise.all(
-        rfqQuotations.map(async (quotation: any) => {
-          quotation.type = 'rfq';
-          quotation.quotationId = quotation.id; // For consistency with inquiry quotations
-
-          // Fetch RFQ details
-          try {
-            const rfq = await storage.getRfq(quotation.rfqId);
-            if (rfq) {
-              quotation.rfq = rfq;
-              quotation.rfqTitle = rfq.title;
-              quotation.quantity = rfq.quantity;
-              quotation.targetPrice = rfq.targetPrice;
-
-              // Fetch buyer details
-              if (rfq.buyerId) {
-                const buyer = await storage.getUser(rfq.buyerId);
-                if (buyer) {
-                  quotation.buyer = buyer;
-                  quotation.buyerId = buyer.id;
-                  quotation.buyerName = `${buyer.firstName || ''} ${buyer.lastName || ''}`.trim() || buyer.email;
-                  quotation.buyerCompany = buyer.companyName;
-                  quotation.buyerEmail = buyer.email;
-                  quotation.buyerPhone = buyer.phone;
-                }
-              }
-
-              // Fetch product details if productId exists
-              if (rfq.productId) {
-                try {
-                  const product = await db.select().from(products).where(eq(products.id, rfq.productId)).limit(1);
-                  if (product[0]) {
-                    quotation.product = product[0];
-                    quotation.productId = product[0].id;
-                    quotation.productName = product[0].name;
-                    quotation.productImages = product[0].images;
-                  }
-                } catch (err) {
-                  console.error('Error fetching product:', err);
-                }
-              }
-            }
-          } catch (err) {
-            console.error('Error enhancing RFQ quotation:', err);
-          }
-
-          return quotation;
-        })
-      );
-
-      // Mark inquiry quotations with type
-      const enhancedInquiryQuotations = inquiryQuotations.map((quotation: any) => {
-        quotation.type = 'inquiry';
-        return quotation;
-      });
-
-      // Combine both types
-      let allQuotations = [...enhancedRfqQuotations, ...enhancedInquiryQuotations];
-
-      // Filter by type if provided
-      if (type && type !== 'all') {
-        allQuotations = allQuotations.filter((q: any) => q.type === type);
-      }
-
-      // Filter by status if provided
-      if (status && status !== 'all') {
-        allQuotations = allQuotations.filter((q: any) => q.status === status);
-      }
-
-      // Search filter
-      if (search) {
-        const searchLower = (search as string).toLowerCase();
-        allQuotations = allQuotations.filter((q: any) =>
-          q.productName?.toLowerCase().includes(searchLower) ||
-          q.buyerName?.toLowerCase().includes(searchLower) ||
-          q.buyerCompany?.toLowerCase().includes(searchLower) ||
-          q.rfqTitle?.toLowerCase().includes(searchLower) ||
-          q.id?.toLowerCase().includes(searchLower)
-        );
-      }
-
-      // Sort by created date (newest first)
-      allQuotations.sort((a: any, b: any) => {
-        const dateA = new Date(a.createdAt || 0).getTime();
-        const dateB = new Date(b.createdAt || 0).getTime();
-        return dateB - dateA;
-      });
-
-      res.json({ quotations: allQuotations });
-    } catch (error: any) {
-      console.error('Error fetching admin quotations:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
 
   // Get specific quotation for buyer (with permission check)
   app.get("/api/buyer/quotations/:id", async (req, res) => {
@@ -3850,76 +3913,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get specific quotation (handles both RFQ and Inquiry quotations)
-  app.get("/api/admin/quotations/:id", async (req, res) => {
-    try {
-      // Try to get as inquiry quotation first
-      let quotation: any = await storage.getInquiryQuotation(req.params.id);
-      if (quotation) {
-        quotation.type = 'inquiry';
-        return res.json(quotation);
-      }
 
-      // If not found, try as RFQ quotation
-      quotation = await storage.getQuotation(req.params.id);
-      if (quotation) {
-        quotation = { ...quotation, type: 'rfq' };
-        return res.json(quotation);
-      }
-
-      return res.status(404).json({ error: "Quotation not found" });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Update quotation (handles both types)
-  app.patch("/api/admin/quotations/:id", async (req, res) => {
-    try {
-      const adminId = (req as any).user?.id;
-      const adminName = (req as any).user?.firstName || (req as any).user?.email || 'Admin';
-
-      // Try to update as inquiry quotation first
-      let quotation: any = await storage.updateInquiryQuotation(req.params.id, req.body);
-      if (quotation) {
-        // Create activity log
-        await createActivityLog({
-          adminId,
-          adminName,
-          action: 'Updated Quotation',
-          description: `Updated inquiry quotation ${req.params.id}`,
-          entityType: 'quotation',
-          entityId: req.params.id,
-          entityName: `Quotation ${req.params.id}`,
-          ipAddress: req.ip,
-          userAgent: req.get('User-Agent')
-        });
-        return res.json(quotation);
-      }
-
-      // If not found, try as RFQ quotation
-      quotation = await storage.updateQuotation(req.params.id, req.body);
-      if (quotation) {
-        // Create activity log
-        await createActivityLog({
-          adminId,
-          adminName,
-          action: 'Updated Quotation',
-          description: `Updated RFQ quotation ${req.params.id}`,
-          entityType: 'quotation',
-          entityId: req.params.id,
-          entityName: `Quotation ${req.params.id}`,
-          ipAddress: req.ip,
-          userAgent: req.get('User-Agent')
-        });
-        return res.json(quotation);
-      }
-
-      return res.status(404).json({ error: "Quotation not found" });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
 
   // ==================== INQUIRY REVISION & NEGOTIATION ROUTES ====================
 
@@ -3973,105 +3967,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin creates revised quotation
-  app.post("/api/admin/inquiries/:id/revised-quotation", async (req, res) => {
-    try {
-      console.log('Received revised quotation request:', req.body);
-      const { quotation } = req.body;
 
-      if (!quotation) {
-        console.log('No quotation data provided');
-        return res.status(400).json({ error: "Quotation data is required" });
-      }
-
-      console.log('Quotation data:', quotation);
-
-      // Validate required fields
-      if (!quotation.pricePerUnit || !quotation.totalPrice || !quotation.moq) {
-        return res.status(400).json({ error: "Missing required fields: pricePerUnit, totalPrice, moq" });
-      }
-
-      // Create new quotation
-      const createdQuotation = await storage.createInquiryQuotation({
-        inquiryId: req.params.id,
-        pricePerUnit: quotation.pricePerUnit ? quotation.pricePerUnit.toString() : null,
-        totalPrice: quotation.totalPrice ? quotation.totalPrice.toString() : null,
-        moq: quotation.moq,
-        leadTime: quotation.leadTime,
-        paymentTerms: quotation.paymentTerms,
-        validUntil: quotation.validUntil ? new Date(quotation.validUntil) : null,
-        message: quotation.message,
-        attachments: quotation.attachments || [],
-        status: 'pending'
-      });
-
-      // Update inquiry status to 'replied'
-      await storage.updateInquiryStatus(req.params.id, 'replied');
-
-      console.log('Revised quotation created successfully:', createdQuotation);
-      res.json({ success: true, quotation: createdQuotation });
-    } catch (error: any) {
-      console.error('Error creating revised quotation:', error);
-      res.status(400).json({ error: error.message });
-    }
-  });
 
   // ==================== RFQ QUOTATION NEGOTIATION ROUTES ====================
 
-  // Admin creates revised RFQ quotation (creates a new quotation for the RFQ)
-  app.post("/api/admin/rfqs/:rfqId/revised-quotation", async (req, res) => {
-    try {
-      if (!req.user || req.user.role !== 'admin') {
-        return res.status(403).json({ error: "Unauthorized: Only admins can create quotations." });
-      }
 
-      const supplierId = req.user.id;
-      const { rfqId } = req.params;
-      const { pricePerUnit, totalPrice, moq, leadTime, paymentTerms, validUntil, message, attachments } = req.body;
-
-      // Validate required fields
-      if (!pricePerUnit || !totalPrice || !moq) {
-        return res.status(400).json({ error: "Missing required fields: pricePerUnit, totalPrice, moq" });
-      }
-
-      // Get the RFQ to verify it exists
-      const rfq = await storage.getRfq(rfqId);
-      if (!rfq) {
-        return res.status(404).json({ error: "RFQ not found" });
-      }
-
-      // Create new quotation for this RFQ
-      const quotationData = {
-        rfqId,
-        supplierId,
-        pricePerUnit: pricePerUnit.toString(),
-        totalPrice: totalPrice.toString(),
-        moq: parseInt(moq),
-        leadTime: leadTime || null,
-        paymentTerms: paymentTerms || null,
-        validUntil: validUntil ? new Date(validUntil) : null,
-        message: message || null,
-        attachments: attachments || [],
-        status: 'pending'
-      };
-
-      const validatedData = insertQuotationSchema.parse(quotationData);
-      const createdQuotation = await storage.createQuotation(validatedData);
-
-      // Increment RFQ quotation count
-      await storage.incrementRfqQuotationCount(rfqId);
-
-      // Update RFQ status to negotiating if not already
-      if (rfq.status === 'open') {
-        await storage.updateRfq(rfqId, { status: 'open' }); // Keep open, or change logic as needed
-      }
-
-      res.json({ success: true, quotation: createdQuotation });
-    } catch (error: any) {
-      console.error('Error creating revised RFQ quotation:', error);
-      res.status(400).json({ error: error.message });
-    }
-  });
 
   // Get RFQ quotation history (all quotations for a specific RFQ)
   app.get("/api/rfqs/:rfqId/quotations", async (req, res) => {

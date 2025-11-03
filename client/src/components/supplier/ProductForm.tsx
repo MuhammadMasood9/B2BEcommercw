@@ -151,6 +151,9 @@ export default function ProductForm({ product, categories, onSuccess, onCancel }
           submitFormData.append(key, JSON.stringify(value));
         } else if (Array.isArray(value)) {
           submitFormData.append(key, value.join(','));
+        } else if (typeof value === 'boolean') {
+          console.log(`🔍 Client: Adding boolean field ${key}:`, value, '→', value.toString());
+          submitFormData.append(key, value.toString());
         } else if (value !== null && value !== undefined) {
           submitFormData.append(key, String(value));
         }
@@ -240,7 +243,7 @@ export default function ProductForm({ product, categories, onSuccess, onCancel }
   };
 
   // Update price range
-  const updatePriceRange = (index: number, field: string, value: number) => {
+  const updatePriceRange = (index: number, field: string, value: number | undefined) => {
     setFormData(prev => ({
       ...prev,
       priceRanges: prev.priceRanges?.map((range, i) => 
@@ -489,7 +492,7 @@ export default function ProductForm({ product, categories, onSuccess, onCancel }
                         type="number"
                         placeholder="Max Qty (optional)"
                         value={range.maxQty || ''}
-                        onChange={(e) => updatePriceRange(index, 'maxQty', parseInt(e.target.value) || undefined)}
+                        onChange={(e) => updatePriceRange(index, 'maxQty', e.target.value ? parseInt(e.target.value) : undefined)}
                       />
                       <Input
                         type="number"

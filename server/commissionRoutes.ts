@@ -124,6 +124,83 @@ router.get("/admin/commission/history", requireAuth, requireRole(["admin"]), asy
 });
 
 /**
+ * Create commission adjustment for dispute resolution
+ */
+router.post("/admin/commission/adjustment", requireAuth, requireRole(["admin"]), async (req, res) => {
+  try {
+    const { orderId, disputeId, adjustmentType, adjustmentAmount, reason } = req.body;
+    
+    if (!orderId || !adjustmentType || !adjustmentAmount || !reason) {
+      return res.status(400).json({ error: "Missing required fields: orderId, adjustmentType, adjustmentAmount, reason" });
+    }
+    
+    const adjustment = await commissionService.createCommissionAdjustment({
+      orderId,
+      disputeId,
+      adjustmentType,
+      adjustmentAmount: parseFloat(adjustmentAmount),
+      reason,
+      adminId: req.user!.id,
+    });
+    
+    res.json({ 
+      message: "Commission adjustment created successfully",
+      adjustment 
+    });
+  } catch (error) {
+    console.error("Error creating commission adjustment:", error);
+    res.status(500).json({ error: "Failed to create commission adjustment" });
+  }
+});
+
+/**
+ * Get commission adjustments
+ */
+router.get("/admin/commission/adjustments", requireAuth, requireRole(["admin"]), async (req, res) => {
+  try {
+    const { orderId, disputeId, limit = 50, offset = 0 } = req.query;
+    
+    const adjustments = await commissionService.getCommissionAdjustments({
+      orderId: orderId as string,
+      disputeId: disputeId as string,
+      limit: parseInt(limit as string),
+      offset: parseInt(offset as string),
+    });
+    
+    res.json(adjustments);
+  } catch (error) {
+    console.error("Error fetching commission adjustments:", error);
+    res.status(500).json({ error: "Failed to fetch commission adjustments" });
+  }
+});
+
+/**
+ * Export commission report
+ */
+router.get("/admin/commission/export", requireAuth, requireRole(["admin"]), async (req, res) => {
+  try {
+    const { format = 'csv', startDate, endDate, includeAdjustments = 'true' } = req.query;
+    
+    const reportData = await commissionService.generateCommissionReport({
+      startDate: startDate ? new Date(startDate as string) : undefined,
+      endDate: endDate ? new Date(endDate as string) : undefined,
+      includeAdjustments: includeAdjustments === 'true',
+    });
+    
+    if (format === 'csv') {
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename=commission-report.csv');
+      res.send(reportData.csv);
+    } else {
+      res.json(reportData.data);
+    }
+  } catch (error) {
+    console.error("Error exporting commission report:", error);
+    res.status(500).json({ error: "Failed to export commission report" });
+  }
+});
+
+/**
  * Bulk update supplier commission rates
  */
 router.post("/admin/commission/bulk-update", requireAuth, requireRole(["admin"]), async (req, res) => {

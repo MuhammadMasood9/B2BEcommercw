@@ -11,6 +11,9 @@ import AlertsPanel from "@/components/admin/AlertsPanel";
 import QuickActions from "@/components/admin/QuickActions";
 import NotificationSystem from "@/components/admin/NotificationSystem";
 import DashboardCustomization from "@/components/admin/DashboardCustomization";
+import { ContextualHelp } from "@/components/admin/ContextualHelp";
+import { InAppHelpSystem } from "@/components/admin/InAppHelpSystem";
+import { OnboardingTrigger } from "@/components/admin/InteractiveOnboarding";
 import { useDashboardState } from "@/hooks/useDashboardState";
 import {
   Settings,
@@ -130,6 +133,8 @@ export default function AdminDashboard() {
           </p>
         </div>
         <div className="flex gap-2">
+          <ContextualHelp />
+          <InAppHelpSystem />
           <Button variant="outline" onClick={() => setShowCustomization(true)}>
             <Settings className="h-4 w-4 mr-2" />
             Customize
@@ -144,6 +149,9 @@ export default function AdminDashboard() {
           </Button>
         </div>
       </div>
+
+      {/* New User Onboarding */}
+      <OnboardingTrigger flowId="admin-dashboard-tour" variant="banner" />
 
       {/* Enhanced KPI Cards */}
       {metrics && (

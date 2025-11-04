@@ -276,95 +276,8 @@ export default function AdminProductManagement() {
     refetchOnWindowFocus: true,
   });
 
-  // Fetch product inquiries from API - REAL DATA ONLY
-  const { data: inquiries = [], isLoading: inquiriesLoading } = useQuery({
-    queryKey: [`/api/products/${productId}/inquiries`],
-    queryFn: async () => {
-      try {
-        const response = await fetch(`/api/products/${productId}/inquiries`, {
-          credentials: "include",
-        });
-        if (!response.ok) {
-          console.warn('Inquiries API not available:', response.status, response.statusText);
-          return [];
-        }
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          console.warn('Inquiries API returned non-JSON');
-          return [];
-        }
-        const data = await response.json();
-        console.log("✅ Fetched REAL inquiries from API:", data);
-        return data;
-      } catch (error) {
-        console.error("Error fetching inquiries:", error);
-        return [];
-      }
-    },
-    retry: 2,
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    refetchOnWindowFocus: true,
-  });
-
-  // Fetch product quotations from API - REAL DATA ONLY
-  const { data: quotations = [], isLoading: quotationsLoading } = useQuery({
-    queryKey: [`/api/products/${productId}/quotations`],
-    queryFn: async () => {
-      try {
-        const response = await fetch(`/api/products/${productId}/quotations`, {
-          credentials: "include",
-        });
-        if (!response.ok) {
-          console.warn('Quotations API not available:', response.status, response.statusText);
-          return [];
-        }
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          console.warn('Quotations API returned non-JSON');
-          return [];
-        }
-        const data = await response.json();
-        console.log("✅ Fetched REAL quotations from API:", data);
-        return data;
-      } catch (error) {
-        console.error("Error fetching quotations:", error);
-        return [];
-      }
-    },
-    retry: 2,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: true,
-  });
-
-  // Fetch product RFQs from API - REAL DATA ONLY
-  const { data: rfqs = [], isLoading: rfqsLoading } = useQuery({
-    queryKey: [`/api/products/${productId}/rfqs`],
-    queryFn: async () => {
-      try {
-        const response = await fetch(`/api/products/${productId}/rfqs`, {
-          credentials: "include",
-        });
-        if (!response.ok) {
-          console.warn('RFQs API not available:', response.status, response.statusText);
-          return [];
-        }
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          console.warn('RFQs API returned non-JSON');
-          return [];
-        }
-        const data = await response.json();
-        console.log("✅ Fetched REAL RFQs from API:", data);
-        return data;
-      } catch (error) {
-        console.error("Error fetching RFQs:", error);
-        return [];
-      }
-    },
-    retry: 2,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnWindowFocus: true,
-  });
+  // Removed admin RFQ/inquiry/quotation management functionality
+  // These are now handled by suppliers directly as per requirements 1.1, 1.2, 1.3
 
   // Fetch categories for editing from API
   const { data: categories = [] } = useQuery<Category[]>({
@@ -753,16 +666,13 @@ export default function AdminProductManagement() {
 
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-10">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="inventory">Inventory</TabsTrigger>
           <TabsTrigger value="pricing">Pricing</TabsTrigger>
           <TabsTrigger value="media">Media</TabsTrigger>
-          <TabsTrigger value="inquiries">Inquiries ({inquiries.length})</TabsTrigger>
-          <TabsTrigger value="quotations">Quotations ({quotations.length})</TabsTrigger>
           <TabsTrigger value="orders">Orders ({orders.length})</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          <TabsTrigger value="activity">Recent Activity</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
@@ -1718,130 +1628,7 @@ export default function AdminProductManagement() {
           </Card>
         </TabsContent>
 
-        {/* Inquiries Tab */}
-        <TabsContent value="inquiries" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ShoppingCart className="h-5 w-5" />
-                Product Inquiries ({inquiries.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {inquiriesLoading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                  <p className="text-muted-foreground">Loading inquiries...</p>
-                </div>
-              ) : inquiries.length > 0 ? (
-                <div className="space-y-4">
-                  {inquiries.map((inquiry: any, index: number) => (
-                    <div key={inquiry.id || index} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h4 className="font-semibold">{inquiry.buyerName || 'Unknown Buyer'}</h4>
-                            <Badge variant={inquiry.status === 'responded' ? 'default' : 'secondary'}>
-                              {inquiry.status || 'Pending'}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-2">{inquiry.message || 'No message'}</p>
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <span>Company: {inquiry.companyName || 'N/A'}</span>
-                            <span>Email: {inquiry.email || 'N/A'}</span>
-                            <span>Date: {new Date(inquiry.createdAt || '').toLocaleDateString()}</span>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="outline">
-                            <Mail className="h-4 w-4 mr-1" />
-                            Reply
-                          </Button>
-                          <Button size="sm" variant="outline">
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <ShoppingCart className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>No inquiries yet</p>
-                  <p className="text-sm">Customer inquiries will appear here</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Quotations Tab */}
-        <TabsContent value="quotations" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Product Quotations ({quotations.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {quotationsLoading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                  <p className="text-muted-foreground">Loading quotations...</p>
-                </div>
-              ) : quotations.length > 0 ? (
-                <div className="space-y-4">
-                  {quotations.map((quotation: any, index: number) => (
-                    <div key={quotation.id || index} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h4 className="font-semibold">Quote #{quotation.quoteNumber || quotation.id}</h4>
-                            <Badge variant={
-                              quotation.status === 'accepted' ? 'default' : 
-                              quotation.status === 'pending' ? 'secondary' : 
-                              'destructive'
-                            }>
-                              {quotation.status || 'Pending'}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-2">
-                            Buyer: {quotation.buyerName || 'Unknown'} • 
-                            Quantity: {quotation.quantity || 'N/A'} • 
-                            Price: ${quotation.totalPrice || '0'}
-                          </p>
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <span>Valid Until: {quotation.validUntil ? new Date(quotation.validUntil).toLocaleDateString() : 'N/A'}</span>
-                            <span>Created: {new Date(quotation.createdAt || '').toLocaleDateString()}</span>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="outline">
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
-                          </Button>
-                          <Button size="sm" variant="outline">
-                            <Edit className="h-4 w-4 mr-1" />
-                            Edit
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>No quotations yet</p>
-                  <p className="text-sm">Product quotations will appear here</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {/* Removed Inquiries and Quotations tabs - now handled by suppliers directly */}
 
         {/* Orders Tab */}
         <TabsContent value="orders" className="space-y-6">
@@ -1965,55 +1752,37 @@ export default function AdminProductManagement() {
               </CardContent>
             </Card>
 
-            {/* Recent Inquiries */}
+            {/* Recent Product Views */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <ShoppingCart className="h-5 w-5" />
-                  Recent Inquiries ({inquiries.length})
+                  <Eye className="h-5 w-5" />
+                  Product Performance
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {inquiries.length > 0 ? (
-                  <div className="space-y-3">
-                    {inquiries.slice(0, 5).map((inquiry: any, index: number) => (
-                      <div key={inquiry.id || index} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                            <ShoppingCart className="h-4 w-4 text-green-600" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm">{inquiry.buyerName || 'Unknown Buyer'}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {inquiry.message?.substring(0, 50)}...
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <Badge variant={inquiry.status === 'responded' ? 'default' : 'secondary'}>
-                            {inquiry.status || 'Pending'}
-                          </Badge>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {new Date(inquiry.createdAt || '').toLocaleDateString()}
-                          </p>
-                        </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <Eye className="h-4 w-4 text-blue-600" />
                       </div>
-                    ))}
-                    {inquiries.length > 5 && (
-                      <div className="text-center pt-2">
-                        <Button variant="outline" size="sm">
-                          View All Inquiries ({inquiries.length})
-                        </Button>
+                      <div>
+                        <p className="font-medium text-sm">Total Views</p>
+                        <p className="text-xs text-muted-foreground">
+                          Product visibility metrics
+                        </p>
                       </div>
-                    )}
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold">{product.views?.toLocaleString() || 0}</p>
+                      <p className="text-xs text-muted-foreground">views</p>
+                    </div>
                   </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <ShoppingCart className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>No inquiries yet</p>
-                    <p className="text-sm">Customer inquiries will appear here</p>
+                  <div className="text-center py-4 text-muted-foreground">
+                    <p className="text-sm">Inquiries and quotations are now managed by suppliers directly</p>
                   </div>
-                )}
+                </div>
               </CardContent>
             </Card>
           </div>

@@ -5,6 +5,13 @@ import { db } from './db';
 import { users, User, supplierProfiles, staffMembers } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { Request, Response, NextFunction } from 'express';
+import { 
+  generateAccessToken, 
+  generateRefreshToken, 
+  jwtAuthMiddleware, 
+  sessionAuthMiddleware, 
+  hybridAuthMiddleware 
+} from './authMiddleware';
 
 // Extend Express Request type to include user
 declare global {
@@ -125,13 +132,19 @@ passport.deserializeUser(async (id: string, done: any) => {
   }
 });
 
-// Auth middleware
-export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+// Enhanced auth middleware with JWT support
+export const authMiddleware = hybridAuthMiddleware;
+
+// Legacy session-only middleware (for backward compatibility)
+export const sessionOnlyAuthMiddleware = (req: Request, res: Response, next: NextFunction) => {
   if (req.isAuthenticated()) {
     return next();
   }
   res.status(401).json({ error: 'Unauthorized' });
 };
+
+// JWT-only middleware
+export const jwtOnlyAuthMiddleware = jwtAuthMiddleware;
 
 // Role-specific middleware
 export const adminMiddleware = (req: Request, res: Response, next: NextFunction) => {

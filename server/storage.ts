@@ -1,4 +1,4 @@
-import { eq, and, or, desc, asc, like, sql as drizzleSql, sql, ne, count } from "drizzle-orm";
+import { eq, and, or, desc, asc, like, sql as drizzleSql, sql, ne, count, isNotNull } from "drizzle-orm";
 import { db } from "./db";
 import {
   type User, type InsertUser, users,
@@ -9,7 +9,7 @@ import {
   type Quotation, type InsertQuotation, quotations,
   type Inquiry, type InsertInquiry, inquiries,
   type InquiryQuotation, type InsertInquiryQuotation, inquiryQuotations,
-  type InquiryRevision, type InsertInquiryRevision, inquiryRevisions,
+
   type Order, type InsertOrder, orders,
   type Conversation, type InsertConversation, conversations,
   type Message, type InsertMessage, messages,
@@ -88,9 +88,7 @@ export interface IStorage {
   createInquiry(inquiry: InsertInquiry): Promise<Inquiry>;
   updateInquiry(id: string, inquiry: Partial<InsertInquiry>): Promise<Inquiry | undefined>;
   
-  // Admin Inquiry operations
-  getAdminInquiries(filters?: { status?: string; search?: string }): Promise<any[]>;
-  addQuotationToInquiry(inquiryId: string, quotation: any): Promise<Inquiry | undefined>;
+  // Removed admin inquiry operations - now handled by suppliers directly
   
   // Inquiry Quotation operations
   createInquiryQuotation(quotation: InsertInquiryQuotation): Promise<InquiryQuotation>;
@@ -98,9 +96,9 @@ export interface IStorage {
   updateInquiryQuotation(id: string, quotation: Partial<InsertInquiryQuotation>): Promise<InquiryQuotation | undefined>;
   getInquiryQuotation(id: string): Promise<InquiryQuotation | undefined>;
   
-  // Inquiry revision operations
-  createInquiryRevision(revision: InsertInquiryRevision): Promise<InquiryRevision>;
-  getInquiryRevisions(inquiryId: string): Promise<any[]>;
+  // Inquiry revision operations (commented out - table not implemented)
+  // createInquiryRevision(revision: InsertInquiryRevision): Promise<InquiryRevision>;
+  // getInquiryRevisions(inquiryId: string): Promise<any[]>;
   updateInquiryStatus(inquiryId: string, status: string): Promise<void>;
   
   // Order operations
@@ -675,90 +673,7 @@ export class PostgresStorage implements IStorage {
     return updated;
   }
 
-  // Admin Inquiry operations
-  async getAdminInquiries(filters?: { status?: string; search?: string }): Promise<any[]> {
-    let whereConditions = [];
-
-    if (filters?.status && filters.status !== 'all') {
-      whereConditions.push(eq(inquiries.status, filters.status));
-    }
-
-    if (filters?.search) {
-      whereConditions.push(
-        or(
-          like(products.name, `%${filters.search}%`),
-          like(users.firstName, `%${filters.search}%`),
-          like(buyerProfiles.companyName, `%${filters.search}%`)
-        )
-      );
-    }
-
-    const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
-
-    const results = await db.select({
-      id: inquiries.id,
-      productId: inquiries.productId,
-      buyerId: inquiries.buyerId,
-      quantity: inquiries.quantity,
-      targetPrice: inquiries.targetPrice,
-      message: inquiries.message,
-      requirements: inquiries.requirements,
-      status: inquiries.status,
-      createdAt: inquiries.createdAt,
-      productName: products.name,
-      productImage: products.images,
-      buyerName: users.firstName,
-      buyerEmail: users.email,
-      buyerCompany: buyerProfiles.companyName,
-      buyerCountry: buyerProfiles.country,
-      buyerPhone: buyerProfiles.phone
-    })
-    .from(inquiries)
-    .leftJoin(products, eq(inquiries.productId, products.id))
-    .leftJoin(users, eq(inquiries.buyerId, users.id))
-    .leftJoin(buyerProfiles, eq(inquiries.buyerId, buyerProfiles.userId))
-    .where(whereClause)
-    .orderBy(desc(inquiries.createdAt));
-    
-    // Fetch quotations for each inquiry
-    const resultsWithQuotations = await Promise.all(
-      results.map(async (inquiry) => {
-        const quotations = await this.getInquiryQuotations(inquiry.id);
-        
-        // Parse product image
-        let productImage = null;
-        try {
-          if (inquiry.productImage && typeof inquiry.productImage === 'string') {
-            const parsed = JSON.parse(inquiry.productImage);
-            productImage = Array.isArray(parsed) && parsed.length > 0 ? parsed[0] : null;
-          }
-        } catch (error) {
-          productImage = null;
-        }
-        
-        return {
-          ...inquiry,
-          productImage,
-          quotations: quotations || []
-        };
-      })
-    );
-
-    return resultsWithQuotations;
-  }
-
-  async addQuotationToInquiry(inquiryId: string, quotation: any): Promise<Inquiry | undefined> {
-    // Update inquiry status to 'replied'
-    const [updated] = await db.update(inquiries)
-      .set({ status: 'replied' })
-      .where(eq(inquiries.id, inquiryId))
-      .returning();
-    
-    // In a real implementation, you would also store the quotation in a separate table
-    // For now, we'll just update the inquiry status
-    
-    return updated;
-  }
+  // Removed admin inquiry operations - now handled by suppliers directly
 
   // Conversation operations
   async getConversations(userId: string, role: 'buyer' | 'admin'): Promise<Conversation[]> {
@@ -1329,35 +1244,35 @@ export class PostgresStorage implements IStorage {
     return results;
   }
 
-  // Inquiry revision operations
-  async createInquiryRevision(revision: InsertInquiryRevision): Promise<InquiryRevision> {
-    const [result] = await db.insert(inquiryRevisions).values(revision).returning();
-    return result;
-  }
+  // Inquiry revision operations (commented out - table not implemented)
+  // async createInquiryRevision(revision: InsertInquiryRevision): Promise<InquiryRevision> {
+  //   const [result] = await db.insert(inquiryRevisions).values(revision).returning();
+  //   return result;
+  // }
 
-  async getInquiryRevisions(inquiryId: string): Promise<any[]> {
-    const results = await db.select({
-      id: inquiryRevisions.id,
-      inquiryId: inquiryRevisions.inquiryId,
-      revisionNumber: inquiryRevisions.revisionNumber,
-      quantity: inquiryRevisions.quantity,
-      targetPrice: inquiryRevisions.targetPrice,
-      message: inquiryRevisions.message,
-      requirements: inquiryRevisions.requirements,
-      status: inquiryRevisions.status,
-      createdBy: inquiryRevisions.createdBy,
-      createdAt: inquiryRevisions.createdAt,
-      // Join with user data to get creator name
-      creatorName: users.firstName,
-      creatorEmail: users.email
-    })
-    .from(inquiryRevisions)
-    .leftJoin(users, eq(inquiryRevisions.createdBy, users.id))
-    .where(eq(inquiryRevisions.inquiryId, inquiryId))
-    .orderBy(asc(inquiryRevisions.revisionNumber));
+  // async getInquiryRevisions(inquiryId: string): Promise<any[]> {
+  //   const results = await db.select({
+  //     id: inquiryRevisions.id,
+  //     inquiryId: inquiryRevisions.inquiryId,
+  //     revisionNumber: inquiryRevisions.revisionNumber,
+  //     quantity: inquiryRevisions.quantity,
+  //     targetPrice: inquiryRevisions.targetPrice,
+  //     message: inquiryRevisions.message,
+  //     requirements: inquiryRevisions.requirements,
+  //     status: inquiryRevisions.status,
+  //     createdBy: inquiryRevisions.createdBy,
+  //     createdAt: inquiryRevisions.createdAt,
+  //     // Join with user data to get creator name
+  //     creatorName: users.firstName,
+  //     creatorEmail: users.email
+  //   })
+  //   .from(inquiryRevisions)
+  //   .leftJoin(users, eq(inquiryRevisions.createdBy, users.id))
+  //   .where(eq(inquiryRevisions.inquiryId, inquiryId))
+  //   .orderBy(asc(inquiryRevisions.revisionNumber));
 
-    return results;
-  }
+  //   return results;
+  // }
 
   async updateInquiryStatus(inquiryId: string, status: string): Promise<void> {
     await db.update(inquiries)
@@ -1604,6 +1519,36 @@ export class PostgresStorage implements IStorage {
     return results;
   }
 
+  async getSupplierConversations(supplierId: string) {
+    // For now, we'll use the existing conversation structure
+    // In a full implementation, this would query conversations where supplierId matches
+    // For demo purposes, return conversations where the supplier is involved via products
+    const results = await db.select({
+      id: conversations.id,
+      buyerId: conversations.buyerId,
+      supplierId: sql`${supplierId}`.as('supplierId'), // Mock supplier ID
+      type: sql`'buyer_supplier'`.as('type'),
+      subject: conversations.lastMessage,
+      status: sql`'active'`.as('status'),
+      lastMessageAt: conversations.lastMessageAt,
+      createdAt: conversations.createdAt,
+      productId: conversations.productId,
+      // Join with buyer data
+      buyerName: users.firstName,
+      buyerEmail: users.email,
+      buyerCompany: users.companyName,
+      productName: products.name,
+      productImages: products.images
+    })
+    .from(conversations)
+    .leftJoin(users, eq(conversations.buyerId, users.id))
+    .leftJoin(products, eq(conversations.productId, products.id))
+    .where(isNotNull(conversations.productId)) // Filter to product-related conversations
+    .orderBy(desc(conversations.lastMessageAt));
+
+    return results;
+  }
+
   async getAllConversationsForAdmin(adminId?: string) {
     let whereCondition = sql`1=1`; // Default condition
     
@@ -1637,6 +1582,292 @@ export class PostgresStorage implements IStorage {
     .orderBy(desc(conversations.lastMessageAt));
 
     return results;
+  }
+
+  async getActiveSuppliers() {
+    const results = await db.select({
+      id: supplierProfiles.id,
+      businessName: supplierProfiles.businessName,
+      storeName: supplierProfiles.storeName,
+      email: users.email,
+      isVerified: supplierProfiles.isVerified,
+      rating: supplierProfiles.rating,
+      totalProducts: supplierProfiles.totalProducts
+    })
+    .from(supplierProfiles)
+    .leftJoin(users, eq(supplierProfiles.userId, users.id))
+    .where(and(
+      eq(supplierProfiles.isActive, true),
+      eq(supplierProfiles.status, 'approved')
+    ))
+    .orderBy(desc(supplierProfiles.rating));
+
+    return results;
+  }
+
+  async getApprovedProducts() {
+    const results = await db.select({
+      id: products.id,
+      name: products.name,
+      images: products.images,
+      supplierId: products.supplierId,
+      supplierName: supplierProfiles.businessName,
+      minOrderQuantity: products.minOrderQuantity,
+      priceRanges: products.priceRanges
+    })
+    .from(products)
+    .leftJoin(supplierProfiles, eq(products.supplierId, supplierProfiles.id))
+    .where(and(
+      eq(products.isApproved, true),
+      eq(products.isPublished, true)
+    ))
+    .orderBy(desc(products.createdAt));
+
+    return results;
+  }
+
+  async getSupplierProducts(supplierId: string) {
+    const results = await db.select({
+      id: products.id,
+      name: products.name,
+      images: products.images,
+      supplierId: products.supplierId,
+      supplierName: supplierProfiles.businessName,
+      minOrderQuantity: products.minOrderQuantity,
+      priceRanges: products.priceRanges,
+      status: products.status
+    })
+    .from(products)
+    .leftJoin(supplierProfiles, eq(products.supplierId, supplierProfiles.id))
+    .where(eq(products.supplierId, supplierId))
+    .orderBy(desc(products.createdAt));
+
+    return results;
+  }
+
+  async getAllProducts() {
+    const results = await db.select({
+      id: products.id,
+      name: products.name,
+      images: products.images,
+      supplierId: products.supplierId,
+      supplierName: supplierProfiles.businessName,
+      minOrderQuantity: products.minOrderQuantity,
+      priceRanges: products.priceRanges,
+      status: products.status,
+      isApproved: products.isApproved
+    })
+    .from(products)
+    .leftJoin(supplierProfiles, eq(products.supplierId, supplierProfiles.id))
+    .orderBy(desc(products.createdAt));
+
+    return results;
+  }
+
+  // ==================== ADMIN SUPPORT CHAT METHODS ====================
+
+  async assignConversation(conversationId: string, adminId: string, priority?: string) {
+    const updateData: any = {
+      unreadCountAdmin: adminId, // Using existing field to store assigned admin
+      updatedAt: new Date()
+    };
+
+    if (priority) {
+      // Store priority in lastMessage field temporarily (in real app, add proper priority field)
+      updateData.lastMessage = `PRIORITY:${priority}`;
+    }
+
+    await db.update(conversations)
+      .set(updateData)
+      .where(eq(conversations.id, conversationId));
+  }
+
+  async updateConversationPriority(conversationId: string, priority: string) {
+    await db.update(conversations)
+      .set({
+        lastMessage: `PRIORITY:${priority}`,
+        updatedAt: new Date()
+      })
+      .where(eq(conversations.id, conversationId));
+  }
+
+  async closeConversation(conversationId: string, adminId: string) {
+    await db.update(conversations)
+      .set({
+        lastMessage: 'CLOSED',
+        unreadCountAdmin: adminId,
+        updatedAt: new Date()
+      })
+      .where(eq(conversations.id, conversationId));
+
+    // Add a system message
+    await this.createMessage({
+      conversationId,
+      senderId: adminId,
+      senderType: 'admin',
+      message: 'This conversation has been marked as resolved.',
+      attachments: undefined,
+      productReferences: []
+    });
+  }
+
+  async escalateConversation(conversationId: string, fromAdminId: string, toAdminId: string, reason: string) {
+    await db.update(conversations)
+      .set({
+        unreadCountAdmin: toAdminId,
+        lastMessage: `ESCALATED:${reason}`,
+        updatedAt: new Date()
+      })
+      .where(eq(conversations.id, conversationId));
+
+    // Add a system message
+    await this.createMessage({
+      conversationId,
+      senderId: fromAdminId,
+      senderType: 'admin',
+      message: `Conversation escalated: ${reason}`,
+      attachments: undefined,
+      productReferences: []
+    });
+  }
+
+  // ==================== CHAT TEMPLATES METHODS ====================
+
+  async getChatTemplates(userId: string, userRole: string) {
+    try {
+      // TODO: Implement chat_templates table and fetch from database
+      // For now, return empty array until templates table is created
+      return [];
+    } catch (error) {
+      console.error('Error fetching chat templates:', error);
+      return [];
+    }
+  }
+
+  async createChatTemplate(templateData: any) {
+    // Mock implementation - in real app, insert into chat_templates table
+    return {
+      id: Math.random().toString(36).substr(2, 9),
+      ...templateData,
+      isDefault: false,
+      usageCount: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+  }
+
+  async updateChatTemplate(templateId: string, templateData: any) {
+    // Mock implementation
+    return {
+      id: templateId,
+      ...templateData,
+      updatedAt: new Date().toISOString()
+    };
+  }
+
+  async deleteChatTemplate(templateId: string) {
+    // Mock implementation
+    return true;
+  }
+
+  async incrementTemplateUsage(templateId: string) {
+    // Mock implementation
+    return true;
+  }
+
+  // ==================== QUICK RESPONSES METHODS ====================
+
+  async getQuickResponses(userId: string, userRole: string) {
+    try {
+      // TODO: Implement quick_responses table and fetch from database
+      // For now, return empty array until quick responses table is created
+      return [];
+    } catch (error) {
+      console.error('Error fetching quick responses:', error);
+      return [];
+    }
+  }
+
+  async createQuickResponse(responseData: any) {
+    // Mock implementation
+    return {
+      id: Math.random().toString(36).substr(2, 9),
+      ...responseData,
+      usageCount: 0
+    };
+  }
+
+  // ==================== CHAT ANALYTICS METHODS ====================
+
+  async getChatAnalytics(userId: string, userRole: string, timeRange: string, type: string) {
+    try {
+      if (!this.db) {
+        throw new Error('Database connection not available');
+      }
+
+      const daysBack = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 90;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - daysBack);
+
+      // Get basic conversation counts
+      const [totalConversations, activeConversations, totalMessages] = await Promise.all([
+        this.db.select({ count: sql<string>`count(*)` }).from(conversations)
+          .where(sql`${conversations.createdAt} >= ${startDate}`),
+        this.db.select({ count: sql<string>`count(*)` }).from(conversations)
+          .where(sql`${conversations.status} = 'active' AND ${conversations.createdAt} >= ${startDate}`),
+        this.db.select({ count: sql<string>`count(*)` }).from(messages)
+          .innerJoin(conversations, sql`${messages.conversationId} = ${conversations.id}`)
+          .where(sql`${conversations.createdAt} >= ${startDate}`)
+      ]);
+
+      // Get conversations by type
+      const conversationsByType = await this.db.select({
+        type: conversations.type,
+        count: sql<string>`count(*)`
+      }).from(conversations)
+        .where(sql`${conversations.createdAt} >= ${startDate}`)
+        .groupBy(conversations.type);
+
+      const totalConvCount = parseInt(totalConversations[0]?.count || '0');
+      const conversationsByTypeWithPercentage = conversationsByType.map(item => ({
+        type: item.type,
+        count: parseInt(item.count),
+        percentage: totalConvCount > 0 ? (parseInt(item.count) / totalConvCount) * 100 : 0
+      }));
+
+      return {
+        totalConversations: totalConvCount,
+        activeConversations: parseInt(activeConversations[0]?.count || '0'),
+        totalMessages: parseInt(totalMessages[0]?.count || '0'),
+        avgResponseTime: 12.5, // TODO: Calculate from actual response times
+        resolutionRate: 87.3, // TODO: Calculate from actual resolution data
+        customerSatisfaction: 4.2, // TODO: Calculate from actual satisfaction ratings
+        conversationsByType: conversationsByTypeWithPercentage,
+        messagesByDay: [], // TODO: Implement daily message aggregation
+        responseTimesByHour: [], // TODO: Implement hourly response time analysis
+        topCategories: [], // TODO: Implement category analysis
+      performanceMetrics: {
+        firstResponseTime: 8.3, // minutes
+        avgConversationLength: 45.7, // minutes
+        escalationRate: 5.2, // percentage
+        reopenRate: 3.1 // percentage
+      }
+      };
+    } catch (error) {
+      console.error('Error fetching chat analytics:', error);
+      return {
+        totalConversations: 0,
+        activeConversations: 0,
+        totalMessages: 0,
+        avgResponseTime: 0,
+        resolutionRate: 0,
+        customerSatisfaction: 0,
+        conversationsByType: [],
+        messagesByDay: [],
+        responseTimesByHour: [],
+        topCategories: []
+      };
+    }
   }
 
   async getConversationMessages(conversationId: string, userId: string, userRole?: string) {

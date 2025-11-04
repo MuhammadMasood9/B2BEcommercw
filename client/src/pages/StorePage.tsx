@@ -130,63 +130,24 @@ export default function StorePage() {
       setReviews(data.reviews || []);
       setIsFollowing(data.isFollowing || false);
 
-      const mockProducts: Product[] = [
-        {
-          id: "1",
-          name: "Wireless Bluetooth Headphones",
-          image: "/api/placeholder/300/300",
-          price: "$15.50 - $22.80",
-          moq: "100 pieces",
-          category: "Audio"
-        },
-        {
-          id: "2", 
-          name: "Smart Fitness Watch",
-          image: "/api/placeholder/300/300",
-          price: "$28.90 - $45.60",
-          moq: "50 pieces",
-          category: "Wearables"
-        },
-        {
-          id: "3",
-          name: "Portable Bluetooth Speaker",
-          image: "/api/placeholder/300/300", 
-          price: "$12.30 - $18.90",
-          moq: "200 pieces",
-          category: "Audio"
-        },
-        {
-          id: "4",
-          name: "USB-C Fast Charging Cable",
-          image: "/api/placeholder/300/300",
-          price: "$2.50 - $4.20",
-          moq: "500 pieces", 
-          category: "Accessories"
+      // Fetch products for this supplier
+      try {
+        const productsResponse = await fetch(`/api/suppliers/${supplierId}/products`);
+        if (productsResponse.ok) {
+          const productsData = await productsResponse.json();
+          setProducts(productsData || []);
+        } else {
+          console.warn('Failed to fetch supplier products');
+          setProducts([]);
         }
-      ];
+      } catch (error) {
+        console.error('Error fetching supplier products:', error);
+        setProducts([]);
+      }
 
-      const mockReviews: Review[] = [
-        {
-          id: "1",
-          buyerName: "Global Tech Solutions",
-          rating: 5,
-          comment: "Excellent quality products and very responsive communication. Delivered on time as promised.",
-          date: "2024-01-15",
-          verified: true
-        },
-        {
-          id: "2",
-          buyerName: "Electronics Plus Ltd",
-          rating: 4,
-          comment: "Good product quality and competitive pricing. Will order again.",
-          date: "2024-01-10",
-          verified: true
-        }
-      ];
+      // Reviews are already set from the supplier data above
 
       setStoreData(mockStore);
-      setProducts(mockProducts);
-      setReviews(mockReviews);
       
     } catch (error) {
       console.error('Error fetching store data:', error);

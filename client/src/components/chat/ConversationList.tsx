@@ -18,19 +18,29 @@ import { formatDistanceToNow } from 'date-fns';
 
 interface Conversation {
   id: string;
+  type: string; // buyer_supplier, buyer_admin, supplier_admin
   subject?: string;
   status: string;
   lastMessageAt: string;
   createdAt: string;
   productId?: string;
+  // Participant information
+  buyerId?: string;
+  supplierId?: string;
+  adminId?: string;
   // For buyer view
   adminName?: string;
   adminEmail?: string;
   adminCompany?: string;
+  supplierName?: string;
+  supplierEmail?: string;
+  supplierCompany?: string;
   // For admin view
   buyerName?: string;
   buyerEmail?: string;
   buyerCompany?: string;
+  // For supplier view
+  // Uses buyer and admin fields above
   unreadCount?: number;
 }
 
@@ -39,7 +49,7 @@ interface ConversationListProps {
   selectedConversationId?: string;
   onSelectConversation: (conversationId: string) => void;
   onCreateConversation?: () => void;
-  userRole: 'buyer' | 'admin';
+  userRole: 'buyer' | 'supplier' | 'admin';
   searchQuery: string;
   onSearchChange: (query: string) => void;
 }
@@ -57,18 +67,52 @@ export default function ConversationList({
 
   const getConversationTitle = (conversation: Conversation) => {
     if (userRole === 'buyer') {
-      return conversation.adminName || conversation.adminEmail || 'Admin';
-    } else {
-      return conversation.buyerName || conversation.buyerEmail || 'Buyer';
+      if (conversation.type === 'buyer_supplier') {
+        return conversation.supplierName || conversation.supplierEmail || 'Supplier';
+      } else {
+        return conversation.adminName || conversation.adminEmail || 'Support Team';
+      }
+    } else if (userRole === 'supplier') {
+      if (conversation.type === 'buyer_supplier') {
+        return conversation.buyerName || conversation.buyerEmail || 'Customer';
+      } else {
+        return conversation.adminName || conversation.adminEmail || 'Support Team';
+      }
+    } else if (userRole === 'admin') {
+      if (conversation.type === 'buyer_admin') {
+        return conversation.buyerName || conversation.buyerEmail || 'Customer';
+      } else if (conversation.type === 'supplier_admin') {
+        return conversation.supplierName || conversation.supplierEmail || 'Supplier';
+      } else {
+        return 'Buyer-Supplier Chat';
+      }
     }
+    return 'Chat';
   };
 
   const getConversationSubtitle = (conversation: Conversation) => {
     if (userRole === 'buyer') {
-      return conversation.adminCompany || 'Support Team';
-    } else {
-      return conversation.buyerCompany || 'Customer';
+      if (conversation.type === 'buyer_supplier') {
+        return conversation.supplierCompany || 'Supplier';
+      } else {
+        return 'Support Team';
+      }
+    } else if (userRole === 'supplier') {
+      if (conversation.type === 'buyer_supplier') {
+        return conversation.buyerCompany || 'Customer';
+      } else {
+        return 'Support Team';
+      }
+    } else if (userRole === 'admin') {
+      if (conversation.type === 'buyer_admin') {
+        return conversation.buyerCompany || 'Customer Support';
+      } else if (conversation.type === 'supplier_admin') {
+        return conversation.supplierCompany || 'Supplier Support';
+      } else {
+        return 'Mediation';
+      }
     }
+    return '';
   };
 
   const getStatusIcon = (status: string) => {
@@ -112,7 +156,7 @@ export default function ConversationList({
       <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-gray-900">
-            {userRole === 'buyer' ? 'Support Chats' : 'Customer Chats'}
+            {userRole === 'buyer' ? 'My Chats' : userRole === 'supplier' ? 'Customer Chats' : 'All Conversations'}
           </h2>
           <div className="flex items-center space-x-2">
             <Button
@@ -123,7 +167,7 @@ export default function ConversationList({
             >
               <Search className="h-4 w-4" />
             </Button>
-            {userRole === 'buyer' && onCreateConversation && (
+            {(userRole === 'buyer' || userRole === 'supplier') && onCreateConversation && (
               <Button
                 onClick={onCreateConversation}
                 size="sm"
@@ -159,11 +203,13 @@ export default function ConversationList({
             </h3>
             <p className="text-gray-500 text-sm">
               {userRole === 'buyer' 
-                ? 'Start a conversation with our support team'
-                : 'Customer conversations will appear here'
+                ? 'Start a conversation with suppliers or support'
+                : userRole === 'supplier'
+                ? 'Customer conversations will appear here'
+                : 'All platform conversations will appear here'
               }
             </p>
-            {userRole === 'buyer' && onCreateConversation && (
+            {(userRole === 'buyer' || userRole === 'supplier') && onCreateConversation && (
               <Button
                 onClick={onCreateConversation}
                 className="mt-4"

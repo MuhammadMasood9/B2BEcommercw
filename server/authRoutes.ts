@@ -4,11 +4,20 @@ import bcrypt from 'bcryptjs';
 import { db } from './db';
 import { users, buyerProfiles } from '@shared/schema';
 import { eq } from 'drizzle-orm';
+import { 
+  generateAccessToken, 
+  generateRefreshToken, 
+  handleTokenRefresh, 
+  handleLogout,
+  jwtAuthMiddleware 
+} from './authMiddleware';
 
 const router = Router();
 
-// Login route
+// Login route with JWT support
 router.post('/login', (req, res, next) => {
+  const { useJWT } = req.body;
+  
   passport.authenticate('local', (err: any, user: any, info: any) => {
     if (err) {
       return res.status(500).json({ error: 'Internal server error' });
@@ -18,28 +27,73 @@ router.post('/login', (req, res, next) => {
       return res.status(401).json({ error: info?.message || 'Authentication failed' });
     }
     
-    req.logIn(user, (err) => {
-      if (err) {
-        return res.status(500).json({ error: 'Login failed' });
-      }
-      
-      return res.json({
-        success: true,
-        message: 'Login successful',
-        user: {
-          id: user.id,
+    if (useJWT) {
+      // JWT-based authentication
+      try {
+        const sessionId = `session-${user.id}-${Date.now()}`;
+        
+        const accessToken = generateAccessToken({
+          userId: user.id,
           email: user.email,
           role: user.role,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          companyName: user.companyName,
-          phone: user.phone,
-          emailVerified: user.emailVerified,
-          isActive: user.isActive,
-          createdAt: user.createdAt
+          sessionId
+        });
+        
+        const refreshToken = generateRefreshToken({
+          userId: user.id,
+          sessionId,
+          tokenVersion: 1
+        });
+        
+        return res.json({
+          success: true,
+          message: 'Login successful',
+          accessToken,
+          refreshToken,
+          tokenType: 'Bearer',
+          expiresIn: '15m',
+          user: {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            companyName: user.companyName,
+            phone: user.phone,
+            emailVerified: user.emailVerified,
+            isActive: user.isActive,
+            createdAt: user.createdAt
+          }
+        });
+      } catch (tokenError) {
+        console.error('Token generation error:', tokenError);
+        return res.status(500).json({ error: 'Token generation failed' });
+      }
+    } else {
+      // Session-based authentication (legacy)
+      req.logIn(user, (err) => {
+        if (err) {
+          return res.status(500).json({ error: 'Login failed' });
         }
+        
+        return res.json({
+          success: true,
+          message: 'Login successful',
+          user: {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            companyName: user.companyName,
+            phone: user.phone,
+            emailVerified: user.emailVerified,
+            isActive: user.isActive,
+            createdAt: user.createdAt
+          }
+        });
       });
-    });
+    }
   })(req, res, next);
 });
 
@@ -152,11 +206,90 @@ router.get('/me', (req, res) => {
   }
 });
 
-// Check authentication status
+// Token refresh route
+router.post('/refresh', async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    
+    if (!refreshToken) {
+      return res.status(400).json({ error: 'Refresh token required' });
+    }
+    
+    const result = await handleTokenRefresh(refreshToken);
+    
+    res.json({
+      success: true,
+      message: 'Token refreshed successfully',
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+      tokenType: 'Bearer',
+      expiresIn: '15m',
+      user: result.user
+    });
+  } catch (error) {
+    console.error('Token refresh error:', error);
+    res.status(401).json({ error: 'Invalid refresh token' });
+  }
+});
+
+// Enhanced logout route
+router.post('/logout', async (req, res) => {
+  try {
+    await handleLogout(req);
+    
+    res.json({ 
+      success: true, 
+      message: 'Logged out successfully' 
+    });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ error: 'Logout failed' });
+  }
+});
+
+// Get current user route with JWT support
+router.get('/me', jwtAuthMiddleware, (req, res) => {
+  if (req.user) {
+    const { password: _, ...userWithoutPassword } = req.user as any;
+    res.json({
+      success: true,
+      user: userWithoutPassword,
+      tokenData: req.tokenData
+    });
+  } else {
+    res.status(401).json({ error: 'Not authenticated' });
+  }
+});
+
+// Check authentication status (hybrid support)
 router.get('/status', (req, res) => {
+  // Check JWT first
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return jwtAuthMiddleware(req, res, () => {
+      res.json({
+        authenticated: !!req.user,
+        authType: 'jwt',
+        user: req.user || null,
+        tokenData: req.tokenData
+      });
+    });
+  }
+  
+  // Fall back to session
   res.json({
     authenticated: req.isAuthenticated(),
+    authType: 'session',
     user: req.isAuthenticated() ? (req.user as any) : null
+  });
+});
+
+// Validate token endpoint
+router.post('/validate', jwtAuthMiddleware, (req, res) => {
+  res.json({
+    valid: true,
+    user: req.user,
+    tokenData: req.tokenData
   });
 });
 

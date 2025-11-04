@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { db } from './db';
-import { users, supplierProfiles, products, categories, inquiries, inquiryQuotations, buyerProfiles, notifications, InsertUser, InsertSupplierProfile, InsertProduct, insertProductSchema } from '@shared/schema';
-import { eq, and, or, desc, ilike, sql } from 'drizzle-orm';
+import { users, supplierProfiles, products, categories, inquiries, buyerProfiles, notifications, rfqs, quotations, buyers, inquiryQuotations, inquiryTemplates, inquiryAnalytics, orders, InsertUser, InsertSupplierProfile, InsertProduct, insertProductSchema, insertQuotationSchema, Rfq, Quotation } from '@shared/schema';
+import { rfqNotificationService } from './rfqNotificationService';
+import { eq, and, or, desc, ilike, sql, gte, lte, isNull, ne } from 'drizzle-orm';
 import { authMiddleware, supplierMiddleware } from './auth';
 import multer from 'multer';
 import path from 'path';
@@ -1986,6 +1987,32 @@ router.get('/inquiries/stats', supplierMiddleware, async (req, res) => {
       .orderBy(desc(inquiries.createdAt))
       .limit(5);
 
+    // Calculate additional metrics
+    const totalInquiries = parseInt(pendingCount.count as string) + 
+                          parseInt(repliedCount.count as string) + 
+                          parseInt(negotiatingCount.count as string) + 
+                          parseInt(closedCount.count as string);
+
+    const responseRate = totalInquiries > 0 
+      ? ((parseInt(repliedCount.count as string) + parseInt(negotiatingCount.count as string) + parseInt(closedCount.count as string)) / totalInquiries) * 100 
+      : 0;
+
+    // Get conversion rate (inquiries that became orders)
+    const [convertedCount] = await db.select({ count: sql`count(*)` })
+      .from(inquiries)
+      .leftJoin(orders, eq(inquiries.id, orders.inquiryId))
+      .where(and(
+        eq(inquiries.supplierId, supplier.id),
+        sql`${orders.id} IS NOT NULL`
+      ));
+
+    const conversionRate = parseInt(repliedCount.count as string) > 0 
+      ? (parseInt(convertedCount.count as string) / parseInt(repliedCount.count as string)) * 100 
+      : 0;
+
+    // TODO: Calculate actual average response time from inquiry timestamps
+    const avgResponseTime = 0;
+
     res.json({
       success: true,
       stats: {
@@ -1993,7 +2020,10 @@ router.get('/inquiries/stats', supplierMiddleware, async (req, res) => {
         replied: parseInt(repliedCount.count as string),
         negotiating: parseInt(negotiatingCount.count as string),
         closed: parseInt(closedCount.count as string),
-        total: supplier.totalInquiries || 0
+        total: totalInquiries,
+        responseRate: parseFloat(responseRate.toFixed(1)),
+        avgResponseTime,
+        conversionRate: parseFloat(conversionRate.toFixed(1))
       },
       recentInquiries
     });
@@ -2118,4 +2148,1632 @@ router.get('/analytics/customers', supplierMiddleware, async (req, res) => {
   }
 });
 
+// ==================== RFQ MANAGEMENT ENDPOINTS ====================
+
+// GET /api/suppliers/rfqs - Get RFQs relevant to supplier with matching algorithm
+router.get('/rfqs', supplierMiddleware, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { status, categoryId, limit = '20', offset = '0', search } = req.query;
+
+    // Get supplier profile
+    const supplier = await getSupplierProfile(userId!);
+    if (!supplier) {
+      return res.status(404).json({ error: 'Supplier profile not found' });
+    }
+
+    // Build query conditions for RFQ matching
+    const conditions = [];
+
+    // Only show open RFQs by default, or filter by status
+    if (status) {
+      conditions.push(eq(rfqs.status, status as string));
+    } else {
+      conditions.push(eq(rfqs.status, 'open'));
+    }
+
+    // Filter by category if specified
+    if (categoryId) {
+      conditions.push(eq(rfqs.categoryId, categoryId as string));
+    }
+
+    // Only show non-expired RFQs
+    conditions.push(or(
+      isNull(rfqs.expiresAt),
+      gte(rfqs.expiresAt, new Date())
+    ));
+
+    // Add search functionality
+    if (search) {
+      const searchCondition = or(
+        ilike(rfqs.title, `%${search}%`),
+        ilike(rfqs.description, `%${search}%`)
+      );
+      if (searchCondition) {
+        conditions.push(searchCondition);
+      }
+    }
+
+    // Get RFQs with buyer information
+    let query = db.select({
+      id: rfqs.id,
+      buyerId: rfqs.buyerId,
+      title: rfqs.title,
+      description: rfqs.description,
+      categoryId: rfqs.categoryId,
+      specifications: rfqs.specifications,
+      quantity: rfqs.quantity,
+      targetPrice: rfqs.targetPrice,
+      budgetRange: rfqs.budgetRange,
+      deliveryLocation: rfqs.deliveryLocation,
+      requiredDeliveryDate: rfqs.requiredDeliveryDate,
+      paymentTerms: rfqs.paymentTerms,
+      status: rfqs.status,
+      expiresAt: rfqs.expiresAt,
+      createdAt: rfqs.createdAt,
+      updatedAt: rfqs.updatedAt,
+      // Buyer information
+      buyerCompanyName: buyers.companyName,
+      buyerIndustry: buyers.industry,
+      buyerBusinessType: buyers.businessType,
+      // Category information
+      categoryName: categories.name
+    })
+      .from(rfqs)
+      .leftJoin(buyers, eq(rfqs.buyerId, buyers.id))
+      .leftJoin(categories, eq(rfqs.categoryId, categories.id))
+      .where(and(...conditions))
+      .orderBy(desc(rfqs.createdAt));
+
+    // Add pagination
+    query = query.limit(parseInt(limit as string)).offset(parseInt(offset as string));
+
+    const supplierRfqs = await query;
+
+    // Get total count for pagination
+    const [{ count: total }] = await db.select({ count: sql`count(*)` })
+      .from(rfqs)
+      .leftJoin(buyers, eq(rfqs.buyerId, buyers.id))
+      .leftJoin(categories, eq(rfqs.categoryId, categories.id))
+      .where(and(...conditions));
+
+    // Check which RFQs already have quotations from this supplier
+    const rfqIds = supplierRfqs.map(rfq => rfq.id);
+    const existingQuotations = rfqIds.length > 0 ? await db.select({
+      rfqId: quotations.rfqId,
+      id: quotations.id,
+      status: quotations.status,
+      createdAt: quotations.createdAt
+    })
+      .from(quotations)
+      .where(and(
+        eq(quotations.supplierId, supplier.id),
+        sql`${quotations.rfqId} = ANY(${rfqIds})`
+      )) : [];
+
+    // Add quotation status to each RFQ
+    const rfqsWithQuotationStatus = supplierRfqs.map(rfq => ({
+      ...rfq,
+      hasQuotation: existingQuotations.some(q => q.rfqId === rfq.id),
+      quotationStatus: existingQuotations.find(q => q.rfqId === rfq.id)?.status || null,
+      quotationId: existingQuotations.find(q => q.rfqId === rfq.id)?.id || null,
+      quotationDate: existingQuotations.find(q => q.rfqId === rfq.id)?.createdAt || null
+    }));
+
+    res.json({
+      success: true,
+      rfqs: rfqsWithQuotationStatus,
+      total: parseInt(total as string),
+      page: Math.floor(parseInt(offset as string) / parseInt(limit as string)) + 1,
+      limit: parseInt(limit as string),
+      hasMore: (parseInt(offset as string) + parseInt(limit as string)) < parseInt(total as string)
+    });
+
+  } catch (error: any) {
+    console.error('Get supplier RFQs error:', error);
+    res.status(500).json({ error: 'Failed to get RFQs' });
+  }
+});
+
+// GET /api/suppliers/rfqs/:id - Get specific RFQ details for supplier
+router.get('/rfqs/:id', supplierMiddleware, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { id } = req.params;
+
+    // Get supplier profile
+    const supplier = await getSupplierProfile(userId!);
+    if (!supplier) {
+      return res.status(404).json({ error: 'Supplier profile not found' });
+    }
+
+    // Get RFQ with buyer and category information
+    const rfqResult = await db.select({
+      id: rfqs.id,
+      buyerId: rfqs.buyerId,
+      title: rfqs.title,
+      description: rfqs.description,
+      categoryId: rfqs.categoryId,
+      specifications: rfqs.specifications,
+      quantity: rfqs.quantity,
+      targetPrice: rfqs.targetPrice,
+      budgetRange: rfqs.budgetRange,
+      deliveryLocation: rfqs.deliveryLocation,
+      requiredDeliveryDate: rfqs.requiredDeliveryDate,
+      paymentTerms: rfqs.paymentTerms,
+      status: rfqs.status,
+      expiresAt: rfqs.expiresAt,
+      createdAt: rfqs.createdAt,
+      updatedAt: rfqs.updatedAt,
+      // Buyer information
+      buyerCompanyName: buyers.companyName,
+      buyerIndustry: buyers.industry,
+      buyerBusinessType: buyers.businessType,
+      buyerAnnualVolume: buyers.annualVolume,
+      buyerPreferredPaymentTerms: buyers.preferredPaymentTerms,
+      // Category information
+      categoryName: categories.name
+    })
+      .from(rfqs)
+      .leftJoin(buyers, eq(rfqs.buyerId, buyers.id))
+      .leftJoin(categories, eq(rfqs.categoryId, categories.id))
+      .where(eq(rfqs.id, id))
+      .limit(1);
+
+    if (rfqResult.length === 0) {
+      return res.status(404).json({ error: 'RFQ not found' });
+    }
+
+    const rfq = rfqResult[0];
+
+    // Check if supplier already has a quotation for this RFQ
+    const existingQuotation = await db.select()
+      .from(quotations)
+      .where(and(
+        eq(quotations.rfqId, id),
+        eq(quotations.supplierId, supplier.id)
+      ))
+      .limit(1);
+
+    // Get all quotations for this RFQ (for competitive analysis)
+    const allQuotations = await db.select({
+      id: quotations.id,
+      supplierId: quotations.supplierId,
+      unitPrice: quotations.unitPrice,
+      totalPrice: quotations.totalPrice,
+      moq: quotations.moq,
+      leadTime: quotations.leadTime,
+      status: quotations.status,
+      createdAt: quotations.createdAt,
+      // Supplier info for competitive analysis
+      supplierBusinessName: supplierProfiles.businessName,
+      supplierRating: supplierProfiles.rating,
+      supplierVerificationLevel: supplierProfiles.verificationLevel
+    })
+      .from(quotations)
+      .leftJoin(supplierProfiles, eq(quotations.supplierId, supplierProfiles.id))
+      .where(eq(quotations.rfqId, id))
+      .orderBy(quotations.createdAt);
+
+    res.json({
+      success: true,
+      rfq: {
+        ...rfq,
+        hasQuotation: existingQuotation.length > 0,
+        myQuotation: existingQuotation[0] || null,
+        totalQuotations: allQuotations.length,
+        competitiveQuotations: allQuotations.filter(q => q.supplierId !== supplier.id)
+      }
+    });
+
+  } catch (error: any) {
+    console.error('Get RFQ details error:', error);
+    res.status(500).json({ error: 'Failed to get RFQ details' });
+  }
+});
+
+// POST /api/suppliers/rfqs/:id/quotations - Create quotation for RFQ
+router.post('/rfqs/:id/quotations', supplierMiddleware, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { id: rfqId } = req.params;
+
+    // Get supplier profile
+    const supplier = await getSupplierProfile(userId!);
+    if (!supplier) {
+      return res.status(404).json({ error: 'Supplier profile not found' });
+    }
+
+    // Check if supplier is approved and active
+    if (supplier.status !== 'approved' || !supplier.isActive) {
+      return res.status(403).json({ error: 'Supplier account must be approved and active to submit quotations' });
+    }
+
+    // Verify RFQ exists and is open
+    const rfqResult = await db.select()
+      .from(rfqs)
+      .where(eq(rfqs.id, rfqId))
+      .limit(1);
+
+    if (rfqResult.length === 0) {
+      return res.status(404).json({ error: 'RFQ not found' });
+    }
+
+    const rfq = rfqResult[0];
+
+    if (rfq.status !== 'open') {
+      return res.status(400).json({ error: 'RFQ is not open for quotations' });
+    }
+
+    // Check if RFQ has expired
+    if (rfq.expiresAt && new Date(rfq.expiresAt) < new Date()) {
+      return res.status(400).json({ error: 'RFQ has expired' });
+    }
+
+    // Check if supplier already has a quotation for this RFQ
+    const existingQuotation = await db.select()
+      .from(quotations)
+      .where(and(
+        eq(quotations.rfqId, rfqId),
+        eq(quotations.supplierId, supplier.id)
+      ))
+      .limit(1);
+
+    if (existingQuotation.length > 0) {
+      return res.status(409).json({ error: 'You have already submitted a quotation for this RFQ' });
+    }
+
+    // Validate quotation data
+    const quotationSchema = insertQuotationSchema.omit({
+      id: true,
+      createdAt: true,
+      updatedAt: true
+    }).extend({
+      unitPrice: z.string().transform(val => val),
+      totalPrice: z.string().transform(val => val),
+      moq: z.number().int().positive(),
+      validityPeriod: z.number().int().positive().optional()
+    });
+
+    const validatedData = quotationSchema.parse({
+      ...req.body,
+      supplierId: supplier.id,
+      rfqId: rfqId,
+      inquiryId: null, // This is for RFQ, not inquiry
+      status: 'sent'
+    });
+
+    // Create quotation
+    const [newQuotation] = await db.insert(quotations).values(validatedData).returning();
+
+    // Update supplier's total inquiries count (using as quotation count)
+    await db.update(supplierProfiles)
+      .set({
+        totalInquiries: (supplier.totalInquiries || 0) + 1,
+        updatedAt: new Date()
+      })
+      .where(eq(supplierProfiles.id, supplier.id));
+
+    // Send notification about new quotation
+    rfqNotificationService.notifyQuotationReceived(newQuotation.id);
+
+    res.status(201).json({
+      success: true,
+      message: 'Quotation submitted successfully',
+      quotation: newQuotation
+    });
+
+  } catch (error: any) {
+    console.error('Create RFQ quotation error:', error);
+    res.status(400).json({ error: error.message || 'Failed to create quotation' });
+  }
+});
+
+// GET /api/suppliers/quotations - Get supplier's quotations
+router.get('/quotations', supplierMiddleware, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { status, type = 'all', limit = '20', offset = '0' } = req.query;
+
+    // Get supplier profile
+    const supplier = await getSupplierProfile(userId!);
+    if (!supplier) {
+      return res.status(404).json({ error: 'Supplier profile not found' });
+    }
+
+    // Build query conditions
+    const conditions = [eq(quotations.supplierId, supplier.id)];
+
+    if (status) {
+      conditions.push(eq(quotations.status, status as string));
+    }
+
+    // Filter by type (RFQ vs Inquiry quotations)
+    if (type === 'rfq') {
+      conditions.push(sql`${quotations.rfqId} IS NOT NULL`);
+    } else if (type === 'inquiry') {
+      conditions.push(sql`${quotations.inquiryId} IS NOT NULL`);
+    }
+
+    // Get quotations with related RFQ/inquiry information
+    let query = db.select({
+      id: quotations.id,
+      rfqId: quotations.rfqId,
+      inquiryId: quotations.inquiryId,
+      unitPrice: quotations.unitPrice,
+      totalPrice: quotations.totalPrice,
+      moq: quotations.moq,
+      leadTime: quotations.leadTime,
+      paymentTerms: quotations.paymentTerms,
+      validityPeriod: quotations.validityPeriod,
+      termsConditions: quotations.termsConditions,
+      attachments: quotations.attachments,
+      status: quotations.status,
+      createdAt: quotations.createdAt,
+      updatedAt: quotations.updatedAt,
+      // RFQ information
+      rfqTitle: rfqs.title,
+      rfqQuantity: rfqs.quantity,
+      rfqTargetPrice: rfqs.targetPrice,
+      rfqStatus: rfqs.status,
+      // Inquiry information
+      inquirySubject: inquiries.subject,
+      inquiryQuantity: inquiries.quantity,
+      inquiryStatus: inquiries.status,
+      // Buyer information
+      buyerCompanyName: buyers.companyName,
+      buyerIndustry: buyers.industry
+    })
+      .from(quotations)
+      .leftJoin(rfqs, eq(quotations.rfqId, rfqs.id))
+      .leftJoin(inquiries, eq(quotations.inquiryId, inquiries.id))
+      .leftJoin(buyers, or(eq(rfqs.buyerId, buyers.id), eq(inquiries.buyerId, buyers.id)))
+      .where(and(...conditions))
+      .orderBy(desc(quotations.createdAt));
+
+    // Add pagination
+    query = query.limit(parseInt(limit as string)).offset(parseInt(offset as string));
+
+    const supplierQuotations = await query;
+
+    // Get total count for pagination
+    const [{ count: total }] = await db.select({ count: sql`count(*)` })
+      .from(quotations)
+      .where(and(...conditions));
+
+    res.json({
+      success: true,
+      quotations: supplierQuotations,
+      total: parseInt(total as string),
+      page: Math.floor(parseInt(offset as string) / parseInt(limit as string)) + 1,
+      limit: parseInt(limit as string),
+      hasMore: (parseInt(offset as string) + parseInt(limit as string)) < parseInt(total as string)
+    });
+
+  } catch (error: any) {
+    console.error('Get supplier quotations error:', error);
+    res.status(500).json({ error: 'Failed to get quotations' });
+  }
+});
+
+// PATCH /api/suppliers/quotations/:id - Update quotation (if still pending)
+router.patch('/quotations/:id', supplierMiddleware, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { id } = req.params;
+
+    // Get supplier profile
+    const supplier = await getSupplierProfile(userId!);
+    if (!supplier) {
+      return res.status(404).json({ error: 'Supplier profile not found' });
+    }
+
+    // Get existing quotation with ownership validation
+    const existingQuotation = await db.select()
+      .from(quotations)
+      .where(and(
+        eq(quotations.id, id),
+        eq(quotations.supplierId, supplier.id)
+      ))
+      .limit(1);
+
+    if (existingQuotation.length === 0) {
+      return res.status(404).json({ error: 'Quotation not found or access denied' });
+    }
+
+    const quotation = existingQuotation[0];
+
+    // Only allow updates if quotation is still in 'sent' status
+    if (quotation.status !== 'sent') {
+      return res.status(400).json({ error: 'Cannot update quotation that has been accepted, rejected, or expired' });
+    }
+
+    // Validate update data
+    const updateSchema = insertQuotationSchema.partial().omit({
+      id: true,
+      supplierId: true,
+      rfqId: true,
+      inquiryId: true,
+      createdAt: true
+    }).extend({
+      unitPrice: z.string().optional(),
+      totalPrice: z.string().optional(),
+      moq: z.number().int().positive().optional(),
+      validityPeriod: z.number().int().positive().optional()
+    });
+
+    const validatedData = updateSchema.parse({
+      ...req.body,
+      updatedAt: new Date()
+    });
+
+    // Update quotation
+    const [updatedQuotation] = await db.update(quotations)
+      .set(validatedData)
+      .where(eq(quotations.id, id))
+      .returning();
+
+    res.json({
+      success: true,
+      message: 'Quotation updated successfully',
+      quotation: updatedQuotation
+    });
+
+  } catch (error: any) {
+    console.error('Update quotation error:', error);
+    res.status(400).json({ error: error.message || 'Failed to update quotation' });
+  }
+});
+
+// GET /api/suppliers/rfqs/analytics - Get RFQ performance analytics
+router.get('/rfqs/analytics', supplierMiddleware, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { timeRange = '30d' } = req.query;
+
+    // Get supplier profile
+    const supplier = await getSupplierProfile(userId!);
+    if (!supplier) {
+      return res.status(404).json({ error: 'Supplier profile not found' });
+    }
+
+    // Calculate date range
+    const now = new Date();
+    let startDate = new Date();
+    
+    switch (timeRange) {
+      case '7d':
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case '30d':
+        startDate.setDate(now.getDate() - 30);
+        break;
+      case '90d':
+        startDate.setDate(now.getDate() - 90);
+        break;
+      case '1y':
+        startDate.setFullYear(now.getFullYear() - 1);
+        break;
+      default:
+        startDate.setDate(now.getDate() - 30);
+    }
+
+    // Get quotation statistics
+    const quotationStats = await db.select({
+      status: quotations.status,
+      count: sql`count(*)`,
+      avgUnitPrice: sql`avg(CAST(${quotations.unitPrice} AS DECIMAL))`,
+      totalValue: sql`sum(CAST(${quotations.totalPrice} AS DECIMAL))`
+    })
+      .from(quotations)
+      .where(and(
+        eq(quotations.supplierId, supplier.id),
+        gte(quotations.createdAt, startDate)
+      ))
+      .groupBy(quotations.status);
+
+    // Get RFQ response rate
+    const totalRfqsInRange = await db.select({ count: sql`count(*)` })
+      .from(rfqs)
+      .where(and(
+        eq(rfqs.status, 'open'),
+        gte(rfqs.createdAt, startDate)
+      ));
+
+    const respondedRfqs = await db.select({ count: sql`count(DISTINCT ${quotations.rfqId})` })
+      .from(quotations)
+      .where(and(
+        eq(quotations.supplierId, supplier.id),
+        gte(quotations.createdAt, startDate),
+        sql`${quotations.rfqId} IS NOT NULL`
+      ));
+
+    // Calculate metrics
+    const totalQuotations = quotationStats.reduce((sum, stat) => sum + parseInt(stat.count as string), 0);
+    const acceptedQuotations = quotationStats.find(stat => stat.status === 'accepted')?.count || 0;
+    const winRate = totalQuotations > 0 ? (parseInt(acceptedQuotations as string) / totalQuotations) * 100 : 0;
+    
+    const totalRfqs = parseInt(totalRfqsInRange[0]?.count as string) || 0;
+    const responded = parseInt(respondedRfqs[0]?.count as string) || 0;
+    const responseRate = totalRfqs > 0 ? (responded / totalRfqs) * 100 : 0;
+
+    res.json({
+      success: true,
+      analytics: {
+        timeRange,
+        totalQuotations,
+        quotationsByStatus: quotationStats.map(stat => ({
+          status: stat.status,
+          count: parseInt(stat.count as string),
+          avgUnitPrice: parseFloat(stat.avgUnitPrice as string) || 0,
+          totalValue: parseFloat(stat.totalValue as string) || 0
+        })),
+        winRate: Math.round(winRate * 100) / 100,
+        responseRate: Math.round(responseRate * 100) / 100,
+        totalRfqsAvailable: totalRfqs,
+        rfqsResponded: responded
+      }
+    });
+
+  } catch (error: any) {
+    console.error('Get RFQ analytics error:', error);
+    res.status(500).json({ error: 'Failed to get RFQ analytics' });
+  }
+});
+
 export { router as supplierRoutes };
+
+// ==================== INQUIRY TEMPLATE MANAGEMENT ENDPOINTS ====================
+
+// GET /api/suppliers/inquiries/templates - Get supplier's inquiry templates
+router.get('/inquiries/templates', supplierMiddleware, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+
+    // Get supplier profile
+    const supplier = await getSupplierProfile(userId!);
+    if (!supplier) {
+      return res.status(404).json({ error: 'Supplier profile not found' });
+    }
+
+    const templates = await db.select()
+      .from(inquiryTemplates)
+      .where(and(
+        eq(inquiryTemplates.supplierId, supplier.id),
+        eq(inquiryTemplates.isActive, true)
+      ))
+      .orderBy(desc(inquiryTemplates.usageCount), desc(inquiryTemplates.createdAt));
+
+    res.json({
+      success: true,
+      templates
+    });
+
+  } catch (error: any) {
+    console.error('Get inquiry templates error:', error);
+    res.status(500).json({ error: 'Failed to get templates' });
+  }
+});
+
+// POST /api/suppliers/inquiries/templates - Create new inquiry template
+router.post('/inquiries/templates', supplierMiddleware, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { name, subject, message, category, isDefault } = req.body;
+
+    // Get supplier profile
+    const supplier = await getSupplierProfile(userId!);
+    if (!supplier) {
+      return res.status(404).json({ error: 'Supplier profile not found' });
+    }
+
+    // Validate required fields
+    if (!name || !message) {
+      return res.status(400).json({ error: 'Name and message are required' });
+    }
+
+    // If setting as default, unset other defaults
+    if (isDefault) {
+      await db.update(inquiryTemplates)
+        .set({ isDefault: false })
+        .where(and(
+          eq(inquiryTemplates.supplierId, supplier.id),
+          eq(inquiryTemplates.isDefault, true)
+        ));
+    }
+
+    const templateData = {
+      supplierId: supplier.id,
+      name,
+      subject: subject || '',
+      message,
+      category: category || 'General',
+      isDefault: isDefault || false
+    };
+
+    const [template] = await db.insert(inquiryTemplates).values(templateData).returning();
+
+    res.status(201).json({
+      success: true,
+      message: 'Template created successfully',
+      template
+    });
+
+  } catch (error: any) {
+    console.error('Create inquiry template error:', error);
+    res.status(400).json({ error: error.message || 'Failed to create template' });
+  }
+});
+
+// DELETE /api/suppliers/inquiries/templates/:id - Delete inquiry template
+router.delete('/inquiries/templates/:id', supplierMiddleware, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { id } = req.params;
+
+    // Get supplier profile
+    const supplier = await getSupplierProfile(userId!);
+    if (!supplier) {
+      return res.status(404).json({ error: 'Supplier profile not found' });
+    }
+
+    // Verify template ownership
+    const templateResult = await db.select()
+      .from(inquiryTemplates)
+      .where(and(
+        eq(inquiryTemplates.id, id),
+        eq(inquiryTemplates.supplierId, supplier.id)
+      ))
+      .limit(1);
+
+    if (templateResult.length === 0) {
+      return res.status(404).json({ error: 'Template not found or access denied' });
+    }
+
+    await db.delete(inquiryTemplates)
+      .where(and(
+        eq(inquiryTemplates.id, id),
+        eq(inquiryTemplates.supplierId, supplier.id)
+      ));
+
+    res.json({
+      success: true,
+      message: 'Template deleted successfully'
+    });
+
+  } catch (error: any) {
+    console.error('Delete inquiry template error:', error);
+    res.status(500).json({ error: 'Failed to delete template' });
+  }
+});
+
+// POST /api/suppliers/inquiries/templates/:id/use - Increment template usage count
+router.post('/inquiries/templates/:id/use', supplierMiddleware, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { id } = req.params;
+
+    // Get supplier profile
+    const supplier = await getSupplierProfile(userId!);
+    if (!supplier) {
+      return res.status(404).json({ error: 'Supplier profile not found' });
+    }
+
+    // Verify template ownership and increment usage
+    await db.update(inquiryTemplates)
+      .set({ 
+        usageCount: sql`${inquiryTemplates.usageCount} + 1`,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(inquiryTemplates.id, id),
+        eq(inquiryTemplates.supplierId, supplier.id)
+      ));
+
+    res.json({
+      success: true,
+      message: 'Template usage updated'
+    });
+
+  } catch (error: any) {
+    console.error('Update template usage error:', error);
+    res.status(500).json({ error: 'Failed to update template usage' });
+  }
+});
+
+// ==================== INQUIRY ANALYTICS ENDPOINTS ====================
+
+// GET /api/suppliers/inquiries/analytics - Get inquiry analytics
+router.get('/inquiries/analytics', supplierMiddleware, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { days = '30' } = req.query;
+
+    // Get supplier profile
+    const supplier = await getSupplierProfile(userId!);
+    if (!supplier) {
+      return res.status(404).json({ error: 'Supplier profile not found' });
+    }
+
+    const daysNum = parseInt(days as string);
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - daysNum);
+
+    // Get analytics data
+    const analytics = await db.select()
+      .from(inquiryAnalytics)
+      .where(and(
+        eq(inquiryAnalytics.supplierId, supplier.id),
+        gte(inquiryAnalytics.date, startDate)
+      ))
+      .orderBy(desc(inquiryAnalytics.date));
+
+    res.json({
+      success: true,
+      analytics,
+      period: `${daysNum} days`
+    });
+
+  } catch (error: any) {
+    console.error('Get inquiry analytics error:', error);
+    res.status(500).json({ error: 'Failed to get analytics' });
+  }
+});
+
+// POST /api/suppliers/inquiries/analytics/update - Update daily analytics (internal use)
+router.post('/inquiries/analytics/update', supplierMiddleware, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+
+    // Get supplier profile
+    const supplier = await getSupplierProfile(userId!);
+    if (!supplier) {
+      return res.status(404).json({ error: 'Supplier profile not found' });
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Calculate today's metrics
+    const [totalInquiries] = await db.select({ count: sql`count(*)` })
+      .from(inquiries)
+      .where(and(
+        eq(inquiries.supplierId, supplier.id),
+        gte(inquiries.createdAt, today)
+      ));
+
+    const [respondedInquiries] = await db.select({ count: sql`count(*)` })
+      .from(inquiries)
+      .where(and(
+        eq(inquiries.supplierId, supplier.id),
+        gte(inquiries.createdAt, today),
+        ne(inquiries.status, 'pending')
+      ));
+
+    const [convertedInquiries] = await db.select({ count: sql`count(*)` })
+      .from(inquiries)
+      .leftJoin(orders, eq(inquiries.id, orders.inquiryId))
+      .where(and(
+        eq(inquiries.supplierId, supplier.id),
+        gte(inquiries.createdAt, today),
+        sql`${orders.id} IS NOT NULL`
+      ));
+
+    // TODO: Calculate actual average response time from inquiry response timestamps
+    const avgResponseTime = 0; // Placeholder until response time tracking is implemented
+
+    const responseRate = parseInt(totalInquiries.count as string) > 0 
+      ? (parseInt(respondedInquiries.count as string) / parseInt(totalInquiries.count as string)) * 100 
+      : 0;
+
+    const conversionRate = parseInt(respondedInquiries.count as string) > 0 
+      ? (parseInt(convertedInquiries.count as string) / parseInt(respondedInquiries.count as string)) * 100 
+      : 0;
+
+    // Upsert analytics record
+    const analyticsData = {
+      supplierId: supplier.id,
+      date: today,
+      totalInquiries: parseInt(totalInquiries.count as string),
+      respondedInquiries: parseInt(respondedInquiries.count as string),
+      convertedInquiries: parseInt(convertedInquiries.count as string),
+      avgResponseTime,
+      responseRate: responseRate.toFixed(2),
+      conversionRate: conversionRate.toFixed(2)
+    };
+
+    // Check if record exists for today
+    const existingRecord = await db.select()
+      .from(inquiryAnalytics)
+      .where(and(
+        eq(inquiryAnalytics.supplierId, supplier.id),
+        eq(inquiryAnalytics.date, today)
+      ))
+      .limit(1);
+
+    if (existingRecord.length > 0) {
+      await db.update(inquiryAnalytics)
+        .set(analyticsData)
+        .where(and(
+          eq(inquiryAnalytics.supplierId, supplier.id),
+          eq(inquiryAnalytics.date, today)
+        ));
+    } else {
+      await db.insert(inquiryAnalytics).values(analyticsData);
+    }
+
+    res.json({
+      success: true,
+      message: 'Analytics updated successfully',
+      analytics: analyticsData
+    });
+
+  } catch (error: any) {
+    console.error('Update inquiry analytics error:', error);
+    res.status(500).json({ error: 'Failed to update analytics' });
+  }
+});
+// ==================== QUOTATION TEMPLATES ENDPOINTS ====================
+
+// GET /api/suppliers/quotation-templates - Get supplier's quotation templates
+router.get('/quotation-templates', supplierMiddleware, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { search, category } = req.query;
+
+    // Get supplier profile
+    const supplier = await getSupplierProfile(userId!);
+    if (!supplier) {
+      return res.status(404).json({ error: 'Supplier profile not found' });
+    }
+
+    // Build query conditions
+    const conditions = [eq(inquiryTemplates.supplierId, supplier.id)];
+
+    if (search) {
+      conditions.push(ilike(inquiryTemplates.name, `%${search}%`));
+    }
+
+    if (category) {
+      conditions.push(eq(inquiryTemplates.category, category as string));
+    }
+
+    // Get templates
+    const templates = await db.select()
+      .from(inquiryTemplates)
+      .where(and(...conditions))
+      .orderBy(desc(inquiryTemplates.isDefault), desc(inquiryTemplates.usageCount), desc(inquiryTemplates.createdAt));
+
+    res.json({
+      success: true,
+      templates
+    });
+
+  } catch (error: any) {
+    console.error('Get quotation templates error:', error);
+    res.status(500).json({ error: 'Failed to get templates' });
+  }
+});
+
+// POST /api/suppliers/quotation-templates - Create quotation template
+router.post('/quotation-templates', supplierMiddleware, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+
+    // Get supplier profile
+    const supplier = await getSupplierProfile(userId!);
+    if (!supplier) {
+      return res.status(404).json({ error: 'Supplier profile not found' });
+    }
+
+    // Validate template data
+    const templateSchema = z.object({
+      name: z.string().min(1, 'Template name is required'),
+      category: z.string().optional(),
+      unitPrice: z.string(),
+      moq: z.number().int().positive(),
+      leadTime: z.string().min(1, 'Lead time is required'),
+      paymentTerms: z.string().min(1, 'Payment terms are required'),
+      validityPeriod: z.number().int().positive().default(30),
+      termsConditions: z.string().optional(),
+      isDefault: z.boolean().default(false)
+    });
+
+    const validatedData = templateSchema.parse(req.body);
+
+    // If setting as default, unset other defaults
+    if (validatedData.isDefault) {
+      await db.update(inquiryTemplates)
+        .set({ isDefault: false })
+        .where(eq(inquiryTemplates.supplierId, supplier.id));
+    }
+
+    // Create template
+    const templateData = {
+      ...validatedData,
+      supplierId: supplier.id,
+      message: `Unit Price: ${validatedData.unitPrice}\nMOQ: ${validatedData.moq}\nLead Time: ${validatedData.leadTime}\nPayment Terms: ${validatedData.paymentTerms}\nValidity: ${validatedData.validityPeriod} days\n\n${validatedData.termsConditions || ''}`
+    };
+
+    const [newTemplate] = await db.insert(inquiryTemplates).values(templateData).returning();
+
+    res.status(201).json({
+      success: true,
+      message: 'Template created successfully',
+      template: newTemplate
+    });
+
+  } catch (error: any) {
+    console.error('Create quotation template error:', error);
+    res.status(400).json({ error: error.message || 'Failed to create template' });
+  }
+});
+
+// PUT /api/suppliers/quotation-templates/:id - Update quotation template
+router.put('/quotation-templates/:id', supplierMiddleware, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { id } = req.params;
+
+    // Get supplier profile
+    const supplier = await getSupplierProfile(userId!);
+    if (!supplier) {
+      return res.status(404).json({ error: 'Supplier profile not found' });
+    }
+
+    // Verify template ownership
+    const existingTemplate = await db.select()
+      .from(inquiryTemplates)
+      .where(and(
+        eq(inquiryTemplates.id, id),
+        eq(inquiryTemplates.supplierId, supplier.id)
+      ))
+      .limit(1);
+
+    if (existingTemplate.length === 0) {
+      return res.status(404).json({ error: 'Template not found or access denied' });
+    }
+
+    // Validate update data
+    const templateSchema = z.object({
+      name: z.string().min(1, 'Template name is required'),
+      category: z.string().optional(),
+      unitPrice: z.string(),
+      moq: z.number().int().positive(),
+      leadTime: z.string().min(1, 'Lead time is required'),
+      paymentTerms: z.string().min(1, 'Payment terms are required'),
+      validityPeriod: z.number().int().positive().default(30),
+      termsConditions: z.string().optional(),
+      isDefault: z.boolean().default(false)
+    });
+
+    const validatedData = templateSchema.parse(req.body);
+
+    // If setting as default, unset other defaults
+    if (validatedData.isDefault) {
+      await db.update(inquiryTemplates)
+        .set({ isDefault: false })
+        .where(and(
+          eq(inquiryTemplates.supplierId, supplier.id),
+          ne(inquiryTemplates.id, id)
+        ));
+    }
+
+    // Update template
+    const updateData = {
+      ...validatedData,
+      message: `Unit Price: ${validatedData.unitPrice}\nMOQ: ${validatedData.moq}\nLead Time: ${validatedData.leadTime}\nPayment Terms: ${validatedData.paymentTerms}\nValidity: ${validatedData.validityPeriod} days\n\n${validatedData.termsConditions || ''}`,
+      updatedAt: new Date()
+    };
+
+    const [updatedTemplate] = await db.update(inquiryTemplates)
+      .set(updateData)
+      .where(and(
+        eq(inquiryTemplates.id, id),
+        eq(inquiryTemplates.supplierId, supplier.id)
+      ))
+      .returning();
+
+    res.json({
+      success: true,
+      message: 'Template updated successfully',
+      template: updatedTemplate
+    });
+
+  } catch (error: any) {
+    console.error('Update quotation template error:', error);
+    res.status(400).json({ error: error.message || 'Failed to update template' });
+  }
+});
+
+// DELETE /api/suppliers/quotation-templates/:id - Delete quotation template
+router.delete('/quotation-templates/:id', supplierMiddleware, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { id } = req.params;
+
+    // Get supplier profile
+    const supplier = await getSupplierProfile(userId!);
+    if (!supplier) {
+      return res.status(404).json({ error: 'Supplier profile not found' });
+    }
+
+    // Verify template ownership and delete
+    const deletedTemplate = await db.delete(inquiryTemplates)
+      .where(and(
+        eq(inquiryTemplates.id, id),
+        eq(inquiryTemplates.supplierId, supplier.id)
+      ))
+      .returning();
+
+    if (deletedTemplate.length === 0) {
+      return res.status(404).json({ error: 'Template not found or access denied' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Template deleted successfully'
+    });
+
+  } catch (error: any) {
+    console.error('Delete quotation template error:', error);
+    res.status(500).json({ error: 'Failed to delete template' });
+  }
+});
+
+// POST /api/suppliers/quotation-templates/:id/duplicate - Duplicate quotation template
+router.post('/quotation-templates/:id/duplicate', supplierMiddleware, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { id } = req.params;
+
+    // Get supplier profile
+    const supplier = await getSupplierProfile(userId!);
+    if (!supplier) {
+      return res.status(404).json({ error: 'Supplier profile not found' });
+    }
+
+    // Get original template
+    const originalTemplate = await db.select()
+      .from(inquiryTemplates)
+      .where(and(
+        eq(inquiryTemplates.id, id),
+        eq(inquiryTemplates.supplierId, supplier.id)
+      ))
+      .limit(1);
+
+    if (originalTemplate.length === 0) {
+      return res.status(404).json({ error: 'Template not found or access denied' });
+    }
+
+    const template = originalTemplate[0];
+
+    // Create duplicate
+    const duplicateData = {
+      ...template,
+      id: undefined, // Let database generate new ID
+      name: `${template.name} (Copy)`,
+      isDefault: false,
+      usageCount: 0,
+      createdAt: undefined,
+      updatedAt: undefined
+    };
+
+    const [newTemplate] = await db.insert(inquiryTemplates).values(duplicateData).returning();
+
+    res.status(201).json({
+      success: true,
+      message: 'Template duplicated successfully',
+      template: newTemplate
+    });
+
+  } catch (error: any) {
+    console.error('Duplicate quotation template error:', error);
+    res.status(500).json({ error: 'Failed to duplicate template' });
+  }
+});
+
+// POST /api/suppliers/quotation-templates/:id/set-default - Set template as default
+router.post('/quotation-templates/:id/set-default', supplierMiddleware, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { id } = req.params;
+
+    // Get supplier profile
+    const supplier = await getSupplierProfile(userId!);
+    if (!supplier) {
+      return res.status(404).json({ error: 'Supplier profile not found' });
+    }
+
+    // Verify template ownership
+    const existingTemplate = await db.select()
+      .from(inquiryTemplates)
+      .where(and(
+        eq(inquiryTemplates.id, id),
+        eq(inquiryTemplates.supplierId, supplier.id)
+      ))
+      .limit(1);
+
+    if (existingTemplate.length === 0) {
+      return res.status(404).json({ error: 'Template not found or access denied' });
+    }
+
+    // Unset all other defaults
+    await db.update(inquiryTemplates)
+      .set({ isDefault: false })
+      .where(eq(inquiryTemplates.supplierId, supplier.id));
+
+    // Set this template as default
+    await db.update(inquiryTemplates)
+      .set({ isDefault: true })
+      .where(and(
+        eq(inquiryTemplates.id, id),
+        eq(inquiryTemplates.supplierId, supplier.id)
+      ));
+
+    res.json({
+      success: true,
+      message: 'Default template updated successfully'
+    });
+
+  } catch (error: any) {
+    console.error('Set default template error:', error);
+    res.status(500).json({ error: 'Failed to set default template' });
+  }
+});
+
+// POST /api/suppliers/quotation-templates/:id/use - Increment template usage count
+router.post('/quotation-templates/:id/use', supplierMiddleware, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { id } = req.params;
+
+    // Get supplier profile
+    const supplier = await getSupplierProfile(userId!);
+    if (!supplier) {
+      return res.status(404).json({ error: 'Supplier profile not found' });
+    }
+
+    // Increment usage count
+    await db.update(inquiryTemplates)
+      .set({ 
+        usageCount: sql`${inquiryTemplates.usageCount} + 1`,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(inquiryTemplates.id, id),
+        eq(inquiryTemplates.supplierId, supplier.id)
+      ));
+
+    res.json({
+      success: true,
+      message: 'Template usage recorded'
+    });
+
+  } catch (error: any) {
+    console.error('Record template usage error:', error);
+    res.status(500).json({ error: 'Failed to record usage' });
+  }
+});
+
+// GET /api/suppliers/quotation-templates/analytics - Get template analytics
+router.get('/quotation-templates/analytics', supplierMiddleware, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+
+    // Get supplier profile
+    const supplier = await getSupplierProfile(userId!);
+    if (!supplier) {
+      return res.status(404).json({ error: 'Supplier profile not found' });
+    }
+
+    // Get template analytics
+    const [totalTemplates] = await db.select({ count: sql`count(*)` })
+      .from(inquiryTemplates)
+      .where(eq(inquiryTemplates.supplierId, supplier.id));
+
+    const [totalUsage] = await db.select({ sum: sql`sum(${inquiryTemplates.usageCount})` })
+      .from(inquiryTemplates)
+      .where(eq(inquiryTemplates.supplierId, supplier.id));
+
+    const [mostUsed] = await db.select({ name: inquiryTemplates.name })
+      .from(inquiryTemplates)
+      .where(eq(inquiryTemplates.supplierId, supplier.id))
+      .orderBy(desc(inquiryTemplates.usageCount))
+      .limit(1);
+
+    const [totalCategories] = await db.select({ count: sql`count(distinct ${inquiryTemplates.category})` })
+      .from(inquiryTemplates)
+      .where(and(
+        eq(inquiryTemplates.supplierId, supplier.id),
+        sql`${inquiryTemplates.category} IS NOT NULL AND ${inquiryTemplates.category} != ''`
+      ));
+
+    res.json({
+      success: true,
+      analytics: {
+        totalTemplates: parseInt(totalTemplates.count as string) || 0,
+        totalUsage: parseInt(totalUsage.sum as string) || 0,
+        mostUsedTemplate: mostUsed?.name || 'None',
+        totalCategories: parseInt(totalCategories.count as string) || 0
+      }
+    });
+
+  } catch (error: any) {
+    console.error('Get template analytics error:', error);
+    res.status(500).json({ error: 'Failed to get analytics' });
+  }
+});
+
+// ==================== QUOTATION ANALYTICS ENDPOINTS ====================
+
+// GET /api/suppliers/quotations/analytics - Get detailed quotation analytics
+router.get('/quotations/analytics', supplierMiddleware, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { timeRange = '3months' } = req.query;
+
+    // Get supplier profile
+    const supplier = await getSupplierProfile(userId!);
+    if (!supplier) {
+      return res.status(404).json({ error: 'Supplier profile not found' });
+    }
+
+    // Calculate date range
+    const now = new Date();
+    let startDate = new Date();
+    
+    switch (timeRange) {
+      case '1month':
+        startDate.setMonth(now.getMonth() - 1);
+        break;
+      case '3months':
+        startDate.setMonth(now.getMonth() - 3);
+        break;
+      case '6months':
+        startDate.setMonth(now.getMonth() - 6);
+        break;
+      case '1year':
+        startDate.setFullYear(now.getFullYear() - 1);
+        break;
+      default:
+        startDate.setMonth(now.getMonth() - 3);
+    }
+
+    // Get basic quotation metrics
+    const [totalQuotations] = await db.select({ count: sql`count(*)` })
+      .from(quotations)
+      .where(and(
+        eq(quotations.supplierId, supplier.id),
+        gte(quotations.createdAt, startDate)
+      ));
+
+    const [acceptedQuotations] = await db.select({ count: sql`count(*)` })
+      .from(quotations)
+      .where(and(
+        eq(quotations.supplierId, supplier.id),
+        eq(quotations.status, 'accepted'),
+        gte(quotations.createdAt, startDate)
+      ));
+
+    const [rejectedQuotations] = await db.select({ count: sql`count(*)` })
+      .from(quotations)
+      .where(and(
+        eq(quotations.supplierId, supplier.id),
+        eq(quotations.status, 'rejected'),
+        gte(quotations.createdAt, startDate)
+      ));
+
+    const [expiredQuotations] = await db.select({ count: sql`count(*)` })
+      .from(quotations)
+      .where(and(
+        eq(quotations.supplierId, supplier.id),
+        eq(quotations.status, 'expired'),
+        gte(quotations.createdAt, startDate)
+      ));
+
+    // Calculate totals
+    const total = parseInt(totalQuotations.count as string) || 0;
+    const accepted = parseInt(acceptedQuotations.count as string) || 0;
+    const rejected = parseInt(rejectedQuotations.count as string) || 0;
+    const expired = parseInt(expiredQuotations.count as string) || 0;
+    const pending = total - accepted - rejected - expired;
+
+    const winRate = total > 0 ? (accepted / total) * 100 : 0;
+    const conversionRate = total > 0 ? (accepted / total) * 100 : 0;
+
+    // Get value metrics
+    const [totalValue] = await db.select({ sum: sql`sum(cast(${quotations.totalPrice} as decimal))` })
+      .from(quotations)
+      .where(and(
+        eq(quotations.supplierId, supplier.id),
+        gte(quotations.createdAt, startDate)
+      ));
+
+    const [wonValue] = await db.select({ sum: sql`sum(cast(${quotations.totalPrice} as decimal))` })
+      .from(quotations)
+      .where(and(
+        eq(quotations.supplierId, supplier.id),
+        eq(quotations.status, 'accepted'),
+        gte(quotations.createdAt, startDate)
+      ));
+
+    const [avgValue] = await db.select({ avg: sql`avg(cast(${quotations.totalPrice} as decimal))` })
+      .from(quotations)
+      .where(and(
+        eq(quotations.supplierId, supplier.id),
+        gte(quotations.createdAt, startDate)
+      ));
+
+    // Status distribution
+    const statusDistribution = [
+      { status: 'Sent', count: pending, percentage: total > 0 ? (pending / total) * 100 : 0 },
+      { status: 'Accepted', count: accepted, percentage: total > 0 ? (accepted / total) * 100 : 0 },
+      { status: 'Rejected', count: rejected, percentage: total > 0 ? (rejected / total) * 100 : 0 },
+      { status: 'Expired', count: expired, percentage: total > 0 ? (expired / total) * 100 : 0 }
+    ];
+
+    // Monthly trends (simplified - would need more complex query for real data)
+    const monthlyTrends = [];
+    for (let i = 5; i >= 0; i--) {
+      const monthStart = new Date();
+      monthStart.setMonth(now.getMonth() - i);
+      monthStart.setDate(1);
+      
+      const monthEnd = new Date(monthStart);
+      monthEnd.setMonth(monthEnd.getMonth() + 1);
+      
+      const [monthQuotations] = await db.select({ count: sql`count(*)` })
+        .from(quotations)
+        .where(and(
+          eq(quotations.supplierId, supplier.id),
+          gte(quotations.createdAt, monthStart),
+          sql`${quotations.createdAt} < ${monthEnd}`
+        ));
+
+      const [monthAccepted] = await db.select({ count: sql`count(*)` })
+        .from(quotations)
+        .where(and(
+          eq(quotations.supplierId, supplier.id),
+          eq(quotations.status, 'accepted'),
+          gte(quotations.createdAt, monthStart),
+          sql`${quotations.createdAt} < ${monthEnd}`
+        ));
+
+      const [monthValue] = await db.select({ sum: sql`sum(cast(${quotations.totalPrice} as decimal))` })
+        .from(quotations)
+        .where(and(
+          eq(quotations.supplierId, supplier.id),
+          gte(quotations.createdAt, monthStart),
+          sql`${quotations.createdAt} < ${monthEnd}`
+        ));
+
+      const monthTotal = parseInt(monthQuotations.count as string) || 0;
+      const monthWon = parseInt(monthAccepted.count as string) || 0;
+
+      monthlyTrends.push({
+        month: monthStart.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        quotations: monthTotal,
+        accepted: monthWon,
+        winRate: monthTotal > 0 ? (monthWon / monthTotal) * 100 : 0,
+        value: parseFloat(monthValue.sum as string) || 0
+      });
+    }
+
+    res.json({
+      success: true,
+      metrics: {
+        totalQuotations: total,
+        acceptedQuotations: accepted,
+        rejectedQuotations: rejected,
+        expiredQuotations: expired,
+        pendingQuotations: pending,
+        winRate: Math.round(winRate * 10) / 10,
+        averageQuoteValue: parseFloat(avgValue.avg as string) || 0,
+        totalQuoteValue: parseFloat(totalValue.sum as string) || 0,
+        wonValue: parseFloat(wonValue.sum as string) || 0,
+        averageResponseTime: 0, // TODO: Calculate from actual response times
+        conversionRate: Math.round(conversionRate * 10) / 10,
+        averageNegotiationTime: 0, // TODO: Calculate from actual negotiation data
+        topPerformingCategories: [], // Would need to join with products/categories
+        monthlyTrends,
+        statusDistribution,
+        competitiveAnalysis: {
+          averageCompetitorPrice: 0, // TODO: Implement competitive analysis
+          priceCompetitiveness: 0, // TODO: Calculate price competitiveness
+          marketPosition: 'Unknown' // TODO: Determine market position
+        }
+      }
+    });
+
+  } catch (error: any) {
+    console.error('Get quotation analytics error:', error);
+    res.status(500).json({ error: 'Failed to get analytics' });
+  }
+});
+
+// PUT /api/suppliers/quotations/:id/status - Update quotation status
+router.put('/quotations/:id/status', supplierMiddleware, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { id } = req.params;
+    const { status, notes } = req.body;
+
+    // Get supplier profile
+    const supplier = await getSupplierProfile(userId!);
+    if (!supplier) {
+      return res.status(404).json({ error: 'Supplier profile not found' });
+    }
+
+    // Validate status
+    const validStatuses = ['sent', 'viewed', 'accepted', 'rejected', 'expired', 'negotiating'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+
+    // Update quotation status
+    const [updatedQuotation] = await db.update(quotations)
+      .set({ 
+        status,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(quotations.id, id),
+        eq(quotations.supplierId, supplier.id)
+      ))
+      .returning();
+
+    if (!updatedQuotation) {
+      return res.status(404).json({ error: 'Quotation not found or access denied' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Quotation status updated successfully',
+      quotation: updatedQuotation
+    });
+
+  } catch (error: any) {
+    console.error('Update quotation status error:', error);
+    res.status(500).json({ error: 'Failed to update status' });
+  }
+});
+
+// POST /api/suppliers/quotations/:id/follow-up - Send follow-up for quotation
+router.post('/quotations/:id/follow-up', supplierMiddleware, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { id } = req.params;
+    const { message } = req.body;
+
+    // Get supplier profile
+    const supplier = await getSupplierProfile(userId!);
+    if (!supplier) {
+      return res.status(404).json({ error: 'Supplier profile not found' });
+    }
+
+    // Verify quotation ownership
+    const existingQuotation = await db.select()
+      .from(quotations)
+      .where(and(
+        eq(quotations.id, id),
+        eq(quotations.supplierId, supplier.id)
+      ))
+      .limit(1);
+
+    if (existingQuotation.length === 0) {
+      return res.status(404).json({ error: 'Quotation not found or access denied' });
+    }
+
+    // Here you would typically:
+    // 1. Create a follow-up message/notification
+    // 2. Send email/notification to buyer
+    // 3. Log the follow-up activity
+
+    // For now, just return success
+    res.json({
+      success: true,
+      message: 'Follow-up sent successfully'
+    });
+
+  } catch (error: any) {
+    console.error('Send follow-up error:', error);
+    res.status(500).json({ error: 'Failed to send follow-up' });
+  }
+});
+
+// GET /api/suppliers/quotations/overview - Get quotation overview for dashboard
+router.get('/quotations/overview', supplierMiddleware, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+
+    // Get supplier profile
+    const supplier = await getSupplierProfile(userId!);
+    if (!supplier) {
+      return res.status(404).json({ error: 'Supplier profile not found' });
+    }
+
+    // Get basic metrics
+    const [totalQuotations] = await db.select({ count: sql`count(*)` })
+      .from(quotations)
+      .where(eq(quotations.supplierId, supplier.id));
+
+    const [pendingQuotations] = await db.select({ count: sql`count(*)` })
+      .from(quotations)
+      .where(and(
+        eq(quotations.supplierId, supplier.id),
+        eq(quotations.status, 'sent')
+      ));
+
+    const [acceptedQuotations] = await db.select({ count: sql`count(*)` })
+      .from(quotations)
+      .where(and(
+        eq(quotations.supplierId, supplier.id),
+        eq(quotations.status, 'accepted')
+      ));
+
+    const [totalValue] = await db.select({ sum: sql`sum(cast(${quotations.totalPrice} as decimal))` })
+      .from(quotations)
+      .where(eq(quotations.supplierId, supplier.id));
+
+    // Calculate win rate
+    const total = parseInt(totalQuotations.count as string) || 0;
+    const accepted = parseInt(acceptedQuotations.count as string) || 0;
+    const winRate = total > 0 ? Math.round((accepted / total) * 100) : 0;
+
+    // Get recent activity (last 10 quotations)
+    const recentQuotations = await db.select({
+      id: quotations.id,
+      status: quotations.status,
+      totalPrice: quotations.totalPrice,
+      createdAt: quotations.createdAt,
+      updatedAt: quotations.updatedAt,
+      rfqTitle: rfqs.title,
+      inquirySubject: inquiries.subject
+    })
+      .from(quotations)
+      .leftJoin(rfqs, eq(quotations.rfqId, rfqs.id))
+      .leftJoin(inquiries, eq(quotations.inquiryId, inquiries.id))
+      .where(eq(quotations.supplierId, supplier.id))
+      .orderBy(desc(quotations.updatedAt))
+      .limit(10);
+
+    // Format recent activity
+    const recentActivity = recentQuotations.map(q => {
+      let type = 'quotation_sent';
+      let timestamp = q.createdAt;
+      
+      if (q.status === 'accepted') {
+        type = 'quotation_accepted';
+        timestamp = q.updatedAt;
+      } else if (q.status === 'rejected') {
+        type = 'quotation_rejected';
+        timestamp = q.updatedAt;
+      }
+
+      return {
+        id: q.id,
+        type,
+        title: q.rfqTitle || q.inquirySubject || 'Quotation',
+        timestamp: timestamp?.toISOString() || new Date().toISOString(),
+        value: parseFloat(q.totalPrice)
+      };
+    });
+
+    res.json({
+      success: true,
+      overview: {
+        totalQuotations: total,
+        pendingQuotations: parseInt(pendingQuotations.count as string) || 0,
+        acceptedQuotations: accepted,
+        winRate,
+        totalValue: parseFloat(totalValue.sum as string) || 0,
+        recentActivity
+      }
+    });
+
+  } catch (error: any) {
+    console.error('Get quotation overview error:', error);
+    res.status(500).json({ error: 'Failed to get overview' });
+  }
+});

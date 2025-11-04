@@ -20,6 +20,7 @@ import EarningsOverview from "@/components/supplier/EarningsOverview";
 import EnhancedAnalyticsDashboard from "@/components/supplier/EnhancedAnalyticsDashboard";
 import StaffManagement from "@/components/supplier/StaffManagement";
 import { VerificationDashboard } from "@/components/supplier/VerificationDashboard";
+import SupplierRFQManager from "@/components/supplier/SupplierRFQManager";
 import { Key, ReactElement, JSXElementConstructor, ReactNode, ReactPortal } from "react";
 
 export default function SupplierDashboard() {
@@ -106,7 +107,7 @@ export default function SupplierDashboard() {
           <Tabs defaultValue="inquiries" className="space-y-6">
             <TabsList>
               <TabsTrigger value="inquiries" data-testid="tab-inquiries">Recent Inquiries</TabsTrigger>
-              <TabsTrigger value="rfq" data-testid="tab-rfq">Matching RFQs</TabsTrigger>
+              <TabsTrigger value="rfq" data-testid="tab-rfq">RFQ Management</TabsTrigger>
               <TabsTrigger value="products" data-testid="tab-products">My Products</TabsTrigger>
               <TabsTrigger value="store" data-testid="tab-store">Store Management</TabsTrigger>
               <TabsTrigger value="verification" data-testid="tab-verification">Verification</TabsTrigger>
@@ -120,30 +121,7 @@ export default function SupplierDashboard() {
             </TabsContent>
 
             <TabsContent value="rfq">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Matching RFQs</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {rfqMatches.map((rfq: { id: Key | null | undefined; title: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | null | undefined; category: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | null | undefined; location: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | null | undefined; timeLeft: string | number | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | null | undefined; }) => (
-                      <div key={rfq.id} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors" data-testid={`rfq-${rfq.id}`}>
-                        <div className="flex justify-between items-start mb-3">
-                          <h4 className="font-medium">{rfq.title}</h4>
-                          <Badge variant="outline">{rfq.category}</Badge>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <div className="text-sm text-muted-foreground">
-                            {rfq.location} • {rfq.timeLeft} remaining
-                          </div>
-                          <Button size="sm" data-testid={`button-send-quote-${rfq.id}`}>Send Quotation</Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <Button className="w-full mt-4" variant="outline" data-testid="button-browse-rfqs">Browse All RFQs</Button>
-                </CardContent>
-              </Card>
+              <SupplierRFQManager />
             </TabsContent>
 
             <TabsContent value="products">

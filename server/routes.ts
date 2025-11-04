@@ -2,8 +2,11 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { db } from "./db";
+import { sql, eq, and, gte, desc } from "drizzle-orm";
+import { orders, supplierProfiles, products, users, inquiries, quotations } from "../shared/schema";
 import { authRoutes } from "./authRoutes";
-import { authMiddleware } from "./auth";
+import { hybridAuthMiddleware } from "./authMiddleware";
+import { requireAuth, requireAdmin, requireSupplier, requireBuyer } from "./authGuards";
 import categoryRoutes from "./categoryRoutes";
 import uploadRoutes from "./uploadRoutes";
 import chatRoutes from "./chatRoutes";
@@ -26,6 +29,15 @@ import adminAccessControlRoutes from "./adminAccessControlRoutes";
 import securityMonitoringRoutes from "./securityMonitoringRoutes";
 import communicationRoutes from "./communicationRoutes";
 import complianceAuditRoutes from "./complianceAuditRoutes";
+import buyerProductRoutes from "./buyerProductRoutes";
+import buyerRFQRoutes from "./buyerRFQRoutes";
+import buyerInquiryRoutes from "./buyerInquiryRoutes";
+import inquiryTemplateRoutes from "./inquiryTemplateRoutes";
+import quotationManagementRoutes from "./quotationManagementRoutes";
+import buyerApiRoutes from "./buyerApiRoutes";
+import supplierApiRoutes from "./supplierApiRoutes";
+import disputeApiRoutes from "./disputeApiRoutes";
+import chatApiRoutes from "./chatApiRoutes";
 import { loadAdminUserMiddleware, securityMonitoringMiddleware } from "./permissionMiddleware";
 import { upload, uploadUnrestricted } from "./upload";
 import {
@@ -40,6 +52,25 @@ import { z } from 'zod';
 import { sql, eq, and, gte, desc, or, ilike } from "drizzle-orm";
 import * as path from 'path';
 import * as fs from 'fs';
+import { authMiddleware } from "./auth";
+import { authMiddleware } from "./auth";
+import { authMiddleware } from "./auth";
+import { authMiddleware } from "./auth";
+import { authMiddleware } from "./auth";
+import { authMiddleware } from "./auth";
+import { authMiddleware } from "./auth";
+import { authMiddleware } from "./auth";
+import { authMiddleware } from "./auth";
+import { authMiddleware } from "./auth";
+import { authMiddleware } from "./auth";
+import { authMiddleware } from "./auth";
+import { authMiddleware } from "./auth";
+import { authMiddleware } from "./auth";
+import { authMiddleware } from "./auth";
+import { authMiddleware } from "./auth";
+import { authMiddleware } from "./auth";
+import { authMiddleware } from "./auth";
+import { authMiddleware } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   console.log('=== ROUTES LOADING - UPDATED VERSION ===');
@@ -59,6 +90,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ==================== CHAT ROUTES ====================
 
   app.use('/api/chat', chatRoutes);
+
+  // ==================== BUYER PRODUCT ROUTES ====================
+
+  app.use('/api', buyerProductRoutes);
+
+  // ==================== BUYER RFQ ROUTES ====================
+
+  app.use('/api/buyer/rfqs', buyerRFQRoutes);
+
+  // ==================== BUYER INQUIRY ROUTES ====================
+
+  app.use('/api/buyer/inquiries', buyerInquiryRoutes);
+
+  // ==================== INQUIRY TEMPLATE ROUTES ====================
+
+  app.use('/api/inquiry-templates', inquiryTemplateRoutes);
+
+  // ==================== QUOTATION MANAGEMENT ROUTES ====================
+
+  app.use('/api', quotationManagementRoutes);
+
+  // ==================== NEW BUYER API ROUTES ====================
+
+  app.use('/api/buyer', buyerApiRoutes);
+
+  // ==================== NEW SUPPLIER API ROUTES ====================
+
+  app.use('/api/supplier', supplierApiRoutes);
+
+  // ==================== DISPUTE MANAGEMENT API ROUTES ====================
+
+  app.use('/api', disputeApiRoutes);
+
+  // ==================== CHAT SYSTEM API ROUTES ====================
+
+  app.use('/api/chat', chatApiRoutes);
 
   // ==================== SUPPLIER ROUTES ====================
 
@@ -96,76 +163,186 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('📊 Direct comprehensive dashboard metrics endpoint hit');
 
-      // Mock comprehensive metrics for testing
-      const mockMetrics = {
+      if (!db) {
+        return res.status(500).json({ error: 'Database connection not available' });
+      }
+
+      const timeRange = req.query.timeRange as string || '30d';
+      const daysBack = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 90;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - daysBack);
+
+      // Fetch real KPI data from database
+      const [
+        totalRevenueResult,
+        totalSuppliersResult,
+        activeSuppliersResult,
+        pendingApprovalsResult,
+        totalProductsResult,
+        approvedProductsResult,
+        totalOrdersResult,
+        onlineSuppliersResult,
+        activeOrdersResult
+      ] = await Promise.all([
+        // Total revenue from orders
+        db.select({
+          total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`
+        }).from(orders).where(sql`${orders.createdAt} >= ${startDate}`),
+        
+        // Total suppliers
+        db.select({
+          count: sql<string>`COUNT(*)`
+        }).from(supplierProfiles),
+        
+        // Active suppliers (have products or recent activity)
+        db.select({
+          count: sql<string>`COUNT(DISTINCT ${supplierProfiles.id})`
+        }).from(supplierProfiles)
+          .innerJoin(products, sql`${products.supplierId} = ${supplierProfiles.id}`)
+          .where(sql`${supplierProfiles.isActive} = true AND ${products.isApproved} = true`),
+        
+        // Pending approvals
+        db.select({
+          count: sql<string>`COUNT(*)`
+        }).from(products).where(sql`${products.status} = 'pending_approval'`),
+        
+        // Total products
+        db.select({
+          count: sql<string>`COUNT(*)`
+        }).from(products),
+        
+        // Approved products
+        db.select({
+          count: sql<string>`COUNT(*)`
+        }).from(products).where(sql`${products.isApproved} = true`),
+        
+        // Total orders
+        db.select({
+          count: sql<string>`COUNT(*)`
+        }).from(orders).where(sql`${orders.createdAt} >= ${startDate}`),
+        
+        // Online suppliers
+        db.select({
+          count: sql<string>`COUNT(*)`
+        }).from(users)
+          .innerJoin(supplierProfiles, sql`${supplierProfiles.userId} = ${users.id}`)
+          .where(sql`${users.isOnline} = true AND ${users.role} = 'supplier'`),
+        
+        // Active orders (not delivered/cancelled)
+        db.select({
+          count: sql<string>`COUNT(*)`
+        }).from(orders).where(sql`${orders.status} NOT IN ('delivered', 'cancelled')`)
+      ]);
+
+      // Calculate commission (assuming 5% commission rate)
+      const totalRevenue = parseFloat(totalRevenueResult[0]?.total || '0');
+      const totalCommission = totalRevenue * 0.05;
+
+      // Fetch trends data for the last 7 days
+      const trendsData = await db.select({
+        date: sql<string>`DATE(${orders.createdAt})`,
+        revenue: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
+        orders: sql<string>`COUNT(${orders.id})`,
+        suppliers: sql<string>`COUNT(DISTINCT ${orders.supplierId})`,
+        products: sql<string>`COUNT(DISTINCT ${orders.productId})`
+      })
+      .from(orders)
+      .where(sql`${orders.createdAt} >= ${new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)}`)
+      .groupBy(sql`DATE(${orders.createdAt})`)
+      .orderBy(sql`DATE(${orders.createdAt})`);
+
+      // Calculate percentage changes (simplified - comparing to previous period)
+      const previousPeriodStart = new Date();
+      previousPeriodStart.setDate(previousPeriodStart.getDate() - (daysBack * 2));
+      previousPeriodStart.setDate(previousPeriodStart.getDate() + daysBack);
+
+      const [previousRevenue, previousOrders, previousSuppliers, previousProducts] = await Promise.all([
+        db.select({
+          total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`
+        }).from(orders).where(sql`${orders.createdAt} >= ${previousPeriodStart} AND ${orders.createdAt} < ${startDate}`),
+        
+        db.select({
+          count: sql<string>`COUNT(*)`
+        }).from(orders).where(sql`${orders.createdAt} >= ${previousPeriodStart} AND ${orders.createdAt} < ${startDate}`),
+        
+        db.select({
+          count: sql<string>`COUNT(DISTINCT ${supplierProfiles.id})`
+        }).from(supplierProfiles).where(sql`${supplierProfiles.createdAt} >= ${previousPeriodStart} AND ${supplierProfiles.createdAt} < ${startDate}`),
+        
+        db.select({
+          count: sql<string>`COUNT(*)`
+        }).from(products).where(sql`${products.createdAt} >= ${previousPeriodStart} AND ${products.createdAt} < ${startDate}`)
+      ]);
+
+      const prevRevenue = parseFloat(previousRevenue[0]?.total || '0');
+      const prevOrders = parseInt(previousOrders[0]?.count || '0');
+      const prevSuppliers = parseInt(previousSuppliers[0]?.count || '0');
+      const prevProducts = parseInt(previousProducts[0]?.count || '0');
+
+      const calculateChangePercent = (current: number, previous: number) => {
+        if (previous === 0) return current > 0 ? 100 : 0;
+        return ((current - previous) / previous) * 100;
+      };
+
+      const metrics = {
         kpis: {
-          totalRevenue: 125000,
-          totalCommission: 6250,
-          activeSuppliers: 45,
-          totalSuppliers: 52,
-          pendingApprovals: 7,
-          totalProducts: 234,
-          approvedProducts: 198,
-          totalOrders: 89,
-          averageSupplierRating: 4.2,
-          averageResponseRate: 87.5,
+          totalRevenue: Math.round(totalRevenue),
+          totalCommission: Math.round(totalCommission),
+          activeSuppliers: parseInt(activeSuppliersResult[0]?.count || '0'),
+          totalSuppliers: parseInt(totalSuppliersResult[0]?.count || '0'),
+          pendingApprovals: parseInt(pendingApprovalsResult[0]?.count || '0'),
+          totalProducts: parseInt(totalProductsResult[0]?.count || '0'),
+          approvedProducts: parseInt(approvedProductsResult[0]?.count || '0'),
+          totalOrders: parseInt(totalOrdersResult[0]?.count || '0'),
+          averageSupplierRating: 4.2, // TODO: Calculate from actual reviews
+          averageResponseRate: 87.5, // TODO: Calculate from actual inquiry response data
         },
         realTimeMetrics: {
-          onlineSuppliers: 23,
-          activeOrders: 12,
-          systemLoad: 45.2,
-          errorRate: 0.8,
-          responseTime: 180,
+          onlineSuppliers: parseInt(onlineSuppliersResult[0]?.count || '0'),
+          activeOrders: parseInt(activeOrdersResult[0]?.count || '0'),
+          systemLoad: 45.2, // TODO: Implement actual system monitoring
+          errorRate: 0.8, // TODO: Implement actual error tracking
+          responseTime: 180, // TODO: Implement actual response time monitoring
         },
-        trends: [
-          { date: '2024-01-01', revenue: 10000, orders: 8, suppliers: 2, products: 15 },
-          { date: '2024-01-02', revenue: 12000, orders: 10, suppliers: 1, products: 18 },
-          { date: '2024-01-03', revenue: 15000, orders: 12, suppliers: 3, products: 22 },
-        ],
+        trends: trendsData.map(trend => ({
+          date: trend.date,
+          revenue: parseFloat(trend.revenue),
+          orders: parseInt(trend.orders),
+          suppliers: parseInt(trend.suppliers),
+          products: parseInt(trend.products)
+        })),
         comparisons: {
-          revenue: { changePercent: 15.2 },
-          orders: { changePercent: 8.7 },
-          suppliers: { changePercent: 12.1 },
-          products: { changePercent: 25.3 },
+          revenue: { changePercent: Math.round(calculateChangePercent(totalRevenue, prevRevenue) * 10) / 10 },
+          orders: { changePercent: Math.round(calculateChangePercent(parseInt(totalOrdersResult[0]?.count || '0'), prevOrders) * 10) / 10 },
+          suppliers: { changePercent: Math.round(calculateChangePercent(parseInt(activeSuppliersResult[0]?.count || '0'), prevSuppliers) * 10) / 10 },
+          products: { changePercent: Math.round(calculateChangePercent(parseInt(totalProductsResult[0]?.count || '0'), prevProducts) * 10) / 10 },
         },
         alerts: {
-          critical: 2,
-          warnings: 5,
-          total: 7,
-          recent: [
-            {
-              id: 'alert1',
-              type: 'system',
-              severity: 'critical',
-              message: 'High system load detected',
-              timestamp: new Date(),
-            },
-            {
-              id: 'alert2',
-              type: 'supplier',
-              severity: 'warning',
-              message: 'Supplier response rate below threshold',
-              timestamp: new Date(),
-            },
-          ],
+          critical: 0, // TODO: Implement actual alert system
+          warnings: 0, // TODO: Implement actual alert system
+          total: 0,
+          recent: [], // TODO: Implement actual alert system
         },
         systemHealth: {
           status: 'healthy' as const,
-          uptime: 99.8,
+          uptime: 99.8, // TODO: Implement actual uptime monitoring
           lastUpdated: new Date(),
         },
       };
 
       res.json({
         success: true,
-        metrics: mockMetrics,
-        timeRange: req.query.timeRange || '30d',
+        metrics,
+        timeRange,
         generatedAt: new Date(),
       });
 
     } catch (error: any) {
       console.error('Error in direct comprehensive dashboard metrics:', error);
-      res.status(500).json({ error: 'Failed to fetch dashboard metrics' });
+      res.status(500).json({ 
+        error: 'Failed to fetch dashboard metrics',
+        details: error.message 
+      });
     }
   });
 
@@ -173,58 +350,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('📊 Direct dashboard metrics endpoint hit');
 
-      // Mock comprehensive metrics for testing
-      const mockMetrics = {
+      if (!db) {
+        return res.status(500).json({ error: 'Database connection not available' });
+      }
+
+      const timeRange = req.query.timeRange as string || '30d';
+      const daysBack = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 90;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - daysBack);
+
+      // Fetch real KPI data from database (same as comprehensive metrics)
+      const [
+        totalRevenueResult,
+        totalSuppliersResult,
+        activeSuppliersResult,
+        pendingApprovalsResult,
+        totalProductsResult,
+        approvedProductsResult,
+        totalOrdersResult,
+        onlineSuppliersResult,
+        activeOrdersResult
+      ] = await Promise.all([
+        db.select({
+          total: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`
+        }).from(orders).where(sql`${orders.createdAt} >= ${startDate}`),
+        
+        db.select({
+          count: sql<string>`COUNT(*)`
+        }).from(supplierProfiles),
+        
+        db.select({
+          count: sql<string>`COUNT(DISTINCT ${supplierProfiles.id})`
+        }).from(supplierProfiles)
+          .innerJoin(products, sql`${products.supplierId} = ${supplierProfiles.id}`)
+          .where(sql`${supplierProfiles.isActive} = true AND ${products.isApproved} = true`),
+        
+        db.select({
+          count: sql<string>`COUNT(*)`
+        }).from(products).where(sql`${products.status} = 'pending_approval'`),
+        
+        db.select({
+          count: sql<string>`COUNT(*)`
+        }).from(products),
+        
+        db.select({
+          count: sql<string>`COUNT(*)`
+        }).from(products).where(sql`${products.isApproved} = true`),
+        
+        db.select({
+          count: sql<string>`COUNT(*)`
+        }).from(orders).where(sql`${orders.createdAt} >= ${startDate}`),
+        
+        db.select({
+          count: sql<string>`COUNT(*)`
+        }).from(users)
+          .innerJoin(supplierProfiles, sql`${supplierProfiles.userId} = ${users.id}`)
+          .where(sql`${users.isOnline} = true AND ${users.role} = 'supplier'`),
+        
+        db.select({
+          count: sql<string>`COUNT(*)`
+        }).from(orders).where(sql`${orders.status} NOT IN ('delivered', 'cancelled')`)
+      ]);
+
+      const totalRevenue = parseFloat(totalRevenueResult[0]?.total || '0');
+      const totalCommission = totalRevenue * 0.05;
+
+      // Fetch trends data
+      const trendsData = await db.select({
+        date: sql<string>`DATE(${orders.createdAt})`,
+        revenue: sql<string>`COALESCE(SUM(${orders.totalAmount}), 0)`,
+        orders: sql<string>`COUNT(${orders.id})`,
+        suppliers: sql<string>`COUNT(DISTINCT ${orders.supplierId})`,
+        products: sql<string>`COUNT(DISTINCT ${orders.productId})`
+      })
+      .from(orders)
+      .where(sql`${orders.createdAt} >= ${new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)}`)
+      .groupBy(sql`DATE(${orders.createdAt})`)
+      .orderBy(sql`DATE(${orders.createdAt})`);
+
+      const metrics = {
         kpis: {
-          totalRevenue: 125000,
-          totalCommission: 6250,
-          activeSuppliers: 45,
-          totalSuppliers: 52,
-          pendingApprovals: 7,
-          totalProducts: 234,
-          approvedProducts: 198,
-          totalOrders: 89,
-          averageSupplierRating: 4.2,
-          averageResponseRate: 87.5,
+          totalRevenue: Math.round(totalRevenue),
+          totalCommission: Math.round(totalCommission),
+          activeSuppliers: parseInt(activeSuppliersResult[0]?.count || '0'),
+          totalSuppliers: parseInt(totalSuppliersResult[0]?.count || '0'),
+          pendingApprovals: parseInt(pendingApprovalsResult[0]?.count || '0'),
+          totalProducts: parseInt(totalProductsResult[0]?.count || '0'),
+          approvedProducts: parseInt(approvedProductsResult[0]?.count || '0'),
+          totalOrders: parseInt(totalOrdersResult[0]?.count || '0'),
+          averageSupplierRating: 4.2, // TODO: Calculate from actual reviews
+          averageResponseRate: 87.5, // TODO: Calculate from actual inquiry response data
         },
         realTimeMetrics: {
-          onlineSuppliers: 23,
-          activeOrders: 12,
-          systemLoad: 45.2,
-          errorRate: 0.8,
-          responseTime: 180,
+          onlineSuppliers: parseInt(onlineSuppliersResult[0]?.count || '0'),
+          activeOrders: parseInt(activeOrdersResult[0]?.count || '0'),
+          systemLoad: 45.2, // TODO: Implement actual system monitoring
+          errorRate: 0.8, // TODO: Implement actual error tracking
+          responseTime: 180, // TODO: Implement actual response time monitoring
         },
-        trends: [
-          { date: '2024-01-01', revenue: 10000, orders: 8, suppliers: 2, products: 15 },
-          { date: '2024-01-02', revenue: 12000, orders: 10, suppliers: 1, products: 18 },
-          { date: '2024-01-03', revenue: 15000, orders: 12, suppliers: 3, products: 22 },
-        ],
+        trends: trendsData.map(trend => ({
+          date: trend.date,
+          revenue: parseFloat(trend.revenue),
+          orders: parseInt(trend.orders),
+          suppliers: parseInt(trend.suppliers),
+          products: parseInt(trend.products)
+        })),
         comparisons: {
-          revenue: { changePercent: 15.2 },
-          orders: { changePercent: 8.7 },
-          suppliers: { changePercent: 12.1 },
-          products: { changePercent: 25.3 },
+          revenue: { changePercent: 0 }, // Simplified for public endpoint
+          orders: { changePercent: 0 },
+          suppliers: { changePercent: 0 },
+          products: { changePercent: 0 },
         },
         alerts: {
-          critical: 2,
-          warnings: 5,
-          total: 7,
-          recent: [
-            {
-              id: 'alert1',
-              type: 'system',
-              severity: 'critical',
-              message: 'High system load detected',
-              timestamp: new Date(),
-            },
-            {
-              id: 'alert2',
-              type: 'supplier',
-              severity: 'warning',
-              message: 'Supplier response rate below threshold',
-              timestamp: new Date(),
-            },
-          ],
+          critical: 0,
+          warnings: 0,
+          total: 0,
+          recent: [],
         },
         systemHealth: {
           status: 'healthy' as const,
@@ -235,14 +476,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         success: true,
-        metrics: mockMetrics,
-        timeRange: req.query.timeRange || '30d',
+        metrics,
+        timeRange,
         generatedAt: new Date(),
       });
 
     } catch (error: any) {
       console.error('Error in direct dashboard metrics:', error);
-      res.status(500).json({ error: 'Failed to fetch dashboard metrics' });
+      res.status(500).json({ 
+        error: 'Failed to fetch dashboard metrics',
+        details: error.message 
+      });
     }
   });
 
@@ -2693,36 +2937,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/quotations", async (req, res) => {
-    try {
-      // Ensure user is authenticated and is an admin
-      if (!req.user || req.user.role !== 'admin') {
-        return res.status(403).json({ error: "Unauthorized: Only admins can create quotations." });
-      }
-      const supplierId = req.user.id; // Admin is the supplier
-
-      // Convert data types before validation
-      const quotationData = {
-        ...req.body,
-        supplierId: supplierId, // Add supplierId from authenticated admin
-        pricePerUnit: req.body.pricePerUnit ? req.body.pricePerUnit.toString() : null,
-        totalPrice: req.body.totalPrice ? req.body.totalPrice.toString() : null,
-        moq: parseInt(req.body.moq),
-        validUntil: req.body.validUntil ? new Date(req.body.validUntil) : null
-      };
-
-      const validatedData = insertQuotationSchema.parse(quotationData);
-      const quotation = await storage.createQuotation(validatedData);
-
-      // Increment RFQ quotation count
-      await storage.incrementRfqQuotationCount(validatedData.rfqId);
-
-      res.status(201).json(quotation);
-    } catch (error: any) {
-      console.error('Error creating quotation:', error);
-      res.status(400).json({ error: error.message });
-    }
-  });
+  // Removed admin quotation creation - now handled by suppliers directly
 
   app.patch("/api/quotations/:id", async (req, res) => {
     try {
@@ -4233,101 +4448,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin create order from accepted quotation (Step 2: Admin creates order)
-  app.post("/api/admin/orders/create-from-quotation", async (req, res) => {
-    try {
-      const { quotationId } = req.body;
-
-      if (!quotationId) {
-        return res.status(400).json({ error: "Quotation ID is required" });
-      }
-
-      // First try to get as inquiry quotation
-      let quotation = await storage.getInquiryQuotationWithDetails(quotationId);
-      let quotationType = 'inquiry';
-
-      // If not found, try as RFQ quotation
-      if (!quotation) {
-        quotation = await storage.getQuotation(quotationId);
-        if (quotation) {
-          // Get RFQ details for RFQ quotation
-          const rfq = await storage.getRfq(quotation.rfqId);
-          if (rfq) {
-            quotation = {
-              ...quotation,
-              buyerId: rfq.buyerId,
-              productName: 'Custom Product',
-              productId: null,
-              inquiryId: null,
-              rfqId: quotation.rfqId
-            };
-            quotationType = 'rfq';
-          }
-        }
-      }
-
-      if (!quotation) {
-        return res.status(404).json({ error: "Quotation not found" });
-      }
-
-      if (quotation.status !== 'accepted') {
-        return res.status(400).json({ error: "Only accepted quotations can be converted to orders" });
-      }
-
-      // Create order with items array using quotation data
-      const orderItems = [{
-        productId: quotation.productId || 'custom',
-        productName: quotation.productName || 'Custom Product',
-        quantity: quotation.moq,
-        unitPrice: parseFloat(quotation.pricePerUnit.toString()),
-        totalPrice: parseFloat(quotation.totalPrice.toString())
-      }];
-
-      const orderData = {
-        buyerId: quotation.buyerId,
-        productId: quotation.productId || null,
-        quantity: quotation.moq,
-        unitPrice: quotation.pricePerUnit,
-        totalAmount: quotation.totalPrice,
-        paymentMethod: quotation.paymentTerms || 'T/T',
-        paymentStatus: 'pending',
-        status: 'pending_approval', // New status: waiting for user approval
-        shippingAddress: quotation.message?.includes('Shipping Address:')
-          ? quotation.message.split('Shipping Address:')[1]?.split('\n')[0]?.trim()
-          : 'Address to be provided',
-        orderNumber: `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-        inquiryId: quotationType === 'inquiry' ? quotation.inquiryId : null,
-        rfqId: quotationType === 'rfq' ? quotation.rfqId : null,
-        quotationId,
-        items: orderItems,
-        notes: 'Order created by admin from accepted quotation. Waiting for buyer approval.'
-      } as any;
-
-      const order = await storage.createOrder(orderData);
-
-      // Update quotation to link to the created order
-      if (quotationType === 'inquiry') {
-        await storage.updateInquiryQuotation(quotationId, {
-          status: 'order_created',
-          message: quotation.message + `\n\nOrder Created: ${order.orderNumber}`
-        });
-      } else {
-        await storage.updateQuotation(quotationId, {
-          status: 'order_created',
-          message: quotation.message + `\n\nOrder Created: ${order.orderNumber}`
-        });
-      }
-
-      res.status(201).json({
-        success: true,
-        message: 'Order created successfully. Waiting for buyer approval.',
-        order
-      });
-    } catch (error: any) {
-      console.error('Error creating order from quotation:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
+  // Removed admin order creation from quotation - now handled by suppliers directly
 
   // User accept order (Step 3: User accepts the order created by admin)
   app.post("/api/orders/:id/accept", async (req, res) => {
@@ -4795,119 +4916,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('Admin dashboard stats API called');
 
-      // Check if database is available
-      if (!process.env.DATABASE_URL) {
-        console.log('No DATABASE_URL found, returning mock data');
-        const mockStats = {
-          totalProducts: 1247,
-          totalUsers: 3421,
-          totalOrders: 892,
-          totalRevenue: 125430,
-          pendingInquiries: 45,
-          totalQuotations: 23,
-          newUsersToday: 12,
-          productsViewed: 3456
-        };
-        return res.json(mockStats);
+      if (!db) {
+        return res.status(500).json({ error: 'Database connection not available' });
       }
 
-      // Get total counts
-      const totalProducts = await db.select({ count: sql<number>`count(*)` }).from(products);
-      const totalUsers = await db.select({ count: sql<number>`count(*)` }).from(users).where(eq(users.role, 'buyer'));
-      const totalOrders = await db.select({ count: sql<number>`count(*)` }).from(orders);
-      const totalInquiries = await db.select({ count: sql<number>`count(*)` }).from(inquiries);
-      const totalQuotations = await db.select({ count: sql<number>`count(*)` }).from(quotations);
-
-      // Get revenue (sum of all order totals)
-      const revenueResult = await db.select({
-        total: sql<number>`coalesce(sum(${orders.totalAmount}), 0)`
-      }).from(orders).where(eq(orders.status, 'completed'));
-
-      // Get pending inquiries
-      const pendingInquiries = await db.select({
-        count: sql<number>`count(*)`
-      }).from(inquiries).where(eq(inquiries.status, 'pending'));
-
-      // Get new users today
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const newUsersToday = await db.select({
-        count: sql<number>`count(*)`
-      }).from(users).where(
-        and(
-          eq(users.role, 'buyer'),
-          gte(users.createdAt, today)
-        )
-      );
-
-      // Get total product views (if you have a views table, otherwise use inquiries as proxy)
-      const productsViewed = await db.select({
-        count: sql<number>`count(distinct ${inquiries.productId})`
-      }).from(inquiries);
+      // Get total counts with proper error handling
+      const [
+        totalProductsResult,
+        totalUsersResult,
+        totalOrdersResult,
+        totalInquiriesResult,
+        totalQuotationsResult,
+        revenueResult,
+        pendingInquiriesResult,
+        newUsersTodayResult,
+        productsViewedResult
+      ] = await Promise.all([
+        db.select({ count: sql<string>`count(*)` }).from(products),
+        db.select({ count: sql<string>`count(*)` }).from(users).where(eq(users.role, 'buyer')),
+        db.select({ count: sql<string>`count(*)` }).from(orders),
+        db.select({ count: sql<string>`count(*)` }).from(inquiries),
+        db.select({ count: sql<string>`count(*)` }).from(quotations),
+        db.select({
+          total: sql<string>`coalesce(sum(${orders.totalAmount}), 0)`
+        }).from(orders).where(sql`${orders.status} IN ('completed', 'delivered')`),
+        db.select({
+          count: sql<string>`count(*)`
+        }).from(inquiries).where(eq(inquiries.status, 'pending')),
+        db.select({
+          count: sql<string>`count(*)`
+        }).from(users).where(
+          and(
+            eq(users.role, 'buyer'),
+            sql`DATE(${users.createdAt}) = CURRENT_DATE`
+          )
+        ),
+        db.select({
+          total: sql<string>`coalesce(sum(${products.views}), 0)`
+        }).from(products)
+      ]);
 
       const statsData = {
-        totalProducts: totalProducts[0]?.count || 0,
-        totalUsers: totalUsers[0]?.count || 0,
-        totalOrders: totalOrders[0]?.count || 0,
-        totalRevenue: revenueResult[0]?.total || 0,
-        pendingInquiries: pendingInquiries[0]?.count || 0,
-        totalQuotations: totalQuotations[0]?.count || 0,
-        newUsersToday: newUsersToday[0]?.count || 0,
-        productsViewed: productsViewed[0]?.count || 0
+        totalProducts: parseInt(totalProductsResult[0]?.count || '0'),
+        totalUsers: parseInt(totalUsersResult[0]?.count || '0'),
+        totalOrders: parseInt(totalOrdersResult[0]?.count || '0'),
+        totalRevenue: parseFloat(revenueResult[0]?.total || '0'),
+        pendingInquiries: parseInt(pendingInquiriesResult[0]?.count || '0'),
+        totalQuotations: parseInt(totalQuotationsResult[0]?.count || '0'),
+        newUsersToday: parseInt(newUsersTodayResult[0]?.count || '0'),
+        productsViewed: parseInt(productsViewedResult[0]?.total || '0')
       };
 
       console.log('Stats data:', statsData);
       res.json(statsData);
     } catch (error: any) {
       console.error('Error fetching dashboard stats:', error);
-      // Return mock data on error
-      const mockStats = {
-        totalProducts: 1247,
-        totalUsers: 3421,
-        totalOrders: 892,
-        totalRevenue: 125430,
-        pendingInquiries: 45,
-        totalQuotations: 23,
-        newUsersToday: 12,
-        productsViewed: 3456
-      };
-      res.json(mockStats);
+      res.status(500).json({ 
+        error: 'Failed to fetch dashboard statistics',
+        details: error.message 
+      });
     }
   });
 
   // Get recent activity
   app.get("/api/admin/dashboard/activity", async (req, res) => {
     try {
-      // Check if database is available
-      if (!process.env.DATABASE_URL) {
-        console.log('No DATABASE_URL found, returning mock activity data');
-        const mockActivities = [
-          {
-            id: 'user_1',
-            type: 'new_user',
-            message: 'New user John Smith registered',
-            timestamp: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
-            icon: 'Users',
-            color: 'text-green-600'
-          },
-          {
-            id: 'inquiry_1',
-            type: 'new_inquiry',
-            message: 'New inquiry for product prod_123',
-            timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-            icon: 'MessageSquare',
-            color: 'text-blue-600'
-          },
-          {
-            id: 'order_1',
-            type: 'order_completed',
-            message: 'Order #123456 completed - $2500',
-            timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
-            icon: 'CheckCircle',
-            color: 'text-green-600'
-          }
-        ];
-        return res.json(mockActivities);
+      if (!db) {
+        return res.status(500).json({ error: 'Database connection not available' });
       }
 
       const activities: any[] = [];
@@ -4990,65 +5065,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(activities.slice(0, 10));
     } catch (error: any) {
       console.error('Error fetching recent activity:', error);
-      // Return mock data on error
-      const mockActivities = [
-        {
-          id: 'user_1',
-          type: 'new_user',
-          message: 'New user John Smith registered',
-          timestamp: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
-          icon: 'Users',
-          color: 'text-green-600'
-        },
-        {
-          id: 'inquiry_1',
-          type: 'new_inquiry',
-          message: 'New inquiry for product prod_123',
-          timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-          icon: 'MessageSquare',
-          color: 'text-blue-600'
-        }
-      ];
-      res.json(mockActivities);
+      res.status(500).json({ 
+        error: 'Failed to fetch recent activity',
+        details: error.message 
+      });
     }
   });
 
   // Get top performing products
   app.get("/api/admin/dashboard/top-products", async (req, res) => {
     try {
-      // Check if database is available
-      if (!process.env.DATABASE_URL) {
-        console.log('No DATABASE_URL found, returning mock top products data');
-        const mockProducts = [
-          {
-            id: 'prod_1',
-            name: 'Industrial LED Flood Lights 100W',
-            views: 1250,
-            inquiries: 45,
-            orders: 12,
-            revenue: 5400,
-            growth: 15.2
-          },
-          {
-            id: 'prod_2',
-            name: 'Precision CNC Machined Parts',
-            views: 890,
-            inquiries: 23,
-            orders: 8,
-            revenue: 3200,
-            growth: 8.7
-          },
-          {
-            id: 'prod_3',
-            name: 'High-Quality Cotton T-Shirts',
-            views: 2100,
-            inquiries: 67,
-            orders: 15,
-            revenue: 1800,
-            growth: -2.1
-          }
-        ];
-        return res.json(mockProducts);
+      if (!db) {
+        return res.status(500).json({ error: 'Database connection not available' });
       }
 
       const topProducts = await db
@@ -5076,70 +5104,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(productsWithGrowth);
     } catch (error: any) {
       console.error('Error fetching top products:', error);
-      // Return mock data on error
-      const mockProducts = [
-        {
-          id: 'prod_1',
-          name: 'Industrial LED Flood Lights 100W',
-          views: 1250,
-          inquiries: 45,
-          orders: 12,
-          revenue: 5400,
-          growth: 15.2
-        },
-        {
-          id: 'prod_2',
-          name: 'Precision CNC Machined Parts',
-          views: 890,
-          inquiries: 23,
-          orders: 8,
-          revenue: 3200,
-          growth: 8.7
-        }
-      ];
-      res.json(mockProducts);
+      res.status(500).json({ 
+        error: 'Failed to fetch top products',
+        details: error.message 
+      });
     }
   });
 
   // Get recent inquiries
   app.get("/api/admin/dashboard/recent-inquiries", async (req, res) => {
     try {
-      // Check if database is available
-      if (!process.env.DATABASE_URL) {
-        console.log('No DATABASE_URL found, returning mock inquiries data');
-        const mockInquiries = [
-          {
-            id: 'inq_1',
-            productId: 'prod_123',
-            status: 'pending',
-            quantity: 500,
-            createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-            buyerId: 'buyer_1',
-            userName: 'John Smith',
-            companyName: 'Tech Solutions Inc.'
-          },
-          {
-            id: 'inq_2',
-            productId: 'prod_456',
-            status: 'replied',
-            quantity: 1000,
-            createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-            buyerId: 'buyer_2',
-            userName: 'Maria Garcia',
-            companyName: 'Industrial Supplies Ltd.'
-          },
-          {
-            id: 'inq_3',
-            productId: 'prod_789',
-            status: 'negotiating',
-            quantity: 300,
-            createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-            buyerId: 'buyer_3',
-            userName: 'Ahmed Hassan',
-            companyName: 'Middle East Trading Co.'
-          }
-        ];
-        return res.json(mockInquiries);
+      if (!db) {
+        return res.status(500).json({ error: 'Database connection not available' });
       }
 
       const recentInquiries = await db
@@ -5161,30 +5137,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(recentInquiries);
     } catch (error: any) {
       console.error('Error fetching recent inquiries:', error);
-      // Return mock data on error
-      const mockInquiries = [
-        {
-          id: 'inq_1',
-          productId: 'prod_123',
-          status: 'pending',
-          quantity: 500,
-          createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-          buyerId: 'buyer_1',
-          userName: 'John Smith',
-          companyName: 'Tech Solutions Inc.'
-        },
-        {
-          id: 'inq_2',
-          productId: 'prod_456',
-          status: 'replied',
-          quantity: 1000,
-          createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-          buyerId: 'buyer_2',
-          userName: 'Maria Garcia',
-          companyName: 'Industrial Supplies Ltd.'
-        }
-      ];
-      res.json(mockInquiries);
+      res.status(500).json({ 
+        error: 'Failed to fetch recent inquiries',
+        details: error.message 
+      });
     }
   });
 
@@ -5912,6 +5868,370 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== ENHANCED SUPPLIER ORDER MANAGEMENT ENDPOINTS ====================
+
+  // Get order analytics for supplier
+  app.get("/api/suppliers/:supplierId/orders/analytics", authMiddleware, async (req, res) => {
+    try {
+      const { supplierId } = req.params;
+      const { period = 'month' } = req.query;
+
+      // Check permissions
+      if (req.user?.role === 'supplier') {
+        const [supplierProfile] = await db.select()
+          .from(supplierProfiles)
+          .where(and(
+            eq(supplierProfiles.id, supplierId),
+            eq(supplierProfiles.userId, req.user.id)
+          ))
+          .limit(1);
+
+        if (!supplierProfile) {
+          return res.status(403).json({ error: "Access denied to this supplier's analytics" });
+        }
+      } else if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Calculate date range based on period
+      let startDate = new Date();
+      switch (period) {
+        case 'week':
+          startDate.setDate(startDate.getDate() - 7);
+          break;
+        case 'month':
+          startDate.setMonth(startDate.getMonth() - 1);
+          break;
+        case 'quarter':
+          startDate.setMonth(startDate.getMonth() - 3);
+          break;
+        case 'year':
+          startDate.setFullYear(startDate.getFullYear() - 1);
+          break;
+        default:
+          startDate.setMonth(startDate.getMonth() - 1);
+      }
+
+      // Get order statistics
+      const [orderStats] = await db.select({
+        totalOrders: sql<number>`count(*)`,
+        completedOrders: sql<number>`count(case when status = 'delivered' then 1 end)`,
+        pendingOrders: sql<number>`count(case when status in ('pending', 'confirmed', 'processing') then 1 end)`,
+        cancelledOrders: sql<number>`count(case when status = 'cancelled' then 1 end)`,
+        totalRevenue: sql<number>`sum(${orders.supplierAmount})`,
+        averageOrderValue: sql<number>`avg(${orders.supplierAmount})`
+      })
+        .from(orders)
+        .where(and(
+          eq(orders.supplierId, supplierId),
+          gte(orders.createdAt, startDate)
+        ));
+
+      // Calculate performance metrics
+      const fulfillmentRate = orderStats.totalOrders > 0 
+        ? (orderStats.completedOrders / orderStats.totalOrders) * 100 
+        : 0;
+
+      // Get daily trends
+      const dailyTrends = await db.select({
+        date: sql<string>`DATE(${orders.createdAt})`,
+        orders: sql<number>`count(*)`,
+        revenue: sql<number>`sum(${orders.supplierAmount})`
+      })
+        .from(orders)
+        .where(and(
+          eq(orders.supplierId, supplierId),
+          gte(orders.createdAt, startDate)
+        ))
+        .groupBy(sql`DATE(${orders.createdAt})`)
+        .orderBy(sql`DATE(${orders.createdAt})`);
+
+      // Mock additional metrics (in production, these would come from actual data)
+      const analytics = {
+        totalOrders: orderStats.totalOrders || 0,
+        completedOrders: orderStats.completedOrders || 0,
+        pendingOrders: orderStats.pendingOrders || 0,
+        cancelledOrders: orderStats.cancelledOrders || 0,
+        totalRevenue: Number(orderStats.totalRevenue) || 0,
+        averageOrderValue: Number(orderStats.averageOrderValue) || 0,
+        fulfillmentRate,
+        onTimeDeliveryRate: 87.5, // Mock data
+        customerSatisfactionScore: 4.3, // Mock data
+        trends: {
+          daily: dailyTrends.map(trend => ({
+            date: trend.date,
+            orders: trend.orders,
+            revenue: Number(trend.revenue) || 0
+          })),
+          monthly: [] // Could add monthly aggregation
+        }
+      };
+
+      res.json(analytics);
+
+    } catch (error: any) {
+      console.error('Error fetching order analytics:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get fulfillment workflow for an order
+  app.get("/api/suppliers/:supplierId/orders/:orderId/fulfillment", authMiddleware, async (req, res) => {
+    try {
+      const { supplierId, orderId } = req.params;
+
+      // Check permissions
+      if (req.user?.role === 'supplier') {
+        const [supplierProfile] = await db.select()
+          .from(supplierProfiles)
+          .where(and(
+            eq(supplierProfiles.id, supplierId),
+            eq(supplierProfiles.userId, req.user.id)
+          ))
+          .limit(1);
+
+        if (!supplierProfile) {
+          return res.status(403).json({ error: "Access denied to this supplier's orders" });
+        }
+      } else if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Get order details
+      const [order] = await db.select()
+        .from(orders)
+        .where(and(
+          eq(orders.id, orderId),
+          eq(orders.supplierId, supplierId)
+        ))
+        .limit(1);
+
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+
+      // Define fulfillment stages
+      const allStages = ['pending', 'confirmed', 'preparing', 'packed', 'shipped', 'delivered'];
+      const currentStageIndex = allStages.indexOf(order.status);
+
+      const stages = allStages.map((stage, index) => ({
+        name: stage,
+        status: index < currentStageIndex ? 'completed' : 
+                index === currentStageIndex ? 'current' : 'pending',
+        completedAt: index < currentStageIndex ? order.updatedAt : undefined,
+        estimatedCompletion: index === currentStageIndex + 1 ? 
+          new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() : undefined
+      }));
+
+      const workflow = {
+        orderId: order.id,
+        currentStage: order.status,
+        stages
+      };
+
+      res.json(workflow);
+
+    } catch (error: any) {
+      console.error('Error fetching fulfillment workflow:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Update fulfillment stage
+  app.patch("/api/suppliers/:supplierId/orders/:orderId/fulfillment", authMiddleware, async (req, res) => {
+    try {
+      const { supplierId, orderId } = req.params;
+      const { stage, notes } = req.body;
+
+      // Check permissions
+      if (req.user?.role === 'supplier') {
+        const [supplierProfile] = await db.select()
+          .from(supplierProfiles)
+          .where(and(
+            eq(supplierProfiles.id, supplierId),
+            eq(supplierProfiles.userId, req.user.id)
+          ))
+          .limit(1);
+
+        if (!supplierProfile) {
+          return res.status(403).json({ error: "Access denied to this supplier's orders" });
+        }
+      } else if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Verify order belongs to supplier
+      const [order] = await db.select()
+        .from(orders)
+        .where(and(
+          eq(orders.id, orderId),
+          eq(orders.supplierId, supplierId)
+        ))
+        .limit(1);
+
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+
+      // Validate stage transition
+      const validStages = ['pending', 'confirmed', 'preparing', 'packed', 'shipped', 'delivered'];
+      if (!validStages.includes(stage)) {
+        return res.status(400).json({ error: "Invalid fulfillment stage" });
+      }
+
+      // Update order status based on fulfillment stage
+      let orderStatus = stage;
+      if (stage === 'preparing' || stage === 'packed') {
+        orderStatus = 'processing';
+      }
+
+      const updateData: any = { 
+        status: orderStatus,
+        updatedAt: new Date()
+      };
+      
+      if (notes) {
+        updateData.notes = notes;
+      }
+
+      const [updatedOrder] = await db.update(orders)
+        .set(updateData)
+        .where(eq(orders.id, orderId))
+        .returning();
+
+      // Notify buyer of fulfillment progress
+      await db.insert(notifications).values({
+        userId: order.buyerId,
+        type: 'info',
+        title: 'Order Fulfillment Update',
+        message: `Your order #${order.orderNumber} is now in ${stage} stage`,
+        relatedId: orderId,
+        relatedType: 'order'
+      });
+
+      res.json(updatedOrder);
+
+    } catch (error: any) {
+      console.error('Error updating fulfillment stage:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Export order data
+  app.get("/api/suppliers/:supplierId/orders/export", authMiddleware, async (req, res) => {
+    try {
+      const { supplierId } = req.params;
+      const { status, dateFilter } = req.query;
+
+      // Check permissions
+      if (req.user?.role === 'supplier') {
+        const [supplierProfile] = await db.select()
+          .from(supplierProfiles)
+          .where(and(
+            eq(supplierProfiles.id, supplierId),
+            eq(supplierProfiles.userId, req.user.id)
+          ))
+          .limit(1);
+
+        if (!supplierProfile) {
+          return res.status(403).json({ error: "Access denied to this supplier's orders" });
+        }
+      } else if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Build query conditions
+      const conditions = [eq(orders.supplierId, supplierId)];
+
+      if (status && status !== 'all') {
+        conditions.push(eq(orders.status, status as string));
+      }
+
+      if (dateFilter && dateFilter !== 'all') {
+        let startDate = new Date();
+        switch (dateFilter) {
+          case 'today':
+            startDate.setHours(0, 0, 0, 0);
+            break;
+          case 'week':
+            startDate.setDate(startDate.getDate() - 7);
+            break;
+          case 'month':
+            startDate.setMonth(startDate.getMonth() - 1);
+            break;
+          case 'quarter':
+            startDate.setMonth(startDate.getMonth() - 3);
+            break;
+        }
+        conditions.push(gte(orders.createdAt, startDate));
+      }
+
+      // Get orders with buyer information
+      const exportOrders = await db.select({
+        orderNumber: orders.orderNumber,
+        buyerName: sql<string>`CONCAT(${users.firstName}, ' ', ${users.lastName})`,
+        buyerEmail: users.email,
+        buyerCompany: users.companyName,
+        totalAmount: orders.totalAmount,
+        supplierAmount: orders.supplierAmount,
+        commissionAmount: orders.commissionAmount,
+        status: orders.status,
+        paymentStatus: orders.paymentStatus,
+        trackingNumber: orders.trackingNumber,
+        createdAt: orders.createdAt,
+        updatedAt: orders.updatedAt
+      })
+        .from(orders)
+        .leftJoin(users, eq(orders.buyerId, users.id))
+        .where(and(...conditions))
+        .orderBy(desc(orders.createdAt));
+
+      // Convert to CSV
+      const csvHeaders = [
+        'Order Number',
+        'Buyer Name',
+        'Buyer Email',
+        'Buyer Company',
+        'Total Amount',
+        'Supplier Amount',
+        'Commission Amount',
+        'Status',
+        'Payment Status',
+        'Tracking Number',
+        'Created At',
+        'Updated At'
+      ];
+
+      const csvRows = exportOrders.map(order => [
+        order.orderNumber,
+        order.buyerName || '',
+        order.buyerEmail || '',
+        order.buyerCompany || '',
+        order.totalAmount,
+        order.supplierAmount,
+        order.commissionAmount,
+        order.status,
+        order.paymentStatus,
+        order.trackingNumber || '',
+        order.createdAt?.toISOString() || '',
+        order.updatedAt?.toISOString() || ''
+      ]);
+
+      const csvContent = [
+        csvHeaders.join(','),
+        ...csvRows.map(row => row.map(field => `"${field}"`).join(','))
+      ].join('\n');
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="orders-${supplierId}-${new Date().toISOString().split('T')[0]}.csv"`);
+      res.send(csvContent);
+
+    } catch (error: any) {
+      console.error('Error exporting order data:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ==================== HELPER FUNCTIONS FOR MULTI-VENDOR ORDERS ====================
 
   // Get commission settings from database
@@ -6142,6 +6462,324 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(400).json({ error: error.message });
     }
   }
+
+  // ==================== BUYER ORDER TRACKING ROUTES ====================
+
+  // Get buyer's orders with multivendor support
+  app.get("/api/buyers/:buyerId/orders", authMiddleware, async (req, res) => {
+    try {
+      const { buyerId } = req.params;
+      const { status, search, limit = "20", offset = "0" } = req.query;
+
+      // Check if user has permission to view these orders
+      if (req.user?.role === 'buyer' && req.user.id !== buyerId) {
+        return res.status(403).json({ error: "Access denied to these orders" });
+      }
+
+      const conditions = [eq(orders.buyerId, buyerId)];
+
+      if (status && status !== 'all') {
+        conditions.push(eq(orders.status, status as string));
+      }
+
+      let query = db.select({
+        id: orders.id,
+        orderNumber: orders.orderNumber,
+        parentOrderId: orders.parentOrderId,
+        parentOrderNumber: sql<string>`
+          CASE 
+            WHEN ${orders.parentOrderId} IS NOT NULL 
+            THEN (SELECT order_number FROM orders WHERE id = ${orders.parentOrderId})
+            ELSE NULL 
+          END
+        `,
+        supplierId: orders.supplierId,
+        supplierName: sql<string>`
+          CASE 
+            WHEN ${orders.supplierId} IS NOT NULL 
+            THEN (SELECT business_name FROM supplier_profiles WHERE id = ${orders.supplierId})
+            ELSE 'Platform Store'
+          END
+        `,
+        supplierLocation: sql<string>`
+          CASE 
+            WHEN ${orders.supplierId} IS NOT NULL 
+            THEN (SELECT city || ', ' || country FROM supplier_profiles WHERE id = ${orders.supplierId})
+            ELSE NULL
+          END
+        `,
+        status: orders.status,
+        paymentStatus: orders.paymentStatus,
+        totalAmount: orders.totalAmount,
+        trackingNumber: orders.trackingNumber,
+        items: orders.items,
+        shippingAddress: orders.shippingAddress,
+        notes: orders.notes,
+        createdAt: orders.createdAt,
+        updatedAt: orders.updatedAt
+      })
+        .from(orders)
+        .where(and(...conditions))
+        .orderBy(desc(orders.createdAt))
+        .limit(parseInt(limit as string))
+        .offset(parseInt(offset as string));
+
+      if (search) {
+        const searchPattern = `%${search}%`;
+        query = query.where(and(
+          ...conditions,
+          or(
+            ilike(orders.orderNumber, searchPattern),
+            sql`EXISTS (
+              SELECT 1 FROM supplier_profiles sp 
+              WHERE sp.id = ${orders.supplierId} 
+              AND sp.business_name ILIKE ${searchPattern}
+            )`,
+            sql`EXISTS (
+              SELECT 1 FROM jsonb_array_elements(${orders.items}) AS item
+              WHERE item->>'productName' ILIKE ${searchPattern}
+            )`
+          )
+        ));
+      }
+
+      const result = await query;
+
+      // Get total count
+      let countQuery = db.select({ count: sql`count(*)` })
+        .from(orders)
+        .where(and(...conditions));
+
+      if (search) {
+        const searchPattern = `%${search}%`;
+        countQuery = countQuery.where(and(
+          ...conditions,
+          or(
+            ilike(orders.orderNumber, searchPattern),
+            sql`EXISTS (
+              SELECT 1 FROM supplier_profiles sp 
+              WHERE sp.id = ${orders.supplierId} 
+              AND sp.business_name ILIKE ${searchPattern}
+            )`,
+            sql`EXISTS (
+              SELECT 1 FROM jsonb_array_elements(${orders.items}) AS item
+              WHERE item->>'productName' ILIKE ${searchPattern}
+            )`
+          )
+        ));
+      }
+
+      const [{ count }] = await countQuery;
+      const total = parseInt(count as string);
+
+      res.json({
+        orders: result,
+        total,
+        page: Math.floor(parseInt(offset as string) / parseInt(limit as string)) + 1,
+        limit: parseInt(limit as string),
+        hasMore: parseInt(offset as string) + parseInt(limit as string) < total
+      });
+
+    } catch (error: any) {
+      console.error('Error fetching buyer orders:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get order messages for communication
+  app.get("/api/orders/:orderId/messages", authMiddleware, async (req, res) => {
+    try {
+      const { orderId } = req.params;
+
+      // Verify user has access to this order
+      const [order] = await db.select()
+        .from(orders)
+        .where(eq(orders.id, orderId))
+        .limit(1);
+
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+
+      // Check permissions
+      if (req.user?.role === 'buyer' && req.user.id !== order.buyerId) {
+        return res.status(403).json({ error: "Access denied to this order" });
+      }
+
+      if (req.user?.role === 'supplier') {
+        const [supplierProfile] = await db.select()
+          .from(supplierProfiles)
+          .where(and(
+            eq(supplierProfiles.id, order.supplierId || ''),
+            eq(supplierProfiles.userId, req.user.id)
+          ))
+          .limit(1);
+
+        if (!supplierProfile) {
+          return res.status(403).json({ error: "Access denied to this order" });
+        }
+      }
+
+      // For now, return mock messages since we don't have a messages table yet
+      // In a real implementation, you would query the messages table
+      const mockMessages = [
+        {
+          id: '1',
+          orderId,
+          senderId: order.buyerId,
+          senderName: 'Buyer',
+          senderType: 'buyer',
+          message: 'Order placed successfully. Looking forward to receiving the products.',
+          type: 'general',
+          createdAt: order.createdAt
+        }
+      ];
+
+      res.json({ messages: mockMessages });
+
+    } catch (error: any) {
+      console.error('Error fetching order messages:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Send message about an order
+  app.post("/api/orders/:orderId/messages", authMiddleware, async (req, res) => {
+    try {
+      const { orderId } = req.params;
+      const { message, type, recipientType, recipientId } = req.body;
+
+      if (!message?.trim()) {
+        return res.status(400).json({ error: "Message is required" });
+      }
+
+      // Verify user has access to this order
+      const [order] = await db.select()
+        .from(orders)
+        .where(eq(orders.id, orderId))
+        .limit(1);
+
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+
+      // Check permissions
+      if (req.user?.role === 'buyer' && req.user.id !== order.buyerId) {
+        return res.status(403).json({ error: "Access denied to this order" });
+      }
+
+      if (req.user?.role === 'supplier') {
+        const [supplierProfile] = await db.select()
+          .from(supplierProfiles)
+          .where(and(
+            eq(supplierProfiles.id, order.supplierId || ''),
+            eq(supplierProfiles.userId, req.user.id)
+          ))
+          .limit(1);
+
+        if (!supplierProfile) {
+          return res.status(403).json({ error: "Access denied to this order" });
+        }
+      }
+
+      // Create notification for the recipient
+      let recipientUserId = '';
+      let notificationTitle = '';
+
+      if (recipientType === 'supplier' && order.supplierId) {
+        const [supplier] = await db.select({ userId: supplierProfiles.userId })
+          .from(supplierProfiles)
+          .where(eq(supplierProfiles.id, order.supplierId))
+          .limit(1);
+        
+        if (supplier) {
+          recipientUserId = supplier.userId;
+          notificationTitle = 'New Message About Order';
+        }
+      } else if (recipientType === 'buyer') {
+        recipientUserId = order.buyerId;
+        notificationTitle = 'New Message About Order';
+      }
+
+      if (recipientUserId) {
+        await db.insert(notifications).values({
+          userId: recipientUserId,
+          type: 'info',
+          title: notificationTitle,
+          message: `New message regarding order #${order.orderNumber}: ${message}`,
+          relatedId: orderId,
+          relatedType: 'order'
+        });
+      }
+
+      // In a real implementation, you would also store the message in a messages table
+      // For now, we'll just create the notification
+
+      res.json({ 
+        success: true, 
+        message: 'Message sent successfully',
+        messageId: `msg_${Date.now()}`
+      });
+
+    } catch (error: any) {
+      console.error('Error sending order message:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get split orders for a parent order
+  app.get("/api/orders/:parentOrderId/split-orders", authMiddleware, async (req, res) => {
+    try {
+      const { parentOrderId } = req.params;
+
+      // Verify parent order exists and user has access
+      const [parentOrder] = await db.select()
+        .from(orders)
+        .where(eq(orders.id, parentOrderId))
+        .limit(1);
+
+      if (!parentOrder) {
+        return res.status(404).json({ error: "Parent order not found" });
+      }
+
+      if (req.user?.role === 'buyer' && req.user.id !== parentOrder.buyerId) {
+        return res.status(403).json({ error: "Access denied to this order" });
+      }
+
+      const splitOrders = await db.select({
+        id: orders.id,
+        orderNumber: orders.orderNumber,
+        supplierId: orders.supplierId,
+        supplierName: sql<string>`
+          CASE 
+            WHEN ${orders.supplierId} IS NOT NULL 
+            THEN (SELECT business_name FROM supplier_profiles WHERE id = ${orders.supplierId})
+            ELSE 'Platform Store'
+          END
+        `,
+        status: orders.status,
+        paymentStatus: orders.paymentStatus,
+        totalAmount: orders.totalAmount,
+        trackingNumber: orders.trackingNumber,
+        items: orders.items,
+        createdAt: orders.createdAt,
+        updatedAt: orders.updatedAt
+      })
+        .from(orders)
+        .where(eq(orders.parentOrderId, parentOrderId))
+        .orderBy(orders.createdAt);
+
+      res.json({ 
+        parentOrder,
+        splitOrders,
+        totalOrders: splitOrders.length + 1
+      });
+
+    } catch (error: any) {
+      console.error('Error fetching split orders:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
 
   const httpServer = createServer(app);
 

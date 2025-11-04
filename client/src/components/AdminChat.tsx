@@ -122,29 +122,30 @@ export default function AdminChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  // Mock messages for the selected conversation
+  // Load messages for the selected conversation
   useEffect(() => {
-    const mockMessages: Message[] = [
-      {
-        id: "1",
-        senderId: "user1",
-        senderName: "John Smith",
-        senderType: 'user',
-        content: "Hello, I'm interested in your LED flood lights. Can you provide more information about the specifications?",
-        timestamp: new Date("2024-01-23T09:00:00"),
-        isRead: true,
-        messageType: 'text'
-      },
-      {
-        id: "2",
-        senderId: "admin",
-        senderName: "Admin",
-        senderType: 'admin',
-        content: "Hello John! Thank you for your interest in our LED flood lights. I'd be happy to provide you with detailed specifications. Our 100W LED flood lights feature:",
-        timestamp: new Date("2024-01-23T09:05:00"),
-        isRead: true,
-        messageType: 'text'
-      },
+    const loadMessages = async () => {
+      if (!selectedConversation) {
+        setMessages([]);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/chat/conversations/${selectedConversation.id}/messages`);
+        if (response.ok) {
+          const messagesData = await response.json();
+          setMessages(messagesData || []);
+        } else {
+          console.warn('Failed to fetch messages');
+          setMessages([]);
+        }
+      } catch (error) {
+        console.error('Error fetching messages:', error);
+        setMessages([]);
+      }
+    };
+
+    loadMessages();
       {
         id: "3",
         senderId: "admin",
@@ -184,9 +185,6 @@ export default function AdminChat() {
         timestamp: new Date("2024-01-23T10:30:00"),
         isRead: false,
         messageType: 'text'
-      }
-    ];
-    setMessages(mockMessages);
   }, [selectedConversation]);
 
   // Auto-scroll to bottom when new messages arrive

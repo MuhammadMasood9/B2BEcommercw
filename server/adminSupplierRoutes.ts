@@ -11,14 +11,17 @@ import {
   InsertActivityLog 
 } from '@shared/schema';
 import { eq, and, or, ilike, desc, sql, count } from 'drizzle-orm';
-import { adminMiddleware } from './auth';
+import { hybridAuthMiddleware } from './authMiddleware';
+import { requireAdmin } from './authGuards';
+import RBACService from './rbacService';
 import { z } from 'zod';
 import { logAdminActivity } from './adminOversightService';
 
 const router = Router();
 
-// Apply admin middleware to all routes
-router.use(adminMiddleware);
+// Apply admin authentication to all routes
+router.use(hybridAuthMiddleware);
+router.use(requireAdmin);
 
 // Validation schemas
 const supplierApprovalSchema = z.object({
@@ -2213,36 +2216,11 @@ async function getPerformanceAlerts(options: {
   limit: number;
   offset: number;
 }) {
-  // Mock performance alerts (in production, this would come from a dedicated alerts table)
-  const mockAlerts = [
-    {
-      id: '1',
-      supplierId: 'supplier1',
-      supplierName: 'Sample Supplier 1',
-      alertType: 'low_response_rate',
-      severity: 'warning',
-      message: 'Response rate dropped below 80%',
-      currentValue: 75,
-      threshold: 80,
-      status: 'open',
-      createdAt: new Date(),
-    },
-    {
-      id: '2',
-      supplierId: 'supplier2',
-      supplierName: 'Sample Supplier 2',
-      alertType: 'low_rating',
-      severity: 'critical',
-      message: 'Customer rating dropped below 3.5',
-      currentValue: 3.2,
-      threshold: 3.5,
-      status: 'investigating',
-      createdAt: new Date(),
-    },
-  ];
+  // TODO: Implement performance_alerts table and fetch from database
+  const alerts: any[] = [];
 
   // Apply filters
-  let filteredAlerts = mockAlerts;
+  let filteredAlerts = alerts;
   if (options.severity) {
     filteredAlerts = filteredAlerts.filter(alert => alert.severity === options.severity);
   }

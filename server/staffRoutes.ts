@@ -674,50 +674,22 @@ router.get('/performance', supplierMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'Supplier profile not found' });
     }
     
-    // Mock performance data - in a real implementation, this would be calculated from actual data
-    const mockStaffPerformance = [
-      {
-        staffMemberId: '1',
-        staffName: 'John Doe',
-        role: 'manager',
-        metrics: {
-          tasksCompleted: 25,
-          tasksAssigned: 30,
-          responseTime: 2.5,
-          accuracyRate: 95,
-          customerSatisfaction: 4.8,
-          loginFrequency: 6,
-          productivityScore: 88
-        },
-        trends: {
-          tasksCompletedTrend: 15,
-          responseTimeTrend: -10,
-          accuracyTrend: 5
-        },
-        recentActivities: [
-          {
-            action: 'Completed Product Review',
-            description: 'Reviewed and approved 5 new product listings',
-            timestamp: new Date().toISOString(),
-            impact: 'positive' as const
-          }
-        ]
-      }
-    ];
+    // TODO: Implement staff performance tracking with actual data
+    const staffPerformance: any[] = [];
     
-    const mockTeamMetrics = {
-      totalStaff: 4,
-      activeStaff: 3,
-      averageProductivity: 85,
-      totalTasksCompleted: 120,
-      averageResponseTime: 3.2,
-      teamSatisfactionScore: 4.6
+    const teamMetrics = {
+      totalStaff: 0,
+      activeStaff: 0,
+      averageProductivity: 0,
+      totalTasksCompleted: 0,
+      averageResponseTime: 0,
+      teamSatisfactionScore: 0
     };
     
     res.json({
       success: true,
-      staffPerformance: mockStaffPerformance,
-      teamMetrics: mockTeamMetrics
+      staffPerformance,
+      teamMetrics
     });
     
   } catch (error: any) {
@@ -737,27 +709,12 @@ router.get('/tasks', supplierMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'Supplier profile not found' });
     }
     
-    // Mock tasks data - in a real implementation, this would come from a tasks table
-    const mockTasks = [
-      {
-        id: '1',
-        title: 'Review Product Listings',
-        description: 'Review and approve pending product listings',
-        assignedTo: '1',
-        assignedBy: userId,
-        priority: 'high' as const,
-        status: 'in_progress' as const,
-        dueDate: new Date(Date.now() + 86400000).toISOString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        assigneeName: 'John Doe',
-        assignerName: 'Supplier Owner'
-      }
-    ];
+    // TODO: Implement tasks table and fetch actual tasks
+    const tasks: any[] = [];
     
     res.json({
       success: true,
-      tasks: mockTasks
+      tasks
     });
     
   } catch (error: any) {
@@ -808,12 +765,12 @@ router.get('/messages', supplierMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'Supplier profile not found' });
     }
     
-    // Mock messages data
-    const mockMessages: any[] = [];
+    // TODO: Implement messages table and fetch actual messages
+    const messages: any[] = [];
     
     res.json({
       success: true,
-      messages: mockMessages
+      messages
     });
     
   } catch (error: any) {
@@ -864,12 +821,12 @@ router.get('/announcements', supplierMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'Supplier profile not found' });
     }
     
-    // Mock announcements data
-    const mockAnnouncements: any[] = [];
+    // TODO: Implement announcements table and fetch actual announcements
+    const announcements: any[] = [];
     
     res.json({
       success: true,
-      announcements: mockAnnouncements
+      announcements
     });
     
   } catch (error: any) {

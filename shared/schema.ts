@@ -262,6 +262,8 @@ export const inquiries = pgTable("inquiries", {
   subject: varchar("subject", { length: 255 }),
   message: text("message").notNull(),
   quantity: integer("quantity"),
+  targetPrice: decimal("target_price", { precision: 10, scale: 2 }),
+  requirements: text("requirements"),
   status: varchar("status", { length: 50 }).default("pending"), // pending, responded, closed
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -276,7 +278,88 @@ export const insertInquirySchema = createInsertSchema(inquiries).omit({
 export type InsertInquiry = z.infer<typeof insertInquirySchema>;
 export type Inquiry = typeof inquiries.$inferSelect;
 
+// ==================== INQUIRY QUOTATIONS ====================
 
+export const inquiryQuotations = pgTable("inquiry_quotations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  inquiryId: varchar("inquiry_id").notNull(),
+  pricePerUnit: decimal("price_per_unit", { precision: 10, scale: 2 }).notNull(),
+  totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
+  moq: integer("moq").notNull(),
+  leadTime: text("lead_time"),
+  paymentTerms: text("payment_terms"),
+  validUntil: timestamp("valid_until"),
+  message: text("message"),
+  attachments: text("attachments").array(),
+  status: text("status").default("pending"), // pending, accepted, rejected
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertInquiryQuotationSchema = createInsertSchema(inquiryQuotations).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertInquiryQuotation = z.infer<typeof insertInquiryQuotationSchema>;
+export type InquiryQuotation = typeof inquiryQuotations.$inferSelect;
+
+// ==================== INQUIRY TEMPLATES ====================
+
+export const inquiryTemplates = pgTable("inquiry_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  supplierId: varchar("supplier_id").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  subject: varchar("subject", { length: 255 }),
+  message: text("message").notNull(),
+  category: varchar("category", { length: 100 }),
+  isDefault: boolean("is_default").default(false),
+  isActive: boolean("is_active").default(true),
+  usageCount: integer("usage_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertInquiryTemplateSchema = createInsertSchema(inquiryTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertInquiryTemplate = z.infer<typeof insertInquiryTemplateSchema>;
+export type InquiryTemplate = typeof inquiryTemplates.$inferSelect;
+
+// ==================== INQUIRY ANALYTICS ====================
+
+export const inquiryAnalytics = pgTable("inquiry_analytics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  supplierId: varchar("supplier_id").notNull(),
+  date: timestamp("date").notNull(),
+  
+  // Daily metrics
+  totalInquiries: integer("total_inquiries").default(0),
+  respondedInquiries: integer("responded_inquiries").default(0),
+  convertedInquiries: integer("converted_inquiries").default(0),
+  
+  // Response time metrics (in minutes)
+  avgResponseTime: integer("avg_response_time"),
+  minResponseTime: integer("min_response_time"),
+  maxResponseTime: integer("max_response_time"),
+  
+  // Conversion metrics
+  conversionRate: decimal("conversion_rate", { precision: 5, scale: 2 }),
+  responseRate: decimal("response_rate", { precision: 5, scale: 2 }),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertInquiryAnalyticsSchema = createInsertSchema(inquiryAnalytics).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertInquiryAnalytics = z.infer<typeof insertInquiryAnalyticsSchema>;
+export type InquiryAnalytics = typeof inquiryAnalytics.$inferSelect;
 
 // ==================== ORDERS ====================
 

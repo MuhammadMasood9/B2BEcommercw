@@ -22,6 +22,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import 'react-toastify/dist/ReactToastify.css';
 import Home from "@/pages/Home";
 import Products from "@/pages/Products";
+import ProductDiscovery from "@/pages/buyer/ProductDiscovery";
 import ProductDetail from "@/pages/ProductDetail";
 import RFQBrowse from "@/pages/RFQBrowse";
 import RFQCreate from "@/pages/RFQCreate";
@@ -245,6 +246,7 @@ function PublicRouter() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/products" component={Products} />
+      <Route path="/buyer/products" component={ProductDiscovery} />
       <Route path="/product/:id" component={ProductDetail} />
       <Route path="/categories" component={Categories} />
       <Route path="/favorites" component={Favorites} />

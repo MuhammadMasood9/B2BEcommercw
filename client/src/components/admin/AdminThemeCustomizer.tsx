@@ -43,7 +43,7 @@ import {
 } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "sonner";
+// import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 interface ThemeSettings {

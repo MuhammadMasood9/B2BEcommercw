@@ -17,7 +17,7 @@ import {
   ArrowRight,
   TrendingUp
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { useToast } from "@/hooks/use-toast";
 
 interface OrderIntervention {
   id: string;
@@ -47,6 +47,7 @@ interface InterventionFormData {
 }
 
 const OrderIntervention: React.FC = () => {
+  const { toast } = useToast();
   const [selectedOrderId, setSelectedOrderId] = useState<string>('');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [formData, setFormData] = useState<InterventionFormData>({
@@ -97,7 +98,10 @@ const OrderIntervention: React.FC = () => {
       return response.json();
     },
     onSuccess: () => {
-      toast.success('Order intervention created successfully');
+      toast({
+        title: "Success",
+        description: "Order intervention created successfully",
+      });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/orders', selectedOrderId, 'interventions'] });
       setShowCreateForm(false);
       setFormData({
@@ -108,7 +112,11 @@ const OrderIntervention: React.FC = () => {
       });
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to create intervention');
+      toast({
+        title: "Error",
+        description: error.message || 'Failed to create intervention',
+        variant: "destructive",
+      });
     },
   });
 
@@ -161,7 +169,11 @@ const OrderIntervention: React.FC = () => {
 
   const handleCreateIntervention = () => {
     if (!formData.orderId || !formData.reason || !formData.actionTaken) {
-      toast.error('Please fill in all required fields');
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
       return;
     }
 

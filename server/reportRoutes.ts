@@ -14,39 +14,8 @@ router.get('/templates', async (req, res) => {
   try {
     console.log('📊 Report templates endpoint hit');
     
-    // Mock templates (in production, this would come from database)
-    const mockTemplates = [
-      {
-        id: 'template_1',
-        name: 'Monthly Revenue Report',
-        description: 'Comprehensive monthly revenue and commission analysis',
-        type: 'financial',
-        metrics: ['total_revenue', 'total_orders', 'avg_order_value', 'conversion_rate'],
-        filters: [],
-        visualization: 'mixed',
-        format: 'pdf',
-        recipients: ['finance@example.com'],
-        isActive: true,
-        createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-        updatedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-        lastGenerated: new Date(Date.now() - 24 * 60 * 60 * 1000),
-      },
-      {
-        id: 'template_2',
-        name: 'Supplier Performance Dashboard',
-        description: 'Weekly supplier performance and engagement metrics',
-        type: 'operational',
-        metrics: ['active_suppliers', 'supplier_retention', 'avg_response_time'],
-        filters: [],
-        visualization: 'dashboard',
-        format: 'excel',
-        recipients: ['operations@example.com'],
-        isActive: true,
-        createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
-        updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-        lastGenerated: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-      },
-    ];
+    // TODO: Implement report_templates table and fetch from database
+    const templates: any[] = [];
     
     await logAdminActivity(
       req.user!.id,
@@ -62,7 +31,7 @@ router.get('/templates', async (req, res) => {
     
     res.json({
       success: true,
-      templates: mockTemplates,
+      templates,
       timestamp: new Date(),
     });
     
@@ -184,37 +153,15 @@ router.get('/generated', async (req, res) => {
     const { limit = 50 } = req.query;
     console.log('📊 Generated reports endpoint hit');
     
-    // Mock generated reports (in production, this would come from database)
-    const mockReports = [
-      {
-        id: 'report_1',
-        templateId: 'template_1',
-        templateName: 'Monthly Revenue Report',
-        status: 'completed',
-        format: 'pdf',
-        size: 2048576, // 2MB
-        downloadUrl: '/api/admin/reports/download/report_1',
-        generatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-      {
-        id: 'report_2',
-        templateId: 'template_2',
-        templateName: 'Supplier Performance Dashboard',
-        status: 'generating',
-        format: 'excel',
-        size: 0,
-        generatedAt: new Date(Date.now() - 5 * 60 * 1000),
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-    ];
+    // TODO: Implement generated_reports table and fetch from database
+    const reports: any[] = [];
     
-    const limitedReports = mockReports.slice(0, parseInt(limit as string));
+    const limitedReports = reports.slice(0, parseInt(limit as string));
     
     res.json({
       success: true,
       reports: limitedReports,
-      total: mockReports.length,
+      total: reports.length,
       timestamp: new Date(),
     });
     

@@ -2,39 +2,94 @@ import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { 
   Send, 
   Image as ImageIcon, 
   Paperclip, 
   Smile,
   X,
-  Loader2
+  Loader2,
+  Package,
+  Plus
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface ChatInputProps {
-  onSendMessage: (content: string, attachments?: any[]) => void;
+  onSendMessage: (content: string, attachments?: any[], productReferences?: string[]) => void;
   onSendImage?: (file: File) => void;
+  onTyping?: (isTyping: boolean) => void;
+  onAddProductReference?: () => void;
   disabled?: boolean;
   placeholder?: string;
+  showProductReference?: boolean;
 }
 
 export default function ChatInput({ 
   onSendMessage, 
   onSendImage, 
+  onTyping,
+  onAddProductReference,
   disabled = false, 
-  placeholder = "Type your message..." 
+  placeholder = "Type your message...",
+  showProductReference = false
 }: ChatInputProps) {
   const [message, setMessage] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [productReferences, setProductReferences] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
   const handleSend = () => {
-    if (message.trim() && !disabled) {
-      onSendMessage(message.trim());
+    if ((message.trim() || attachedFiles.length > 0 || productReferences.length > 0) && !disabled) {
+      // Convert attached files to attachments
+      const attachments = attachedFiles.map(file => ({
+        name: file.name,
+        type: file.type.startsWith('image/') ? 'image' : 'file',
+        size: file.size,
+        url: URL.createObjectURL(file) // In real app, upload to server first
+      }));
+
+      onSendMessage(message.trim(), attachments, productReferences);
       setMessage('');
+      setAttachedFiles([]);
+      setProductReferences([]);
+      
+      // Stop typing indicator
+      if (isTyping) {
+        setIsTyping(false);
+        onTyping?.(false);
+      }
+    }
+  };
+
+  const handleMessageChange = (value: string) => {
+    setMessage(value);
+    
+    // Handle typing indicator
+    if (value.trim() && !isTyping) {
+      setIsTyping(true);
+      onTyping?.(true);
+    } else if (!value.trim() && isTyping) {
+      setIsTyping(false);
+      onTyping?.(false);
+    }
+    
+    // Reset typing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    
+    // Stop typing indicator after 3 seconds of inactivity
+    if (value.trim()) {
+      typingTimeoutRef.current = setTimeout(() => {
+        setIsTyping(false);
+        onTyping?.(false);
+      }, 3000);
     }
   };
 
@@ -46,71 +101,125 @@ export default function ChatInput({
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
+    const files = Array.from(e.target.files || []);
+    
+    for (const file of files) {
       if (file.size > 10 * 1024 * 1024) { // 10MB limit
         toast({
           title: "File too large",
-          description: "Please select a file smaller than 10MB",
+          description: `${file.name} is larger than 10MB`,
           variant: "destructive"
         });
-        return;
+        continue;
       }
 
-      setIsUploading(true);
-      
-      // Simulate upload - replace with actual upload logic
-      setTimeout(() => {
-        setIsUploading(false);
-        toast({
-          title: "File uploaded",
-          description: `${file.name} has been uploaded successfully`,
-        });
-        // Call the onSendImage callback
-        onSendImage?.(file);
-      }, 1000);
+      setAttachedFiles(prev => [...prev, file]);
+    }
+
+    // Clear the input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
+    const files = Array.from(e.target.files || []);
+    
+    for (const file of files) {
       if (!file.type.startsWith('image/')) {
         toast({
           title: "Invalid file type",
-          description: "Please select an image file",
+          description: `${file.name} is not an image file`,
           variant: "destructive"
         });
-        return;
+        continue;
       }
 
       if (file.size > 5 * 1024 * 1024) { // 5MB limit for images
         toast({
           title: "Image too large",
-          description: "Please select an image smaller than 5MB",
+          description: `${file.name} is larger than 5MB`,
           variant: "destructive"
         });
-        return;
+        continue;
       }
 
-      setIsUploading(true);
-      
-      // Simulate upload - replace with actual upload logic
-      setTimeout(() => {
-        setIsUploading(false);
-        toast({
-          title: "Image uploaded",
-          description: `${file.name} has been uploaded successfully`,
-        });
-        // Call the onSendImage callback
-        onSendImage?.(file);
-      }, 1000);
+      setAttachedFiles(prev => [...prev, file]);
     }
+
+    // Clear the input
+    if (imageInputRef.current) {
+      imageInputRef.current.value = '';
+    }
+  };
+
+  const removeAttachedFile = (index: number) => {
+    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeProductReference = (index: number) => {
+    setProductReferences(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddProductReference = () => {
+    onAddProductReference?.();
   };
 
   return (
     <Card className="border-t border-gray-200 rounded-none">
       <div className="p-4">
+        {/* Attached Files */}
+        {attachedFiles.length > 0 && (
+          <div className="mb-3 space-y-2">
+            <div className="text-xs text-gray-500 font-medium">Attached Files:</div>
+            <div className="flex flex-wrap gap-2">
+              {attachedFiles.map((file, index) => (
+                <div key={index} className="flex items-center space-x-2 bg-gray-100 rounded-lg p-2">
+                  {file.type.startsWith('image/') ? (
+                    <ImageIcon className="h-4 w-4 text-gray-600" />
+                  ) : (
+                    <Paperclip className="h-4 w-4 text-gray-600" />
+                  )}
+                  <span className="text-sm text-gray-700 truncate max-w-32">
+                    {file.name}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => removeAttachedFile(index)}
+                    className="h-4 w-4 p-0 text-gray-500 hover:text-red-500"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Product References */}
+        {productReferences.length > 0 && (
+          <div className="mb-3 space-y-2">
+            <div className="text-xs text-gray-500 font-medium">Product References:</div>
+            <div className="flex flex-wrap gap-2">
+              {productReferences.map((productId, index) => (
+                <Badge key={index} variant="outline" className="flex items-center space-x-1">
+                  <Package className="h-3 w-3" />
+                  <span>Product {productId}</span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => removeProductReference(index)}
+                    className="h-3 w-3 p-0 ml-1 text-gray-500 hover:text-red-500"
+                  >
+                    <X className="h-2 w-2" />
+                  </Button>
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Upload Progress */}
         {isUploading && (
           <div className="flex items-center space-x-2 mb-3 p-2 bg-blue-50 rounded-lg">
@@ -141,13 +250,25 @@ export default function ChatInput({
             >
               <Paperclip className="h-4 w-4" />
             </Button>
+            {showProductReference && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleAddProductReference}
+                disabled={disabled}
+                className="h-8 w-8 p-0"
+                title="Add product reference"
+              >
+                <Package className="h-4 w-4" />
+              </Button>
+            )}
           </div>
 
           {/* Message Input */}
           <div className="flex-1">
             <Textarea
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              onChange={(e) => handleMessageChange(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder={placeholder}
               disabled={disabled || isUploading}
@@ -159,7 +280,7 @@ export default function ChatInput({
           {/* Send Button */}
           <Button
             onClick={handleSend}
-            disabled={!message.trim() || disabled || isUploading}
+            disabled={(!message.trim() && attachedFiles.length === 0 && productReferences.length === 0) || disabled || isUploading}
             size="sm"
             className="h-8 w-8 p-0 bg-blue-500 hover:bg-blue-600"
           >
@@ -172,12 +293,14 @@ export default function ChatInput({
           ref={imageInputRef}
           type="file"
           accept="image/*"
+          multiple
           onChange={handleImageUpload}
           className="hidden"
         />
         <input
           ref={fileInputRef}
           type="file"
+          multiple
           onChange={handleFileUpload}
           className="hidden"
         />

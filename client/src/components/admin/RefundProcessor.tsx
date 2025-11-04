@@ -16,7 +16,7 @@ import {
   Eye,
   Plus
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { useToast } from "@/hooks/use-toast";
 
 interface Refund {
   id: string;
@@ -58,6 +58,7 @@ interface RefundFormData {
 }
 
 const RefundProcessor: React.FC = () => {
+  const { toast } = useToast();
   const [filters, setFilters] = useState({
     status: '',
     supplierId: '',
@@ -121,7 +122,10 @@ const RefundProcessor: React.FC = () => {
       return response.json();
     },
     onSuccess: () => {
-      toast.success('Refund created successfully');
+      toast({
+        title: "Success",
+        description: "Refund created successfully",
+      });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/refunds'] });
       setShowCreateForm(false);
       setFormData({
@@ -135,7 +139,11 @@ const RefundProcessor: React.FC = () => {
       });
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to create refund');
+      toast({
+        title: "Error",
+        description: error.message || 'Failed to create refund',
+        variant: "destructive",
+      });
     },
   });
 
@@ -162,12 +170,19 @@ const RefundProcessor: React.FC = () => {
       return response.json();
     },
     onSuccess: () => {
-      toast.success('Refund status updated successfully');
+      toast({
+        title: "Success",
+        description: "Refund status updated successfully",
+      });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/refunds'] });
       setSelectedRefund(null);
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to update refund status');
+      toast({
+        title: "Error",
+        description: error.message || 'Failed to update refund status',
+        variant: "destructive",
+      });
     },
   });
 
@@ -225,7 +240,11 @@ const RefundProcessor: React.FC = () => {
 
   const handleCreateRefund = () => {
     if (!formData.orderId || !formData.buyerId || !formData.supplierId || !formData.reason) {
-      toast.error('Please fill in all required fields');
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
       return;
     }
 

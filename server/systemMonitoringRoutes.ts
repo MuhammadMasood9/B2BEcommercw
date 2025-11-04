@@ -205,49 +205,11 @@ router.get('/alerts/active', async (req, res) => {
     
     const { limit = 50, severity, type } = req.query;
     
-    // Mock alert data (in production, this would come from a monitoring system)
-    const mockAlerts = [
-      {
-        id: 'alert_1',
-        type: 'system',
-        severity: 'warning',
-        title: 'High CPU Usage',
-        message: 'Server CPU usage has exceeded 80% for the last 10 minutes',
-        source: 'system_monitor',
-        acknowledged: false,
-        resolved: false,
-        createdAt: new Date(Date.now() - 30 * 60 * 1000),
-        updatedAt: new Date(Date.now() - 30 * 60 * 1000)
-      },
-      {
-        id: 'alert_2',
-        type: 'business',
-        severity: 'high',
-        title: 'Supplier Approval Backlog',
-        message: 'There are 15 suppliers pending approval for more than 48 hours',
-        source: 'supplier_monitor',
-        acknowledged: false,
-        resolved: false,
-        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-        updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
-      },
-      {
-        id: 'alert_3',
-        type: 'security',
-        severity: 'critical',
-        title: 'Multiple Failed Login Attempts',
-        message: 'Detected 50+ failed login attempts from IP 192.168.1.100',
-        source: 'security_monitor',
-        acknowledged: true,
-        acknowledgedAt: new Date(Date.now() - 15 * 60 * 1000),
-        resolved: false,
-        createdAt: new Date(Date.now() - 45 * 60 * 1000),
-        updatedAt: new Date(Date.now() - 15 * 60 * 1000)
-      }
-    ];
+    // TODO: Implement alerts table and fetch from monitoring system
+    const alerts: any[] = [];
     
     // Filter alerts based on query parameters
-    let filteredAlerts = mockAlerts;
+    let filteredAlerts = alerts;
     if (severity) {
       filteredAlerts = filteredAlerts.filter(alert => alert.severity === severity);
     }
@@ -260,10 +222,10 @@ router.get('/alerts/active', async (req, res) => {
     
     // Calculate summary
     const summary = {
-      critical: mockAlerts.filter(a => a.severity === 'critical' && !a.resolved).length,
-      high: mockAlerts.filter(a => a.severity === 'high' && !a.resolved).length,
-      warning: mockAlerts.filter(a => a.severity === 'warning' && !a.resolved).length,
-      info: mockAlerts.filter(a => a.severity === 'info' && !a.resolved).length,
+      critical: alerts.filter(a => a.severity === 'critical' && !a.resolved).length,
+      high: alerts.filter(a => a.severity === 'high' && !a.resolved).length,
+      warning: alerts.filter(a => a.severity === 'warning' && !a.resolved).length,
+      info: alerts.filter(a => a.severity === 'info' && !a.resolved).length,
     };
     
     await logAdminActivity(
@@ -282,7 +244,7 @@ router.get('/alerts/active', async (req, res) => {
       success: true,
       alerts: filteredAlerts,
       summary,
-      total: mockAlerts.length,
+      total: alerts.length,
       timestamp: new Date(),
     });
     

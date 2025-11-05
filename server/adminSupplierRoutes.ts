@@ -745,7 +745,7 @@ router.get('/stats/overview', async (req, res) => {
 // ==================== PRODUCT APPROVAL ENDPOINTS ====================
 
 // GET /api/admin/suppliers/products/pending - Get products pending approval
-router.get('/products/pending', adminMiddleware, async (req, res) => {
+router.get('/products/pending', requireAdmin, async (req, res) => {
   try {
     const { limit, offset, supplierId } = req.query;
     
@@ -816,7 +816,7 @@ router.get('/products/pending', adminMiddleware, async (req, res) => {
 });
 
 // POST /api/admin/suppliers/products/:id/approve - Approve product
-router.post('/products/:id/approve', adminMiddleware, async (req, res) => {
+router.post('/products/:id/approve', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const adminId = req.user?.id;
@@ -884,7 +884,7 @@ router.post('/products/:id/approve', adminMiddleware, async (req, res) => {
 });
 
 // POST /api/admin/suppliers/products/:id/reject - Reject product
-router.post('/products/:id/reject', adminMiddleware, async (req, res) => {
+router.post('/products/:id/reject', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
@@ -955,7 +955,7 @@ router.post('/products/:id/reject', adminMiddleware, async (req, res) => {
 });
 
 // GET /api/admin/suppliers/products - Get all supplier products with filtering
-router.get('/products', adminMiddleware, async (req, res) => {
+router.get('/products', requireAdmin, async (req, res) => {
   try {
     const { status, supplierId, categoryId, limit, offset, search } = req.query;
     

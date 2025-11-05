@@ -355,7 +355,6 @@ router.get("/products", asyncHandler(async (req, res) => {
     });
   // Error handling is now managed by asyncHandler wrapper
 }));
-});
 
 // GET /api/buyer/products/:id - Get detailed product information
 router.get("/products/:id", asyncHandler(async (req, res) => {
@@ -399,7 +398,6 @@ router.get("/products/:id", asyncHandler(async (req, res) => {
     });
   // Error handling managed by asyncHandler
 }));
-});
 
 // ==================== RFQ MANAGEMENT ROUTES ====================
 
@@ -637,11 +635,7 @@ router.post("/rfqs", asyncHandler(async (req, res) => {
       message: "RFQ created successfully",
       rfq: newRfq
     });
-  } catch (error) {
-    console.error("Error creating RFQ:", error);
-    res.status(500).json({ error: "Failed to create RFQ" });
-  }
-});
+}));
 
 // ==================== INQUIRY MANAGEMENT ROUTES ====================
 

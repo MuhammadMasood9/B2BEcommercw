@@ -2,11 +2,17 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { db } from "./db";
-import { sql, eq, and, gte, desc } from "drizzle-orm";
-import { orders, supplierProfiles, products, users, inquiries, quotations } from "../shared/schema";
+// Note: sql, eq, and, gte, desc are imported below in the schema imports
 import { authRoutes } from "./authRoutes";
 import { hybridAuthMiddleware } from "./authMiddleware";
 import { requireAuth, requireAdmin, requireSupplier, requireBuyer } from "./authGuards";
+import { auditLogRoutes } from "./auditLogRoutes";
+import { passwordSecurityRoutes } from "./passwordSecurityRoutes";
+import { registrationRoutes } from "./registrationRoutes";
+import { enhancedAuthorizationRoutes } from "./enhancedAuthorizationRoutes";
+
+// Alias for backward compatibility
+const authMiddleware = hybridAuthMiddleware;
 import categoryRoutes from "./categoryRoutes";
 import uploadRoutes from "./uploadRoutes";
 import chatRoutes from "./chatRoutes";
@@ -27,6 +33,7 @@ import { orderManagementRoutes } from "./orderManagementRoutes";
 import { platformSettingsRoutes } from "./platformSettingsRoutes";
 import adminAccessControlRoutes from "./adminAccessControlRoutes";
 import securityMonitoringRoutes from "./securityMonitoringRoutes";
+import enhancedSecurityMonitoringRoutes from "./enhancedSecurityMonitoringRoutes";
 import communicationRoutes from "./communicationRoutes";
 import complianceAuditRoutes from "./complianceAuditRoutes";
 import buyerProductRoutes from "./buyerProductRoutes";
@@ -46,31 +53,12 @@ import {
   insertRfqSchema, insertQuotationSchema, insertInquirySchema,
   insertConversationSchema, insertMessageSchema, insertReviewSchema,
   insertFavoriteSchema, insertNotificationSchema, insertActivityLogSchema,
-  users, products, categories, orders, inquiries, quotations, rfqs, notifications, activity_logs, conversations, supplierProfiles, commissionSettings, favorites
+  users, products, categories, orders, inquiries, quotations, rfqs, notifications, activity_logs, conversations, supplierProfiles, commissionSettings, favorites, messages
 } from "@shared/schema";
 import { z } from 'zod';
-import { sql, eq, and, gte, desc, or, ilike } from "drizzle-orm";
+import { sql, eq, and, gte, desc, or, ilike, ne } from "drizzle-orm";
 import * as path from 'path';
 import * as fs from 'fs';
-import { authMiddleware } from "./auth";
-import { authMiddleware } from "./auth";
-import { authMiddleware } from "./auth";
-import { authMiddleware } from "./auth";
-import { authMiddleware } from "./auth";
-import { authMiddleware } from "./auth";
-import { authMiddleware } from "./auth";
-import { authMiddleware } from "./auth";
-import { authMiddleware } from "./auth";
-import { authMiddleware } from "./auth";
-import { authMiddleware } from "./auth";
-import { authMiddleware } from "./auth";
-import { authMiddleware } from "./auth";
-import { authMiddleware } from "./auth";
-import { authMiddleware } from "./auth";
-import { authMiddleware } from "./auth";
-import { authMiddleware } from "./auth";
-import { authMiddleware } from "./auth";
-import { authMiddleware } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   console.log('=== ROUTES LOADING - UPDATED VERSION ===');
@@ -78,6 +66,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ==================== AUTHENTICATION ROUTES ====================
 
   app.use('/api/auth', authRoutes);
+  app.use('/api/auth/audit', auditLogRoutes);
+  app.use('/api/auth/password', passwordSecurityRoutes);
+  app.use('/api/registration', registrationRoutes);
+  
+  // ==================== ENHANCED AUTHORIZATION ROUTES ====================
+  
+  app.use('/api/auth', enhancedAuthorizationRoutes);
 
   // ==================== UPLOAD ROUTES ====================
 
@@ -540,6 +535,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Security monitoring and threat detection
   app.use('/api/admin/security', securityMonitoringRoutes);
+  app.use('/api/admin/security/monitoring', enhancedSecurityMonitoringRoutes);
 
   // ==================== COMMUNICATION AND NOTIFICATION ROUTES ====================
 
@@ -5487,7 +5483,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get unseen chat count for current user
-  app.get("/api/chat/unseen-count", async (req, res) => {
+  app.get("/api/chat/unseen-count", hybridAuthMiddleware, async (req, res) => {
     try {
       const userId = req.user?.id;
       const userRole = req.user?.role;
@@ -5498,25 +5494,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let count = 0;
 
+      // Use a simpler approach - count unread messages directly from messages table
       if (userRole === 'admin') {
-        // For admin, count unread messages from buyers
-        // Note: unreadCountAdmin column actually stores adminId, not count
-        // So we need to count unreadCountBuyer for conversations where adminId matches
+        // For admin, count unread messages in conversations where admin is involved
         const result = await db
-          .select({ count: sql<number>`sum(coalesce(cast(${conversations.unreadCountBuyer} as integer), 0))` })
-          .from(conversations)
-          .where(eq(conversations.unreadCountAdmin, userId));
-        count = result[0]?.count || 0;
+          .select({ count: sql<number>`count(*)` })
+          .from(messages)
+          .leftJoin(conversations, eq(messages.conversationId, conversations.id))
+          .where(
+            and(
+              eq(messages.isRead, false),
+              eq(conversations.adminId, userId),
+              ne(messages.senderId, userId) // Don't count admin's own messages
+            )
+          );
+        count = Number(result[0]?.count) || 0;
       } else {
-        // For buyer, count unread messages from admin
+        // For buyer, count unread messages in conversations where buyer is involved
         const result = await db
-          .select({ count: sql<number>`sum(coalesce(cast(${conversations.unreadCountBuyer} as integer), 0))` })
-          .from(conversations)
-          .where(eq(conversations.buyerId, userId));
-        count = result[0]?.count || 0;
+          .select({ count: sql<number>`count(*)` })
+          .from(messages)
+          .leftJoin(conversations, eq(messages.conversationId, conversations.id))
+          .where(
+            and(
+              eq(messages.isRead, false),
+              eq(conversations.buyerId, userId),
+              ne(messages.senderId, userId) // Don't count buyer's own messages
+            )
+          );
+        count = Number(result[0]?.count) || 0;
       }
 
-      res.json({ count });
+      res.json({ count: count.toString() });
     } catch (error: any) {
       console.error('Error fetching unseen chat count:', error);
       res.status(500).json({ error: error.message });

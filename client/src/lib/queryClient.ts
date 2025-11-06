@@ -12,12 +12,57 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<any> {
-  const res = await fetch(url, {
+  // Get access token from localStorage
+  let accessToken = localStorage.getItem('accessToken');
+  
+  const headers: Record<string, string> = {
+    ...(data ? { "Content-Type": "application/json" } : {}),
+  };
+
+  // Add Authorization header if token exists
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`;
+  }
+
+  let res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
+
+  // If token expired, try to refresh
+  if (res.status === 401 && accessToken) {
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (refreshToken) {
+      try {
+        const refreshRes = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ refreshToken }),
+        });
+
+        if (refreshRes.ok) {
+          const refreshData = await refreshRes.json();
+          localStorage.setItem('accessToken', refreshData.accessToken);
+          localStorage.setItem('refreshToken', refreshData.refreshToken);
+          
+          // Retry the original request with new token
+          headers['Authorization'] = `Bearer ${refreshData.accessToken}`;
+          res = await fetch(url, {
+            method,
+            headers,
+            body: data ? JSON.stringify(data) : undefined,
+            credentials: "include",
+          });
+        }
+      } catch (error) {
+        console.error('Token refresh failed:', error);
+      }
+    }
+  }
 
   await throwIfResNotOk(res);
   return await res.json();
@@ -29,7 +74,18 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
+    // Get access token from localStorage
+    const accessToken = localStorage.getItem('accessToken');
+    
+    const headers: Record<string, string> = {};
+    
+    // Add Authorization header if token exists
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+
     const res = await fetch(queryKey.join("/") as string, {
+      headers,
       credentials: "include",
     });
 

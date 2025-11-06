@@ -5,6 +5,7 @@ import ConnectPgSimple from 'connect-pg-simple';
 import path from 'path';
 import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
+import jwt from 'jsonwebtoken';
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { passport } from "./auth";
@@ -13,6 +14,8 @@ import './alertScheduler'; // Initialize alert scheduler
 import './securityScheduler'; // Initialize security monitoring scheduler
 import './notificationProcessor'; // Initialize notification processor
 import './dbOptimizationScheduler'; // Initialize database optimization scheduler
+import { AuthRateLimiter } from './authRateLimiter';
+import { AuthSecurityMonitor } from './authSecurityMonitor';
 import { queryOptimizationMiddleware, cacheWarmupMiddleware, databaseHealthMiddleware } from './queryOptimizationMiddleware';
 import dbOptimizationRoutes from './dbOptimizationRoutes';
 import { requestIdMiddleware, globalErrorHandler } from './errorHandler';
@@ -131,17 +134,34 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
   
-  // Setup WebSocket server for real-time notifications
-  const wss = new WebSocketServer({ server });
+  // Setup WebSocket server for real-time notifications on a specific path
+  const wss = new WebSocketServer({ 
+    server,
+    path: '/ws/notifications'
+  });
   
   wss.on('connection', (ws, req) => {
     log('WebSocket connection established');
     
     // Extract user ID from query parameters or headers
     const url = new URL(req.url || '', `http://${req.headers.host}`);
-    const userId = url.searchParams.get('userId');
+    let userId = url.searchParams.get('userId');
+    const token = url.searchParams.get('token');
     
-    if (userId) {
+    log(`WebSocket connection attempt - URL: ${req.url}, userId: ${userId}, token: ${token ? 'present' : 'none'}`);
+    
+    // If no userId but token is present, try to extract userId from JWT token
+    if (!userId && token && token.includes('.')) { // JWT tokens contain dots
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as any;
+        userId = decoded.userId || decoded.id;
+        log(`Extracted userId from token: ${userId}`);
+      } catch (error) {
+        log(`Invalid JWT token provided: ${(error as Error).message}`);
+      }
+    }
+    
+    if (userId && userId !== 'undefined' && userId !== 'null') {
       notificationService.addConnection(userId, ws);
       log(`User ${userId} connected to WebSocket`);
       
@@ -151,7 +171,7 @@ app.use((req, res, next) => {
         data: { status: 'connected', userId }
       }));
     } else {
-      log('WebSocket connection without userId, closing');
+      log(`WebSocket connection without valid userId, closing. Received userId: ${userId}, token: ${token ? 'present' : 'none'}`);
       ws.close(1008, 'User ID required');
     }
     
@@ -231,6 +251,14 @@ app.use((req, res, next) => {
   
   // Start rate limiter cleanup
   RateLimiter.cleanup();
+  
+  // Initialize authentication security systems
+  AuthRateLimiter.initialize();
+  AuthSecurityMonitor.initialize();
+  
+  // Initialize enhanced security monitoring
+  const { enhancedSecurityMonitoringService } = await import('./enhancedSecurityMonitoringService');
+  await enhancedSecurityMonitoringService.initialize();
   
   server.listen(port, host, () => {
     log(`serving on port ${port}`);

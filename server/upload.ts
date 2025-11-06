@@ -31,6 +31,25 @@ const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCa
   }
 };
 
+// File filter for documents and images (for supplier registration)
+const documentFileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  const allowedMimes = [
+    // Images
+    'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+    // Documents
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'text/plain'
+  ];
+  
+  if (allowedMimes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid file type. Only images, PDF, DOC, DOCX, and TXT files are allowed.'));
+  }
+};
+
 // Create multer instance with NO LIMITS for bulk uploads
 export const upload = multer({
   storage: storage,
@@ -41,6 +60,21 @@ export const upload = multer({
     fields: Infinity,
     fileSize: Infinity,
     files: Infinity,
+    parts: Infinity,
+    headerPairs: 2000
+  }
+});
+
+// Document upload instance for supplier registration
+export const uploadDocuments = multer({
+  storage: storage,
+  fileFilter: documentFileFilter,
+  limits: {
+    fieldNameSize: 1000,
+    fieldSize: Infinity,
+    fields: Infinity,
+    fileSize: 10 * 1024 * 1024, // 10MB per file
+    files: 10, // Max 10 files
     parts: Infinity,
     headerPairs: 2000
   }

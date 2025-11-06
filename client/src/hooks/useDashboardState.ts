@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from './useWebSocket';
+import { apiRequest } from '@/lib/queryClient';
 
 interface DashboardMetrics {
   kpis: {
@@ -14,6 +15,14 @@ interface DashboardMetrics {
     totalOrders: number;
     averageSupplierRating: number;
     averageResponseRate: number;
+    // Additional KPIs for enhanced admin dashboard
+    pendingVerifications: number;
+    activeDisputes: number;
+    pendingPayouts: number;
+    totalBuyers: number;
+    activeBuyers: number;
+    monthlyGrowthRate: number;
+    systemUptime: number;
   };
   realTimeMetrics: {
     onlineSuppliers: number;
@@ -95,18 +104,7 @@ export function useDashboardState() {
   } = useQuery({
     queryKey: ['admin-dashboard-metrics', settings.timeRange],
     queryFn: async (): Promise<DashboardMetrics> => {
-      const response = await fetch(`/api/admin/dashboard/comprehensive-metrics?timeRange=${settings.timeRange}&includeComparisons=true`, {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch dashboard metrics');
-      }
-      
-      const data = await response.json();
+      const data = await apiRequest('GET', `/api/admin/dashboard/comprehensive-metrics?timeRange=${settings.timeRange}&includeComparisons=true`);
       return data.metrics;
     },
     refetchInterval: settings.autoRefresh ? settings.refreshInterval : false,
@@ -232,14 +230,9 @@ export function useDashboardState() {
     }, ...prev.slice(0, 9)]);
   }, []);
 
-  // WebSocket connection for real-time updates
-  const { isConnected: wsConnected } = useWebSocket({
-    url: `ws://${window.location.host}/ws/admin/dashboard`,
-    onMessage: handleWebSocketMessageRef,
-    onConnect: onConnectRef,
-    onDisconnect: onDisconnectRef,
-    onError: onErrorRef
-  });
+  // WebSocket connection for real-time updates (disabled for now to prevent connection issues)
+  // TODO: Implement proper admin WebSocket connection with authentication
+  const wsConnected = false;
 
   const addNotification = useCallback((notification: Omit<typeof notifications[0], 'id' | 'timestamp'>) => {
     const newNotification = {

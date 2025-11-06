@@ -8,7 +8,7 @@ import {
   unsubscribeRequests,
   users
 } from '@shared/schema';
-import { eq, and, or, lte, inArray } from 'drizzle-orm';
+import { eq, and, or, lte, inArray, sql } from 'drizzle-orm';
 
 export interface NotificationChannel {
   send(notification: QueuedNotification): Promise<DeliveryResult>;
@@ -220,6 +220,20 @@ export class NotificationProcessor {
     this.isProcessing = true;
 
     try {
+      // Check if notification_queue table exists before processing
+      const tableExists = await db.execute(sql`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'notification_queue'
+        );
+      `);
+
+      if (!tableExists.rows[0]?.exists) {
+        console.log('Notification queue table does not exist, skipping processing');
+        return;
+      }
+
       // Get notifications ready to be sent
       const notifications = await db.select()
         .from(notificationQueue)

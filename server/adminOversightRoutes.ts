@@ -558,6 +558,14 @@ router.get('/dashboard/comprehensive-metrics', async (req, res) => {
         totalOrders: analytics.totalOrders,
         averageSupplierRating: analytics.averageSupplierRating,
         averageResponseRate: analytics.averageResponseRate,
+        // Additional KPIs for enhanced admin dashboard
+        pendingVerifications: 5, // Mock data - would be calculated from verification documents
+        activeDisputes: 2, // Mock data - would be calculated from dispute system
+        pendingPayouts: 8, // Mock data - would be calculated from payout system
+        totalBuyers: analytics.totalBuyers || 0,
+        activeBuyers: analytics.activeBuyers || 0,
+        monthlyGrowthRate: analytics.monthlyGrowthRate || 0,
+        systemUptime: systemHealth.uptime || 99.9,
       },
 
       // Real-time metrics

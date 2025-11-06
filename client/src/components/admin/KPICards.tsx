@@ -41,6 +41,14 @@ interface KPICardsProps {
     totalOrders: number;
     averageSupplierRating: number;
     averageResponseRate: number;
+    // Additional KPIs for enhanced admin dashboard
+    pendingVerifications?: number;
+    activeDisputes?: number;
+    pendingPayouts?: number;
+    totalBuyers?: number;
+    activeBuyers?: number;
+    monthlyGrowthRate?: number;
+    systemUptime?: number;
   };
   comparisons?: {
     revenue: { changePercent: number };

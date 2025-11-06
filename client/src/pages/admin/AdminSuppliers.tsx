@@ -116,13 +116,7 @@ export default function AdminSuppliers() {
       params.append('offset', ((currentPage - 1) * pageSize).toString());
 
       const url = `/api/admin/suppliers?${params.toString()}`;
-      const res = await fetch(url, { credentials: "include" });
-
-      if (!res.ok) {
-        throw new Error(`${res.status}: ${res.statusText}`);
-      }
-
-      return await res.json();
+      return await apiRequest('GET', url);
     },
     retry: 2,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -136,13 +130,7 @@ export default function AdminSuppliers() {
       params.append('limit', '100');
 
       const url = `/api/admin/suppliers/pending?${params.toString()}`;
-      const res = await fetch(url, { credentials: "include" });
-
-      if (!res.ok) {
-        throw new Error(`${res.status}: ${res.statusText}`);
-      }
-
-      return await res.json();
+      return await apiRequest('GET', url);
     },
     retry: 2,
     staleTime: 2 * 60 * 1000, // 2 minutes

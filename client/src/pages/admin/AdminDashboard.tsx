@@ -10,32 +10,33 @@ import MetricsCharts from "@/components/admin/MetricsCharts";
 import AlertsPanel from "@/components/admin/AlertsPanel";
 import QuickActions from "@/components/admin/QuickActions";
 import NotificationSystem from "@/components/admin/NotificationSystem";
+import { AdminNotificationCenter } from "@/components/admin/AdminNotificationCenter";
+import { EnhancedQuickActions } from "@/components/admin/EnhancedQuickActions";
 import DashboardCustomization from "@/components/admin/DashboardCustomization";
 import { ContextualHelp } from "@/components/admin/ContextualHelp";
 import { InAppHelpSystem } from "@/components/admin/InAppHelpSystem";
 import { OnboardingTrigger } from "@/components/admin/InteractiveOnboarding";
 import { useDashboardState } from "@/hooks/useDashboardState";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Settings,
   RefreshCw,
   Download,
-  Plus,
   Activity,
   Shield,
-  BarChart3,
   Bell,
   Wifi,
   WifiOff,
-  Package,
-  Users,
-  Award,
-  Globe
+  DollarSign,
+  AlertTriangle,
+  Clock,
+  UserCheck
 } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [showCustomization, setShowCustomization] = useState(false);
+  const { user, hasRole, hasPermission } = useAuth();
 
   const {
     metrics,
@@ -71,6 +72,7 @@ export default function AdminDashboard() {
 
   const handleAlertAction = (alertId: string, action: 'acknowledge' | 'dismiss') => {
     // Handle alert actions
+    console.log(`Alert ${alertId} ${action}d`);
     addNotification({
       type: 'success',
       title: 'Alert Updated',
@@ -102,8 +104,12 @@ export default function AdminDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold">Enhanced Admin Dashboard</h1>
+            <h1 className="text-3xl font-bold">Admin Dashboard</h1>
             <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                <Shield className="h-3 w-3 mr-1" />
+                {user?.role || 'Admin'}
+              </Badge>
               {isRealTimeConnected ? (
                 <Badge variant="secondary" className="bg-green-100 text-green-800">
                   <Wifi className="h-3 w-3 mr-1" />
@@ -124,7 +130,7 @@ export default function AdminDashboard() {
             </div>
           </div>
           <p className="text-muted-foreground mt-1">
-            Comprehensive platform management with real-time insights
+            Platform management with real-time insights and comprehensive controls
             {lastUpdated && (
               <span className="ml-2 text-xs">
                 • Last updated: {new Date(lastUpdated).toLocaleTimeString()}
@@ -135,10 +141,12 @@ export default function AdminDashboard() {
         <div className="flex gap-2">
           <ContextualHelp />
           <InAppHelpSystem />
-          <Button variant="outline" onClick={() => setShowCustomization(true)}>
-            <Settings className="h-4 w-4 mr-2" />
-            Customize
-          </Button>
+          {hasPermission('settings', 'write') && (
+            <Button variant="outline" onClick={() => setShowCustomization(true)}>
+              <Settings className="h-4 w-4 mr-2" />
+              Customize
+            </Button>
+          )}
           <Button variant="outline" onClick={refreshData} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
@@ -217,14 +225,119 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Quick Actions */}
-          <QuickActions
+          {/* Enhanced Quick Actions with Role-based Access */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {hasRole(['admin', 'manager']) && (
+              <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                <CardContent className="p-4">
+                  <Link href="/admin/suppliers/pending">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-orange-100 rounded-lg">
+                          <Clock className="h-5 w-5 text-orange-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Pending Approvals</p>
+                          <p className="text-2xl font-bold text-orange-600">
+                            {metrics?.kpis.pendingApprovals || 0}
+                          </p>
+                        </div>
+                      </div>
+                      <Button size="sm" variant="outline">
+                        Review
+                      </Button>
+                    </div>
+                  </Link>
+                </CardContent>
+              </Card>
+            )}
+
+            {hasRole(['admin', 'manager']) && (
+              <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                <CardContent className="p-4">
+                  <Link href="/admin/verification">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-blue-100 rounded-lg">
+                          <UserCheck className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Verifications</p>
+                          <p className="text-2xl font-bold text-blue-600">
+                            {metrics?.kpis.pendingVerifications || 5}
+                          </p>
+                        </div>
+                      </div>
+                      <Button size="sm" variant="outline">
+                        Process
+                      </Button>
+                    </div>
+                  </Link>
+                </CardContent>
+              </Card>
+            )}
+
+            {hasRole(['admin']) && (
+              <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                <CardContent className="p-4">
+                  <Link href="/admin/disputes">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-red-100 rounded-lg">
+                          <AlertTriangle className="h-5 w-5 text-red-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Active Disputes</p>
+                          <p className="text-2xl font-bold text-red-600">
+                            {metrics?.kpis.activeDisputes || 2}
+                          </p>
+                        </div>
+                      </div>
+                      <Button size="sm" variant="outline">
+                        Resolve
+                      </Button>
+                    </div>
+                  </Link>
+                </CardContent>
+              </Card>
+            )}
+
+            {hasRole(['admin', 'financial_manager']) && (
+              <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                <CardContent className="p-4">
+                  <Link href="/admin/payouts">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-green-100 rounded-lg">
+                          <DollarSign className="h-5 w-5 text-green-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Pending Payouts</p>
+                          <p className="text-2xl font-bold text-green-600">
+                            {metrics?.kpis.pendingPayouts || 8}
+                          </p>
+                        </div>
+                      </div>
+                      <Button size="sm" variant="outline">
+                        Process
+                      </Button>
+                    </div>
+                  </Link>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Enhanced Quick Actions */}
+          <EnhancedQuickActions
             pendingCounts={{
               suppliers: metrics?.kpis.pendingApprovals || 0,
               products: (metrics?.kpis.totalProducts || 0) - (metrics?.kpis.approvedProducts || 0),
-              verifications: 5, // Mock data
-              disputes: 2, // Mock data
-              payouts: 8 // Mock data
+              verifications: metrics?.kpis.pendingVerifications || 5,
+              disputes: metrics?.kpis.activeDisputes || 2,
+              payouts: metrics?.kpis.pendingPayouts || 8,
+              orders: metrics?.realTimeMetrics.activeOrders || 0,
+              inquiries: 12 // Mock data - would come from API
             }}
             onActionClick={(actionId) => {
               addNotification({
@@ -234,6 +347,9 @@ export default function AdminDashboard() {
               });
             }}
           />
+
+          {/* Admin Notification Center */}
+          <AdminNotificationCenter />
         </TabsContent>
 
 

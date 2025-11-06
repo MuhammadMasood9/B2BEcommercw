@@ -18,6 +18,20 @@ export const users = pgTable("users", {
   isActive: boolean("is_active").default(true),
   isOnline: boolean("is_online").default(false),
   lastSeen: timestamp("last_seen"),
+  
+  // Enhanced security fields
+  passwordResetToken: varchar("password_reset_token"),
+  passwordResetExpires: timestamp("password_reset_expires"),
+  emailVerificationToken: varchar("email_verification_token"),
+  emailVerificationExpires: timestamp("email_verification_expires"),
+  lastLoginAt: timestamp("last_login_at"),
+  lastLoginIp: varchar("last_login_ip"),
+  loginAttempts: integer("login_attempts").default(0),
+  lockedUntil: timestamp("locked_until"),
+  passwordChangedAt: timestamp("password_changed_at"),
+  twoFactorEnabled: boolean("two_factor_enabled").default(false),
+  twoFactorSecret: varchar("two_factor_secret"),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -30,6 +44,93 @@ export const insertUserSchema = createInsertSchema(users).omit({
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+
+// ==================== TOKEN BLACKLIST ====================
+
+export const tokenBlacklist = pgTable("token_blacklist", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jti: varchar("jti").notNull().unique(),
+  userId: varchar("user_id").notNull(),
+  tokenType: varchar("token_type").notNull().default("access"), // access, refresh
+  expiresAt: timestamp("expires_at").notNull(),
+  blacklistedAt: timestamp("blacklisted_at").defaultNow(),
+  reason: varchar("reason").default("logout"), // logout, security, expired, revoked
+});
+
+export const insertTokenBlacklistSchema = createInsertSchema(tokenBlacklist).omit({
+  id: true,
+  blacklistedAt: true,
+});
+
+export type InsertTokenBlacklist = z.infer<typeof insertTokenBlacklistSchema>;
+export type TokenBlacklist = typeof tokenBlacklist.$inferSelect;
+
+// ==================== AUTHENTICATION AUDIT LOGS ====================
+
+export const authenticationAuditLogs = pgTable("authentication_audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id"),
+  userEmail: varchar("user_email"),
+  userRole: varchar("user_role"),
+  action: varchar("action").notNull(), // login_attempt, login_success, login_failure, logout, token_refresh, password_change, account_locked, account_unlocked
+  ipAddress: varchar("ip_address").notNull(),
+  userAgent: text("user_agent"),
+  sessionId: varchar("session_id"),
+  tokenJti: varchar("token_jti"),
+  success: boolean("success").notNull().default(false),
+  failureReason: varchar("failure_reason"),
+  metadata: json("metadata").default({}),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertAuthenticationAuditLogSchema = createInsertSchema(authenticationAuditLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAuthenticationAuditLog = z.infer<typeof insertAuthenticationAuditLogSchema>;
+export type AuthenticationAuditLog = typeof authenticationAuditLogs.$inferSelect;
+
+// ==================== PASSWORD HISTORY ====================
+
+export const passwordHistory = pgTable("password_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  passwordHash: text("password_hash").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPasswordHistorySchema = createInsertSchema(passwordHistory).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPasswordHistory = z.infer<typeof insertPasswordHistorySchema>;
+export type PasswordHistory = typeof passwordHistory.$inferSelect;
+
+// ==================== USER SESSIONS ====================
+
+export const userSessions = pgTable("user_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  sessionId: varchar("session_id").notNull().unique(),
+  refreshTokenJti: varchar("refresh_token_jti"),
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  isActive: boolean("is_active").default(true),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  lastAccessedAt: timestamp("last_accessed_at").defaultNow(),
+});
+
+export const insertUserSessionSchema = createInsertSchema(userSessions).omit({
+  id: true,
+  createdAt: true,
+  lastAccessedAt: true,
+});
+
+export type InsertUserSession = z.infer<typeof insertUserSessionSchema>;
+export type UserSession = typeof userSessions.$inferSelect;
 
 // ==================== BUYERS TABLE (Enhanced) ====================
 
@@ -419,6 +520,12 @@ export const conversations = pgTable("conversations", {
   lastMessageAt: timestamp("last_message_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  // Legacy fields for backward compatibility
+  lastMessage: text("last_message"),
+  productId: varchar("product_id"),
+  unreadCountBuyer: integer("unread_count_buyer").default(0),
+  unreadCountAdmin: varchar("unread_count_admin").default("0"), // This field stores adminId in legacy code
+  unreadCountSupplier: integer("unread_count_supplier").default(0),
 });
 
 export const insertConversationSchema = createInsertSchema(conversations).omit({
@@ -1499,6 +1606,35 @@ export const permissionResources = pgTable("permission_resources", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const securityAlerts = pgTable("security_alerts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Alert Classification
+  type: varchar("type").notNull(), // 'brute_force', 'account_takeover', 'suspicious_activity', 'token_abuse', 'geographic_anomaly'
+  severity: varchar("severity").notNull(), // 'low', 'medium', 'high', 'critical'
+  description: text("description").notNull(),
+  
+  // Context
+  ipAddress: varchar("ip_address").notNull(),
+  userId: varchar("user_id"),
+  userEmail: varchar("user_email"),
+  
+  // Alert Data
+  metadata: json("metadata").default({}),
+  
+  // Status and Resolution
+  status: varchar("status").default("active"), // 'active', 'investigating', 'resolved', 'false_positive'
+  acknowledgedBy: varchar("acknowledged_by"),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  resolvedBy: varchar("resolved_by"),
+  resolvedAt: timestamp("resolved_at"),
+  resolutionNotes: text("resolution_notes"),
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const securityAuditEvents = pgTable("security_audit_events", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   
@@ -1591,6 +1727,12 @@ export const insertPermissionResourceSchema = createInsertSchema(permissionResou
   updatedAt: true,
 });
 
+export const insertSecurityAlertSchema = createInsertSchema(securityAlerts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertSecurityAuditEventSchema = createInsertSchema(securityAuditEvents).omit({
   id: true,
   createdAt: true,
@@ -1612,6 +1754,8 @@ export type InsertAdminActivityLog = z.infer<typeof insertAdminActivityLogSchema
 export type AdminActivityLog = typeof adminActivityLogs.$inferSelect;
 export type InsertPermissionResource = z.infer<typeof insertPermissionResourceSchema>;
 export type PermissionResource = typeof permissionResources.$inferSelect;
+export type InsertSecurityAlert = z.infer<typeof insertSecurityAlertSchema>;
+export type SecurityAlert = typeof securityAlerts.$inferSelect;
 export type InsertSecurityAuditEvent = z.infer<typeof insertSecurityAuditEventSchema>;
 export type SecurityAuditEvent = typeof securityAuditEvents.$inferSelect;
 export type InsertAccessPatternAnalysis = z.infer<typeof insertAccessPatternAnalysisSchema>;
@@ -2399,3 +2543,39 @@ export type InsertComplianceMetrics = z.infer<typeof insertComplianceMetricsSche
 export type ComplianceMetrics = typeof complianceMetrics.$inferSelect;
 export type InsertLegalHold = z.infer<typeof insertLegalHoldSchema>;
 export type LegalHold = typeof legalHolds.$inferSelect;
+
+// ==================== VERIFICATION DOCUMENTS ====================
+
+export const verificationDocuments = pgTable("verification_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  supplierId: varchar("supplier_id").notNull(),
+  
+  // Document Details
+  documentType: varchar("document_type").notNull(), // 'businessLicense', 'taxRegistration', 'identityDocument', 'storeLogo', 'storeBanner'
+  fileName: varchar("file_name").notNull(),
+  originalName: varchar("original_name").notNull(),
+  filePath: varchar("file_path").notNull(),
+  fileSize: integer("file_size").notNull(),
+  mimeType: varchar("mime_type").notNull(),
+  
+  // Status and Review
+  status: varchar("status").default("pending"), // 'pending', 'approved', 'rejected'
+  reviewedBy: varchar("reviewed_by"),
+  reviewedAt: timestamp("reviewed_at"),
+  rejectionReason: text("rejection_reason"),
+  
+  // Metadata
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertVerificationDocumentSchema = createInsertSchema(verificationDocuments).omit({
+  id: true,
+  uploadedAt: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertVerificationDocument = z.infer<typeof insertVerificationDocumentSchema>;
+export type VerificationDocument = typeof verificationDocuments.$inferSelect;

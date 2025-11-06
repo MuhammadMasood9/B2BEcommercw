@@ -1,59 +1,24 @@
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
 import { sql } from "drizzle-orm";
-import { db, pool } from './db';
-import * as schema from '@shared/schema';
-
-// Enhanced database connection pool configuration
-const connectionConfig = {
-  host: process.env.DATABASE_HOST || 'localhost',
-  port: parseInt(process.env.DATABASE_PORT || '5432'),
-  database: process.env.DATABASE_NAME || 'marketplace',
-  username: process.env.DATABASE_USER || 'postgres',
-  password: process.env.DATABASE_PASSWORD || 'password',
-  
-  // Optimized connection pool settings
-  max: parseInt(process.env.DB_POOL_MAX || '25'), // Increased max connections
-  idle_timeout: parseInt(process.env.DB_IDLE_TIMEOUT || '30'), // Idle timeout in seconds
-  connect_timeout: parseInt(process.env.DB_CONNECT_TIMEOUT || '10'), // Connection timeout in seconds
-  
-  // Performance optimizations
-  prepare: true, // Use prepared statements for better performance
-  transform: {
-    undefined: null, // Transform undefined to null
-  },
-  
-  // Connection lifecycle settings
-  max_lifetime: parseInt(process.env.DB_MAX_LIFETIME || '3600'), // Max connection lifetime in seconds
-  
-  // SSL configuration for production
-  ssl: process.env.NODE_ENV === 'production' ? 'require' : false,
-  
-  // Additional performance settings
-  statement_timeout: parseInt(process.env.DB_STATEMENT_TIMEOUT || '30000'), // 30 seconds
-  query_timeout: parseInt(process.env.DB_QUERY_TIMEOUT || '25000'), // 25 seconds
-  application_name: 'b2b_marketplace',
-};
+import { db } from './db';
 
 // Create optimized database connection with pooling
 export const createOptimizedConnection = () => {
-  const client = postgres(connectionConfig);
-  return drizzle(client, { schema });
+  return db; // Use the existing database connection
 };
 
 // Enhanced query optimization utilities
 export class QueryOptimizer {
-  private db: ReturnType<typeof createOptimizedConnection>;
-  
-  constructor(db: ReturnType<typeof createOptimizedConnection>) {
-    this.db = db;
+  private db: typeof db;
+
+  constructor(database: typeof db) {
+    this.db = database;
   }
 
   // Analyze query performance with detailed metrics
   async analyzeQuery(query: string): Promise<any[]> {
     try {
       const result = await this.db.execute(sql`EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${sql.raw(query)}`);
-      return result;
+      return result.rows || [];
     } catch (error) {
       console.error('Query analysis failed:', error);
       return [];
@@ -78,7 +43,7 @@ export class QueryOptimizer {
           WHERE schemaname = 'public'
           ORDER BY tablename, attname;
         `),
-        
+
         // Index usage statistics
         this.db.execute(sql`
           SELECT 
@@ -92,7 +57,7 @@ export class QueryOptimizer {
           WHERE schemaname = 'public'
           ORDER BY idx_scan DESC;
         `),
-        
+
         // Connection and activity statistics
         this.db.execute(sql`
           SELECT 
@@ -111,13 +76,14 @@ export class QueryOptimizer {
           WHERE datname = current_database();
         `)
       ]);
-      
+
+      const connectionData = connectionStats.rows?.[0] as any;
       return {
-        tableStats,
-        indexStats,
-        connectionStats: connectionStats[0],
-        cacheHitRatio: connectionStats[0] ? 
-          (connectionStats[0].blks_hit / (connectionStats[0].blks_hit + connectionStats[0].blks_read) * 100) : 0
+        tableStats: tableStats.rows || [],
+        indexStats: indexStats.rows || [],
+        connectionStats: connectionData,
+        cacheHitRatio: connectionData ?
+          (connectionData.blks_hit / (connectionData.blks_hit + connectionData.blks_read) * 100) : 0
       };
     } catch (error) {
       console.error('Failed to get database stats:', error);
@@ -180,8 +146,8 @@ export class QueryOptimizer {
         FROM missing_indexes
         ORDER BY seq_tup_read DESC;
       `);
-      
-      return result;
+
+      return result.rows || [];
     } catch (error) {
       console.error('Failed to find missing indexes:', error);
       return [];
@@ -206,8 +172,8 @@ export class QueryOptimizer {
         ORDER BY mean_exec_time DESC
         LIMIT 20;
       `);
-      
-      return result;
+
+      return result.rows || [];
     } catch (error) {
       // Fallback to pg_stat_activity for currently running queries
       try {
@@ -225,8 +191,8 @@ export class QueryOptimizer {
             AND now() - query_start > interval '1 second'
           ORDER BY query_start;
         `);
-        
-        return fallbackResult;
+
+        return fallbackResult.rows || [];
       } catch (fallbackError) {
         console.error('Failed to get slow queries:', error);
         return [];
@@ -240,7 +206,7 @@ export class QueryOptimizer {
       const result = await this.db.execute(sql`
         SELECT 
           schemaname,
-          tablename,
+          relname as tablename,
           n_dead_tup,
           n_live_tup,
           CASE 
@@ -257,8 +223,8 @@ export class QueryOptimizer {
           AND n_dead_tup > 1000  -- Only show tables with significant dead tuples
         ORDER BY n_dead_tup DESC;
       `);
-      
-      return result;
+
+      return result.rows || [];
     } catch (error) {
       console.error('Failed to get table bloat information:', error);
       return [];
@@ -269,23 +235,23 @@ export class QueryOptimizer {
   async optimizeCommonQueries(): Promise<void> {
     try {
       console.log('Optimizing common query patterns...');
-      
+
       // Update statistics for frequently queried tables
       const frequentTables = [
-        'products', 'orders', 'users', 'supplier_profiles', 
+        'products', 'orders', 'users', 'supplier_profiles',
         'rfqs', 'quotations', 'inquiries', 'conversations', 'messages'
       ];
-      
+
       for (const table of frequentTables) {
         await this.updateTableStats(table);
       }
-      
+
       // Set optimal work_mem for complex queries
       await this.db.execute(sql`SET work_mem = '256MB'`);
-      
+
       // Enable parallel query execution for large datasets
       await this.db.execute(sql`SET max_parallel_workers_per_gather = 4`);
-      
+
       console.log('Common query optimization completed');
     } catch (error) {
       console.error('Failed to optimize common queries:', error);
@@ -350,12 +316,12 @@ export class QueryCache {
     let oldestKey = '';
     let oldestTime = Date.now();
 
-    for (const [key, value] of this.cache.entries()) {
+    this.cache.forEach((value, key) => {
       if (value.lastAccessed < oldestTime) {
         oldestTime = value.lastAccessed;
         oldestKey = key;
       }
-    }
+    });
 
     if (oldestKey) {
       this.cache.delete(oldestKey);
@@ -372,16 +338,20 @@ export class QueryCache {
   // Clear expired entries
   clearExpired(): void {
     const now = Date.now();
-    for (const [key, value] of this.cache.entries()) {
+    const keysToDelete: string[] = [];
+
+    this.cache.forEach((value, key) => {
       if (now - value.timestamp > value.ttl) {
-        this.cache.delete(key);
+        keysToDelete.push(key);
       }
-    }
+    });
+
+    keysToDelete.forEach(key => this.cache.delete(key));
   }
 
   // Get comprehensive cache statistics
-  getStats(): { 
-    size: number; 
+  getStats(): {
+    size: number;
     maxSize: number;
     hitCount: number;
     missCount: number;
@@ -391,9 +361,13 @@ export class QueryCache {
   } {
     const totalRequests = this.hitCount + this.missCount;
     const hitRate = totalRequests > 0 ? (this.hitCount / totalRequests) * 100 : 0;
-    
+
     // Estimate memory usage (rough calculation)
-    const memoryUsage = JSON.stringify(Array.from(this.cache.entries())).length;
+    const entries: any[] = [];
+    this.cache.forEach((value, key) => {
+      entries.push([key, value]);
+    });
+    const memoryUsage = JSON.stringify(entries).length;
 
     return {
       size: this.cache.size,
@@ -408,12 +382,17 @@ export class QueryCache {
 
   // Get cache entries by access pattern
   getMostAccessed(limit: number = 10): Array<{ key: string; accessCount: number; lastAccessed: Date }> {
-    return Array.from(this.cache.entries())
-      .map(([key, value]) => ({
+    const entries: Array<{ key: string; accessCount: number; lastAccessed: Date }> = [];
+
+    this.cache.forEach((value, key) => {
+      entries.push({
         key,
         accessCount: value.accessCount,
         lastAccessed: new Date(value.lastAccessed),
-      }))
+      });
+    });
+
+    return entries
       .sort((a, b) => b.accessCount - a.accessCount)
       .slice(0, limit);
   }
@@ -421,7 +400,7 @@ export class QueryCache {
   // Warm up cache with frequently accessed data
   async warmUp(queries: Array<{ key: string; queryFn: () => Promise<any>; ttl?: number }>): Promise<void> {
     console.log(`Warming up cache with ${queries.length} queries...`);
-    
+
     const promises = queries.map(async ({ key, queryFn, ttl }) => {
       try {
         const data = await queryFn();
@@ -438,11 +417,11 @@ export class QueryCache {
 
 // Optimized query builders for common operations
 export class OptimizedQueries {
-  private db: ReturnType<typeof createOptimizedConnection>;
+  private db: typeof db;
   private cache: QueryCache;
 
-  constructor(db: ReturnType<typeof createOptimizedConnection>, cache: QueryCache) {
-    this.db = db;
+  constructor(database: typeof db, cache: QueryCache) {
+    this.db = database;
     this.cache = cache;
   }
 
@@ -515,11 +494,12 @@ export class OptimizedQueries {
       }
 
       const result = await this.db.execute(query);
-      
+      const rows = result.rows || [];
+
       // Cache for 5 minutes
-      this.cache.set(cacheKey, result, 300000);
-      
-      return result;
+      this.cache.set(cacheKey, rows, 300000);
+
+      return rows;
     } catch (error) {
       console.error('Optimized product search failed:', error);
       return [];
@@ -613,11 +593,11 @@ export class OptimizedQueries {
           (SELECT json_agg(top_products ORDER BY engagement_score DESC) FROM top_products) as top_products;
       `);
 
-      const dashboardData = result[0];
-      
+      const dashboardData = result.rows?.[0];
+
       // Cache for 2 minutes
       this.cache.set(cacheKey, dashboardData, 120000);
-      
+
       return dashboardData;
     } catch (error) {
       console.error('Supplier dashboard query failed:', error);
@@ -680,11 +660,11 @@ export class OptimizedQueries {
           (SELECT json_agg(category_preferences ORDER BY total_spent DESC) FROM category_preferences) as category_preferences;
       `);
 
-      const analyticsData = result[0];
-      
+      const analyticsData = result.rows?.[0];
+
       // Cache for 5 minutes
       this.cache.set(cacheKey, analyticsData, 300000);
-      
+
       return analyticsData;
     } catch (error) {
       console.error('Buyer analytics query failed:', error);
@@ -741,11 +721,12 @@ export class OptimizedQueries {
         ORDER BY match_score DESC, created_at DESC
         LIMIT ${limit};
       `);
-      
+
+      const rows = result.rows || [];
       // Cache for 10 minutes
-      this.cache.set(cacheKey, result, 600000);
-      
-      return result;
+      this.cache.set(cacheKey, rows, 600000);
+
+      return rows;
     } catch (error) {
       console.error('RFQ matching query failed:', error);
       return [];
@@ -803,11 +784,12 @@ export class OptimizedQueries {
         GROUP BY c.id, bu.name, bc.company_name, sp.business_name, au.name, m_last.message, m_last.created_at
         ORDER BY COALESCE(m_last.created_at, c.created_at) DESC;
       `);
-      
+
+      const rows = result.rows || [];
       // Cache for 1 minute (conversations change frequently)
-      this.cache.set(cacheKey, result, 60000);
-      
-      return result;
+      this.cache.set(cacheKey, rows, 60000);
+
+      return rows;
     } catch (error) {
       console.error('Conversation list query failed:', error);
       return [];
@@ -817,10 +799,10 @@ export class OptimizedQueries {
 
 // Enhanced database maintenance utilities
 export class DatabaseMaintenance {
-  private db: ReturnType<typeof createOptimizedConnection>;
+  private db: typeof db;
 
-  constructor(db: ReturnType<typeof createOptimizedConnection>) {
-    this.db = db;
+  constructor(database: typeof db) {
+    this.db = database;
   }
 
   // Comprehensive database maintenance with intelligent scheduling
@@ -831,12 +813,12 @@ export class DatabaseMaintenance {
     updateStats?: boolean;
   } = {}): Promise<void> {
     const { vacuum = true, analyze = true, reindex = false, updateStats = true } = options;
-    
+
     try {
       console.log('Starting comprehensive database maintenance...');
-      
+
       // Get list of tables with their statistics
-      const tables = await this.db.execute(sql`
+      const tablesResult = await this.db.execute(sql`
         SELECT 
           t.tablename,
           s.n_live_tup,
@@ -856,24 +838,26 @@ export class DatabaseMaintenance {
         ORDER BY s.n_dead_tup DESC NULLS LAST;
       `);
 
+      const tables = tablesResult.rows || [];
+
       // Prioritize tables that need maintenance most
-      const highPriorityTables = tables.filter(table => 
+      const highPriorityTables = tables.filter((table: any) =>
         table.bloat_percent > 20 || table.n_dead_tup > 10000
       );
-      
-      const regularTables = tables.filter(table => 
+
+      const regularTables = tables.filter((table: any) =>
         !highPriorityTables.includes(table)
       );
 
       // Process high priority tables first
       for (const table of highPriorityTables) {
-        const tableName = table.tablename;
-        console.log(`High priority maintenance for table: ${tableName} (${table.bloat_percent}% bloat)`);
-        
+        const tableName = (table as any).tablename;
+        console.log(`High priority maintenance for table: ${tableName} (${(table as any).bloat_percent}% bloat)`);
+
         if (vacuum) {
           await this.db.execute(sql`VACUUM ${sql.identifier(tableName)}`);
         }
-        
+
         if (analyze) {
           await this.db.execute(sql`ANALYZE ${sql.identifier(tableName)}`);
         }
@@ -881,9 +865,9 @@ export class DatabaseMaintenance {
 
       // Process regular tables
       for (const table of regularTables) {
-        const tableName = table.tablename;
+        const tableName = (table as any).tablename;
         console.log(`Regular maintenance for table: ${tableName}`);
-        
+
         if (vacuum && analyze) {
           await this.db.execute(sql`VACUUM ANALYZE ${sql.identifier(tableName)}`);
         } else {
@@ -917,9 +901,9 @@ export class DatabaseMaintenance {
   async reindexTables(): Promise<void> {
     try {
       console.log('Starting intelligent table reindexing...');
-      
+
       // Get index usage statistics
-      const indexStats = await this.db.execute(sql`
+      const indexStatsResult = await this.db.execute(sql`
         SELECT 
           schemaname,
           tablename,
@@ -933,12 +917,15 @@ export class DatabaseMaintenance {
         ORDER BY idx_scan DESC;
       `);
 
+      const indexStats = indexStatsResult.rows || [];
+
       // Reindex frequently used indexes
       for (const index of indexStats) {
-        console.log(`Reindexing: ${index.indexname} (${index.idx_scan} scans)`);
-        await this.db.execute(sql`REINDEX INDEX ${sql.identifier(index.indexname)}`);
+        const indexData = index as any;
+        console.log(`Reindexing: ${indexData.indexname} (${indexData.idx_scan} scans)`);
+        await this.db.execute(sql`REINDEX INDEX ${sql.identifier(indexData.indexname)}`);
       }
-      
+
       console.log('Table reindexing completed');
     } catch (error) {
       console.error('Table reindexing failed:', error);
@@ -950,17 +937,17 @@ export class DatabaseMaintenance {
   async updateGlobalStatistics(): Promise<void> {
     try {
       console.log('Updating global database statistics...');
-      
+
       // Update table statistics
       await this.db.execute(sql`ANALYZE`);
-      
+
       // Update extension statistics if available
       try {
         await this.db.execute(sql`SELECT pg_stat_reset()`);
       } catch (error) {
         console.warn('Could not reset pg_stat (may not have permissions)');
       }
-      
+
       console.log('Global statistics updated');
     } catch (error) {
       console.error('Failed to update global statistics:', error);
@@ -971,7 +958,7 @@ export class DatabaseMaintenance {
   async optimizeConfiguration(): Promise<void> {
     try {
       console.log('Optimizing database configuration...');
-      
+
       // Set optimal configuration for B2B marketplace workload
       const optimizations = [
         // Memory settings
@@ -979,23 +966,23 @@ export class DatabaseMaintenance {
         sql`ALTER SYSTEM SET effective_cache_size = '1GB'`,
         sql`ALTER SYSTEM SET work_mem = '16MB'`,
         sql`ALTER SYSTEM SET maintenance_work_mem = '256MB'`,
-        
+
         // Connection settings
         sql`ALTER SYSTEM SET max_connections = 200`,
         sql`ALTER SYSTEM SET max_prepared_transactions = 100`,
-        
+
         // Query optimization
         sql`ALTER SYSTEM SET random_page_cost = 1.1`,
         sql`ALTER SYSTEM SET effective_io_concurrency = 200`,
         sql`ALTER SYSTEM SET max_parallel_workers_per_gather = 4`,
         sql`ALTER SYSTEM SET max_parallel_workers = 8`,
-        
+
         // Logging and monitoring
         sql`ALTER SYSTEM SET log_min_duration_statement = 1000`,
         sql`ALTER SYSTEM SET log_checkpoints = on`,
         sql`ALTER SYSTEM SET log_connections = on`,
         sql`ALTER SYSTEM SET log_disconnections = on`,
-        
+
         // Checkpoint and WAL settings
         sql`ALTER SYSTEM SET checkpoint_completion_target = 0.9`,
         sql`ALTER SYSTEM SET wal_buffers = '16MB'`,
@@ -1006,10 +993,10 @@ export class DatabaseMaintenance {
         try {
           await this.db.execute(optimization);
         } catch (error) {
-          console.warn('Could not apply configuration (may require superuser privileges):', error.message);
+          console.warn('Could not apply configuration (may require superuser privileges):', (error as Error).message);
         }
       }
-      
+
       console.log('Database configuration optimization completed');
       console.log('Note: Configuration changes require a database restart to take effect');
     } catch (error) {
@@ -1024,44 +1011,44 @@ export class DatabaseMaintenance {
     cleanupTempData?: boolean;
   } = {}): Promise<void> {
     const { daysToKeep = 90, cleanupLogs = true, cleanupTempData = true } = options;
-    
+
     try {
       console.log(`Starting data cleanup (keeping ${daysToKeep} days of data)...`);
-      
+
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
-      
+
       // Clean up old activity logs
       if (cleanupLogs) {
         const deletedLogs = await this.db.execute(sql`
           DELETE FROM activity_logs 
           WHERE created_at < ${cutoffDate.toISOString()}
         `);
-        console.log(`Cleaned up old activity logs: ${deletedLogs.length} records`);
+        console.log(`Cleaned up old activity logs: ${deletedLogs.rowCount || 0} records`);
       }
-      
+
       // Clean up old notifications
       const deletedNotifications = await this.db.execute(sql`
         DELETE FROM notifications 
         WHERE created_at < ${cutoffDate.toISOString()} AND read = true
       `);
-      console.log(`Cleaned up old notifications: ${deletedNotifications.length} records`);
-      
+      console.log(`Cleaned up old notifications: ${deletedNotifications.rowCount || 0} records`);
+
       // Clean up expired RFQs
       const expiredRFQs = await this.db.execute(sql`
         UPDATE rfqs 
         SET status = 'expired' 
         WHERE status = 'open' AND expires_at < NOW()
       `);
-      console.log(`Marked expired RFQs: ${expiredRFQs.length} records`);
-      
+      console.log(`Marked expired RFQs: ${expiredRFQs.rowCount || 0} records`);
+
       // Clean up temporary data if requested
       if (cleanupTempData) {
         // Clean up old file uploads that are not referenced
         // This would need to be implemented based on your file storage system
         console.log('Temporary data cleanup completed');
       }
-      
+
       console.log('Data cleanup completed');
     } catch (error) {
       console.error('Data cleanup failed:', error);
@@ -1095,7 +1082,7 @@ export class DatabaseMaintenance {
           WHERE schemaname = 'public'
           ORDER BY n_dead_tup DESC;
         `),
-        
+
         // Index usage
         this.db.execute(sql`
           SELECT 
@@ -1110,7 +1097,7 @@ export class DatabaseMaintenance {
           ORDER BY idx_scan DESC
           LIMIT 20;
         `),
-        
+
         // Database statistics
         this.db.execute(sql`
           SELECT 
@@ -1128,7 +1115,7 @@ export class DatabaseMaintenance {
           FROM pg_stat_database
           WHERE datname = current_database();
         `),
-        
+
         // Slow queries (if pg_stat_statements is available)
         this.db.execute(sql`
           SELECT 
@@ -1141,22 +1128,22 @@ export class DatabaseMaintenance {
           WHERE mean_exec_time > 100
           ORDER BY mean_exec_time DESC
           LIMIT 10;
-        `).catch(() => []) // Ignore if pg_stat_statements is not available
+        `).catch(() => ({ rows: [] })) // Ignore if pg_stat_statements is not available
       ]);
 
       const report = {
         timestamp: new Date().toISOString(),
-        tableStats,
-        indexStats,
-        connectionStats: connectionStats[0],
-        slowQueries,
-        recommendations: this.generateRecommendations(tableStats, indexStats)
+        tableStats: tableStats.rows || [],
+        indexStats: indexStats.rows || [],
+        connectionStats: connectionStats.rows?.[0],
+        slowQueries: (slowQueries as any).rows || [],
+        recommendations: this.generateRecommendations(tableStats.rows || [], indexStats.rows || [])
       };
 
       return report;
     } catch (error) {
       console.error('Failed to generate maintenance report:', error);
-      return { error: error.message };
+      return { error: (error as Error).message };
     }
   }
 
@@ -1165,25 +1152,26 @@ export class DatabaseMaintenance {
     const recommendations = [];
 
     // Check for tables with high bloat
-    const bloatedTables = tableStats.filter(table => table.bloat_percent > 20);
+    const bloatedTables = tableStats.filter((table: any) => table.bloat_percent > 20);
     if (bloatedTables.length > 0) {
-      recommendations.push(`Consider VACUUM FULL for tables with high bloat: ${bloatedTables.map(t => t.tablename).join(', ')}`);
+      recommendations.push(`Consider VACUUM FULL for tables with high bloat: ${bloatedTables.map((t: any) => t.tablename).join(', ')}`);
     }
 
     // Check for unused indexes
-    const unusedIndexes = indexStats.filter(index => index.idx_scan < 10);
+    const unusedIndexes = indexStats.filter((index: any) => index.idx_scan < 10);
     if (unusedIndexes.length > 0) {
-      recommendations.push(`Consider dropping unused indexes: ${unusedIndexes.map(i => i.indexname).join(', ')}`);
+      recommendations.push(`Consider dropping unused indexes: ${unusedIndexes.map((i: any) => i.indexname).join(', ')}`);
     }
 
     // Check for tables that need analysis
-    const staleStats = tableStats.filter(table => {
+    const staleStats = tableStats.filter((table: any) => {
+      if (!table.last_analyze) return true;
       const lastAnalyze = new Date(table.last_analyze);
       const daysSinceAnalyze = (Date.now() - lastAnalyze.getTime()) / (1000 * 60 * 60 * 24);
       return daysSinceAnalyze > 7;
     });
     if (staleStats.length > 0) {
-      recommendations.push(`Run ANALYZE on tables with stale statistics: ${staleStats.map(t => t.tablename).join(', ')}`);
+      recommendations.push(`Run ANALYZE on tables with stale statistics: ${staleStats.map((t: any) => t.tablename).join(', ')}`);
     }
 
     return recommendations;

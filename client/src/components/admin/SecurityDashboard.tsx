@@ -98,14 +98,24 @@ export default function SecurityDashboard() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const { toast } = useToast();
 
-  // Fetch security health
+  // Fetch enhanced security dashboard
+  const { data: dashboardData, isLoading: dashboardLoading, refetch: refetchDashboard } = useQuery({
+    queryKey: ['/api/admin/security/monitoring/dashboard'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/admin/security/monitoring/dashboard');
+      return response.dashboard;
+    },
+    refetchInterval: autoRefresh ? 30000 : false, // Refresh every 30 seconds if auto-refresh is on
+  });
+
+  // Fetch security health (legacy endpoint)
   const { data: healthData, isLoading: healthLoading, refetch: refetchHealth } = useQuery<SecurityHealth>({
     queryKey: ['/api/admin/security/health'],
     queryFn: async () => {
       const response = await apiRequest('GET', '/api/admin/security/health');
       return response.health;
     },
-    refetchInterval: autoRefresh ? 30000 : false, // Refresh every 30 seconds if auto-refresh is on
+    refetchInterval: autoRefresh ? 30000 : false,
   });
 
   // Fetch security metrics
@@ -118,7 +128,17 @@ export default function SecurityDashboard() {
     refetchInterval: autoRefresh ? 60000 : false, // Refresh every minute
   });
 
-  // Fetch security threats
+  // Fetch enhanced security alerts
+  const { data: alertsData, isLoading: alertsLoading } = useQuery({
+    queryKey: ['/api/admin/security/monitoring/alerts'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/admin/security/monitoring/alerts');
+      return response;
+    },
+    refetchInterval: autoRefresh ? 30000 : false,
+  });
+
+  // Fetch security threats (legacy endpoint)
   const { data: threatsData, isLoading: threatsLoading } = useQuery({
     queryKey: ['/api/admin/security/threats'],
     queryFn: async () => {
@@ -134,6 +154,8 @@ export default function SecurityDashboard() {
       return await apiRequest('POST', '/api/admin/security/scan');
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/security/monitoring/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/security/monitoring/alerts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/security/health'] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/security/metrics'] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/security/threats'] });
@@ -148,7 +170,47 @@ export default function SecurityDashboard() {
     },
   });
 
+  // Acknowledge alert mutation
+  const acknowledgeAlertMutation = useMutation({
+    mutationFn: async ({ alertId, notes }: { alertId: string; notes?: string }) => {
+      return await apiRequest('POST', `/api/admin/security/monitoring/alerts/${alertId}/acknowledge`, { notes });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/security/monitoring/alerts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/security/monitoring/dashboard'] });
+      toast({ title: "Success", description: "Alert acknowledged successfully" });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to acknowledge alert", 
+        variant: "destructive" 
+      });
+    },
+  });
+
+  // Resolve alert mutation
+  const resolveAlertMutation = useMutation({
+    mutationFn: async ({ alertId, resolutionNotes }: { alertId: string; resolutionNotes: string }) => {
+      return await apiRequest('POST', `/api/admin/security/monitoring/alerts/${alertId}/resolve`, { resolutionNotes });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/security/monitoring/alerts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/security/monitoring/dashboard'] });
+      toast({ title: "Success", description: "Alert resolved successfully" });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to resolve alert", 
+        variant: "destructive" 
+      });
+    },
+  });
+
   const threats = threatsData?.threats || [];
+  const alerts = alertsData?.alerts || [];
+  const dashboard = dashboardData;
   const health = healthData;
   const metrics = metricsData;
 
@@ -211,7 +273,9 @@ export default function SecurityDashboard() {
           <Button
             variant="outline"
             onClick={() => {
+              refetchDashboard();
               refetchHealth();
+              queryClient.invalidateQueries({ queryKey: ['/api/admin/security/monitoring/alerts'] });
               queryClient.invalidateQueries({ queryKey: ['/api/admin/security/metrics'] });
               queryClient.invalidateQueries({ queryKey: ['/api/admin/security/threats'] });
             }}
@@ -226,8 +290,71 @@ export default function SecurityDashboard() {
         </div>
       </div>
 
-      {/* Security Health Overview */}
-      {health && (
+      {/* Enhanced Security Health Overview */}
+      {dashboard && (
+        <Card className="border-l-4 border-l-blue-500">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className={`p-3 rounded-full ${getHealthStatusColor(dashboard.systemHealth.riskLevel)}`}>
+                  {getHealthStatusIcon(dashboard.systemHealth.riskLevel)}
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">Enhanced Security Health</h3>
+                  <p className="text-sm text-gray-600">
+                    Last scan: {format(new Date(dashboard.systemHealth.lastScanTime), 'MMM dd, HH:mm')}
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-bold">{dashboard.systemHealth.securityScore}/100</div>
+                <Badge className={getHealthStatusColor(dashboard.systemHealth.riskLevel)}>
+                  {dashboard.systemHealth.riskLevel.toUpperCase()}
+                </Badge>
+              </div>
+            </div>
+            
+            <div className="mb-4">
+              <div className="flex justify-between text-sm mb-2">
+                <span>Security Score</span>
+                <span>{dashboard.systemHealth.securityScore}%</span>
+              </div>
+              <Progress value={dashboard.systemHealth.securityScore} className="h-2" />
+            </div>
+
+            <div className="grid grid-cols-4 gap-4 text-center">
+              <div>
+                <div className="text-2xl font-bold text-red-600">{dashboard.realTimeThreats.critical}</div>
+                <div className="text-sm text-gray-600">Critical</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-orange-600">{dashboard.realTimeThreats.high}</div>
+                <div className="text-sm text-gray-600">High</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-yellow-600">{dashboard.realTimeThreats.medium}</div>
+                <div className="text-sm text-gray-600">Medium</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-blue-600">{dashboard.realTimeThreats.low}</div>
+                <div className="text-sm text-gray-600">Low</div>
+              </div>
+            </div>
+
+            {dashboard.suspiciousIPs.length > 0 && (
+              <Alert className="mt-4">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Alert:</strong> {dashboard.suspiciousIPs.length} suspicious IP addresses detected with multiple security alerts.
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Fallback to legacy health display */}
+      {!dashboard && health && (
         <Card className="border-l-4 border-l-blue-500">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
@@ -296,7 +423,67 @@ export default function SecurityDashboard() {
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
-          {metrics && (
+          {/* Enhanced Dashboard Metrics */}
+          {dashboard && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">Total Threats</p>
+                      <p className="text-2xl font-bold">{dashboard.realTimeThreats.total}</p>
+                      <p className="text-xs text-gray-500">
+                        {dashboard.alertTrends.percentageChange >= 0 ? '+' : ''}{dashboard.alertTrends.percentageChange}% from yesterday
+                      </p>
+                    </div>
+                    <AlertTriangle className="w-8 h-8 text-red-500" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">Security Score</p>
+                      <p className="text-2xl font-bold">{dashboard.systemHealth.securityScore}</p>
+                      <p className="text-xs text-gray-500">Risk Level: {dashboard.systemHealth.riskLevel}</p>
+                    </div>
+                    <Gauge className="w-8 h-8 text-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">Suspicious IPs</p>
+                      <p className="text-2xl font-bold">{dashboard.suspiciousIPs.length}</p>
+                      <p className="text-xs text-gray-500">Active monitoring</p>
+                    </div>
+                    <Activity className="w-8 h-8 text-orange-500" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">24h Alerts</p>
+                      <p className="text-2xl font-bold">{dashboard.alertTrends.last24Hours}</p>
+                      <p className="text-xs text-gray-500">Last 24 hours</p>
+                    </div>
+                    <Target className="w-8 h-8 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Fallback to legacy metrics */}
+          {!dashboard && metrics && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card>
                 <CardContent className="p-4">
@@ -442,21 +629,92 @@ export default function SecurityDashboard() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5" />
-                Security Threats
+                Security Alerts & Threats
               </CardTitle>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Threat</TableHead>
+                    <TableHead>Alert</TableHead>
                     <TableHead>Severity</TableHead>
-                    <TableHead>Risk Score</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>Detected</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
+                  {/* Enhanced Security Alerts */}
+                  {alerts.map((alert: any) => (
+                    <TableRow key={alert.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          {getThreatTypeIcon(alert.type)}
+                          <div>
+                            <p className="font-medium">{alert.description}</p>
+                            <p className="text-sm text-gray-500">
+                              {alert.type.replace('_', ' ')}
+                              {alert.ipAddress && ` • ${alert.ipAddress}`}
+                              {alert.userEmail && ` • ${alert.userEmail}`}
+                            </p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getSeverityColor(alert.severity)}>
+                          {alert.severity}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={alert.status === 'active' ? 'destructive' : 'secondary'}>
+                          {alert.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-gray-400" />
+                          <span className="text-sm">
+                            {format(new Date(alert.createdAt), 'MMM dd, HH:mm')}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {alert.status === 'active' && (
+                            <>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => acknowledgeAlertMutation.mutate({ alertId: alert.id })}
+                                disabled={acknowledgeAlertMutation.isPending}
+                              >
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                Acknowledge
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => resolveAlertMutation.mutate({ 
+                                  alertId: alert.id, 
+                                  resolutionNotes: 'Resolved via dashboard' 
+                                })}
+                                disabled={resolveAlertMutation.isPending}
+                              >
+                                <XCircle className="w-4 h-4 mr-2" />
+                                Resolve
+                              </Button>
+                            </>
+                          )}
+                          <Button variant="outline" size="sm">
+                            <Eye className="w-4 h-4 mr-2" />
+                            Details
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+
+                  {/* Legacy Security Threats */}
                   {threats.map((threat: SecurityThreat) => (
                     <TableRow key={threat.id}>
                       <TableCell>
@@ -508,6 +766,19 @@ export default function SecurityDashboard() {
                       </TableCell>
                     </TableRow>
                   ))}
+
+                  {/* Empty state */}
+                  {alerts.length === 0 && threats.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8">
+                        <div className="flex flex-col items-center gap-2">
+                          <Shield className="w-12 h-12 text-gray-400" />
+                          <p className="text-gray-500">No security alerts or threats detected</p>
+                          <p className="text-sm text-gray-400">Your system appears to be secure</p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </CardContent>

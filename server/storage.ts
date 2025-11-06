@@ -1553,31 +1553,24 @@ export class PostgresStorage implements IStorage {
     let whereCondition = sql`1=1`; // Default condition
     
     if (adminId) {
-      whereCondition = eq(conversations.unreadCountAdmin, adminId);
+      whereCondition = eq(conversations.adminId, adminId);
     }
 
     const results = await db.select({
       id: conversations.id,
       buyerId: conversations.buyerId,
-      adminId: conversations.unreadCountAdmin, // This field actually stores adminId
-      subject: conversations.lastMessage,
-      status: sql`'active'`.as('status'),
+      adminId: conversations.adminId,
+      subject: conversations.subject,
+      status: conversations.status,
       lastMessageAt: conversations.lastMessageAt,
       createdAt: conversations.createdAt,
-      productId: conversations.productId,
-      unreadCountBuyer: conversations.unreadCountBuyer,
-      unreadCountSupplier: conversations.unreadCountSupplier,
       // Join with buyer data
       buyerName: users.firstName,
       buyerEmail: users.email,
       buyerCompany: users.companyName,
-      // Join with product data
-      productName: products.name,
-      productImages: products.images
     })
     .from(conversations)
     .leftJoin(users, eq(conversations.buyerId, users.id))
-    .leftJoin(products, eq(conversations.productId, products.id))
     .where(whereCondition)
     .orderBy(desc(conversations.lastMessageAt));
 

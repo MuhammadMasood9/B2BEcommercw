@@ -14,24 +14,21 @@ import {
   User,
   ArrowRight,
   Star,
-  CheckCircle
+  CheckCircle,
+  Phone
 } from 'lucide-react';
 import Breadcrumb from '@/components/Breadcrumb';
 import { useToast } from '@/hooks/use-toast';
 import AIAssistant from '@/components/AIAssistant';
+import ImprovedChatInterface from '@/components/chat/ImprovedChatInterface';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Chat() {
   const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [showChatInterface, setShowChatInterface] = useState(false);
   const { toast } = useToast();
-
-  // Get current user info
-  const { data: userData } = useQuery({
-    queryKey: ['/api/auth/me'],
-    queryFn: () => apiRequest('GET', '/api/auth/me'),
-  });
-
-  const user = (userData as any)?.user;
+  const { user, loading } = useAuth();
 
   const handleOpenAIAssistant = () => {
     setIsAIAssistantOpen(true);
@@ -50,6 +47,21 @@ export default function Chat() {
   const handleMaximizeAIAssistant = () => {
     setIsMinimized(false);
   };
+
+  const handleStartChat = () => {
+    setShowChatInterface(true);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-500">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return (

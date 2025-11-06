@@ -1,73 +1,58 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
+import { useAuth } from "@/contexts/AuthContext";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import BuyerRegistrationForm from "@/components/auth/BuyerRegistrationForm";
+import SupplierRegistrationForm from "@/components/auth/SupplierRegistrationForm";
+import AdminRegistrationForm from "@/components/auth/AdminRegistrationForm";
 import { 
-  Mail, 
-  Lock, 
-  Eye, 
-  EyeOff, 
   Building2, 
-  User, 
-  Phone, 
-  Loader2,
-  ShieldCheck,
-  TrendingUp,
   Users,
-  Globe,
   ArrowRight,
   CheckCircle,
   Award,
-  Zap
+  Zap,
+  ShieldCheck,
+  Shield,
+  Store
 } from "lucide-react";
 import { SiGoogle, SiFacebook, SiLinkedin } from "react-icons/si";
-import { useAuth } from "@/contexts/AuthContext";
 
 export default function Signup() {
-  const [showPassword, setShowPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [location, setLocation] = useLocation();
-  const { register } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
-  // Form states for buyer
-  const [buyerData, setBuyerData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    companyName: '',
-    phone: '',
-    password: '',
-    terms: false
-  });
-
-  const handleBuyerSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!buyerData.terms) return;
-    
-    setIsSubmitting(true);
-    const success = await register({
-      email: buyerData.email,
-      password: buyerData.password,
-      firstName: buyerData.firstName,
-      lastName: buyerData.lastName,
-      companyName: buyerData.companyName,
-      phone: buyerData.phone,
-      role: 'buyer',
-      industry: 'General'
-    });
-    
-    if (success) {
-      setLocation('/dashboard');
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      // Role-based redirect
+      switch (user.role) {
+        case 'admin':
+          setLocation('/admin/dashboard');
+          break;
+        case 'supplier':
+          if (user.supplierStatus === 'approved') {
+            setLocation('/supplier/dashboard');
+          } else {
+            setLocation('/supplier/application-status');
+          }
+          break;
+        case 'buyer':
+          setLocation('/buyer/dashboard');
+          break;
+        default:
+          setLocation('/dashboard');
+      }
     }
-    
-    setIsSubmitting(false);
+  }, [isAuthenticated, user, setLocation]);
+
+  const handleRegistrationSuccess = () => {
+    // Success handling is done within each form component
   };
 
   const benefits = [
@@ -81,14 +66,14 @@ export default function Signup() {
     { 
       icon: Users, 
       title: "Global Network", 
-      description: "Connect with 10M+ users",
+      description: "Connect with millions of users",
       color: "from-blue-100 to-blue-200",
       iconColor: "text-blue-600"
     },
     { 
       icon: Award, 
-      title: "Verified Admins", 
-      description: "Only trusted partners",
+      title: "Verified Partners", 
+      description: "Only trusted businesses",
       color: "from-purple-100 to-purple-200",
       iconColor: "text-purple-600"
     },
@@ -103,12 +88,36 @@ export default function Signup() {
 
   const features = [
     "Free account creation",
-    "Access to 10M+ products",
-    "Verified admins network",
+    "Access to global marketplace",
+    "Verified business network",
     "Trade assurance protection",
     "24/7 customer support",
     "Multi-language support"
   ];
+
+  const roleFeatures = {
+    buyer: [
+      "Browse millions of products",
+      "Create and manage RFQs",
+      "Compare supplier quotations",
+      "Secure payment options",
+      "Order tracking and management"
+    ],
+    supplier: [
+      "Create your online store",
+      "List unlimited products",
+      "Manage inquiries and orders",
+      "Access to global buyers",
+      "Analytics and reporting tools"
+    ],
+    admin: [
+      "Platform management tools",
+      "User oversight and control",
+      "Advanced analytics dashboard",
+      "System configuration access",
+      "Security and compliance tools"
+    ]
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-white">
@@ -182,216 +191,93 @@ export default function Signup() {
               </CardHeader>
               <CardContent className="px-6 pb-6">
                 <Tabs defaultValue="buyer" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 mb-6">
-                    <TabsTrigger value="buyer" className="text-base py-3">
+                  <TabsList className="grid w-full grid-cols-3 mb-6">
+                    <TabsTrigger value="buyer" className="text-sm py-3">
                       <Users className="w-4 h-4 mr-2" />
                       Buyer
                     </TabsTrigger>
-                    <TabsTrigger value="supplier" className="text-base py-3">
+                    <TabsTrigger value="supplier" className="text-sm py-3">
                       <Building2 className="w-4 h-4 mr-2" />
                       Supplier
+                    </TabsTrigger>
+                    <TabsTrigger value="admin" className="text-sm py-3">
+                      <Shield className="w-4 h-4 mr-2" />
+                      Admin
                     </TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="buyer">
-                    <form onSubmit={handleBuyerSubmit} className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="firstName" className="text-sm font-medium">
-                            First Name
-                          </Label>
-                          <div className="relative">
-                            <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                            <Input
-                              id="firstName"
-                              placeholder="John"
-                              value={buyerData.firstName}
-                              onChange={(e) => setBuyerData({ ...buyerData, firstName: e.target.value })}
-                              required
-                              className="pl-10 h-11"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="lastName" className="text-sm font-medium">
-                            Last Name
-                          </Label>
-                          <div className="relative">
-                            <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                            <Input
-                              id="lastName"
-                              placeholder="Doe"
-                              value={buyerData.lastName}
-                              onChange={(e) => setBuyerData({ ...buyerData, lastName: e.target.value })}
-                              required
-                              className="pl-10 h-11"
-                            />
-                          </div>
-                        </div>
+                    <div className="space-y-4">
+                      <div className="text-center mb-4">
+                        <h4 className="font-semibold text-gray-900">Join as a Buyer</h4>
+                        <p className="text-sm text-gray-600">Source products from verified suppliers worldwide</p>
+                      </div>
+                      
+                      {/* Buyer Features */}
+                      <div className="bg-blue-50 rounded-lg p-4 mb-4">
+                        <h5 className="font-medium text-blue-900 mb-2">What you get:</h5>
+                        <ul className="text-sm text-blue-800 space-y-1">
+                          {roleFeatures.buyer.map((feature, index) => (
+                            <li key={index} className="flex items-center gap-2">
+                              <CheckCircle className="w-3 h-3 text-blue-600" />
+                              {feature}
+                            </li>
+                          ))}
+                        </ul>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="email" className="text-sm font-medium">
-                          Email Address
-                        </Label>
-                        <div className="relative">
-                          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                          <Input
-                            id="email"
-                            type="email"
-                            placeholder="you@company.com"
-                            value={buyerData.email}
-                            onChange={(e) => setBuyerData({ ...buyerData, email: e.target.value })}
-                            required
-                            className="pl-10 h-11"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="company" className="text-sm font-medium">
-                          Company Name
-                        </Label>
-                        <div className="relative">
-                          <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                          <Input
-                            id="company"
-                            placeholder="Your Company Ltd."
-                            value={buyerData.companyName}
-                            onChange={(e) => setBuyerData({ ...buyerData, companyName: e.target.value })}
-                            className="pl-10 h-11"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="phone" className="text-sm font-medium">
-                          Phone Number
-                        </Label>
-                        <div className="relative">
-                          <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                          <Input
-                            id="phone"
-                            type="tel"
-                            placeholder="+1 (555) 000-0000"
-                            value={buyerData.phone}
-                            onChange={(e) => setBuyerData({ ...buyerData, phone: e.target.value })}
-                            className="pl-10 h-11"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="password" className="text-sm font-medium">
-                          Password
-                        </Label>
-                        <div className="relative">
-                          <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                          <Input
-                            id="password"
-                            type={showPassword ? "text" : "password"}
-                            placeholder="Create a strong password"
-                            value={buyerData.password}
-                            onChange={(e) => setBuyerData({ ...buyerData, password: e.target.value })}
-                            required
-                            className="pl-10 pr-10 h-11"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                          >
-                            {showPassword ? (
-                              <EyeOff className="w-4 h-4" />
-                            ) : (
-                              <Eye className="w-4 h-4" />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start space-x-2">
-                        <Checkbox 
-                          id="terms" 
-                          checked={buyerData.terms}
-                          onCheckedChange={(checked) => setBuyerData({ ...buyerData, terms: checked === true })}
-                          required
-                        />
-                        <Label htmlFor="terms" className="text-xs text-gray-600 cursor-pointer leading-relaxed">
-                          I agree to the{" "}
-                          <Link href="/terms">
-                            <span className="text-blue-600 hover:text-blue-700 font-medium">
-                              Terms of Service
-                            </span>
-                          </Link>
-                          {" "}and{" "}
-                          <Link href="/privacy">
-                            <span className="text-blue-600 hover:text-blue-700 font-medium">
-                              Privacy Policy
-                            </span>
-                          </Link>
-                        </Label>
-                      </div>
-
-                      <Button
-                        type="submit"
-                        disabled={isSubmitting || !buyerData.terms}
-                        className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold shadow-lg"
-                      >
-                        {isSubmitting ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Creating account...
-                          </>
-                        ) : (
-                          <>
-                            Create Account
-                            <ArrowRight className="ml-2 h-4 w-4" />
-                          </>
-                        )}
-                      </Button>
-                    </form>
+                      <BuyerRegistrationForm onSuccess={handleRegistrationSuccess} />
+                    </div>
                   </TabsContent>
 
                   <TabsContent value="supplier">
-                    <div className="text-center space-y-4">
-                      <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 border border-blue-100">
-                        <Building2 className="w-12 h-12 text-blue-600 mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                          Ready to Start Selling?
-                        </h3>
-                        <p className="text-gray-600 mb-4">
-                          Join thousands of successful suppliers on our global marketplace
-                        </p>
-                        <div className="grid grid-cols-2 gap-3 text-sm text-gray-600 mb-6">
-                          <div className="flex items-center gap-2">
-                            <CheckCircle className="w-4 h-4 text-green-600" />
-                            Global reach
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <CheckCircle className="w-4 h-4 text-green-600" />
-                            Verified buyers
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <CheckCircle className="w-4 h-4 text-green-600" />
-                            Easy setup
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <CheckCircle className="w-4 h-4 text-green-600" />
-                            Low commission
-                          </div>
-                        </div>
-                        <Link href="/supplier/signup">
-                          <Button className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold">
-                            Start Supplier Registration
-                            <ArrowRight className="ml-2 h-4 w-4" />
-                          </Button>
-                        </Link>
+                    <div className="space-y-4">
+                      <div className="text-center mb-4">
+                        <h4 className="font-semibold text-gray-900">Join as a Supplier</h4>
+                        <p className="text-sm text-gray-600">Sell your products to buyers globally</p>
                       </div>
-                      <p className="text-xs text-gray-500">
-                        Supplier registration requires additional verification steps
-                      </p>
+                      
+                      {/* Supplier Features */}
+                      <div className="bg-green-50 rounded-lg p-4 mb-4">
+                        <h5 className="font-medium text-green-900 mb-2">What you get:</h5>
+                        <ul className="text-sm text-green-800 space-y-1">
+                          {roleFeatures.supplier.map((feature, index) => (
+                            <li key={index} className="flex items-center gap-2">
+                              <CheckCircle className="w-3 h-3 text-green-600" />
+                              {feature}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <SupplierRegistrationForm onSuccess={handleRegistrationSuccess} />
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="admin">
+                    <div className="space-y-4">
+                      <div className="text-center mb-4">
+                        <h4 className="font-semibold text-gray-900">Create Admin Account</h4>
+                        <p className="text-sm text-gray-600">Platform administration and management</p>
+                      </div>
+                      
+                      {/* Admin Features */}
+                      <div className="bg-purple-50 rounded-lg p-4 mb-4">
+                        <h5 className="font-medium text-purple-900 mb-2">Admin capabilities:</h5>
+                        <ul className="text-sm text-purple-800 space-y-1">
+                          {roleFeatures.admin.map((feature, index) => (
+                            <li key={index} className="flex items-center gap-2">
+                              <CheckCircle className="w-3 h-3 text-purple-600" />
+                              {feature}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <AdminRegistrationForm 
+                        onSuccess={handleRegistrationSuccess}
+                        allowSuperAdmin={false}
+                      />
                     </div>
                   </TabsContent>
                 </Tabs>

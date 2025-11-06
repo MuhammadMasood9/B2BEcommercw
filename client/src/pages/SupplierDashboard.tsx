@@ -5,13 +5,30 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/contexts/AuthContext";
+import { Link } from "wouter";
 
 import {
   Eye,
   MessageSquare,
   TrendingUp,
   Package,
-  Plus
+  Plus,
+  Store,
+  Users,
+  DollarSign,
+  BarChart3,
+  Bell,
+  Settings,
+  Shield,
+  Activity,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  FileText,
+  Star,
+  Zap
 } from "lucide-react";
 import StoreManagement from "@/components/supplier/StoreManagement";
 import ProductManagement from "@/components/supplier/ProductManagement";
@@ -21,17 +38,16 @@ import EnhancedAnalyticsDashboard from "@/components/supplier/EnhancedAnalyticsD
 import StaffManagement from "@/components/supplier/StaffManagement";
 import { VerificationDashboard } from "@/components/supplier/VerificationDashboard";
 import SupplierRFQManager from "@/components/supplier/SupplierRFQManager";
-import { Key, ReactElement, JSXElementConstructor, ReactNode, ReactPortal } from "react";
+import { SupplierDashboardMetrics } from "@/components/supplier/SupplierDashboardMetrics";
+import { SupplierNotificationCenter } from "@/components/supplier/SupplierNotificationCenter";
 
 export default function SupplierDashboard() {
+  const { user, hasRole, hasPermission, isSupplierApproved } = useAuth();
+
   // Fetch real supplier stats
   const { data: supplierStats, isLoading: statsLoading } = useQuery({
     queryKey: ['/api/suppliers/dashboard/stats'],
-    queryFn: async () => {
-      const response = await fetch('/api/suppliers/dashboard/stats');
-      if (!response.ok) throw new Error('Failed to fetch supplier stats');
-      return response.json();
-    }
+    queryFn: () => apiRequest('GET', '/api/suppliers/dashboard/stats')
   });
 
   const stats = supplierStats ? [
@@ -73,36 +89,79 @@ export default function SupplierDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex justify-between items-center mb-8">
             <div>
-              <h1 className="text-3xl font-bold mb-2">Supplier Dashboard</h1>
-              <p className="text-muted-foreground">Manage your products and track performance</p>
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-3xl font-bold">Supplier Dashboard</h1>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                    <Store className="h-3 w-3 mr-1" />
+                    {user?.role || 'Supplier'}
+                  </Badge>
+                  {isSupplierApproved ? (
+                    <Badge variant="secondary" className="bg-green-100 text-green-800">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Approved
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="bg-yellow-100 text-yellow-800">
+                      <Clock className="h-3 w-3 mr-1" />
+                      Pending Approval
+                    </Badge>
+                  )}
+                  {user?.membershipTier && (
+                    <Badge variant="outline" className="bg-purple-100 text-purple-800">
+                      <Star className="h-3 w-3 mr-1" />
+                      {user.membershipTier}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              <p className="text-muted-foreground">
+                Manage your store, products, and track business performance
+              </p>
             </div>
-            <Button size="lg" data-testid="button-add-product">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Product
-            </Button>
+            <div className="flex gap-2">
+              {hasPermission('products', 'write') && (
+                <Button size="lg" data-testid="button-add-product">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Product
+                </Button>
+              )}
+              <Link href="/supplier/store-settings">
+                <Button variant="outline" size="lg">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Store Settings
+                </Button>
+              </Link>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {stats.map((stat, index) => {
-              const Icon = stat.icon;
-              return (
-                <Card key={index} data-testid={`card-stat-${index}`}>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className={`w-10 h-10 rounded-full bg-muted flex items-center justify-center ${stat.color}`}>
-                        <Icon className="w-5 h-5" />
-                      </div>
-                      <Badge variant="outline" className="text-xs">
-                        {stat.change}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
-                    <p className="text-2xl font-bold" data-testid={`text-stat-value-${index}`}>{stat.value}</p>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+          {/* Enhanced Supplier Dashboard Metrics */}
+          <SupplierDashboardMetrics
+            metrics={{
+              productViews: supplierStats?.productViews || 0,
+              inquiriesReceived: supplierStats?.inquiriesReceived || 0,
+              responseRate: supplierStats?.responseRate || 0,
+              activeProducts: supplierStats?.activeProducts || 0,
+              totalOrders: supplierStats?.totalOrders || 0,
+              monthlyRevenue: supplierStats?.monthlyRevenue || 0,
+              averageRating: supplierStats?.averageRating || 0,
+              profileViews: supplierStats?.profileViews || 0,
+              quotationsSent: supplierStats?.quotationsSent || 0,
+              conversionRate: supplierStats?.conversionRate || 0,
+              pendingOrders: supplierStats?.pendingOrders || 0,
+              completedOrders: supplierStats?.completedOrders || 0,
+            }}
+            comparisons={{
+              productViews: { changePercent: supplierStats?.viewsChangePercent || 0 },
+              inquiries: { changePercent: supplierStats?.inquiriesChangePercent || 0 },
+              revenue: { changePercent: supplierStats?.revenueChangePercent || 0 },
+              orders: { changePercent: supplierStats?.ordersChangePercent || 0 },
+            }}
+            onMetricClick={(metricId) => {
+              console.log(`Metric clicked: ${metricId}`);
+            }}
+            className="mb-8"
+          />
 
           <Tabs defaultValue="inquiries" className="space-y-6">
             <TabsList>
@@ -148,6 +207,11 @@ export default function SupplierDashboard() {
               <EnhancedAnalyticsDashboard />
             </TabsContent>
           </Tabs>
+
+          {/* Supplier Notification Center */}
+          <div className="mt-8">
+            <SupplierNotificationCenter />
+          </div>
         </div>
       </main>
       <Footer />

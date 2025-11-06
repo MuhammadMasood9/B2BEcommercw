@@ -23,6 +23,7 @@ import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import { useToast } from '@/hooks/use-toast';
 import { useWebSocketNotifications } from '@/hooks/useWebSocketNotifications';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ChatWindowProps {
   conversationId: string;
@@ -80,11 +81,24 @@ export default function ChatWindow({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user, loading } = useAuth();
+
+  // Don't render if authentication is still loading or user is not authenticated
+  if (loading || !user) {
+    return (
+      <div className={`flex items-center justify-center h-full ${className}`}>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-500">Loading chat...</p>
+        </div>
+      </div>
+    );
+  }
   
   // WebSocket connection for real-time updates
   const { isConnected, sendTypingIndicator } = useWebSocketNotifications({
     userId,
-    enabled: true
+    enabled: !!userId && userId !== 'undefined' && userId !== 'null'
   });
 
   // Fetch conversation details
@@ -185,7 +199,7 @@ export default function ChatWindow({
       content,
       messageType: 'text',
       attachments,
-      productReferences
+      // productReferences
     });
   };
 

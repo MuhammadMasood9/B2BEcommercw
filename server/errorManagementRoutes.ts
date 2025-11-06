@@ -2,7 +2,7 @@ import express from 'express';
 import { z } from 'zod';
 import { errorMonitoring } from './errorMonitoring';
 import { ErrorType } from './errorHandler';
-import { requireAdmin } from './authMiddleware';
+import { requireAdmin } from './authGuards';
 
 const router = express.Router();
 

@@ -259,7 +259,7 @@ export default function SupplierSignup() {
         }
       });
 
-      const response = await fetch('/api/suppliers/register', {
+      const response = await fetch('/api/registration/supplier/register', {
         method: 'POST',
         body: formDataToSend,
       });

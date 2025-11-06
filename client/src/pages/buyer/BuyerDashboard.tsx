@@ -40,8 +40,16 @@ import {
   MoreHorizontal,
   Search,
   SortAsc,
-  SortDesc
+  SortDesc,
+  Bell,
+  Settings,
+  Bookmark,
+  Zap,
+  Globe,
+  Shield
 } from 'lucide-react';
+import { BuyerDashboardMetrics } from '@/components/buyer/BuyerDashboardMetrics';
+import { BuyerNotificationCenter } from '@/components/buyer/BuyerNotificationCenter';
 
 interface DashboardStats {
   activeRfqs: number;
@@ -51,6 +59,8 @@ interface DashboardStats {
   totalQuotations: number;
   totalOrders: number;
   totalSpent: number;
+  savedSearches: number;
+  activeConversations: number;
 }
 
 interface RecentActivity {
@@ -63,33 +73,33 @@ interface RecentActivity {
   description?: string;
 }
 
+interface QuickAction {
+  id: string;
+  title: string;
+  description: string;
+  icon: React.ComponentType<any>;
+  href: string;
+  color: string;
+  count?: number;
+}
+
 export default function BuyerDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('newest');
-  const { user } = useAuth();
+  const { user, hasRole, hasPermission, isEmailVerified } = useAuth();
   const queryClient = useQueryClient();
 
   // Fetch comprehensive dashboard data
-  const { data: dashboardData, isLoading: dashboardLoading, error: dashboardError } = useQuery({
+  const { 
+    data: dashboardData, 
+    isLoading: dashboardLoading, 
+    error: dashboardError 
+  } = useQuery({
     queryKey: ['buyer-dashboard-comprehensive'],
-    queryFn: () => apiRequest('GET', '/api/buyer/dashboard/stats'),
-    enabled: !!user,
-    refetchInterval: 30000,
-  });
-
-  // Fetch unseen counts
-  const { data: unseenCounts } = useQuery({
-    queryKey: ['unseen-counts'],
     queryFn: async () => {
-      const [chatCount, notificationCount] = await Promise.all([
-        apiRequest('GET', '/api/chat/unseen-count'),
-        apiRequest('GET', '/api/notifications/unseen-count')
-      ]);
-      return {
-        chat: chatCount.count || 0,
-        notifications: notificationCount.count || 0
-      };
+      const response = await apiRequest('GET', '/api/buyer/dashboard/comprehensive');
+      return response.data || {};
     },
     enabled: !!user,
     refetchInterval: 30000,
@@ -121,7 +131,9 @@ export default function BuyerDashboard() {
     favoriteProducts: dashboardData?.favoriteProducts || 0,
     totalQuotations: dashboardData?.totalQuotations || 0,
     totalOrders: dashboardData?.totalOrders || 0,
-    totalSpent: dashboardData?.totalSpent || 0
+    totalSpent: dashboardData?.totalSpent || 0,
+    savedSearches: dashboardData?.savedSearches || 0,
+    activeConversations: dashboardData?.activeConversations || 0
   };
 
   // Create recent activity feed
@@ -285,172 +297,33 @@ export default function BuyerDashboard() {
             </Alert>
           )}
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Active RFQs</p>
-                    {isLoading ? (
-                      <Skeleton className="h-8 w-16 mt-1" />
-                    ) : (
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.activeRfqs}</p>
-                    )}
-                  </div>
-                  <FileText className="h-8 w-8 text-blue-600" />
-                </div>
-                <div className="mt-4">
-                  <Link href="/buyer/rfqs">
-                    <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700">
-                      View All <ArrowRight className="h-3 w-3 ml-1" />
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Pending Inquiries</p>
-                    {isLoading ? (
-                      <Skeleton className="h-8 w-16 mt-1" />
-                    ) : (
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.pendingInquiries}</p>
-                    )}
-                  </div>
-                  <Clock className="h-8 w-8 text-yellow-600" />
-                </div>
-                <div className="mt-4">
-                  <Link href="/buyer/inquiries">
-                    <Button variant="ghost" size="sm" className="text-yellow-600 hover:text-yellow-700">
-                      View All <ArrowRight className="h-3 w-3 ml-1" />
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Unread Messages</p>
-                    {isLoading ? (
-                      <Skeleton className="h-8 w-16 mt-1" />
-                    ) : (
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.unreadMessages}</p>
-                    )}
-                  </div>
-                  <MessageSquare className="h-8 w-8 text-green-600" />
-                </div>
-                <div className="mt-4">
-                  <Link href="/messages">
-                    <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700">
-                      View All <ArrowRight className="h-3 w-3 ml-1" />
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Orders</p>
-                    {isLoading ? (
-                      <Skeleton className="h-8 w-16 mt-1" />
-                    ) : (
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalOrders}</p>
-                    )}
-                  </div>
-                  <ShoppingBag className="h-8 w-8 text-purple-600" />
-                </div>
-                <div className="mt-4">
-                  <Link href="/buyer/orders">
-                    <Button variant="ghost" size="sm" className="text-purple-600 hover:text-purple-700">
-                      View All <ArrowRight className="h-3 w-3 ml-1" />
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Additional Stats Row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Quotations</p>
-                    {isLoading ? (
-                      <Skeleton className="h-8 w-16 mt-1" />
-                    ) : (
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalQuotations}</p>
-                    )}
-                  </div>
-                  <DollarSign className="h-8 w-8 text-green-600" />
-                </div>
-                <div className="mt-4">
-                  <Link href="/buyer/quotations">
-                    <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700">
-                      View All <ArrowRight className="h-3 w-3 ml-1" />
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Spent</p>
-                    {isLoading ? (
-                      <Skeleton className="h-8 w-20 mt-1" />
-                    ) : (
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(stats.totalSpent)}</p>
-                    )}
-                  </div>
-                  <TrendingUp className="h-8 w-8 text-blue-600" />
-                </div>
-                <div className="mt-4">
-                  <Link href="/buyer/orders">
-                    <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700">
-                      View Orders <ArrowRight className="h-3 w-3 ml-1" />
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Favorite Products</p>
-                    {isLoading ? (
-                      <Skeleton className="h-8 w-16 mt-1" />
-                    ) : (
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.favoriteProducts}</p>
-                    )}
-                  </div>
-                  <Heart className="h-8 w-8 text-red-600" />
-                </div>
-                <div className="mt-4">
-                  <Link href="/favorites">
-                    <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
-                      View Favorites <ArrowRight className="h-3 w-3 ml-1" />
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          {/* Enhanced Buyer Dashboard Metrics */}
+          <BuyerDashboardMetrics
+            metrics={{
+              activeRfqs: stats.activeRfqs,
+              pendingInquiries: stats.pendingInquiries,
+              unreadMessages: stats.unreadMessages,
+              favoriteProducts: stats.favoriteProducts,
+              totalQuotations: stats.totalQuotations,
+              totalOrders: stats.totalOrders,
+              totalSpent: stats.totalSpent,
+              savedSearches: dashboardData?.savedSearches || 0,
+              activeConversations: dashboardData?.activeConversations || 0,
+              completedOrders: dashboardData?.completedOrders || 0,
+              averageResponseTime: dashboardData?.averageResponseTime || 0,
+              supplierConnections: dashboardData?.supplierConnections || 0,
+            }}
+            comparisons={{
+              rfqs: { changePercent: dashboardData?.rfqsChangePercent || 0 },
+              inquiries: { changePercent: dashboardData?.inquiriesChangePercent || 0 },
+              orders: { changePercent: dashboardData?.ordersChangePercent || 0 },
+              spending: { changePercent: dashboardData?.spendingChangePercent || 0 },
+            }}
+            onMetricClick={(metricId) => {
+              console.log(`Metric clicked: ${metricId}`);
+            }}
+            className="mb-8"
+          />
 
           {/* Main Content Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -956,6 +829,11 @@ export default function BuyerDashboard() {
               </Card>
             </TabsContent>
           </Tabs>
+
+          {/* Buyer Notification Center */}
+          <div className="mt-8">
+            <BuyerNotificationCenter />
+          </div>
         </div>
       </main>
       <Footer />

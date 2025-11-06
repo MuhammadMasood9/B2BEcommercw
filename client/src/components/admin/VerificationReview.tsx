@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -77,14 +78,8 @@ export function VerificationReview() {
 
   const fetchApplications = async () => {
     try {
-      const response = await fetch('/api/verification/admin/pending', {
-        credentials: 'include'
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setApplications(data.applications);
-      }
+      const data = await apiRequest('GET', '/api/verification/admin/pending');
+      setApplications(data.applications);
     } catch (error) {
       console.error('Error fetching verification applications:', error);
     } finally {
@@ -94,14 +89,8 @@ export function VerificationReview() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/verification/admin/stats', {
-        credentials: 'include'
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data.stats);
-      }
+      const data = await apiRequest('GET', '/api/verification/admin/stats');
+      setStats(data.stats);
     } catch (error) {
       console.error('Error fetching verification stats:', error);
     }

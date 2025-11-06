@@ -3,142 +3,108 @@ import jwt from 'jsonwebtoken';
 import { db } from './db';
 import { users, supplierProfiles, staffMembers, buyers } from '@shared/schema';
 import { eq } from 'drizzle-orm';
+import { EnhancedAuthService, EnhancedJWTPayload, EnhancedRefreshTokenPayload } from './enhancedAuthService';
 
 // JWT Configuration
-const JWT_SECRET = process.env.JWT_SECRET || 'your-jwt-secret-change-in-production';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-jwt-refresh-secret-change-in-production';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
-const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
+const JWT_SECRET: string = process.env.JWT_SECRET || 'your-jwt-secret-change-in-production';
+const JWT_REFRESH_SECRET: string = process.env.JWT_REFRESH_SECRET || 'your-jwt-refresh-secret-change-in-production';
+const JWT_EXPIRES_IN: string = process.env.JWT_EXPIRES_IN || '15m';
+const JWT_REFRESH_EXPIRES_IN: string = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
+
+// Enhanced user interface for authentication
+export interface AuthenticatedUser {
+  id: string;
+  email: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  companyName?: string | null;
+  phone?: string | null;
+  role: 'buyer' | 'admin' | 'supplier';
+  emailVerified: boolean | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt?: Date | null;
+  // Enhanced role-specific data
+  supplierId?: string;
+  supplierStatus?: string;
+  membershipTier?: string;
+  buyerId?: string;
+  isStaffMember?: boolean;
+  staffMemberId?: string;
+  staffRole?: string;
+  staffPermissions?: Record<string, string[]>;
+}
+
+export interface TokenData {
+  iat: number;
+  exp: number;
+  jti: string;
+}
 
 // Extend Express Request type to include enhanced user data
-declare global {
-  namespace Express {
-    interface Request {
-      user?: {
-        id: string;
-        email: string;
-        firstName?: string;
-        lastName?: string;
-        companyName?: string;
-        phone?: string;
-        role: 'buyer' | 'admin' | 'supplier';
-        emailVerified: boolean;
-        isActive: boolean;
-        createdAt: Date;
-        // Enhanced role-specific data
-        supplierId?: string;
-        supplierStatus?: string;
-        membershipTier?: string;
-        buyerId?: string;
-        isStaffMember?: boolean;
-        staffMemberId?: string;
-        staffRole?: string;
-        staffPermissions?: Record<string, string[]>;
-      };
-      tokenData?: {
-        iat: number;
-        exp: number;
-        jti: string;
-      };
-    }
+declare module 'express-serve-static-core' {
+  interface Request {
+    user?: AuthenticatedUser;
+    tokenData?: TokenData;
   }
 }
 
-export interface JWTPayload {
-  userId: string;
-  email: string;
-  role: 'buyer' | 'admin' | 'supplier';
-  sessionId?: string;
-  iat?: number;
-  exp?: number;
-  jti?: string;
-}
-
-export interface RefreshTokenPayload {
-  userId: string;
-  sessionId: string;
-  tokenVersion: number;
-  iat?: number;
-  exp?: number;
-  jti?: string;
-}
+// Re-export enhanced interfaces
+export type JWTPayload = EnhancedJWTPayload;
+export type RefreshTokenPayload = EnhancedRefreshTokenPayload;
 
 /**
- * Generate JWT access token
+ * Generate JWT access token (delegated to EnhancedAuthService)
  */
 export const generateAccessToken = (payload: Omit<JWTPayload, 'iat' | 'exp' | 'jti'>): string => {
-  const jti = `${payload.userId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  
-  return jwt.sign(
-    { ...payload, jti },
-    JWT_SECRET,
-    { 
-      expiresIn: JWT_EXPIRES_IN,
-      issuer: 'b2b-marketplace',
-      audience: 'b2b-marketplace-users'
-    }
-  );
+  return EnhancedAuthService.generateAccessToken(payload);
 };
 
 /**
- * Generate JWT refresh token
+ * Generate JWT refresh token (delegated to EnhancedAuthService)
  */
 export const generateRefreshToken = (payload: Omit<RefreshTokenPayload, 'iat' | 'exp' | 'jti'>): string => {
-  const jti = `refresh-${payload.userId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  
-  return jwt.sign(
-    { ...payload, jti },
-    JWT_REFRESH_SECRET,
-    { 
-      expiresIn: JWT_REFRESH_EXPIRES_IN,
-      issuer: 'b2b-marketplace',
-      audience: 'b2b-marketplace-refresh'
-    }
-  );
+  return EnhancedAuthService.generateRefreshToken(payload);
 };
 
 /**
- * Verify JWT access token
+ * Verify JWT access token (delegated to EnhancedAuthService)
  */
-export const verifyAccessToken = (token: string): JWTPayload => {
-  try {
-    return jwt.verify(token, JWT_SECRET, {
-      issuer: 'b2b-marketplace',
-      audience: 'b2b-marketplace-users'
-    }) as JWTPayload;
-  } catch (error) {
-    throw new Error('Invalid access token');
-  }
+export const verifyAccessToken = async (token: string): Promise<JWTPayload> => {
+  return await EnhancedAuthService.verifyAccessToken(token);
 };
 
 /**
- * Verify JWT refresh token
+ * Verify JWT refresh token (delegated to EnhancedAuthService)
  */
-export const verifyRefreshToken = (token: string): RefreshTokenPayload => {
-  try {
-    return jwt.verify(token, JWT_REFRESH_SECRET, {
-      issuer: 'b2b-marketplace',
-      audience: 'b2b-marketplace-refresh'
-    }) as RefreshTokenPayload;
-  } catch (error) {
-    throw new Error('Invalid refresh token');
-  }
+export const verifyRefreshToken = async (token: string): Promise<RefreshTokenPayload> => {
+  return await EnhancedAuthService.verifyRefreshToken(token);
 };
 
 /**
  * Load enhanced user data based on role
  */
-const loadUserData = async (userId: string, role: string) => {
+const loadUserData = async (userId: string, role: 'buyer' | 'admin' | 'supplier'): Promise<AuthenticatedUser> => {
   // Get base user data
   const userResult = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-  
+
   if (userResult.length === 0) {
     throw new Error('User not found');
   }
 
   const user = userResult[0];
   const { password: _, ...userWithoutPassword } = user;
-  const enhancedUser = { ...userWithoutPassword } as any;
+  const enhancedUser: AuthenticatedUser = {
+    ...userWithoutPassword,
+    role: user.role as 'buyer' | 'admin' | 'supplier',
+    firstName: user.firstName || undefined,
+    lastName: user.lastName || undefined,
+    companyName: user.companyName || undefined,
+    phone: user.phone || undefined,
+    isActive: user.isActive ?? true,
+    emailVerified: user.emailVerified ?? false,
+    createdAt: user.createdAt || new Date()
+  };
 
   // Load role-specific data
   if (role === 'supplier') {
@@ -148,12 +114,12 @@ const loadUserData = async (userId: string, role: string) => {
       status: supplierProfiles.status,
       membershipTier: supplierProfiles.membershipTier,
     }).from(supplierProfiles).where(eq(supplierProfiles.userId, userId)).limit(1);
-    
+
     if (supplierResult.length > 0) {
       const supplierData = supplierResult[0];
       enhancedUser.supplierId = supplierData.id;
-      enhancedUser.supplierStatus = supplierData.status;
-      enhancedUser.membershipTier = supplierData.membershipTier;
+      enhancedUser.supplierStatus = supplierData.status || undefined;
+      enhancedUser.membershipTier = supplierData.membershipTier || undefined;
     } else {
       // Check if this is a staff member
       const staffResult = await db.select({
@@ -163,15 +129,15 @@ const loadUserData = async (userId: string, role: string) => {
         permissions: staffMembers.permissions,
         isActive: staffMembers.isActive,
       }).from(staffMembers).where(eq(staffMembers.email, user.email)).limit(1);
-      
+
       if (staffResult.length > 0) {
         const staffData = staffResult[0];
         if (staffData.isActive) {
           enhancedUser.isStaffMember = true;
           enhancedUser.staffMemberId = staffData.id;
-          enhancedUser.supplierId = staffData.supplierId;
-          enhancedUser.staffRole = staffData.role;
-          enhancedUser.staffPermissions = staffData.permissions;
+          enhancedUser.supplierId = staffData.supplierId || undefined;
+          enhancedUser.staffRole = staffData.role || undefined;
+          enhancedUser.staffPermissions = staffData.permissions as Record<string, string[]> | undefined;
         }
       }
     }
@@ -183,11 +149,11 @@ const loadUserData = async (userId: string, role: string) => {
       industry: buyers.industry,
       businessType: buyers.businessType,
     }).from(buyers).where(eq(buyers.userId, userId)).limit(1);
-    
+
     if (buyerResult.length > 0) {
       const buyerData = buyerResult[0];
       enhancedUser.buyerId = buyerData.id;
-      enhancedUser.companyName = buyerData.companyName || enhancedUser.companyName;
+      enhancedUser.companyName = buyerData.companyName || enhancedUser.companyName || undefined;
     }
   }
 
@@ -200,22 +166,22 @@ const loadUserData = async (userId: string, role: string) => {
 export const jwtAuthMiddleware = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ 
+      return res.status(401).json({
         error: 'Authentication required',
         code: 'NO_TOKEN'
       });
     }
 
     const token = authHeader.substring(7);
-    
+
     try {
-      const decoded = verifyAccessToken(token);
-      
+      const decoded = await verifyAccessToken(token);
+
       // Load enhanced user data
       const userData = await loadUserData(decoded.userId, decoded.role);
-      
+
       // Attach user data to request
       req.user = userData;
       req.tokenData = {
@@ -223,18 +189,23 @@ export const jwtAuthMiddleware = async (req: Request, res: Response, next: NextF
         exp: decoded.exp!,
         jti: decoded.jti!
       };
-      
+
       next();
-    } catch (jwtError) {
+    } catch (jwtError: unknown) {
       if (jwtError instanceof jwt.TokenExpiredError) {
-        return res.status(401).json({ 
+        return res.status(401).json({
           error: 'Token expired',
           code: 'TOKEN_EXPIRED'
         });
       } else if (jwtError instanceof jwt.JsonWebTokenError) {
-        return res.status(401).json({ 
+        return res.status(401).json({
           error: 'Invalid token',
           code: 'INVALID_TOKEN'
+        });
+      } else if (jwtError instanceof Error && jwtError.message.includes('revoked')) {
+        return res.status(401).json({
+          error: 'Token has been revoked',
+          code: 'TOKEN_REVOKED'
         });
       } else {
         throw jwtError;
@@ -242,7 +213,7 @@ export const jwtAuthMiddleware = async (req: Request, res: Response, next: NextF
     }
   } catch (error) {
     console.error('JWT authentication error:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Authentication failed',
       code: 'AUTH_ERROR'
     });
@@ -255,28 +226,29 @@ export const jwtAuthMiddleware = async (req: Request, res: Response, next: NextF
 export const optionalJwtAuthMiddleware = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return next();
     }
 
     const token = authHeader.substring(7);
-    
+
     try {
-      const decoded = verifyAccessToken(token);
+      const decoded = await verifyAccessToken(token);
       const userData = await loadUserData(decoded.userId, decoded.role);
-      
+
       req.user = userData;
       req.tokenData = {
         iat: decoded.iat!,
         exp: decoded.exp!,
         jti: decoded.jti!
       };
-    } catch (jwtError) {
+    } catch (jwtError: unknown) {
       // For optional auth, we don't fail on token errors
-      console.warn('Optional JWT auth failed:', jwtError.message);
+      const errorMessage = jwtError instanceof Error ? jwtError.message : 'Unknown error';
+      console.warn('Optional JWT auth failed:', errorMessage);
     }
-    
+
     next();
   } catch (error) {
     console.error('Optional JWT authentication error:', error);
@@ -292,18 +264,21 @@ export const sessionAuthMiddleware = async (req: Request, res: Response, next: N
     if (req.isAuthenticated && req.isAuthenticated()) {
       // Load enhanced user data for session-based auth
       const sessionUser = req.user as any;
-      const userData = await loadUserData(sessionUser.id, sessionUser.role);
-      req.user = userData;
-      return next();
+      if (sessionUser && sessionUser.id && sessionUser.role) {
+        const userRole = sessionUser.role as 'buyer' | 'admin' | 'supplier';
+        const userData = await loadUserData(sessionUser.id, userRole);
+        req.user = userData as any;
+        return next();
+      }
     }
-    
-    return res.status(401).json({ 
+
+    return res.status(401).json({
       error: 'Authentication required',
       code: 'NO_SESSION'
     });
   } catch (error) {
     console.error('Session authentication error:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Authentication failed',
       code: 'SESSION_ERROR'
     });
@@ -316,79 +291,35 @@ export const sessionAuthMiddleware = async (req: Request, res: Response, next: N
 export const hybridAuthMiddleware = async (req: Request, res: Response, next: NextFunction) => {
   // Try JWT authentication first
   const authHeader = req.headers.authorization;
-  
+
   if (authHeader && authHeader.startsWith('Bearer ')) {
     return jwtAuthMiddleware(req, res, next);
   }
-  
+
   // Fall back to session authentication
   return sessionAuthMiddleware(req, res, next);
 };
 
 /**
- * Token refresh endpoint handler
+ * Token refresh endpoint handler (delegated to EnhancedAuthService)
  */
-export const handleTokenRefresh = async (refreshToken: string) => {
-  try {
-    const decoded = verifyRefreshToken(refreshToken);
-    
-    // Verify user still exists and is active
-    const userResult = await db.select({
-      id: users.id,
-      email: users.email,
-      role: users.role,
-      isActive: users.isActive,
-    }).from(users).where(eq(users.id, decoded.userId)).limit(1);
-    
-    if (userResult.length === 0 || !userResult[0].isActive) {
-      throw new Error('User not found or inactive');
-    }
-    
-    const user = userResult[0];
-    
-    // Generate new access token
-    const newAccessToken = generateAccessToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-      sessionId: decoded.sessionId
-    });
-    
-    // Optionally generate new refresh token (token rotation)
-    const newRefreshToken = generateRefreshToken({
-      userId: user.id,
-      sessionId: decoded.sessionId,
-      tokenVersion: decoded.tokenVersion + 1
-    });
-    
-    return {
-      accessToken: newAccessToken,
-      refreshToken: newRefreshToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role
-      }
-    };
-  } catch (error) {
-    throw new Error('Invalid refresh token');
+export const handleTokenRefresh = async (refreshToken: string, ipAddress: string, userAgent?: string) => {
+  const result = await EnhancedAuthService.refreshToken(refreshToken, ipAddress, userAgent);
+  
+  if (!result.success) {
+    throw new Error(result.error || 'Token refresh failed');
   }
+
+  return {
+    accessToken: result.accessToken!,
+    refreshToken: result.refreshToken!,
+    user: result.user!
+  };
 };
 
 /**
- * Logout handler (invalidate tokens)
+ * Logout handler (delegated to EnhancedAuthService)
  */
-export const handleLogout = async (req: Request) => {
-  // For JWT-based auth, we could maintain a blacklist of tokens
-  // For now, we'll just clear any session data
-  if (req.session) {
-    req.session.destroy(() => {});
-  }
-  
-  // In a production system, you might want to:
-  // 1. Add the token JTI to a blacklist/redis cache
-  // 2. Invalidate all refresh tokens for the user
-  // 3. Log the logout event for security monitoring
-  
-  return { success: true };
+export const handleLogout = async (req: Request): Promise<{ success: boolean; message?: string }> => {
+  return await EnhancedAuthService.logout(req);
 };

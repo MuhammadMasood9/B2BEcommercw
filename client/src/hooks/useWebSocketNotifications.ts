@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface NotificationData {
   id: string;
@@ -32,9 +33,26 @@ export function useWebSocketNotifications({ userId, enabled = true }: UseWebSock
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user, loading } = useAuth();
 
   const connect = useCallback(() => {
-    if (!enabled || !userId || wsRef.current?.readyState === WebSocket.OPEN) {
+    // More robust validation
+    const isValidUserId = userId && 
+                         typeof userId === 'string' && 
+                         userId.trim() !== '' && 
+                         userId !== 'undefined' && 
+                         userId !== 'null' &&
+                         userId.length > 0;
+
+    if (!enabled || loading || !user || !isValidUserId || wsRef.current?.readyState === WebSocket.OPEN) {
+      console.log('WebSocket connection skipped:', { 
+        enabled, 
+        loading, 
+        user: !!user, 
+        userId, 
+        isValidUserId,
+        readyState: wsRef.current?.readyState 
+      });
       return;
     }
 
@@ -42,8 +60,9 @@ export function useWebSocketNotifications({ userId, enabled = true }: UseWebSock
     
     try {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}?userId=${userId}`;
+      const wsUrl = `${protocol}//${window.location.host}/ws/notifications?userId=${encodeURIComponent(userId)}`;
       
+      console.log('Attempting WebSocket connection:', wsUrl);
       wsRef.current = new WebSocket(wsUrl);
 
       wsRef.current.onopen = () => {
@@ -219,14 +238,30 @@ export function useWebSocketNotifications({ userId, enabled = true }: UseWebSock
 
   // Connect when component mounts and userId is available
   useEffect(() => {
-    if (enabled && userId) {
-      connect();
+    // More robust validation before attempting connection
+    const isValidUserId = userId && 
+                         typeof userId === 'string' && 
+                         userId.trim() !== '' && 
+                         userId !== 'undefined' && 
+                         userId !== 'null' &&
+                         userId.length > 0;
+
+    // Only connect after authentication is complete and user is available
+    if (enabled && !loading && user && user.id && isValidUserId) {
+      const timer = setTimeout(() => {
+        connect();
+      }, 2000); // Wait 2 seconds before attempting connection to ensure auth is complete
+      
+      return () => {
+        clearTimeout(timer);
+        disconnect();
+      };
     }
 
     return () => {
       disconnect();
     };
-  }, [userId, enabled, connect, disconnect]);
+  }, [userId, enabled, loading, user, connect, disconnect]);
 
   // Handle page visibility changes
   useEffect(() => {

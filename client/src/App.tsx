@@ -91,6 +91,7 @@ import AdminAccessManagement from "@/pages/admin/AdminAccessManagement";
 import AdminCompliance from "@/pages/admin/AdminCompliance";
 import AdminDisputes from "@/pages/admin/AdminDisputes";
 import AdminLogin from "@/pages/admin/AdminLogin";
+import AdminAPIDocumentation from "@/pages/admin/AdminAPIDocumentation";
 import GlobalChatButton from "@/components/GlobalChatButton";
 import FloatingActionButtons from "@/components/FloatingActionButtons";
 import NotificationPage from "@/pages/buyer/NotificationPage";
@@ -101,7 +102,17 @@ function AdminRouter() {
   return (
     <Switch>
       <Route path="/admin/login" component={AdminLogin} />
-      <Route path="/admin">
+      <Route path="/admin/dashboard">
+        <ProtectedRoute requiredRole="admin">
+          <AdminDashboard />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/documentation">
+        <ProtectedRoute requiredRole="admin">
+          <AdminAPIDocumentation />
+        </ProtectedRoute>
+      </Route>
+      <Route exact path="/admin">
         <ProtectedRoute requiredRole="admin">
           <AdminDashboard />
         </ProtectedRoute>

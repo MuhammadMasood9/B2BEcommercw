@@ -147,22 +147,27 @@ export const sessionOnlyAuthMiddleware = (req: Request, res: Response, next: Nex
 export const jwtOnlyAuthMiddleware = jwtAuthMiddleware;
 
 // Role-specific middleware
+const hasSessionAuth = (req: Request) =>
+  typeof req.isAuthenticated === 'function' && req.isAuthenticated();
+
+const hasUserAuth = (req: Request) => Boolean(req.user?.id);
+
 export const adminMiddleware = (req: Request, res: Response, next: NextFunction) => {
-  if (req.isAuthenticated() && req.user?.role === 'admin') {
+  if ((hasSessionAuth(req) || hasUserAuth(req)) && req.user?.role === 'admin') {
     return next();
   }
   res.status(403).json({ error: 'Forbidden: Admin access required' });
 };
 
 export const supplierMiddleware = (req: Request, res: Response, next: NextFunction) => {
-  if (req.isAuthenticated() && req.user?.role === 'supplier') {
+  if ((hasSessionAuth(req) || hasUserAuth(req)) && req.user?.role === 'supplier') {
     return next();
   }
   res.status(403).json({ error: 'Forbidden: Supplier access required' });
 };
 
 export const buyerMiddleware = (req: Request, res: Response, next: NextFunction) => {
-  if (req.isAuthenticated() && req.user?.role === 'buyer') {
+  if ((hasSessionAuth(req) || hasUserAuth(req)) && req.user?.role === 'buyer') {
     return next();
   }
   res.status(403).json({ error: 'Forbidden: Buyer access required' });
@@ -170,7 +175,7 @@ export const buyerMiddleware = (req: Request, res: Response, next: NextFunction)
 
 // Combined middleware for multiple roles
 export const adminOrSupplierMiddleware = (req: Request, res: Response, next: NextFunction) => {
-  if (req.isAuthenticated() && (req.user?.role === 'admin' || req.user?.role === 'supplier')) {
+  if ((hasSessionAuth(req) || hasUserAuth(req)) && (req.user?.role === 'admin' || req.user?.role === 'supplier')) {
     return next();
   }
   res.status(403).json({ error: 'Forbidden: Admin or Supplier access required' });
@@ -178,7 +183,7 @@ export const adminOrSupplierMiddleware = (req: Request, res: Response, next: Nex
 
 // Generic auth requirement middleware
 export const requireAuth = (req: Request, res: Response, next: NextFunction) => {
-  if (req.isAuthenticated()) {
+  if (hasSessionAuth(req) || hasUserAuth(req)) {
     return next();
   }
   res.status(401).json({ error: 'Authentication required' });
@@ -187,7 +192,7 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction) => 
 // Role requirement middleware factory
 export const requireRole = (allowedRoles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    if (!req.isAuthenticated()) {
+    if (!(hasSessionAuth(req) || hasUserAuth(req))) {
       return res.status(401).json({ error: 'Authentication required' });
     }
     

@@ -182,8 +182,15 @@ export default function BuyerRegistrationForm({ onSuccess }: BuyerRegistrationFo
         } else {
           setLocation('/email-verification');
         }
+        setValidationErrors({});
       } else {
         toast.error(result.error || 'Registration failed');
+        if (result?.details && Array.isArray(result.details)) {
+          setValidationErrors(prev => ({
+            ...prev,
+            password: result.details.join(' ')
+          }));
+        }
       }
     } catch (error: any) {
       console.error('Registration error:', error);

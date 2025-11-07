@@ -18,6 +18,7 @@ import { AuthRateLimiter } from './authRateLimiter';
 import { AuthSecurityMonitor } from './authSecurityMonitor';
 import { queryOptimizationMiddleware, cacheWarmupMiddleware, databaseHealthMiddleware } from './queryOptimizationMiddleware';
 import dbOptimizationRoutes from './dbOptimizationRoutes';
+import databasePerformanceRoutes from './databasePerformanceRoutes';
 import { requestIdMiddleware, globalErrorHandler } from './errorHandler';
 import { 
   healthCheck, 
@@ -28,6 +29,10 @@ import {
 } from './gracefulRecovery';
 import { errorMonitoringMiddleware } from './errorMonitoring';
 import errorManagementRoutes from './errorManagementRoutes';
+import emailTemplateRoutes from './emailTemplateRoutes';
+import notificationPreferencesRoutes from './notificationPreferencesRoutes';
+import { notificationDeliveryService } from './notificationDeliveryService';
+import { initializeDefaultTemplates } from './emailTemplateDefaults';
 
 const app = express();
 
@@ -98,8 +103,17 @@ app.use(databaseHealthMiddleware());
 // Add database optimization API routes
 app.use('/api/db-optimization', dbOptimizationRoutes);
 
+// Add database performance monitoring API routes
+app.use(databasePerformanceRoutes);
+
 // Add error management API routes
 app.use('/api/errors', errorManagementRoutes);
+
+// Add email template management API routes
+app.use('/api/email-templates', emailTemplateRoutes);
+
+// Add notification preferences API routes
+app.use('/api/notification-preferences', notificationPreferencesRoutes);
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -259,6 +273,12 @@ app.use((req, res, next) => {
   // Initialize enhanced security monitoring
   const { enhancedSecurityMonitoringService } = await import('./enhancedSecurityMonitoringService');
   await enhancedSecurityMonitoringService.initialize();
+  
+  // Initialize default email templates
+  await initializeDefaultTemplates();
+  
+  // Start notification queue processor (process every minute)
+  notificationDeliveryService.startQueueProcessor(60000);
   
   server.listen(port, host, () => {
     log(`serving on port ${port}`);

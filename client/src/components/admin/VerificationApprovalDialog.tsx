@@ -20,6 +20,7 @@ import {
   Award,
   Star
 } from 'lucide-react';
+import { apiRequest } from '@/lib/queryClient';
 
 interface VerificationApplication {
   id: string;
@@ -75,25 +76,16 @@ export function VerificationApprovalDialog({
     setError('');
 
     try {
-      const response = await fetch(`/api/verification/admin/approve/${application.id}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          level,
-          notes
-        })
+      const data = await apiRequest('POST', `/api/verification/admin/approve/${application.id}`, {
+        level,
+        notes,
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
+      if (data?.success) {
         onSuccess();
         resetForm();
       } else {
-        setError(data.error || 'Failed to approve verification');
+        setError(data?.error || 'Failed to approve verification');
       }
     } catch (error) {
       console.error('Error approving verification:', error);

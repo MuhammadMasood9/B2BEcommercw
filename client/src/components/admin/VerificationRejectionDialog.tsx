@@ -16,6 +16,7 @@ import {
   XCircle, 
   AlertCircle
 } from 'lucide-react';
+import { apiRequest } from '@/lib/queryClient';
 
 interface VerificationApplication {
   id: string;
@@ -84,25 +85,16 @@ export function VerificationRejectionDialog({
     setError('');
 
     try {
-      const response = await fetch(`/api/verification/admin/reject/${application.id}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          reason,
-          notes
-        })
+      const data = await apiRequest('POST', `/api/verification/admin/reject/${application.id}`, {
+        reason,
+        notes,
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
+      if (data?.success) {
         onSuccess();
         resetForm();
       } else {
-        setError(data.error || 'Failed to reject verification');
+        setError(data?.error || 'Failed to reject verification');
       }
     } catch (error) {
       console.error('Error rejecting verification:', error);

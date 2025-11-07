@@ -25,7 +25,7 @@ export default function AdminLogin() {
     try {
       const success = await login(email, password);
       if (success) {
-        setLocation('/admin');
+        setLocation('/admin/dashboard');
       } else {
         setError("Invalid admin credentials. Please check your email and password.");
       }

@@ -380,6 +380,9 @@ router.post('/upload-document', supplierMiddleware, verificationUpload.single('d
 
 // ==================== ADMIN VERIFICATION ENDPOINTS ====================
 
+// Require authentication for all admin verification routes
+router.use('/admin', authMiddleware);
+
 // GET /api/verification/admin/pending - Get pending verification applications
 router.get('/admin/pending', adminMiddleware, async (req, res) => {
   try {

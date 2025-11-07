@@ -97,7 +97,7 @@ const adminMenuStructure: AdminMenuItem[] = [
   {
     id: 'dashboard',
     title: 'Dashboard',
-    url: '/admin',
+    url: '/admin/dashboard',
     icon: LayoutDashboard,
     description: 'Main admin dashboard with key metrics',
     category: 'core',

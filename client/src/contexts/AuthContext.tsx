@@ -188,7 +188,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   // Login function
-  const login = async (email: string, password: string, useJWT: boolean = true) => {
+  const login = async (email: string, password: string, useJWT: boolean = true): Promise<boolean> => {
     try {
       setLoading(true);
       setAuthStatus('loading');
@@ -206,7 +206,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const errorData = await response.json();
         setError(errorData.error || 'Login failed');
         setAuthStatus('error');
-        throw new Error(errorData.error || 'Login failed');
+        return false;
       }
 
       const data = await response.json();
@@ -217,10 +217,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       setUser(data.user);
       setAuthStatus('authenticated');
+      return true;
     } catch (error) {
       console.error('Login error:', error);
       setAuthStatus('error');
-      throw error;
+      if (!error) {
+        setError('Login failed');
+      }
+      return false;
     } finally {
       setLoading(false);
     }

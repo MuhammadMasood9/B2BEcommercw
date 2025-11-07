@@ -1,3 +1,5 @@
+import { emailTemplateService, EmailTemplateType, TemplateVariables } from './emailTemplateService';
+
 // Email configuration
 const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@b2bmarketplace.com';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@b2bmarketplace.com';
@@ -12,13 +14,58 @@ const sendEmail = async (to: string, subject: string, html: string, text?: strin
   console.log('==================');
   
   // In production, you would integrate with a real email service like:
-  // - SendGrid
-  // - AWS SES
-  // - Mailgun
-  // - Resend
-  // etc.
+  // - SendGrid: https://www.npmjs.com/package/@sendgrid/mail
+  // - Resend: https://www.npmjs.com/package/resend
+  // - AWS SES: https://www.npmjs.com/package/@aws-sdk/client-ses
+  // - Mailgun: https://www.npmjs.com/package/mailgun-js
+  // 
+  // Example with SendGrid:
+  // const sgMail = require('@sendgrid/mail');
+  // sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+  // await sgMail.send({ to, from: FROM_EMAIL, subject, html, text });
   
   return Promise.resolve();
+};
+
+/**
+ * Send email using template
+ */
+const sendTemplateEmail = async (
+  to: string,
+  templateType: EmailTemplateType,
+  variables: TemplateVariables
+): Promise<void> => {
+  try {
+    // Get template by type
+    const template = await emailTemplateService.getTemplateByType(templateType);
+    
+    if (!template) {
+      console.error(`Template not found for type: ${templateType}`);
+      // Fallback to legacy email methods
+      return;
+    }
+    
+    // Add recipient email to variables
+    variables.recipientEmail = to;
+    
+    // Render template
+    const rendered = emailTemplateService.renderTemplateContent(
+      template.subject,
+      template.htmlContent,
+      template.content,
+      {
+        variables,
+        includeFooter: true,
+        includeUnsubscribeLink: false
+      }
+    );
+    
+    // Send email
+    await sendEmail(to, rendered.subject, rendered.html, rendered.text);
+  } catch (error) {
+    console.error('Error sending template email:', error);
+    throw error;
+  }
 };
 
 export class EmailService {
@@ -32,6 +79,20 @@ export class EmailService {
     verificationToken: string
   ): Promise<void> {
     const verificationUrl = `${FRONTEND_URL}/verify-email?token=${verificationToken}`;
+    
+    // Try to use template first
+    try {
+      await sendTemplateEmail(email, 'verification', {
+        firstName,
+        companyName: 'B2B Marketplace',
+        businessName,
+        verificationUrl,
+        recipientEmail: email
+      });
+      return;
+    } catch (error) {
+      console.log('Template not available, using legacy email');
+    }
 
     const htmlContent = `
       <!DOCTYPE html>

@@ -1,5 +1,7 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+const nativeFetch = globalThis.fetch.bind(globalThis);
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -7,65 +9,149 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+const ACCESS_TOKEN_KEY = 'accessToken';
+const REFRESH_TOKEN_KEY = 'refreshToken';
+
+function getStoredAccessToken() {
+  return localStorage.getItem(ACCESS_TOKEN_KEY);
+}
+
+function getStoredRefreshToken() {
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
+function storeTokens(accessToken: string, refreshToken: string) {
+  localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+}
+
+function clearTokens() {
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+}
+
+async function refreshAccessToken(): Promise<boolean> {
+  const refreshToken = getStoredRefreshToken();
+  if (!refreshToken) return false;
+
+  try {
+    const refreshRes = await nativeFetch('/api/auth/refresh', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ refreshToken }),
+      credentials: 'include',
+    });
+
+    if (!refreshRes.ok) {
+      clearTokens();
+      return false;
+    }
+
+    const refreshData = await refreshRes.json();
+    if (refreshData?.accessToken && refreshData?.refreshToken) {
+      storeTokens(refreshData.accessToken, refreshData.refreshToken);
+      return true;
+    }
+
+    clearTokens();
+    return false;
+  } catch (error) {
+    console.error('Token refresh failed:', error);
+    clearTokens();
+    return false;
+  }
+}
+
+export async function authorizedFetch(
+  input: RequestInfo,
+  init: RequestInit = {},
+  retry = true
+): Promise<Response> {
+  let requestUrl: string;
+  if (typeof input === 'string' || input instanceof URL) {
+    requestUrl = input.toString();
+  } else {
+    requestUrl = input.url;
+  }
+
+  const isSameOrigin = (() => {
+    try {
+      const absoluteUrl = new URL(requestUrl, window.location.origin);
+      return absoluteUrl.origin === window.location.origin;
+    } catch (error) {
+      return false;
+    }
+  })();
+
+  const accessToken = getStoredAccessToken();
+  const headers = new Headers(init.headers || undefined);
+
+  if (accessToken && isSameOrigin && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${accessToken}`);
+  }
+
+  const requestInit: RequestInit = {
+    ...init,
+    headers,
+    credentials: init.credentials ?? 'include',
+  };
+
+  let response = await nativeFetch(input, requestInit);
+
+  if (response.status !== 401 || !retry) {
+    return response;
+  }
+
+  const refreshed = await refreshAccessToken();
+  if (!refreshed) {
+    return response;
+  }
+
+  // Retry request with new token
+  const retryHeaders = new Headers(init.headers || undefined);
+  const newAccessToken = getStoredAccessToken();
+  if (newAccessToken && isSameOrigin) {
+    retryHeaders.set('Authorization', `Bearer ${newAccessToken}`);
+  }
+
+  const retryInit: RequestInit = {
+    ...init,
+    headers: retryHeaders,
+    credentials: init.credentials ?? 'include',
+  };
+
+  response = await nativeFetch(input, retryInit);
+  return response;
+}
+
 export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
 ): Promise<any> {
-  // Get access token from localStorage
-  let accessToken = localStorage.getItem('accessToken');
-  
-  const headers: Record<string, string> = {
-    ...(data ? { "Content-Type": "application/json" } : {}),
-  };
+  const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
+  const headers: HeadersInit = isFormData ? {} : { 'Content-Type': 'application/json' };
 
-  // Add Authorization header if token exists
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  }
-
-  let res = await fetch(url, {
+  const response = await authorizedFetch(url, {
     method,
     headers,
-    body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
+    body: isFormData ? (data as BodyInit) : data ? JSON.stringify(data) : undefined,
   });
 
-  // If token expired, try to refresh
-  if (res.status === 401 && accessToken) {
-    const refreshToken = localStorage.getItem('refreshToken');
-    if (refreshToken) {
-      try {
-        const refreshRes = await fetch('/api/auth/refresh', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ refreshToken }),
-        });
+  await throwIfResNotOk(response);
 
-        if (refreshRes.ok) {
-          const refreshData = await refreshRes.json();
-          localStorage.setItem('accessToken', refreshData.accessToken);
-          localStorage.setItem('refreshToken', refreshData.refreshToken);
-          
-          // Retry the original request with new token
-          headers['Authorization'] = `Bearer ${refreshData.accessToken}`;
-          res = await fetch(url, {
-            method,
-            headers,
-            body: data ? JSON.stringify(data) : undefined,
-            credentials: "include",
-          });
-        }
-      } catch (error) {
-        console.error('Token refresh failed:', error);
-      }
-    }
+  if (response.status === 204) {
+    return null;
   }
 
-  await throwIfResNotOk(res);
-  return await res.json();
+  const contentType = response.headers.get('Content-Type');
+  if (contentType && contentType.includes('application/json')) {
+    return await response.json();
+  }
+
+  return await response.text();
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
@@ -75,19 +161,7 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     // Get access token from localStorage
-    const accessToken = localStorage.getItem('accessToken');
-    
-    const headers: Record<string, string> = {};
-    
-    // Add Authorization header if token exists
-    if (accessToken) {
-      headers['Authorization'] = `Bearer ${accessToken}`;
-    }
-
-    const res = await fetch(queryKey.join("/") as string, {
-      headers,
-      credentials: "include",
-    });
+    const res = await authorizedFetch(queryKey.join("/") as string);
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
       return null;

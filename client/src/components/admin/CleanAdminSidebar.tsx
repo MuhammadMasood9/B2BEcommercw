@@ -50,7 +50,7 @@ const menuSections: MenuSection[] = [
       {
         id: 'dashboard',
         title: 'Dashboard',
-        url: '/admin',
+        url: '/admin/dashboard',
         icon: LayoutDashboard,
         roles: ['admin', 'manager', 'operator']
       }

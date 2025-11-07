@@ -34,6 +34,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { apiRequest } from '@/lib/queryClient';
 
 interface PendingSupplier {
   id: string;
@@ -121,10 +122,10 @@ export function ApprovalQueue({
       if (businessTypeFilter !== 'all') params.append('businessType', businessTypeFilter);
       if (countryFilter !== 'all') params.append('country', countryFilter);
 
-      const response = await fetch(`/api/admin/suppliers/pending?${params}`);
-      const data = await response.json();
-
-      if (data.success) {
+      const data = await apiRequest('GET', `/api/admin/suppliers/pending?${params}`);
+      if (data?.success && Array.isArray(data.suppliers)) {
+        setSuppliers(data.suppliers);
+      } else if (Array.isArray(data?.suppliers)) {
         setSuppliers(data.suppliers);
       }
     } catch (error) {
@@ -170,23 +171,15 @@ export function ApprovalQueue({
       setProcessing(true);
       
       if (approvalDialog.action === 'approve') {
-        const response = await fetch('/api/admin/suppliers/enhanced-approval', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            supplierId: approvalDialog.supplierId,
-            approvalNotes,
-            riskAssessment,
-            membershipTier,
-            customCommissionRate,
-            verificationLevel,
-            conditions,
-          }),
+        const data = await apiRequest('POST', '/api/admin/suppliers/enhanced-approval', {
+          supplierId: approvalDialog.supplierId,
+          approvalNotes,
+          riskAssessment,
+          membershipTier,
+          customCommissionRate,
+          verificationLevel,
+          conditions,
         });
-
-        const data = await response.json();
         
         if (data.success) {
           onSupplierApproved?.(approvalDialog.supplierId);
@@ -195,18 +188,10 @@ export function ApprovalQueue({
           console.error('Approval failed:', data.error);
         }
       } else {
-        const response = await fetch(`/api/admin/suppliers/${approvalDialog.supplierId}/reject`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            rejectionReason,
-            rejectionNotes: approvalNotes,
-          }),
+        const data = await apiRequest('POST', `/api/admin/suppliers/${approvalDialog.supplierId}/reject`, {
+          rejectionReason,
+          rejectionNotes: approvalNotes,
         });
-
-        const data = await response.json();
         
         if (data.success) {
           onSupplierRejected?.(approvalDialog.supplierId);

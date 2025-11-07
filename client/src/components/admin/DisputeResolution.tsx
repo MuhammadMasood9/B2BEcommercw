@@ -19,6 +19,7 @@ import {
   BarChart3,
   Eye
 } from 'lucide-react';
+import { apiRequest } from '@/lib/queryClient';
 // import { useToast } from "@/hooks/use-toast";
 
 interface Dispute {
@@ -95,16 +96,8 @@ const DisputeResolution: React.FC = () => {
         if (value) params.append(key, value.toString());
       });
 
-      const response = await fetch(`/api/admin/disputes?${params}`, {
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch disputes');
-      }
-
-      const result = await response.json();
-      return result.data;
+      const result = await apiRequest('GET', `/api/admin/disputes?${params}`);
+      return result?.data ?? [];
     },
   });
 
@@ -112,16 +105,8 @@ const DisputeResolution: React.FC = () => {
   const { data: analytics } = useQuery({
     queryKey: ['/api/admin/disputes/analytics'],
     queryFn: async () => {
-      const response = await fetch('/api/admin/disputes/analytics', {
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch dispute analytics');
-      }
-
-      const result = await response.json();
-      return result.data.analytics as DisputeAnalytics;
+      const result = await apiRequest('GET', '/api/admin/disputes/analytics');
+      return (result?.data?.analytics ?? []) as DisputeAnalytics;
     },
     enabled: showAnalytics,
   });
@@ -132,16 +117,8 @@ const DisputeResolution: React.FC = () => {
     queryFn: async () => {
       if (!selectedDispute) return [];
 
-      const response = await fetch(`/api/admin/disputes/${selectedDispute.id}/messages`, {
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch messages');
-      }
-
-      const result = await response.json();
-      return result.data.messages as DisputeMessage[];
+      const result = await apiRequest('GET', `/api/admin/disputes/${selectedDispute.id}/messages`);
+      return (result?.data?.messages ?? []) as DisputeMessage[];
     },
     enabled: !!selectedDispute,
   });
@@ -153,20 +130,10 @@ const DisputeResolution: React.FC = () => {
       status: string;
       resolutionData?: any;
     }) => {
-      const response = await fetch(`/api/admin/disputes/${disputeId}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ status, ...resolutionData }),
+      return apiRequest('PUT', `/api/admin/disputes/${disputeId}/status`, {
+        status,
+        ...resolutionData,
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to update dispute status');
-      }
-
-      return response.json();
     },
     onSuccess: () => {
       toast.success('Dispute status updated successfully');
@@ -185,20 +152,10 @@ const DisputeResolution: React.FC = () => {
       message: string;
       isInternal: boolean;
     }) => {
-      const response = await fetch(`/api/admin/disputes/${disputeId}/messages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ message, isInternal }),
+      return apiRequest('POST', `/api/admin/disputes/${disputeId}/messages`, {
+        message,
+        isInternal,
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to add message');
-      }
-
-      return response.json();
     },
     onSuccess: () => {
       toast.success('Message added successfully');

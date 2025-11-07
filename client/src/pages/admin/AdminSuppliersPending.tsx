@@ -71,14 +71,7 @@ export default function AdminSuppliersPending() {
       if (search) params.append('search', search);
       params.append('limit', '100');
       
-      const url = `/api/admin/suppliers/pending?${params.toString()}`;
-      const res = await fetch(url, { credentials: "include" });
-      
-      if (!res.ok) {
-        throw new Error(`${res.status}: ${res.statusText}`);
-      }
-      
-      return await res.json();
+      return await apiRequest('GET', `/api/admin/suppliers/pending?${params.toString()}`);
     },
     retry: 2,
     staleTime: 2 * 60 * 1000, // 2 minutes

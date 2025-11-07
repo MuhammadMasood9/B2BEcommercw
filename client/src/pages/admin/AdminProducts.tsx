@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import Breadcrumb from '@/components/Breadcrumb';
+import { apiRequest } from '@/lib/queryClient';
 
 // ==================== INTERFACES ====================
 
@@ -154,12 +155,12 @@ export default function AdminProducts() {
         queryParams.set('search', filters.search);
       }
       
-      const response = await fetch(`/api/admin/products?${queryParams}`);
-      const data = await response.json();
-      
-      if (data.success) {
-        setProducts(data.products || []);
+      const data = await apiRequest('GET', `/api/admin/products?${queryParams}`);
+      if (data?.success) {
+        setProducts(Array.isArray(data.products) ? data.products : []);
         setStats(data.stats || stats);
+      } else {
+        setProducts(Array.isArray(data?.products) ? data.products : []);
       }
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -170,9 +171,10 @@ export default function AdminProducts() {
   
   const fetchCategories = async () => {
     try {
-      const response = await fetch('/api/categories');
-      const data = await response.json();
-      if (data.success) {
+      const data = await apiRequest('GET', '/api/categories');
+      if (Array.isArray(data)) {
+        setCategories(data);
+      } else if (data?.success) {
         setCategories(data.categories || []);
       }
     } catch (error) {
@@ -182,10 +184,11 @@ export default function AdminProducts() {
   
   const fetchSuppliers = async () => {
     try {
-      const response = await fetch('/api/admin/suppliers');
-      const data = await response.json();
-      if (data.success) {
-        setSuppliers(data.suppliers || []);
+      const data = await apiRequest('GET', '/api/admin/suppliers');
+      if (data?.success) {
+        setSuppliers(Array.isArray(data.suppliers) ? data.suppliers : []);
+      } else if (Array.isArray(data)) {
+        setSuppliers(data);
       }
     } catch (error) {
       console.error('Error fetching suppliers:', error);
@@ -224,19 +227,13 @@ export default function AdminProducts() {
   
   const executeBulkAction = async () => {
     try {
-      const response = await fetch('/api/admin/products/bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          productIds: selectedProducts,
-          action: bulkAction,
-          notes: bulkNotes
-        })
+      const data = await apiRequest('POST', '/api/admin/products/bulk', {
+        productIds: selectedProducts,
+        action: bulkAction,
+        notes: bulkNotes,
       });
       
-      const data = await response.json();
-      
-      if (data.success) {
+      if (data?.success) {
         await fetchProducts();
         setSelectedProducts([]);
         setBulkActionDialogOpen(false);
@@ -249,15 +246,9 @@ export default function AdminProducts() {
   
   const handleProductAction = async (productId: string, action: 'approve' | 'reject' | 'feature' | 'unfeature' | 'delete', notes?: string) => {
     try {
-      const response = await fetch(`/api/admin/products/${productId}/${action}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes })
-      });
+      const data = await apiRequest('POST', `/api/admin/products/${productId}/${action}`, { notes });
       
-      const data = await response.json();
-      
-      if (data.success) {
+      if (data?.success) {
         await fetchProducts();
       }
     } catch (error) {

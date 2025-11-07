@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Breadcrumb from '@/components/Breadcrumb';
+import { apiRequest } from '@/lib/queryClient';
 import { 
   Search, 
   Filter, 
@@ -68,12 +69,8 @@ export default function AdminOrders() {
         const params = new URLSearchParams();
         if (statusFilter && statusFilter !== 'all') params.append('status', statusFilter);
         if (searchQuery) params.append('search', searchQuery);
-        const response = await fetch(`/api/admin/orders?${params.toString()}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch orders');
-        }
-        const data = await response.json();
-        return data.orders || [];
+        const data = await apiRequest('GET', `/api/admin/orders?${params.toString()}`);
+        return Array.isArray(data?.orders) ? data.orders : [];
       } catch (error) {
         console.error('Error fetching orders:', error);
         return [];
@@ -89,19 +86,7 @@ export default function AdminOrders() {
   // Update order mutation
   const updateOrderMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const response = await fetch(`/api/admin/orders/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update order');
-      }
-
-      return await response.json();
+      return await apiRequest('PATCH', `/api/admin/orders/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/orders'] });

@@ -4,8 +4,8 @@ import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  MessageCircle, 
+import {
+  MessageCircle,
   Bot,
   Sparkles,
   Zap,
@@ -147,6 +147,7 @@ export default function Chat() {
         </div>
 
         {/* Support Team */}
+        
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
@@ -165,7 +166,7 @@ export default function Chat() {
               <p className="text-gray-500 mb-6">
                 Get help from our support team. We're here to assist you with any questions or concerns.
               </p>
-              <Button 
+              <Button
                 onClick={handleStartChat}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3"
                 size="lg"

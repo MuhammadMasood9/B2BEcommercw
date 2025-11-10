@@ -36,6 +36,8 @@ router.get('/conversations', authMiddleware, async (req, res) => {
     let conversations;
     if (userRole === 'admin') {
       conversations = await storage.getAdminConversations(userId);
+    } else if (userRole === 'supplier') {
+      conversations = await storage.getSupplierConversations(userId);
     } else {
       conversations = await storage.getBuyerConversations(userId);
     }
@@ -118,7 +120,7 @@ router.get('/conversations/:conversationId/messages', authMiddleware, async (req
 router.post('/conversations', authMiddleware, async (req, res) => {
   try {
     console.log('Creating conversation with data:', req.body);
-    const { buyerId, adminId, subject, productId } = req.body;
+    const { buyerId, adminId, supplierId, subject, productId } = req.body;
     const userId = req.user?.id;
     
     if (!userId) {
@@ -126,32 +128,41 @@ router.post('/conversations', authMiddleware, async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    // Allow both buyers and admins to create conversations
-    if (req.user?.role !== 'buyer' && req.user?.role !== 'admin') {
-      console.log('User role is not buyer or admin:', req.user?.role);
-      return res.status(403).json({ error: 'Only buyers and admins can create conversations' });
+    // Allow buyers, admins, and suppliers to create conversations
+    if (req.user?.role !== 'buyer' && req.user?.role !== 'admin' && req.user?.role !== 'supplier') {
+      console.log('User role is not buyer, admin, or supplier:', req.user?.role);
+      return res.status(403).json({ error: 'Only buyers, admins, and suppliers can create conversations' });
     }
 
-    console.log('Creating conversation for user:', userId, 'admin:', adminId);
+    console.log('Creating conversation for user:', userId, 'supplier:', supplierId, 'admin:', adminId);
     
-    // Determine buyer and admin IDs based on user role
-    let actualBuyerId, actualAdminId;
+    // Determine buyer, admin, and supplier IDs based on user role
+    let actualBuyerId, actualAdminId, actualSupplierId;
+    
     if (req.user?.role === 'buyer') {
       actualBuyerId = userId;
-      // Get the first admin user ID from the database
-      const adminUsers = await db.select({ id: users.id }).from(users).where(eq(users.role, 'admin')).limit(1);
-      actualAdminId = adminUsers[0]?.id || userId; // Fallback to current user if no admin found
+      actualSupplierId = supplierId;
+      
+      // If no supplier specified, get admin
+      if (!actualSupplierId) {
+        const adminUsers = await db.select({ id: users.id }).from(users).where(eq(users.role, 'admin')).limit(1);
+        actualAdminId = adminUsers[0]?.id || userId;
+      }
+    } else if (req.user?.role === 'supplier') {
+      actualSupplierId = userId;
+      actualBuyerId = buyerId || userId;
     } else if (req.user?.role === 'admin') {
-      // If admin is creating conversation, they become the admin and buyerId comes from request
-      actualBuyerId = buyerId || userId; // Use provided buyerId or fallback to current user
-      actualAdminId = userId; // Current admin user becomes the admin
+      actualAdminId = userId;
+      actualBuyerId = buyerId || userId;
+      actualSupplierId = supplierId;
     } else {
       return res.status(403).json({ error: 'Invalid user role for conversation creation' });
     }
     
     const conversation = await storage.createConversation({
       buyerId: actualBuyerId,
-      adminId: actualAdminId,
+      adminId: actualAdminId || undefined,
+      supplierId: actualSupplierId,
       subject: subject || `Inquiry about Product ${productId || ''}`,
       productId
     });
@@ -188,9 +199,8 @@ router.post('/conversations', authMiddleware, async (req, res) => {
 router.post('/conversations/:conversationId/messages', authMiddleware, async (req, res) => {
   try {
     const { conversationId } = req.params;
-    const { content, messageType = 'text', attachments } = req.body;
+    const { content, attachments } = req.body;
     const userId = req.user?.id;
-    const userRole = req.user?.role;
     
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -224,6 +234,22 @@ router.post('/conversations/:conversationId/messages', authMiddleware, async (re
         message: `You have a new message in conversation ${conversationId}`,
         relatedId: conversationId,
         relatedType: 'chat'
+      });
+
+      // Send real-time WebSocket notification
+      const { websocketService } = await import('./websocket');
+      const sender = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      const senderName = sender[0] ? `${sender[0].firstName || ''} ${sender[0].lastName || ''}`.trim() : 'Unknown';
+      websocketService.sendToUser(receiverId, {
+        type: 'message',
+        payload: {
+          conversationId,
+          message: content,
+          sender: {
+            id: userId,
+            name: senderName || 'Unknown'
+          }
+        }
       });
     }
 

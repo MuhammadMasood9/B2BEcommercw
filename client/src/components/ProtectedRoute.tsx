@@ -34,7 +34,16 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   if (requiredRole && user.role !== requiredRole) {
-    setLocation('/unauthorized');
+    // Redirect to appropriate home page based on user role
+    if (user.role === 'admin') {
+      setLocation('/admin');
+    } else if (user.role === 'supplier') {
+      setLocation('/supplier/dashboard');
+    } else if (user.role === 'buyer') {
+      setLocation('/buyer/dashboard');
+    } else {
+      setLocation('/');
+    }
     return null;
   }
 

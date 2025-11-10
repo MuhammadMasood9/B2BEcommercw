@@ -319,6 +319,9 @@ export class PostgresStorage implements IStorage {
       metaData: products.metaData,
       supplierId: products.supplierId,
       approvalStatus: products.approvalStatus,
+      approvedBy: products.approvedBy,
+      approvedAt: products.approvedAt,
+      rejectionReason: products.rejectionReason,
       createdAt: products.createdAt,
       updatedAt: products.updatedAt,
       // Supplier fields
@@ -459,6 +462,9 @@ export class PostgresStorage implements IStorage {
       metaData: products.metaData,
       supplierId: products.supplierId,
       approvalStatus: products.approvalStatus,
+      approvedBy: products.approvedBy,
+      approvedAt: products.approvedAt,
+      rejectionReason: products.rejectionReason,
       createdAt: products.createdAt,
       updatedAt: products.updatedAt,
       // Supplier fields
@@ -513,6 +519,9 @@ export class PostgresStorage implements IStorage {
       metaData: products.metaData,
       supplierId: products.supplierId,
       approvalStatus: products.approvalStatus,
+      approvedBy: products.approvedBy,
+      approvedAt: products.approvedAt,
+      rejectionReason: products.rejectionReason,
       createdAt: products.createdAt,
       updatedAt: products.updatedAt,
       // Supplier fields
@@ -1560,6 +1569,34 @@ export class PostgresStorage implements IStorage {
     return results;
   }
 
+  async getSupplierConversations(supplierId: string) {
+    const results = await db.select({
+      id: conversations.id,
+      buyerId: conversations.buyerId,
+      supplierId: conversations.supplierId,
+      subject: conversations.lastMessage,
+      status: sql`'active'`.as('status'),
+      lastMessageAt: conversations.lastMessageAt,
+      createdAt: conversations.createdAt,
+      productId: conversations.productId,
+      unreadCountBuyer: conversations.unreadCountBuyer,
+      unreadCountSupplier: conversations.unreadCountSupplier,
+      // Join with buyer data
+      buyerName: users.firstName,
+      buyerEmail: users.email,
+      buyerCompany: users.companyName,
+      productName: products.name,
+      productImages: products.images
+    })
+      .from(conversations)
+      .leftJoin(users, eq(conversations.buyerId, users.id))
+      .leftJoin(products, eq(conversations.productId, products.id))
+      .where(eq(conversations.supplierId, supplierId))
+      .orderBy(desc(conversations.lastMessageAt));
+
+    return results;
+  }
+
   async getAllConversationsForAdmin(adminId?: string) {
     let whereCondition = sql`1=1`; // Default condition
 
@@ -1676,14 +1713,16 @@ export class PostgresStorage implements IStorage {
 
   async createConversation(data: {
     buyerId: string;
-    adminId: string;
+    adminId?: string;
+    supplierId?: string;
     subject?: string;
     productId?: string;
   }) {
     const [conversation] = await db.insert(conversations)
       .values({
         buyerId: data.buyerId,
-        unreadCountAdmin: data.adminId, // Store adminId in unreadCountAdmin column (legacy schema)
+        unreadCountAdmin: data.adminId || data.supplierId || data.buyerId, // Store adminId or supplierId in unreadCountAdmin column (legacy schema)
+        supplierId: data.supplierId,
         lastMessage: data.subject || '',
         lastMessageAt: new Date(),
         productId: data.productId,

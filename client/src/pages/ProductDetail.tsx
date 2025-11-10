@@ -48,6 +48,7 @@ import {
   Mail,
   Calendar,
   DollarSign,
+  Store,
   Target,
   Layers,
   Sparkles,
@@ -67,8 +68,12 @@ import {
 } from "lucide-react";
 import InquiryDialog from "@/components/InquiryDialog";
 import FloatingActionButtons from "@/components/FloatingActionButtons";
+import FloatingChatWidget from "@/components/chat/FloatingChatWidget";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProduct } from "@/contexts/ProductContext";
+import SupplierInfoCard from "@/components/SupplierInfoCard";
+import type { SupplierProfile } from "@shared/schema";
+import Breadcrumb from "@/components/Breadcrumb";
 
 export default function ProductDetail() {
   const queryClient = useQueryClient();
@@ -100,6 +105,23 @@ export default function ProductDetail() {
         throw error;
       }
     },
+  });
+
+  // Fetch supplier information if product has supplierId
+  const { data: supplier } = useQuery<SupplierProfile>({
+    queryKey: ["/api/suppliers", product?.supplierId],
+    queryFn: async () => {
+      if (!product?.supplierId) return null;
+      try {
+        const response = await fetch(`/api/suppliers/${product.supplierId}/profile`);
+        if (!response.ok) return null;
+        return response.json();
+      } catch (error) {
+        console.error('Error fetching supplier:', error);
+        return null;
+      }
+    },
+    enabled: !!product?.supplierId,
   });
 
   // Fetch related products (limit to 4 products)
@@ -433,6 +455,20 @@ export default function ProductDetail() {
           </div>
           
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            {/* Breadcrumb Navigation */}
+            <div className="mb-4">
+              <Breadcrumb 
+                items={[
+                  { label: "Products", href: "/products" },
+                  ...(supplier ? [
+                    { label: supplier.storeName, href: `/suppliers/${supplier.storeSlug}`, icon: Store }
+                  ] : []),
+                  { label: product.name }
+                ]}
+                className="text-white/80"
+              />
+            </div>
+
             <div className="flex items-center gap-4 mb-6">
               <Button
                 variant="outline"
@@ -821,70 +857,29 @@ export default function ProductDetail() {
 
             {/* Enhanced Sidebar */}
             <div className="space-y-6">
-              {/* Admin Information */}
-              <Card className="bg-white border-gray-100 shadow-xl hover:shadow-2xl transition-all duration-300">
-                <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Building2 className="w-5 h-5 text-blue-600" />
-                    Admin Information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl flex items-center justify-center">
-                      <Building2 className="w-8 h-8 text-blue-600" />
-                    </div>
-                        <div>
-                      <h3 className="font-bold text-gray-900 text-lg">Admin Supplier</h3>
-                      <p className="text-sm text-gray-600">Verified Admin</p>
-                      <div className="flex items-center gap-1 mt-1">
-                        {[...Array(5)].map((_, i) => (
-                          <StarIcon key={i} className="w-4 h-4 text-yellow-500 fill-current" />
-                        ))}
-                        <span className="text-sm text-gray-600 ml-2">
-                          {(Math.random() * 0.5 + 4.5).toFixed(1)} ({Math.floor(Math.random() * 200) + 50} reviews)
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3 text-sm">
-                      <MapPin className="w-4 h-4 text-gray-500" />
-                      <span className="text-gray-600">Location: Global</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm">
-                      <Clock className="w-4 h-4 text-gray-500" />
-                      <span className="text-gray-600">Response Time: Within 24h</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm">
-                      <TrendingUp className="w-4 h-4 text-gray-500" />
-                      <span className="text-gray-600">Response Rate: {Math.floor(Math.random() * 10) + 90}%</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm">
-                      <ThumbsUp className="w-4 h-4 text-gray-500" />
-                      <span className="text-gray-600">Transaction Level: {['Bronze', 'Silver', 'Gold', 'Platinum'][Math.floor(Math.random() * 4)]}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded text-sm" onClick={handleContactSupplier}>
-                      <MessageSquare className="w-4 h-4 mr-2" />
-                      Contact Admin
-                    </Button>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button variant="outline" size="sm" className="py-2 rounded border text-sm" onClick={handleCallAdmin}>
-                        <Phone className="w-3 h-3 mr-1" />
-                        Call
-                      </Button>
-                      <Button variant="outline" size="sm" className="py-2 rounded border text-sm" onClick={handleEmailAdmin}>
-                        <Mail className="w-3 h-3 mr-1" />
-                        Email
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Supplier Information */}
+              <SupplierInfoCard
+                supplierId={supplier?.id || product.supplierId}
+                supplierName={supplier?.storeName || supplier?.businessName || "Admin Supplier"}
+                supplierSlug={supplier?.storeSlug}
+                supplierLogo={supplier?.storeLogo}
+                supplierCountry={supplier?.country || "Global"}
+                supplierCity={supplier?.city}
+                supplierType={supplier?.businessType || "manufacturer"}
+                supplierRating={supplier?.rating ? Number(supplier.rating) : 4.8}
+                supplierReviews={supplier?.totalReviews || 0}
+                supplierResponseRate={supplier?.responseRate ? Number(supplier.responseRate) : 95}
+                supplierResponseTime={supplier?.responseTime || "< 24h"}
+                supplierVerified={supplier?.isVerified || true}
+                supplierYearEstablished={supplier?.yearEstablished}
+                supplierTotalProducts={0}
+                onContact={handleContactSupplier}
+                onVisitStore={() => {
+                  if (supplier?.storeSlug) {
+                    window.location.href = `/supplier/${supplier.storeSlug}`;
+                  }
+                }}
+              />
 
               {/* Trust Signals */}
               <Card className="bg-white border-gray-100 shadow-xl">
@@ -1245,6 +1240,17 @@ export default function ProductDetail() {
         productId={productId}
         productName={product.name}
       />
+
+      {/* Floating Chat Widget for Supplier Communication */}
+      {product.supplierId && supplier && (
+        <FloatingChatWidget
+          supplierId={product.supplierId}
+          supplierName={supplier.storeName}
+          productId={product.id}
+          productName={product.name}
+          position="bottom-right"
+        />
+      )}
     </div>
   );
 }

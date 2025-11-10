@@ -16,7 +16,8 @@ import {
   Heart,
   Share2,
   MoreHorizontal,
-  ShoppingCart
+  ShoppingCart,
+  Building2
 } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ import { Link } from "wouter";
 import { useState } from "react";
 import { useFavorites } from "@/contexts/FavoriteContext";
 import { useToast } from "@/hooks/use-toast";
+import VerificationBadge from "./VerificationBadge";
 
 interface ProductCardProps {
   id: string;
@@ -40,6 +42,7 @@ interface ProductCardProps {
   responseRate: string;
   responseTime?: string;
   verified?: boolean;
+  verificationLevel?: string;
   tradeAssurance?: boolean;
   readyToShip?: boolean;
   sampleAvailable?: boolean;
@@ -62,6 +65,9 @@ interface ProductCardProps {
   onSample?: () => void;
   onAddToCart?: () => void;
   viewMode?: 'grid' | 'list';
+  supplierId?: string;
+  supplierSlug?: string;
+  supplierRating?: number;
 }
 
 export default function ProductCard({
@@ -76,6 +82,7 @@ export default function ProductCard({
   responseRate,
   responseTime,
   verified = false,
+  verificationLevel = 'none',
   tradeAssurance = false,
   readyToShip = false,
   sampleAvailable = false,
@@ -97,7 +104,10 @@ export default function ProductCard({
   onQuote,
   onSample,
   onAddToCart,
-  viewMode = 'grid'
+  viewMode = 'grid',
+  supplierId,
+  supplierSlug,
+  supplierRating = 0
 }: ProductCardProps) {
   const { isFavorite, toggleFavorite } = useFavorites();
   const { toast } = useToast();
@@ -170,12 +180,14 @@ export default function ProductCard({
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              {verified && (
-                <Badge className="absolute top-2 right-2 bg-green-600 text-white border-0 text-xs">
-                  <ShieldCheck className="w-3 h-3 mr-1" />
-                  Verified
-                </Badge>
-              )}
+              <div className="absolute top-2 right-2">
+                <VerificationBadge 
+                  level={verificationLevel as any}
+                  isVerified={verified}
+                  size="sm"
+                  showLabel={false}
+                />
+              </div>
             </div>
           </Link>
           
@@ -262,6 +274,16 @@ export default function ProductCard({
             <div className="flex items-center justify-between pt-3 border-t border-border">
               <div className="flex items-center gap-6 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1">
+                  <Building2 className="w-4 h-4" />
+                  {supplierId && supplierSlug ? (
+                    <Link href={`/supplier/${supplierSlug}`} className="hover:text-primary hover:underline font-medium">
+                      {supplierName}
+                    </Link>
+                  ) : (
+                    <span>{supplierName}</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
                   <MapPin className="w-4 h-4" />
                   <span>{supplierCountry}</span>
                 </div>
@@ -306,12 +328,12 @@ export default function ProductCard({
           
           {/* Badges */}
           <div className="absolute top-2 right-2 flex flex-col gap-1">
-            {verified && (
-              <Badge className="bg-green-600 text-white border-0 text-xs px-2 py-1" data-testid={`badge-verified-${id}`}>
-                <ShieldCheck className="w-3 h-3 mr-1" />
-                Verified
-              </Badge>
-            )}
+            <VerificationBadge 
+              level={verificationLevel as any}
+              isVerified={verified}
+              size="sm"
+              showLabel={false}
+            />
             {tradeAssurance && (
               <Badge className="bg-blue-600 text-white border-0 text-xs px-2 py-1">
                 <Award className="w-3 h-3 mr-1" />
@@ -415,8 +437,14 @@ export default function ProductCard({
         <div className="pt-2 border-t border-border space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0 flex-1">
-              <MapPin className="w-3 h-3 flex-shrink-0" />
-              <span className="truncate text-xs" data-testid={`text-supplier-${id}`}>{supplierName}</span>
+              <Building2 className="w-3 h-3 flex-shrink-0" />
+              {supplierId && supplierSlug ? (
+                <Link href={`/supplier/${supplierSlug}`} className="truncate text-xs hover:text-primary hover:underline font-medium" data-testid={`text-supplier-${id}`}>
+                  {supplierName}
+                </Link>
+              ) : (
+                <span className="truncate text-xs" data-testid={`text-supplier-${id}`}>{supplierName}</span>
+              )}
             </div>
             <Badge className={`${getSupplierTypeColor(supplierType)} text-xs flex-shrink-0 ml-2 px-2 py-1`}>
               {getSupplierTypeLabel(supplierType)}
@@ -434,11 +462,11 @@ export default function ProductCard({
             </div>
           </div>
           
-          {/* Rating and Stats */}
+          {/* Supplier Rating and Product Stats */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1">
               <Star className="h-3 w-3 text-yellow-500 fill-current" />
-              <span className="text-sm font-semibold">{rating}</span>
+              <span className="text-sm font-semibold">{supplierRating > 0 ? supplierRating.toFixed(1) : rating}</span>
               <span className="text-xs text-muted-foreground">({reviews})</span>
             </div>
             <div className="flex items-center gap-3 text-xs text-muted-foreground">

@@ -136,10 +136,10 @@ export default function SupplierProductForm({
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Textarea 
+                    <Textarea
                       placeholder="Describe your product in detail"
                       rows={4}
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />
@@ -234,8 +234,8 @@ export default function SupplierProductForm({
                       <FormItem className="flex-1">
                         <FormLabel>Min Qty</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
+                          <Input
+                            type="number"
                             placeholder="1"
                             {...field}
                             onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
@@ -252,8 +252,8 @@ export default function SupplierProductForm({
                       <FormItem className="flex-1">
                         <FormLabel>Max Qty</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
+                          <Input
+                            type="number"
                             placeholder="99"
                             {...field}
                             onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
@@ -270,8 +270,8 @@ export default function SupplierProductForm({
                       <FormItem className="flex-1">
                         <FormLabel>Price per Unit ($)</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
+                          <Input
+                            type="number"
                             step="0.01"
                             placeholder="0.00"
                             {...field}
@@ -311,8 +311,8 @@ export default function SupplierProductForm({
                   <FormItem>
                     <FormLabel>Minimum Order Quantity (MOQ)</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
+                      <Input
+                        type="number"
                         placeholder="1"
                         {...field}
                         onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
@@ -374,8 +374,8 @@ export default function SupplierProductForm({
                   <FormItem>
                     <FormLabel>Stock Quantity</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
+                      <Input
+                        type="number"
                         placeholder="0"
                         {...field}
                         onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
@@ -399,7 +399,7 @@ export default function SupplierProductForm({
               <div key={key} className="flex gap-4 items-end">
                 <div className="flex-1">
                   <Label>Specification Name</Label>
-                  <Input 
+                  <Input
                     value={key.replace('spec_', '')}
                     onChange={(e) => {
                       const newKey = `spec_${e.target.value}`;
@@ -413,7 +413,7 @@ export default function SupplierProductForm({
                 </div>
                 <div className="flex-1">
                   <Label>Value</Label>
-                  <Input 
+                  <Input
                     value={value}
                     onChange={(e) => updateSpecification(key, e.target.value)}
                     placeholder="e.g., Aluminum, Red, Large"
@@ -453,10 +453,10 @@ export default function SupplierProductForm({
                 <FormItem>
                   <FormLabel>Shipping Details</FormLabel>
                   <FormControl>
-                    <Textarea 
+                    <Textarea
                       placeholder="Provide shipping information, packaging details, etc."
                       rows={3}
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />

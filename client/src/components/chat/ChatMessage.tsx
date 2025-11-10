@@ -59,31 +59,58 @@ export default function ChatMessage({ message, isOwn, onImageClick }: ChatMessag
     return formatDistanceToNow(new Date(dateString), { addSuffix: true });
   };
 
+  const handleDownload = (attachment: any) => {
+    const link = document.createElement('a');
+    link.href = attachment.url;
+    link.download = attachment.name || 'download';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const renderAttachments = () => {
     if (!message.attachments || message.attachments.length === 0) return null;
 
     return (
       <div className="space-y-2 mt-2">
         {message.attachments.map((attachment, index) => (
-          <div key={index} className="flex items-center space-x-2">
+          <div key={index}>
             {attachment.type === 'image' ? (
-              <div className="relative group">
+              <div className="relative group max-w-xs">
                 <img
                   src={attachment.url}
-                  alt={attachment.name}
-                  className="w-32 h-32 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                  alt={attachment.name || 'Image'}
+                  className="w-full max-w-xs rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
                   onClick={() => onImageClick?.(attachment.url)}
                 />
                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded-lg flex items-center justify-center">
                   <Eye className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
+                {attachment.name && (
+                  <p className="text-xs text-gray-500 mt-1">{attachment.name}</p>
+                )}
               </div>
             ) : (
-              <div className="flex items-center space-x-2 p-2 bg-gray-100 rounded-lg">
-                <FileText className="h-4 w-4 text-gray-600" />
-                <span className="text-sm text-gray-700">{attachment.name}</span>
-                <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
-                  <Download className="h-3 w-3" />
+              <div className="flex items-center space-x-2 p-3 bg-gray-100 rounded-lg max-w-xs hover:bg-gray-200 transition-colors">
+                <FileText className="h-5 w-5 text-gray-600 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-gray-700 font-medium truncate">
+                    {attachment.name || 'File'}
+                  </p>
+                  {attachment.size && (
+                    <p className="text-xs text-gray-500">
+                      {(attachment.size / 1024).toFixed(1)} KB
+                    </p>
+                  )}
+                </div>
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  className="h-8 w-8 p-0 hover:bg-gray-300"
+                  onClick={() => handleDownload(attachment)}
+                  title="Download file"
+                >
+                  <Download className="h-4 w-4" />
                 </Button>
               </div>
             )}

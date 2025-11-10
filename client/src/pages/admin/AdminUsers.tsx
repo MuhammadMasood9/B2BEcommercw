@@ -8,16 +8,16 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { 
-  Plus, 
-  Search, 
-  Edit, 
-  Trash2, 
-  Shield, 
-  UserCheck, 
-  UserX, 
-  Mail, 
-  Phone, 
+import {
+  Plus,
+  Search,
+  Edit,
+  Trash2,
+  Shield,
+  UserCheck,
+  UserX,
+  Mail,
+  Phone,
   Building,
   MoreHorizontal,
   Download,
@@ -48,7 +48,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import Breadcrumb from "@/components/Breadcrumb";
+import  Breadcrumb  from "@/components/Breadcrumb";
 import type { z } from "zod";
 
 // User type without password for display
@@ -151,7 +151,7 @@ export default function AdminUsers() {
             throw new Error(`Unknown action: ${action}`);
         }
       });
-      
+
       await Promise.all(promises);
     },
     onSuccess: () => {
@@ -171,24 +171,24 @@ export default function AdminUsers() {
 
   // Filter and sort users
   const filteredAndSortedUsers = users?.filter(user => {
-    const matchesSearch = 
+    const matchesSearch =
       user.email.toLowerCase().includes(search.toLowerCase()) ||
       user.firstName?.toLowerCase().includes(search.toLowerCase()) ||
       user.lastName?.toLowerCase().includes(search.toLowerCase()) ||
       user.companyName?.toLowerCase().includes(search.toLowerCase());
-    
+
     const displayRole = getDisplayRole(user.role);
     const matchesRole = filterRole === "all" || displayRole === filterRole;
-    const matchesStatus = filterStatus === "all" || 
+    const matchesStatus = filterStatus === "all" ||
       (filterStatus === "active" && user.isActive) ||
       (filterStatus === "inactive" && !user.isActive) ||
       (filterStatus === "verified" && user.emailVerified) ||
       (filterStatus === "unverified" && !user.emailVerified);
-    
+
     return matchesSearch && matchesRole && matchesStatus;
   }).sort((a, b) => {
     let aValue: any, bValue: any;
-    
+
     switch (sortBy) {
       case "name":
         aValue = `${a.firstName} ${a.lastName}`.toLowerCase();
@@ -211,7 +211,7 @@ export default function AdminUsers() {
         aValue = new Date(a.createdAt || new Date()).getTime();
         bValue = new Date(b.createdAt || new Date()).getTime();
     }
-    
+
     if (sortOrder === "asc") {
       return aValue > bValue ? 1 : -1;
     } else {
@@ -240,7 +240,7 @@ export default function AdminUsers() {
       toast({ title: "No users selected", description: "Please select users first", variant: "destructive" });
       return;
     }
-    
+
     bulkActionMutation.mutate({ action, userIds: selectedUsers });
   };
 
@@ -271,7 +271,7 @@ export default function AdminUsers() {
     <div className="p-8 space-y-6">
       {/* Breadcrumb */}
       <Breadcrumb items={[{ label: "Users" }]} />
-      
+
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -298,8 +298,8 @@ export default function AdminUsers() {
               <DialogHeader>
                 <DialogTitle>{selectedUser ? "Edit User" : "Add New User"}</DialogTitle>
               </DialogHeader>
-              <UserForm 
-                user={selectedUser} 
+              <UserForm
+                user={selectedUser}
                 onSuccess={() => setIsDialogOpen(false)}
                 onCreate={createUserMutation.mutate}
                 onUpdate={(data) => selectedUser && updateUserMutation.mutate({ id: selectedUser.id, data })}
@@ -324,7 +324,7 @@ export default function AdminUsers() {
             <p className="text-sm text-blue-100 mt-1">All registered users</p>
           </CardContent>
         </Card>
-        
+
         {/* Active Users - Green */}
         <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -338,7 +338,7 @@ export default function AdminUsers() {
             <p className="text-sm text-green-100 mt-1">Currently active</p>
           </CardContent>
         </Card>
-        
+
         {/* Verified Users - Purple */}
         <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -352,7 +352,7 @@ export default function AdminUsers() {
             <p className="text-sm text-purple-100 mt-1">Email verified</p>
           </CardContent>
         </Card>
-        
+
         {/* Admins (including suppliers) - Orange */}
         <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -425,7 +425,7 @@ export default function AdminUsers() {
                 {sortOrder === "asc" ? "↑" : "↓"}
               </Button>
             </div>
-            
+
             {/* Bulk Actions */}
             {selectedUsers.length > 0 && (
               <div className="flex gap-2">
@@ -614,7 +614,7 @@ export default function AdminUsers() {
                             {user.role !== 'admin' && (
                               <>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem 
+                                <DropdownMenuItem
                                   onClick={() => {
                                     if (confirm("Are you sure you want to delete this user?")) {
                                       deleteUserMutation.mutate(user.id);
@@ -652,19 +652,19 @@ export default function AdminUsers() {
 }
 
 // Enhanced User Form Component with proper CRUD operations
-function UserForm({ 
-  user, 
-  onSuccess, 
-  onCreate, 
-  onUpdate 
-}: { 
-  user: UserDisplay | null; 
+function UserForm({
+  user,
+  onSuccess,
+  onCreate,
+  onUpdate
+}: {
+  user: UserDisplay | null;
   onSuccess: () => void;
   onCreate: (data: Omit<User, 'id'>) => void;
   onUpdate: (data: Partial<User>) => void;
 }) {
   const { toast } = useToast();
-  
+
   const form = useForm<z.infer<typeof insertUserSchema>>({
     resolver: zodResolver(insertUserSchema),
     defaultValues: user || {
@@ -699,7 +699,7 @@ function UserForm({
             <TabsTrigger value="permissions">Permissions</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="basic" className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <FormField
@@ -715,7 +715,7 @@ function UserForm({
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="lastName"
@@ -759,7 +759,7 @@ function UserForm({
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="phone"
@@ -817,7 +817,7 @@ function UserForm({
           <TabsContent value="permissions" className="space-y-4">
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">User Permissions</h3>
-              
+
               <div className="grid gap-4">
                 <FormField
                   control={form.control}
@@ -861,7 +861,7 @@ function UserForm({
           <TabsContent value="security" className="space-y-4">
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Security Settings</h3>
-              
+
               {!user && (
                 <FormField
                   control={form.control}

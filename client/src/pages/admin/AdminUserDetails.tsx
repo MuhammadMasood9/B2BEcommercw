@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { 
+import {
   ArrowLeft,
   Edit,
   Mail,
@@ -83,7 +83,7 @@ export default function AdminUserDetails() {
             isDefault: true
           },
           {
-            id: "2", 
+            id: "2",
             name: "Warehouse",
             address: "456 Industrial Ave, Oakland, CA 94607",
             isDefault: false
@@ -220,13 +220,13 @@ export default function AdminUserDetails() {
   return (
     <div className="p-8 space-y-6">
       {/* Breadcrumb */}
-      <Breadcrumb 
+      <Breadcrumb
         items={[
           { label: "Users", href: "/admin/users" },
           { label: `${user?.firstName} ${user?.lastName}` }
-        ]} 
+        ]}
       />
-      
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -248,7 +248,7 @@ export default function AdminUserDetails() {
             <Edit className="w-4 h-4 mr-2" />
             Edit User
           </Button>
-          <Button 
+          <Button
             variant={user.isActive ? "destructive" : "default"}
             onClick={() => toggleUserStatusMutation.mutate({ id: user.id, isActive: !user.isActive })}
           >
@@ -281,8 +281,8 @@ export default function AdminUserDetails() {
                   <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
                     Cancel
                   </Button>
-                  <Button 
-                    variant="destructive" 
+                  <Button
+                    variant="destructive"
                     onClick={() => deleteUserMutation.mutate(user.id)}
                   >
                     Delete User
@@ -565,7 +565,7 @@ export default function AdminUserDetails() {
                   Reset Password
                 </Button>
               </div>
-              
+
               <div className="flex items-center justify-between p-4 border rounded-lg">
                 <div>
                   <h4 className="font-medium">Two-Factor Authentication</h4>

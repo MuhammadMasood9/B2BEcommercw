@@ -1,4 +1,4 @@
-import { Search, ShoppingCart, User, Globe, Menu, ChevronDown, LogOut, Settings, Bell, Heart, Package, FileText, MessageSquare, Truck, FileSearch, Star, ArrowRight, Plus } from "lucide-react";
+import { Search, ShoppingCart, User, Globe, Menu, ChevronDown, LogOut, Settings, Bell, Heart, Package, FileText, MessageSquare, Truck, FileSearch, Star, ArrowRight, Plus, Store } from "lucide-react";
 import CartWidget from "@/components/CartWidget";
 import SearchSuggestions from "@/components/SearchSuggestions";
 import { Button } from "@/components/ui/button";
@@ -131,12 +131,29 @@ export default function Header() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu> */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 hover:bg-white/50 dark:hover:bg-gray-800/50 px-4 py-2 rounded-lg text-sm font-medium" data-testid="button-sell-on-platform">
+                    <span>Sell on Platform</span>
+                    <ChevronDown className="w-3 h-3 ml-1" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                  <DropdownMenuItem asChild>
+                    <Link href="/supplier/register" className="font-medium">Become a Supplier</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/supplier/login">Supplier Login</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/suppliers">Browse Suppliers</Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Link href="/help" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 hover:bg-white/50 dark:hover:bg-gray-800/50 px-4 py-2 rounded-lg font-medium" data-testid="link-help">
                 Help
               </Link>
-              {/* <Link href="/chat" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 hover:bg-white/50 dark:hover:bg-gray-800/50 px-4 py-2 rounded-lg font-medium" data-testid="link-chat">
-                Chat
-              </Link> */}
               <Link href="/login" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 hover:bg-white/50 dark:hover:bg-gray-800/50 px-4 py-2 rounded-lg font-medium" data-testid="link-signin">
                 Sign In
               </Link>
@@ -328,6 +345,15 @@ export default function Header() {
                             <Link href="/rfq/create" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Create RFQ</Link>
                           </>
                         )}
+                        {user?.role === 'supplier' && (
+                          <>
+                            <Link href="/supplier/dashboard" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Supplier Dashboard</Link>
+                            <Link href="/supplier/products" className="block py-3 text-lg font-medium hover:text-primary transition-colors">My Products</Link>
+                            <Link href="/supplier/inquiries" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Inquiries</Link>
+                            <Link href="/supplier/orders" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Orders</Link>
+                            <Link href="/supplier/store" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Store Settings</Link>
+                          </>
+                        )}
                         <Link href="/favorites" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Favorites</Link>
                         <Link href="/messages" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Messages</Link>
                         <button onClick={() => logout()} className="text-left w-full py-3 text-lg font-medium text-red-600">Sign Out</button>
@@ -337,11 +363,17 @@ export default function Header() {
                     <>
                       <Link href="/login" className="text-lg font-medium hover:text-primary transition-colors">Sign In</Link>
                       <Link href="/signup" className="text-lg font-medium hover:text-primary transition-colors">Join Free</Link>
+                      <div className="border-t pt-4 mt-4">
+                        <div className="text-sm font-semibold text-gray-500 mb-2">For Suppliers</div>
+                        <Link href="/supplier/register" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Become a Supplier</Link>
+                        <Link href="/supplier/login" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Supplier Login</Link>
+                      </div>
                     </>
                   )}
                   <div className="border-t pt-4">
                     <Link href="/categories" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Categories</Link>
                     <Link href="/products" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Products</Link>
+                    <Link href="/suppliers" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Suppliers</Link>
                     {/* <Link href="/ready-to-ship" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Ready to Ship</Link> */}
                     <Link href="/buyer-protection" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Buyer Protection</Link>
                     <Link href="/chat" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Chat Support</Link>
@@ -432,6 +464,41 @@ export default function Header() {
                     </>
                   )}
                   
+                  {user?.role === 'supplier' && (
+                    <>
+                      <Link href="/supplier/dashboard">
+                        <DropdownMenuItem>
+                          <User className="w-4 h-4 mr-2" />
+                          Supplier Dashboard
+                        </DropdownMenuItem>
+                      </Link>
+                      <Link href="/supplier/products">
+                        <DropdownMenuItem>
+                          <Package className="w-4 h-4 mr-2" />
+                          My Products
+                        </DropdownMenuItem>
+                      </Link>
+                      <Link href="/supplier/inquiries">
+                        <DropdownMenuItem>
+                          <FileText className="w-4 h-4 mr-2" />
+                          Inquiries
+                        </DropdownMenuItem>
+                      </Link>
+                      <Link href="/supplier/orders">
+                        <DropdownMenuItem>
+                          <ShoppingCart className="w-4 h-4 mr-2" />
+                          Orders
+                        </DropdownMenuItem>
+                      </Link>
+                      <Link href="/supplier/store">
+                        <DropdownMenuItem>
+                          <Settings className="w-4 h-4 mr-2" />
+                          Store Settings
+                        </DropdownMenuItem>
+                      </Link>
+                    </>
+                  )}
+                  
                   
                   <Link href="/favorites">
                     <DropdownMenuItem>
@@ -503,6 +570,17 @@ export default function Header() {
               data-testid="link-products"
             >
               Products
+            </Link>
+            <Link 
+              href="/suppliers" 
+              className={`text-sm font-semibold transition-all duration-200 hover:text-blue-600 dark:hover:text-blue-400 relative py-4 px-6 rounded-xl ${
+                isActivePath("/suppliers") 
+                  ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20" 
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50"
+              }`}
+              data-testid="link-suppliers"
+            >
+              Suppliers
             </Link>
             {/* <Link 
               href="/ready-to-ship" 

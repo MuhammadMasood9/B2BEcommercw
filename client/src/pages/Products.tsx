@@ -61,6 +61,7 @@ export default function Products() {
   const [verifiedAdminsOnly, setVerifiedAdminsOnly] = useState(false);
   const [tradeAssuranceOnly, setTradeAssuranceOnly] = useState(false);
   const [readyToShipOnly, setReadyToShipOnly] = useState(false);
+  const [selectedSupplier, setSelectedSupplier] = useState("all");
 
   // Handle URL search parameters
   useEffect(() => {
@@ -152,6 +153,26 @@ export default function Products() {
     },
   });
 
+  // Fetch suppliers for filter
+  const { data: apiSuppliers = [] } = useQuery<any[]>({
+    queryKey: ["/api/suppliers/directory"],
+    queryFn: async () => {
+      try {
+        const response = await fetch("/api/suppliers/directory", {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          return [];
+        }
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+      } catch (error) {
+        console.error("Error fetching suppliers:", error);
+        return [];
+      }
+    },
+  });
+
   useEffect(() => {
     setLoading(isProductsLoading, "Loading products...");
   }, [isProductsLoading, setLoading]);
@@ -196,13 +217,14 @@ export default function Products() {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          product.description?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === "all" || product.categoryId === selectedCategory;
+    const matchesSupplier = selectedSupplier === "all" || product.supplierId === selectedSupplier;
     const productPrice = (product as any).minPrice || (product as any).price || 0;
     const productMaxPrice = (product as any).maxPrice || (product as any).price || 1000;
     const matchesPrice = productPrice >= priceRange[0] && productMaxPrice <= priceRange[1];
     const productMoq = (product as any).moq || 1;
     const matchesMoq = productMoq >= moqRange[0] && productMoq <= moqRange[1];
     
-    return matchesSearch && matchesCategory && matchesPrice && matchesMoq;
+    return matchesSearch && matchesCategory && matchesSupplier && matchesPrice && matchesMoq;
   });
 
   // Sort products
@@ -261,12 +283,13 @@ export default function Products() {
       priceRange,
       image: firstImage,
       moq: product.minOrderQuantity || 1,
-      supplierName: 'Admin Supplier',
-      supplierCountry: 'USA',
-      supplierType: 'manufacturer',
-      responseRate: '100%',
-      responseTime: '< 2h',
-      verified: true,
+      supplierName: (product as any).supplierName || 'Admin Supplier',
+      supplierCountry: (product as any).supplierCountry || 'USA',
+      supplierType: (product as any).supplierType || 'manufacturer',
+      responseRate: (product as any).responseRate || '100%',
+      responseTime: (product as any).responseTime || '< 2h',
+      verified: (product as any).isVerified || true,
+      verificationLevel: (product as any).verificationLevel || 'basic',
       tradeAssurance: product.hasTradeAssurance || true,
       readyToShip: product.inStock || false,
       sampleAvailable: product.sampleAvailable || false,
@@ -280,7 +303,10 @@ export default function Products() {
       port: product.port || 'Los Angeles, USA',
       paymentTerms: product.paymentTerms || ['T/T', 'L/C', 'PayPal'],
       inStock: product.inStock || true,
-      stockQuantity: product.stockQuantity || Math.floor(Math.random() * 1000) + 100
+      stockQuantity: product.stockQuantity || Math.floor(Math.random() * 1000) + 100,
+      supplierId: product.supplierId || undefined,
+      supplierSlug: (product as any).supplierSlug || undefined,
+      supplierRating: (product as any).supplierRating || 0
     };
   };
 
@@ -463,6 +489,23 @@ export default function Products() {
                         </div>
             </div>
 
+                      <div>
+                        <Label className="text-sm font-medium">Supplier</Label>
+                        <Select value={selectedSupplier} onValueChange={setSelectedSupplier}>
+                          <SelectTrigger className="mt-2">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Suppliers</SelectItem>
+                            {apiSuppliers.map((supplier) => (
+                              <SelectItem key={supplier.id} value={supplier.id}>
+                                {supplier.storeName || supplier.businessName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
                       <div className="space-y-3">
           <div className="flex items-center space-x-2">
             <Checkbox 
@@ -534,6 +577,23 @@ export default function Products() {
                       <span>{moqRange[1]}</span>
                     </div>
           </div>
+
+                  <div>
+                    <Label className="text-sm font-medium">Supplier</Label>
+                    <Select value={selectedSupplier} onValueChange={setSelectedSupplier}>
+                      <SelectTrigger className="mt-2">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Suppliers</SelectItem>
+                        {apiSuppliers.map((supplier) => (
+                          <SelectItem key={supplier.id} value={supplier.id}>
+                            {supplier.storeName || supplier.businessName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
           
                   <div className="space-y-3">
                     <div className="flex items-center space-x-2">

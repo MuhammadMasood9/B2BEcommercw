@@ -8,6 +8,7 @@ import { Toaster as HotToaster } from 'react-hot-toast';
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/AdminSidebar";
+import { SupplierSidebar } from "@/components/SupplierSidebar";
 import EnhancedB2BAssistant from "@/components/EnhancedB2BAssistant";
 import FullScreenLoader from "@/components/FullScreenLoader";
 import { ScrollToTop } from "@/components/ScrollToTop";
@@ -18,15 +19,16 @@ import { CartProvider } from "@/contexts/CartContext";
 import { ProductProvider } from "@/contexts/ProductContext";
 import { SearchProvider } from "@/contexts/SearchContext";
 import { UnseenCountsProvider } from "@/contexts/UnseenCountsContext";
+import { WebSocketProvider } from "@/contexts/WebSocketContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import 'react-toastify/dist/ReactToastify.css';
 import Home from "@/pages/Home";
 import Products from "@/pages/Products";
 import ProductDetail from "@/pages/ProductDetail";
+import ProductComparison from "@/pages/ProductComparison";
 import RFQBrowse from "@/pages/RFQBrowse";
 import RFQCreate from "@/pages/RFQCreate";
 import RFQDetail from "@/pages/RFQDetail";
-import InquiryCart from "@/pages/InquiryCart";
 import Messages from "@/pages/Messages";
 import Dashboard from "@/pages/Dashboard";
 import Categories from "@/pages/Categories";
@@ -81,11 +83,27 @@ import AdminChat from "@/pages/admin/AdminChat";
 import AdminNotificationPage from "@/pages/admin/AdminNotificationPage";
 import AdminActivityLogPage from "@/pages/admin/AdminActivityLogPage";
 import AdminLogin from "@/pages/admin/AdminLogin";
-import GlobalChatButton from "@/components/GlobalChatButton";
+import AdminSuppliers from "@/pages/admin/AdminSuppliers";
+import AdminProductApproval from "@/pages/admin/AdminProductApproval";
 import FloatingActionButtons from "@/components/FloatingActionButtons";
 import NotificationPage from "@/pages/buyer/NotificationPage";
 import ProfilePage from "@/pages/buyer/ProfilePage";
-import SupplierDashboard from "@/pages/SupplierDashboard";
+import SupplierDashboard from "@/pages/supplier/SupplierDashboard";
+import SupplierDirectory from "@/pages/SupplierDirectory";
+import SupplierStore from "@/pages/SupplierStore";
+import SupplierLogin from "@/pages/supplier/SupplierLogin";
+import SupplierRegister from "@/pages/supplier/SupplierRegister";
+import SupplierMessages from "@/pages/supplier/SupplierMessages";
+import SupplierCommissions from "@/pages/supplier/SupplierCommissions";
+import SupplierPayouts from "@/pages/supplier/SupplierPayouts";
+import SupplierProducts from "@/pages/supplier/SupplierProducts";
+import SupplierInquiries from "@/pages/supplier/SupplierInquiries";
+import SupplierRFQs from "@/pages/supplier/SupplierRFQs";
+import SupplierQuotations from "@/pages/supplier/SupplierQuotations";
+import SupplierOrders from "@/pages/supplier/SupplierOrders";
+import SupplierAnalytics from "@/pages/supplier/SupplierAnalytics";
+import SupplierStoreManagement from "@/pages/supplier/SupplierStore";
+import SupplierProfile from "@/pages/supplier/SupplierProfile";
 import NotFound from "@/pages/not-found";
 
 function AdminRouter() {
@@ -95,6 +113,16 @@ function AdminRouter() {
       <Route path="/admin">
         <ProtectedRoute requiredRole="admin">
           <AdminDashboard />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/suppliers">
+        <ProtectedRoute requiredRole="admin">
+          <AdminSuppliers />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/product-approval">
+        <ProtectedRoute requiredRole="admin">
+          <AdminProductApproval />
         </ProtectedRoute>
       </Route>
       <Route path="/admin/products">
@@ -207,12 +235,83 @@ function AdminRouter() {
   );
 }
 
+function SupplierRouter() {
+  return (
+    <Switch>
+      <Route path="/supplier/login" component={SupplierLogin} />
+      <Route path="/supplier/register" component={SupplierRegister} />
+      <Route path="/supplier/dashboard">
+        <ProtectedRoute requiredRole="supplier">
+          <SupplierDashboard />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/supplier/products">
+        <ProtectedRoute requiredRole="supplier">
+          <SupplierProducts />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/supplier/inquiries">
+        <ProtectedRoute requiredRole="supplier">
+          <SupplierInquiries />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/supplier/rfqs">
+        <ProtectedRoute requiredRole="supplier">
+          <SupplierRFQs />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/supplier/quotations">
+        <ProtectedRoute requiredRole="supplier">
+          <SupplierQuotations />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/supplier/orders">
+        <ProtectedRoute requiredRole="supplier">
+          <SupplierOrders />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/supplier/messages">
+        <ProtectedRoute requiredRole="supplier">
+          <SupplierMessages />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/supplier/commissions">
+        <ProtectedRoute requiredRole="supplier">
+          <SupplierCommissions />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/supplier/payouts">
+        <ProtectedRoute requiredRole="supplier">
+          <SupplierPayouts />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/supplier/analytics">
+        <ProtectedRoute requiredRole="supplier">
+          <SupplierAnalytics />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/supplier/store">
+        <ProtectedRoute requiredRole="supplier">
+          <SupplierStoreManagement />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/supplier/profile">
+        <ProtectedRoute requiredRole="supplier">
+          <SupplierProfile />
+        </ProtectedRoute>
+      </Route>
+      <Route component={NotFound} />
+    </Switch>
+  );
+}
+
 function PublicRouter() {
   return (
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/products" component={Products} />
       <Route path="/product/:id" component={ProductDetail} />
+      <Route path="/products/compare" component={ProductComparison} />
       <Route path="/categories" component={Categories} />
       <Route path="/favorites" component={Favorites} />
       <Route path="/ready-to-ship" component={ReadyToShip} />
@@ -322,11 +421,8 @@ function PublicRouter() {
       <Route path="/category/:slug" component={CategoryProducts} />
       <Route path="/subcategory/:slug" component={SubcategoryProducts} />
       <Route path="/get-verified" component={GetVerified} />
-      <Route path="/supplier/dashboard">
-        <ProtectedRoute requiredRole="supplier">
-          <SupplierDashboard />
-        </ProtectedRoute>
-      </Route>
+      <Route path="/suppliers" component={SupplierDirectory} />
+      <Route path="/suppliers/:slug" component={SupplierStore} />
       <Route path="/notifications">
         <ProtectedRoute>
           <NotificationPage />
@@ -346,6 +442,7 @@ function AppContent() {
   const { isLoading, loadingMessage, showProgress, progress, setLoading } = useLoading();
   const [location] = useLocation();
   const isAdminRoute = location.startsWith('/admin');
+  const isSupplierRoute = location.startsWith('/supplier') && location !== '/suppliers';
   
   // Ensure loader starts in non-loading state
   React.useEffect(() => {
@@ -389,6 +486,42 @@ function AppContent() {
     );
   }
   
+  if (isSupplierRoute) {
+    const style = {
+      "--sidebar-width": "16rem",
+      "--sidebar-width-icon": "3rem",
+    };
+    
+    return (
+      <>
+        <SidebarProvider style={style as React.CSSProperties}>
+          <div className="flex h-screen w-full">
+            <SupplierSidebar />
+            <div className="flex flex-col flex-1 overflow-hidden">
+              <header className="flex items-center justify-between p-4 border-b">
+                <SidebarTrigger data-testid="button-sidebar-toggle" />
+                <h2 className="text-lg font-semibold">Supplier Portal</h2>
+              </header>
+              <main className="flex-1 overflow-auto">
+                <SupplierRouter />
+              </main>
+            </div>
+          </div>
+        </SidebarProvider>
+        <FullScreenLoader 
+          isLoading={isLoading}
+          message={loadingMessage}
+          showProgress={showProgress}
+          progress={progress}
+        />
+        <ScrollToTop />
+        <FloatingActionButtons chatType="general" />
+        <ToastContainer position="top-right" />
+        <HotToaster position="top-right" />
+      </>
+    );
+  }
+  
   return (
     <>
       <ScrollToTop />
@@ -412,20 +545,22 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <LoadingProvider>
         <AuthProvider>
-          <SearchProvider>
-            <FavoriteProvider>
-              <CartProvider>
-                <ProductProvider>
-                  <UnseenCountsProvider>
-                    <TooltipProvider>
-                      <Toaster />
-                      <AppContent />
-                    </TooltipProvider>
-                  </UnseenCountsProvider>
-                </ProductProvider>
-              </CartProvider>
-            </FavoriteProvider>
-          </SearchProvider>
+          <WebSocketProvider>
+            <SearchProvider>
+              <FavoriteProvider>
+                <CartProvider>
+                  <ProductProvider>
+                    <UnseenCountsProvider>
+                      <TooltipProvider>
+                        <Toaster />
+                        <AppContent />
+                      </TooltipProvider>
+                    </UnseenCountsProvider>
+                  </ProductProvider>
+                </CartProvider>
+              </FavoriteProvider>
+            </SearchProvider>
+          </WebSocketProvider>
         </AuthProvider>
       </LoadingProvider>
     </QueryClientProvider>

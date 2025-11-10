@@ -2,13 +2,14 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { db } from './db';
 import {
-    users, supplierProfiles, products, categories, rfqs, inquiries, quotations, inquiryQuotations, orders,
+    users, supplierProfiles, products, categories, rfqs, inquiries, quotations, inquiryQuotations, orders, reviews,
     InsertSupplierProfile, InsertProduct
 } from '@shared/schema';
 import { eq, and, desc, sql, ilike, or, gte, asc } from 'drizzle-orm';
 import { authMiddleware } from './auth';
 import { uploadMultiple } from './upload';
 import { z } from 'zod';
+import { calculateCommission } from './commissionRoutes';
 
 const router = Router();
 
@@ -821,8 +822,8 @@ router.get('/dashboard/stats', authMiddleware, async (req, res) => {
             totalViews: sql`coalesce(sum(${products.views}), 0)`,
             totalInquiries: sql`coalesce(sum(${products.inquiries}), 0)`
         })
-        .from(products)
-        .where(eq(products.supplierId, supplierId));
+            .from(products)
+            .where(eq(products.supplierId, supplierId));
 
         // Get inquiry statistics
         const inquiryStats = await db.select({
@@ -831,8 +832,8 @@ router.get('/dashboard/stats', authMiddleware, async (req, res) => {
             repliedInquiries: sql`count(*) filter (where ${inquiries.status} = 'replied')`,
             quotedInquiries: sql`count(*) filter (where ${inquiries.status} = 'quoted')`
         })
-        .from(inquiries)
-        .where(eq(inquiries.supplierId, supplierId));
+            .from(inquiries)
+            .where(eq(inquiries.supplierId, supplierId));
 
         // Get quotation statistics
         const quotationStats = await db.select({
@@ -841,8 +842,8 @@ router.get('/dashboard/stats', authMiddleware, async (req, res) => {
             acceptedQuotations: sql`count(*) filter (where ${quotations.status} = 'accepted')`,
             rejectedQuotations: sql`count(*) filter (where ${quotations.status} = 'rejected')`
         })
-        .from(quotations)
-        .where(eq(quotations.supplierId, supplierId));
+            .from(quotations)
+            .where(eq(quotations.supplierId, supplierId));
 
         // Get order statistics
         const orderStats = await db.select({
@@ -852,8 +853,17 @@ router.get('/dashboard/stats', authMiddleware, async (req, res) => {
             completedOrders: sql`count(*) filter (where ${orders.status} = 'delivered')`,
             totalRevenue: sql`coalesce(sum(case when ${orders.status} = 'delivered' then ${orders.totalAmount} else 0 end), 0)`
         })
-        .from(orders)
-        .where(eq(orders.supplierId, supplierId));
+            .from(orders)
+            .where(eq(orders.supplierId, supplierId));
+
+        // Get RFQ statistics
+        const rfqStats = await db.select({
+            totalRfqs: sql`count(*)`,
+            newRfqs: sql`count(*) filter (where ${rfqs.status} = 'open' and ${rfqs.quotationsCount} = 0)`,
+            respondedRfqs: sql`count(*) filter (where ${rfqs.quotationsCount} > 0)`
+        })
+            .from(rfqs)
+            .where(eq(rfqs.supplierId, supplierId));
 
         const stats = {
             totalProducts: parseInt(productStats[0]?.totalProducts as string || '0'),
@@ -868,6 +878,9 @@ router.get('/dashboard/stats', authMiddleware, async (req, res) => {
             pendingOrders: parseInt(orderStats[0]?.pendingOrders as string || '0'),
             completedOrders: parseInt(orderStats[0]?.completedOrders as string || '0'),
             totalRevenue: parseFloat(orderStats[0]?.totalRevenue as string || '0'),
+            totalRfqs: parseInt(rfqStats[0]?.totalRfqs as string || '0'),
+            newRfqs: parseInt(rfqStats[0]?.newRfqs as string || '0'),
+            respondedRfqs: parseInt(rfqStats[0]?.respondedRfqs as string || '0'),
             responseRate: inquiryStats[0]?.totalInquiries && parseInt(inquiryStats[0]?.totalInquiries as string) > 0
                 ? Math.round((parseInt(inquiryStats[0]?.repliedInquiries as string || '0') / parseInt(inquiryStats[0]?.totalInquiries as string)) * 100)
                 : 0,
@@ -904,7 +917,26 @@ router.get('/orders', authMiddleware, async (req, res) => {
         const supplierId = supplierProfile[0].id;
         const { status, search, limit, offset } = req.query;
 
-        // Build query for orders assigned to this supplier
+        // Build where conditions first
+        const whereConditions = [eq(orders.supplierId, supplierId)];
+
+        if (status) {
+            whereConditions.push(eq(orders.status, status as string));
+        }
+
+        if (search) {
+            whereConditions.push(
+                or(
+                    ilike(orders.orderNumber, `%${search}%`),
+                    ilike(users.firstName, `%${search}%`),
+                    ilike(users.lastName, `%${search}%`),
+                    ilike(users.email, `%${search}%`),
+                    ilike(products.name, `%${search}%`)
+                )!
+            );
+        }
+
+        // Build query with all conditions at once
         let query = db.select({
             id: orders.id,
             orderNumber: orders.orderNumber,
@@ -934,34 +966,12 @@ router.get('/orders', authMiddleware, async (req, res) => {
             productName: products.name,
             productImage: products.images
         })
-        .from(orders)
-        .leftJoin(users, eq(orders.buyerId, users.id))
-        .leftJoin(products, eq(orders.productId, products.id))
-        .where(eq(orders.supplierId, supplierId));
-
-        const conditions = [eq(orders.supplierId, supplierId)];
-
-        if (status) {
-            conditions.push(eq(orders.status, status as string));
-        }
-
-        if (search) {
-            conditions.push(
-                or(
-                    ilike(orders.orderNumber, `%${search}%`),
-                    ilike(users.firstName, `%${search}%`),
-                    ilike(users.lastName, `%${search}%`),
-                    ilike(users.email, `%${search}%`),
-                    ilike(products.name, `%${search}%`)
-                )
-            );
-        }
-
-        if (conditions.length > 0) {
-            query = query.where(and(...conditions));
-        }
-
-        query = query.orderBy(desc(orders.createdAt));
+            .from(orders)
+            .leftJoin(users, eq(orders.buyerId, users.id))
+            .leftJoin(products, eq(orders.productId, products.id))
+            .where(and(...whereConditions))
+            .orderBy(desc(orders.createdAt))
+            .$dynamic();
 
         if (limit) {
             query = query.limit(parseInt(limit as string));
@@ -972,19 +982,10 @@ router.get('/orders', authMiddleware, async (req, res) => {
 
         const supplierOrders = await query;
 
-        // Get total count for pagination
-        let countQuery = db.select({ count: sql`count(*)` })
+        // Get total count for pagination (reuse the same conditions)
+        const [{ count }] = await db.select({ count: sql`count(*)` })
             .from(orders)
-            .where(eq(orders.supplierId, supplierId));
-
-        if (status) {
-            countQuery = countQuery.where(and(
-                eq(orders.supplierId, supplierId),
-                eq(orders.status, status as string)
-            ));
-        }
-
-        const [{ count }] = await countQuery;
+            .where(and(...whereConditions));
 
         res.json({
             success: true,
@@ -1050,14 +1051,14 @@ router.get('/orders/:id', authMiddleware, async (req, res) => {
             productImage: products.images,
             productDescription: products.description
         })
-        .from(orders)
-        .leftJoin(users, eq(orders.buyerId, users.id))
-        .leftJoin(products, eq(orders.productId, products.id))
-        .where(and(
-            eq(orders.id, req.params.id),
-            eq(orders.supplierId, supplierId)
-        ))
-        .limit(1);
+            .from(orders)
+            .leftJoin(users, eq(orders.buyerId, users.id))
+            .leftJoin(products, eq(orders.productId, products.id))
+            .where(and(
+                eq(orders.id, req.params.id),
+                eq(orders.supplierId, supplierId)
+            ))
+            .limit(1);
 
         if (order.length === 0) {
             return res.status(404).json({ error: 'Order not found or access denied' });
@@ -1157,8 +1158,15 @@ router.patch('/orders/:id/status', authMiddleware, async (req, res) => {
             .where(eq(orders.id, req.params.id))
             .returning();
 
-        // TODO: Send notification to buyer about status update
-        // TODO: Update supplier performance metrics
+        // Send notification to buyer about status update
+        if (updatedOrder[0] && currentOrder.buyerId) {
+            const { notificationService } = await import('./notificationService');
+            await notificationService.notifyOrderStatusChange(
+                currentOrder.buyerId,
+                req.params.id,
+                validatedData.status
+            );
+        }
 
         res.json({
             success: true,
@@ -1381,23 +1389,23 @@ router.get('/orders/analytics', authMiddleware, async (req, res) => {
             status: orders.status,
             count: sql`count(*)`
         })
-        .from(orders)
-        .where(and(
-            eq(orders.supplierId, supplierId),
-            gte(orders.createdAt, daysAgo)
-        ))
-        .groupBy(orders.status);
+            .from(orders)
+            .where(and(
+                eq(orders.supplierId, supplierId),
+                gte(orders.createdAt, daysAgo)
+            ))
+            .groupBy(orders.status);
 
         // Get total revenue
         const [revenueResult] = await db.select({
             totalRevenue: sql`COALESCE(SUM(CAST(${orders.totalAmount} AS DECIMAL)), 0)`,
             totalOrders: sql`count(*)`
         })
-        .from(orders)
-        .where(and(
-            eq(orders.supplierId, supplierId),
-            gte(orders.createdAt, daysAgo)
-        ));
+            .from(orders)
+            .where(and(
+                eq(orders.supplierId, supplierId),
+                gte(orders.createdAt, daysAgo)
+            ));
 
         // Get recent orders
         const recentOrders = await db.select({
@@ -1410,12 +1418,12 @@ router.get('/orders/analytics', authMiddleware, async (req, res) => {
             buyerLastName: users.lastName,
             productName: products.name
         })
-        .from(orders)
-        .leftJoin(users, eq(orders.buyerId, users.id))
-        .leftJoin(products, eq(orders.productId, products.id))
-        .where(eq(orders.supplierId, supplierId))
-        .orderBy(desc(orders.createdAt))
-        .limit(10);
+            .from(orders)
+            .leftJoin(users, eq(orders.buyerId, users.id))
+            .leftJoin(products, eq(orders.productId, products.id))
+            .where(eq(orders.supplierId, supplierId))
+            .orderBy(desc(orders.createdAt))
+            .limit(10);
 
         // Get top products by order count
         const topProducts = await db.select({
@@ -1424,21 +1432,21 @@ router.get('/orders/analytics', authMiddleware, async (req, res) => {
             orderCount: sql`count(*)`,
             totalRevenue: sql`SUM(CAST(${orders.totalAmount} AS DECIMAL))`
         })
-        .from(orders)
-        .leftJoin(products, eq(orders.productId, products.id))
-        .where(and(
-            eq(orders.supplierId, supplierId),
-            gte(orders.createdAt, daysAgo)
-        ))
-        .groupBy(orders.productId, products.name)
-        .orderBy(desc(sql`count(*)`))
-        .limit(5);
+            .from(orders)
+            .leftJoin(products, eq(orders.productId, products.id))
+            .where(and(
+                eq(orders.supplierId, supplierId),
+                gte(orders.createdAt, daysAgo)
+            ))
+            .groupBy(orders.productId, products.name)
+            .orderBy(desc(sql`count(*)`))
+            .limit(5);
 
         const analytics = {
             period: parseInt(period as string),
             totalOrders: parseInt(revenueResult?.totalOrders as string || '0'),
             totalRevenue: parseFloat(revenueResult?.totalRevenue as string || '0'),
-            averageOrderValue: revenueResult?.totalOrders 
+            averageOrderValue: revenueResult?.totalOrders
                 ? parseFloat(revenueResult.totalRevenue as string) / parseInt(revenueResult.totalOrders as string)
                 : 0,
             statusBreakdown: statusCounts.reduce((acc, item) => {
@@ -1554,7 +1562,8 @@ router.get('/rfqs', authMiddleware, async (req, res) => {
             .leftJoin(products, eq(rfqs.productId, products.id))
             .leftJoin(categories, eq(rfqs.categoryId, categories.id))
             .where(conditions.length > 1 ? and(...conditions) : conditions[0])
-            .orderBy(desc(rfqs.createdAt));
+            .orderBy(desc(rfqs.createdAt))
+            .$dynamic();
 
         // Apply pagination
         if (limit) {
@@ -1591,6 +1600,83 @@ router.get('/rfqs', authMiddleware, async (req, res) => {
     } catch (error: any) {
         console.error('Get supplier RFQs error:', error);
         res.status(500).json({ error: 'Failed to fetch RFQs' });
+    }
+});
+
+// ==================== SUPPLIER REVIEWS AND RATINGS ====================
+
+// Get supplier reviews
+router.get('/reviews', authMiddleware, async (req, res) => {
+    try {
+        if (req.user?.role !== 'supplier') {
+            return res.status(403).json({ error: 'Access denied. Supplier role required.' });
+        }
+
+        // Get supplier profile to get supplier ID
+        const supplierProfile = await db.select({ id: supplierProfiles.id })
+            .from(supplierProfiles)
+            .where(eq(supplierProfiles.userId, req.user.id))
+            .limit(1);
+
+        if (supplierProfile.length === 0) {
+            return res.status(404).json({ error: 'Supplier profile not found' });
+        }
+
+        const supplierId = supplierProfile[0].id;
+        const { limit, offset } = req.query;
+
+        // Get reviews for this supplier
+        let query = db.select({
+            id: reviews.id,
+            rating: reviews.rating,
+            comment: reviews.comment,
+            orderReference: reviews.orderReference,
+            createdAt: reviews.createdAt,
+            // Buyer info
+            buyerId: reviews.buyerId,
+            buyerName: users.firstName,
+            buyerLastName: users.lastName,
+            buyerCompany: users.companyName,
+            // Product info (if product-specific review)
+            productId: reviews.productId,
+            productName: products.name
+        })
+            .from(reviews)
+            .leftJoin(users, eq(reviews.buyerId, users.id))
+            .leftJoin(products, eq(reviews.productId, products.id))
+            .where(eq(reviews.supplierId, supplierId))
+            .orderBy(desc(reviews.createdAt))
+            .$dynamic();
+
+        if (limit) {
+            query = query.limit(parseInt(limit as string));
+        }
+        if (offset) {
+            query = query.offset(parseInt(offset as string));
+        }
+
+        const supplierReviews = await query;
+
+        // Get total count and average rating
+        const [stats] = await db.select({
+            count: sql`count(*)`,
+            avgRating: sql`COALESCE(AVG(CAST(${reviews.rating} AS DECIMAL)), 0)`
+        })
+            .from(reviews)
+            .where(eq(reviews.supplierId, supplierId));
+
+        res.json({
+            success: true,
+            reviews: supplierReviews,
+            total: parseInt(stats.count as string),
+            averageRating: parseFloat(stats.avgRating as string),
+            page: offset ? Math.floor(parseInt(offset as string) / (parseInt(limit as string) || 20)) + 1 : 1,
+            limit: limit ? parseInt(limit as string) : supplierReviews.length
+        });
+
+    } catch (error: any) {
+        console.error('Get supplier reviews error:', error);
+        res.status(500).json({ error: 'Failed to fetch reviews' });
     }
 });
 
@@ -1672,7 +1758,8 @@ router.get('/inquiries', authMiddleware, async (req, res) => {
             .leftJoin(users, eq(inquiries.buyerId, users.id))
             .leftJoin(products, eq(inquiries.productId, products.id))
             .where(conditions.length > 1 ? and(...conditions) : conditions[0])
-            .orderBy(desc(inquiries.createdAt));
+            .orderBy(desc(inquiries.createdAt))
+            .$dynamic();
 
         // Apply pagination
         if (limit) {
@@ -1782,6 +1869,114 @@ router.get('/rfqs/:id', authMiddleware, async (req, res) => {
     } catch (error: any) {
         console.error('Get RFQ details error:', error);
         res.status(500).json({ error: 'Failed to fetch RFQ details' });
+    }
+});
+
+// Respond to RFQ with quotation
+router.post('/rfqs/:id/respond', authMiddleware, async (req, res) => {
+    try {
+        if (req.user?.role !== 'supplier') {
+            return res.status(403).json({ error: 'Access denied. Supplier role required.' });
+        }
+
+        // Get supplier profile to get supplier ID
+        const supplierProfile = await db.select({ id: supplierProfiles.id })
+            .from(supplierProfiles)
+            .where(eq(supplierProfiles.userId, req.user.id))
+            .limit(1);
+
+        if (supplierProfile.length === 0) {
+            return res.status(404).json({ error: 'Supplier profile not found' });
+        }
+
+        const supplierId = supplierProfile[0].id;
+
+        const respondSchema = z.object({
+            pricePerUnit: z.number().positive(),
+            totalPrice: z.number().positive(),
+            moq: z.number().int().positive(),
+            leadTime: z.string().optional(),
+            paymentTerms: z.string().optional(),
+            validUntil: z.string().datetime().optional(),
+            message: z.string().optional(),
+            attachments: z.array(z.string()).optional()
+        });
+
+        const validatedData = respondSchema.parse(req.body);
+
+        // Verify RFQ exists and is assigned to this supplier
+        const rfq = await db.select()
+            .from(rfqs)
+            .where(and(
+                eq(rfqs.id, req.params.id),
+                eq(rfqs.supplierId, supplierId)
+            ))
+            .limit(1);
+
+        if (rfq.length === 0) {
+            return res.status(404).json({ error: 'RFQ not found or not accessible' });
+        }
+
+        if (rfq[0].status === 'closed') {
+            return res.status(400).json({ error: 'Cannot respond to closed RFQ' });
+        }
+
+        // Check if supplier already has a quotation for this RFQ
+        const existingQuotation = await db.select()
+            .from(quotations)
+            .where(and(
+                eq(quotations.rfqId, req.params.id),
+                eq(quotations.supplierId, supplierId)
+            ))
+            .limit(1);
+
+        if (existingQuotation.length > 0) {
+            return res.status(409).json({ 
+                error: 'You have already responded to this RFQ',
+                quotationId: existingQuotation[0].id
+            });
+        }
+
+        // Create quotation
+        const newQuotation = await db.insert(quotations).values({
+            rfqId: req.params.id,
+            supplierId: supplierId,
+            pricePerUnit: validatedData.pricePerUnit.toString(),
+            totalPrice: validatedData.totalPrice.toString(),
+            moq: validatedData.moq,
+            leadTime: validatedData.leadTime || null,
+            paymentTerms: validatedData.paymentTerms || null,
+            validUntil: validatedData.validUntil ? new Date(validatedData.validUntil) : null,
+            message: validatedData.message || null,
+            attachments: validatedData.attachments || [],
+            status: 'pending',
+            createdAt: new Date()
+        }).returning();
+
+        // Update RFQ quotations count
+        await db.update(rfqs)
+            .set({
+                quotationsCount: sql`${rfqs.quotationsCount} + 1`
+            })
+            .where(eq(rfqs.id, req.params.id));
+
+        res.status(201).json({
+            success: true,
+            message: 'Quotation submitted successfully',
+            quotation: newQuotation[0]
+        });
+
+    } catch (error: any) {
+        console.error('Respond to RFQ error:', error);
+
+        if (error.name === 'ZodError') {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: error.errors
+            });
+        }
+
+        res.status(500).json({ error: 'Failed to submit quotation' });
     }
 });
 
@@ -2043,6 +2238,21 @@ router.post('/inquiry-quotations', authMiddleware, async (req, res) => {
             })
             .where(eq(inquiries.id, validatedData.inquiryId));
 
+        // Notify buyer about new quotation
+        const { notificationService } = await import('./notificationService');
+        const supplier = await db.select({ storeName: supplierProfiles.storeName })
+            .from(supplierProfiles)
+            .where(eq(supplierProfiles.id, supplierId))
+            .limit(1);
+        
+        const supplierName = supplier.length > 0 ? supplier[0].storeName : 'A supplier';
+        
+        await notificationService.notifyQuotationReceived(
+            inquiry[0].buyerId,
+            newQuotation[0].id,
+            supplierName
+        );
+
         res.status(201).json({
             success: true,
             message: 'Inquiry quotation created successfully',
@@ -2060,6 +2270,81 @@ router.post('/inquiry-quotations', authMiddleware, async (req, res) => {
         }
 
         res.status(500).json({ error: 'Failed to create inquiry quotation' });
+    }
+});
+
+// Update inquiry quotation
+router.put('/inquiry-quotations/:id', authMiddleware, async (req, res) => {
+    try {
+        if (req.user?.role !== 'supplier') {
+            return res.status(403).json({ error: 'Access denied. Supplier role required.' });
+        }
+
+        // Get supplier profile to get supplier ID
+        const supplierProfile = await db.select({ id: supplierProfiles.id })
+            .from(supplierProfiles)
+            .where(eq(supplierProfiles.userId, req.user.id))
+            .limit(1);
+
+        if (supplierProfile.length === 0) {
+            return res.status(404).json({ error: 'Supplier profile not found' });
+        }
+
+        const supplierId = supplierProfile[0].id;
+
+        const updateInquiryQuotationSchema = z.object({
+            pricePerUnit: z.number().positive().optional(),
+            totalPrice: z.number().positive().optional(),
+            moq: z.number().int().positive().optional(),
+            leadTime: z.string().optional(),
+            paymentTerms: z.string().optional(),
+            validUntil: z.string().datetime().optional(),
+            message: z.string().optional(),
+            attachments: z.array(z.string()).optional()
+        });
+
+        const validatedData = updateInquiryQuotationSchema.parse(req.body);
+
+        const updateData: any = {};
+        if (validatedData.pricePerUnit !== undefined) updateData.pricePerUnit = validatedData.pricePerUnit.toString();
+        if (validatedData.totalPrice !== undefined) updateData.totalPrice = validatedData.totalPrice.toString();
+        if (validatedData.moq !== undefined) updateData.moq = validatedData.moq;
+        if (validatedData.leadTime !== undefined) updateData.leadTime = validatedData.leadTime;
+        if (validatedData.paymentTerms !== undefined) updateData.paymentTerms = validatedData.paymentTerms;
+        if (validatedData.validUntil !== undefined) updateData.validUntil = validatedData.validUntil ? new Date(validatedData.validUntil) : null;
+        if (validatedData.message !== undefined) updateData.message = validatedData.message;
+        if (validatedData.attachments !== undefined) updateData.attachments = validatedData.attachments;
+
+        // Update inquiry quotation
+        const updatedQuotation = await db.update(inquiryQuotations)
+            .set(updateData)
+            .where(and(
+                eq(inquiryQuotations.id, req.params.id),
+                eq(inquiryQuotations.supplierId, supplierId)
+            ))
+            .returning();
+
+        if (updatedQuotation.length === 0) {
+            return res.status(404).json({ error: 'Inquiry quotation not found or not accessible' });
+        }
+
+        res.json({
+            success: true,
+            message: 'Inquiry quotation updated successfully',
+            quotation: updatedQuotation[0]
+        });
+
+    } catch (error: any) {
+        console.error('Update inquiry quotation error:', error);
+
+        if (error.name === 'ZodError') {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: error.errors
+            });
+        }
+
+        res.status(500).json({ error: 'Failed to update inquiry quotation' });
     }
 });
 
@@ -2601,7 +2886,8 @@ router.get('/admin/suppliers', authMiddleware, async (req, res) => {
             userLastName: users.lastName
         })
             .from(supplierProfiles)
-            .leftJoin(users, eq(supplierProfiles.userId, users.id));
+            .leftJoin(users, eq(supplierProfiles.userId, users.id))
+            .$dynamic();
 
         // Apply conditions
         if (conditions.length > 0) {
@@ -2728,7 +3014,7 @@ router.get('/products', authMiddleware, async (req, res) => {
                     ilike(products.name, `%${search}%`),
                     ilike(products.description, `%${search}%`),
                     ilike(products.shortDescription, `%${search}%`)
-                )
+                )!
             );
         }
 
@@ -2759,7 +3045,8 @@ router.get('/products', authMiddleware, async (req, res) => {
             categoryName: categories.name
         })
             .from(products)
-            .leftJoin(categories, eq(products.categoryId, categories.id));
+            .leftJoin(categories, eq(products.categoryId, categories.id))
+            .$dynamic();
 
         // Apply conditions
         if (conditions.length > 0) {
@@ -2794,7 +3081,7 @@ router.get('/products', authMiddleware, async (req, res) => {
                     ilike(products.name, `%${search}%`),
                     ilike(products.description, `%${search}%`),
                     ilike(products.shortDescription, `%${search}%`)
-                )
+                )!
             );
         }
 
@@ -2920,8 +3207,8 @@ router.post('/products', authMiddleware, async (req, res) => {
             isPublished: false, // Will be set to true when approved
             views: 0,
             inquiries: 0,
-            createdAt: new Date(),
-            updatedAt: new Date()
+            // Convert samplePrice to string if present
+            samplePrice: validatedData.samplePrice !== undefined ? validatedData.samplePrice.toString() : undefined
         };
 
         const newProduct = await db.insert(products).values(productData).returning();
@@ -3142,8 +3429,8 @@ router.post('/products/bulk', authMiddleware, async (req, res) => {
                     isPublished: false,
                     views: 0,
                     inquiries: 0,
-                    createdAt: new Date(),
-                    updatedAt: new Date()
+                    // Convert samplePrice to string if present
+                    samplePrice: productData.samplePrice !== undefined ? productData.samplePrice.toString() : undefined
                 };
 
                 const [newProduct] = await db.insert(products).values(newProductData).returning();
@@ -3876,6 +4163,11 @@ router.post('/quotations/:id/accept', authMiddleware, async (req, res) => {
             return res.status(400).json({ error: 'Only pending quotations can be accepted' });
         }
 
+        // Validate required fields
+        if (!quotation.rfqBuyerId || !quotation.supplierId || !quotation.rfqId) {
+            return res.status(400).json({ error: 'Invalid quotation data: missing required fields' });
+        }
+
         // Create order from quotation
         const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
@@ -3898,20 +4190,31 @@ router.post('/quotations/:id/accept', authMiddleware, async (req, res) => {
             supplierId: quotation.supplierId,
             rfqId: quotation.rfqId,
             quotationId: quotation.id,
-            productId: quotation.rfqProductId,
-            quantity: quotation.rfqQuantity,
-            unitPrice: quotation.pricePerUnit,
+            productId: quotation.rfqProductId || undefined,
+            quantity: quotation.rfqQuantity || undefined,
+            unitPrice: quotation.pricePerUnit || undefined,
             totalAmount: quotation.totalPrice,
             items: orderItems,
             status: 'pending',
             paymentStatus: 'pending',
-            shippingAddress: shippingAddress ? JSON.stringify(shippingAddress) : null,
-            notes: `Order created from RFQ quotation. Supplier: ${quotation.supplierName}`,
-            createdAt: new Date(),
-            updatedAt: new Date()
+            shippingAddress: shippingAddress ? JSON.stringify(shippingAddress) : undefined,
+            notes: `Order created from RFQ quotation. Supplier: ${quotation.supplierName || 'Unknown'}`
         }).returning();
 
         const order = newOrder[0];
+
+        // Calculate and create commission record
+        try {
+            await calculateCommission(
+                order.id,
+                quotation.supplierId,
+                parseFloat(order.totalAmount)
+            );
+            console.log('✅ Commission calculated for order:', order.id);
+        } catch (error) {
+            console.error('⚠️ Failed to calculate commission:', error);
+            // Don't fail the order creation if commission calculation fails
+        }
 
         // Update quotation status to accepted
         await db.update(quotations)
@@ -4001,6 +4304,11 @@ router.post('/inquiry-quotations/:id/accept', authMiddleware, async (req, res) =
             return res.status(400).json({ error: 'Only pending quotations can be accepted' });
         }
 
+        // Validate required fields
+        if (!quotation.inquiryBuyerId || !quotation.supplierId || !quotation.inquiryId) {
+            return res.status(400).json({ error: 'Invalid quotation data: missing required fields' });
+        }
+
         // Create order from quotation
         const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
@@ -4023,20 +4331,31 @@ router.post('/inquiry-quotations/:id/accept', authMiddleware, async (req, res) =
             supplierId: quotation.supplierId,
             inquiryId: quotation.inquiryId,
             quotationId: quotation.id,
-            productId: quotation.inquiryProductId,
-            quantity: quotation.inquiryQuantity,
-            unitPrice: quotation.pricePerUnit,
+            productId: quotation.inquiryProductId || undefined,
+            quantity: quotation.inquiryQuantity || undefined,
+            unitPrice: quotation.pricePerUnit || undefined,
             totalAmount: quotation.totalPrice,
             items: orderItems,
             status: 'pending',
             paymentStatus: 'pending',
-            shippingAddress: shippingAddress ? JSON.stringify(shippingAddress) : null,
-            notes: `Order created from inquiry quotation. Supplier: ${quotation.supplierName}`,
-            createdAt: new Date(),
-            updatedAt: new Date()
+            shippingAddress: shippingAddress ? JSON.stringify(shippingAddress) : undefined,
+            notes: `Order created from inquiry quotation. Supplier: ${quotation.supplierName || 'Unknown'}`
         }).returning();
 
         const order = newOrder[0];
+
+        // Calculate and create commission record
+        try {
+            await calculateCommission(
+                order.id,
+                quotation.supplierId,
+                parseFloat(order.totalAmount)
+            );
+            console.log('✅ Commission calculated for order:', order.id);
+        } catch (error) {
+            console.error('⚠️ Failed to calculate commission:', error);
+            // Don't fail the order creation if commission calculation fails
+        }
 
         // Update quotation status to accepted
         await db.update(inquiryQuotations)
@@ -4068,6 +4387,949 @@ router.post('/inquiry-quotations/:id/accept', authMiddleware, async (req, res) =
         res.status(500).json({
             error: error.message || 'Failed to accept quotation. Please try again.'
         });
+    }
+});
+
+// ==================== PUBLIC SUPPLIER DISCOVERY API ====================
+
+// Get supplier directory (public - no auth required)
+router.get('/directory', async (req, res) => {
+    try {
+        const {
+            search,
+            country,
+            businessType,
+            verificationLevel,
+            verified,
+            featured,
+            sortBy = 'rating',
+            limit = '20',
+            offset = '0'
+        } = req.query;
+
+        // Build conditions for filtering
+        const conditions = [
+            eq(supplierProfiles.status, 'approved'),
+            eq(supplierProfiles.isActive, true)
+        ];
+
+        if (search) {
+            conditions.push(
+                or(
+                    ilike(supplierProfiles.storeName, `%${search}%`),
+                    ilike(supplierProfiles.businessName, `%${search}%`),
+                    ilike(supplierProfiles.storeDescription, `%${search}%`)
+                )!
+            );
+        }
+
+        if (country) {
+            conditions.push(eq(supplierProfiles.country, country as string));
+        }
+
+        if (businessType) {
+            conditions.push(eq(supplierProfiles.businessType, businessType as string));
+        }
+
+        if (verificationLevel) {
+            conditions.push(eq(supplierProfiles.verificationLevel, verificationLevel as string));
+        }
+
+        if (verified === 'true') {
+            conditions.push(eq(supplierProfiles.isVerified, true));
+        }
+
+        if (featured === 'true') {
+            conditions.push(eq(supplierProfiles.isFeatured, true));
+        }
+
+        // Determine sort order
+        let orderByClause;
+        switch (sortBy) {
+            case 'orders':
+                orderByClause = desc(supplierProfiles.totalOrders);
+                break;
+            case 'newest':
+                orderByClause = desc(supplierProfiles.createdAt);
+                break;
+            case 'name':
+                orderByClause = asc(supplierProfiles.storeName);
+                break;
+            case 'rating':
+            default:
+                orderByClause = desc(supplierProfiles.rating);
+                break;
+        }
+
+        // Build and execute query
+        const suppliers = await db.select({
+            id: supplierProfiles.id,
+            storeName: supplierProfiles.storeName,
+            storeSlug: supplierProfiles.storeSlug,
+            storeDescription: supplierProfiles.storeDescription,
+            storeLogo: supplierProfiles.storeLogo,
+            storeBanner: supplierProfiles.storeBanner,
+            businessName: supplierProfiles.businessName,
+            businessType: supplierProfiles.businessType,
+            country: supplierProfiles.country,
+            city: supplierProfiles.city,
+            mainProducts: supplierProfiles.mainProducts,
+            exportMarkets: supplierProfiles.exportMarkets,
+            verificationLevel: supplierProfiles.verificationLevel,
+            isVerified: supplierProfiles.isVerified,
+            isFeatured: supplierProfiles.isFeatured,
+            rating: supplierProfiles.rating,
+            totalReviews: supplierProfiles.totalReviews,
+            responseRate: supplierProfiles.responseRate,
+            responseTime: supplierProfiles.responseTime,
+            totalOrders: supplierProfiles.totalOrders,
+            yearEstablished: supplierProfiles.yearEstablished,
+            createdAt: supplierProfiles.createdAt
+        })
+            .from(supplierProfiles)
+            .where(and(...conditions))
+            .orderBy(orderByClause)
+            .limit(parseInt(limit as string))
+            .offset(parseInt(offset as string));
+
+        // Get total count for pagination
+        const [{ count }] = await db.select({ count: sql`count(*)` })
+            .from(supplierProfiles)
+            .where(and(...conditions));
+
+        res.json({
+            success: true,
+            suppliers,
+            total: parseInt(count as string),
+            page: Math.floor(parseInt(offset as string) / parseInt(limit as string)) + 1,
+            limit: parseInt(limit as string)
+        });
+
+    } catch (error: any) {
+        console.error('Get supplier directory error:', error);
+        res.status(500).json({ error: 'Failed to fetch supplier directory' });
+    }
+});
+
+// Get featured suppliers (public - no auth required)
+router.get('/featured', async (req, res) => {
+    try {
+        const { limit = '6' } = req.query;
+
+        const featuredSuppliers = await db.select({
+            id: supplierProfiles.id,
+            storeName: supplierProfiles.storeName,
+            storeSlug: supplierProfiles.storeSlug,
+            storeDescription: supplierProfiles.storeDescription,
+            storeLogo: supplierProfiles.storeLogo,
+            storeBanner: supplierProfiles.storeBanner,
+            businessName: supplierProfiles.businessName,
+            businessType: supplierProfiles.businessType,
+            country: supplierProfiles.country,
+            city: supplierProfiles.city,
+            mainProducts: supplierProfiles.mainProducts,
+            verificationLevel: supplierProfiles.verificationLevel,
+            isVerified: supplierProfiles.isVerified,
+            rating: supplierProfiles.rating,
+            totalReviews: supplierProfiles.totalReviews,
+            responseRate: supplierProfiles.responseRate,
+            responseTime: supplierProfiles.responseTime,
+            totalOrders: supplierProfiles.totalOrders
+        })
+            .from(supplierProfiles)
+            .where(and(
+                eq(supplierProfiles.status, 'approved'),
+                eq(supplierProfiles.isActive, true),
+                eq(supplierProfiles.isFeatured, true)
+            ))
+            .orderBy(desc(supplierProfiles.rating))
+            .limit(parseInt(limit as string));
+
+        res.json({
+            success: true,
+            suppliers: featuredSuppliers
+        });
+
+    } catch (error: any) {
+        console.error('Get featured suppliers error:', error);
+        res.status(500).json({ error: 'Failed to fetch featured suppliers' });
+    }
+});
+
+// Get individual supplier store by slug (public - no auth required)
+router.get('/store/:slug', async (req, res) => {
+    try {
+        const { slug } = req.params;
+
+        const supplier = await db.select({
+            id: supplierProfiles.id,
+            storeName: supplierProfiles.storeName,
+            storeSlug: supplierProfiles.storeSlug,
+            storeDescription: supplierProfiles.storeDescription,
+            storeLogo: supplierProfiles.storeLogo,
+            storeBanner: supplierProfiles.storeBanner,
+            businessName: supplierProfiles.businessName,
+            businessType: supplierProfiles.businessType,
+            contactPerson: supplierProfiles.contactPerson,
+            phone: supplierProfiles.phone,
+            whatsapp: supplierProfiles.whatsapp,
+            address: supplierProfiles.address,
+            city: supplierProfiles.city,
+            country: supplierProfiles.country,
+            website: supplierProfiles.website,
+            yearEstablished: supplierProfiles.yearEstablished,
+            employeesCount: supplierProfiles.employeesCount,
+            annualRevenue: supplierProfiles.annualRevenue,
+            mainProducts: supplierProfiles.mainProducts,
+            exportMarkets: supplierProfiles.exportMarkets,
+            verificationLevel: supplierProfiles.verificationLevel,
+            isVerified: supplierProfiles.isVerified,
+            verifiedAt: supplierProfiles.verifiedAt,
+            rating: supplierProfiles.rating,
+            totalReviews: supplierProfiles.totalReviews,
+            responseRate: supplierProfiles.responseRate,
+            responseTime: supplierProfiles.responseTime,
+            totalSales: supplierProfiles.totalSales,
+            totalOrders: supplierProfiles.totalOrders,
+            storePolicies: supplierProfiles.storePolicies,
+            operatingHours: supplierProfiles.operatingHours,
+            createdAt: supplierProfiles.createdAt
+        })
+            .from(supplierProfiles)
+            .where(and(
+                eq(supplierProfiles.storeSlug, slug),
+                eq(supplierProfiles.status, 'approved'),
+                eq(supplierProfiles.isActive, true)
+            ))
+            .limit(1);
+
+        if (supplier.length === 0) {
+            return res.status(404).json({ error: 'Supplier store not found' });
+        }
+
+        // Get supplier's products
+        const supplierProducts = await db.select({
+            id: products.id,
+            name: products.name,
+            slug: products.slug,
+            description: products.description,
+            images: products.images,
+            minOrderQuantity: products.minOrderQuantity,
+            priceRanges: products.priceRanges,
+            inStock: products.inStock,
+            stockQuantity: products.stockQuantity,
+            leadTime: products.leadTime,
+            certifications: products.certifications,
+            hasTradeAssurance: products.hasTradeAssurance,
+            sampleAvailable: products.sampleAvailable,
+            customizationAvailable: products.customizationAvailable,
+            createdAt: products.createdAt
+        })
+            .from(products)
+            .where(and(
+                eq(products.supplierId, supplier[0].id),
+                eq(products.isPublished, true),
+                eq(products.approvalStatus, 'approved')
+            ))
+            .orderBy(desc(products.createdAt))
+            .limit(20);
+
+        res.json({
+            success: true,
+            supplier: supplier[0],
+            products: supplierProducts,
+            productCount: supplierProducts.length
+        });
+
+    } catch (error: any) {
+        console.error('Get supplier store error:', error);
+        res.status(500).json({ error: 'Failed to fetch supplier store' });
+    }
+});
+
+// Get supplier's products by supplier ID (public - no auth required)
+router.get('/:supplierId/products', async (req, res) => {
+    try {
+        const { supplierId } = req.params;
+        const { limit = '20', offset = '0', sortBy = 'newest' } = req.query;
+
+        // Verify supplier exists and is active
+        const supplier = await db.select({ id: supplierProfiles.id })
+            .from(supplierProfiles)
+            .where(and(
+                eq(supplierProfiles.id, supplierId),
+                eq(supplierProfiles.status, 'approved'),
+                eq(supplierProfiles.isActive, true)
+            ))
+            .limit(1);
+
+        if (supplier.length === 0) {
+            return res.status(404).json({ error: 'Supplier not found' });
+        }
+
+        // Determine sort order for products
+        let productOrderBy;
+        switch (sortBy) {
+            case 'popular':
+                productOrderBy = desc(products.views);
+                break;
+            case 'inquiries':
+                productOrderBy = desc(products.inquiries);
+                break;
+            case 'newest':
+            default:
+                productOrderBy = desc(products.createdAt);
+                break;
+        }
+
+        // Build and execute query for products
+        const supplierProducts = await db.select({
+            id: products.id,
+            name: products.name,
+            slug: products.slug,
+            description: products.description,
+            images: products.images,
+            categoryId: products.categoryId,
+            minOrderQuantity: products.minOrderQuantity,
+            priceRanges: products.priceRanges,
+            inStock: products.inStock,
+            stockQuantity: products.stockQuantity,
+            leadTime: products.leadTime,
+            port: products.port,
+            paymentTerms: products.paymentTerms,
+            certifications: products.certifications,
+            hasTradeAssurance: products.hasTradeAssurance,
+            sampleAvailable: products.sampleAvailable,
+            customizationAvailable: products.customizationAvailable,
+            views: products.views,
+            inquiries: products.inquiries,
+            createdAt: products.createdAt
+        })
+            .from(products)
+            .where(and(
+                eq(products.supplierId, supplierId),
+                eq(products.isPublished, true),
+                eq(products.approvalStatus, 'approved')
+            ))
+            .orderBy(productOrderBy)
+            .limit(parseInt(limit as string))
+            .offset(parseInt(offset as string));
+
+        // Get total count
+        const [{ count }] = await db.select({ count: sql`count(*)` })
+            .from(products)
+            .where(and(
+                eq(products.supplierId, supplierId),
+                eq(products.isPublished, true),
+                eq(products.approvalStatus, 'approved')
+            ));
+
+        res.json({
+            success: true,
+            products: supplierProducts,
+            total: parseInt(count as string),
+            page: Math.floor(parseInt(offset as string) / parseInt(limit as string)) + 1,
+            limit: parseInt(limit as string)
+        });
+
+    } catch (error: any) {
+        console.error('Get supplier products error:', error);
+        res.status(500).json({ error: 'Failed to fetch supplier products' });
+    }
+});
+
+// Search suppliers (public - no auth required)
+router.get('/search', async (req, res) => {
+    try {
+        const { q, limit = '10' } = req.query;
+
+        if (!q || (q as string).trim().length === 0) {
+            return res.json({
+                success: true,
+                suppliers: []
+            });
+        }
+
+        const searchResults = await db.select({
+            id: supplierProfiles.id,
+            storeName: supplierProfiles.storeName,
+            storeSlug: supplierProfiles.storeSlug,
+            storeLogo: supplierProfiles.storeLogo,
+            businessName: supplierProfiles.businessName,
+            businessType: supplierProfiles.businessType,
+            country: supplierProfiles.country,
+            city: supplierProfiles.city,
+            mainProducts: supplierProfiles.mainProducts,
+            isVerified: supplierProfiles.isVerified,
+            verificationLevel: supplierProfiles.verificationLevel,
+            rating: supplierProfiles.rating,
+            totalReviews: supplierProfiles.totalReviews
+        })
+            .from(supplierProfiles)
+            .where(and(
+                eq(supplierProfiles.status, 'approved'),
+                eq(supplierProfiles.isActive, true),
+                or(
+                    ilike(supplierProfiles.storeName, `%${q}%`),
+                    ilike(supplierProfiles.businessName, `%${q}%`),
+                    ilike(supplierProfiles.storeDescription, `%${q}%`)
+                )!
+            ))
+            .orderBy(desc(supplierProfiles.rating))
+            .limit(parseInt(limit as string));
+
+        res.json({
+            success: true,
+            suppliers: searchResults
+        });
+
+    } catch (error: any) {
+        console.error('Search suppliers error:', error);
+        res.status(500).json({ error: 'Failed to search suppliers' });
+    }
+});
+
+// Get public reviews for a supplier (no auth required)
+router.get('/:supplierId/reviews', async (req, res) => {
+    try {
+        const { supplierId } = req.params;
+        const { limit = '10', offset = '0', sortBy = 'newest' } = req.query;
+
+        // Verify supplier exists
+        const supplier = await db.select({ id: supplierProfiles.id })
+            .from(supplierProfiles)
+            .where(eq(supplierProfiles.id, supplierId))
+            .limit(1);
+
+        if (supplier.length === 0) {
+            return res.status(404).json({ error: 'Supplier not found' });
+        }
+
+        // Determine sort order for reviews
+        let reviewOrderBy;
+        switch (sortBy) {
+            case 'highest':
+                reviewOrderBy = desc(reviews.rating);
+                break;
+            case 'lowest':
+                reviewOrderBy = asc(reviews.rating);
+                break;
+            case 'newest':
+            default:
+                reviewOrderBy = desc(reviews.createdAt);
+                break;
+        }
+
+        // Get reviews for this supplier
+        const supplierReviews = await db.select({
+            id: reviews.id,
+            rating: reviews.rating,
+            comment: reviews.comment,
+            orderReference: reviews.orderReference,
+            createdAt: reviews.createdAt,
+            // Buyer info (limited for privacy)
+            buyerName: users.firstName,
+            buyerCompany: users.companyName,
+            // Product info (if product-specific review)
+            productId: reviews.productId,
+            productName: products.name
+        })
+            .from(reviews)
+            .leftJoin(users, eq(reviews.buyerId, users.id))
+            .leftJoin(products, eq(reviews.productId, products.id))
+            .where(eq(reviews.supplierId, supplierId))
+            .orderBy(reviewOrderBy)
+            .limit(parseInt(limit as string))
+            .offset(parseInt(offset as string));
+
+        // Get total count and rating statistics
+        const [stats] = await db.select({
+            count: sql`count(*)`,
+            avgRating: sql`COALESCE(AVG(CAST(${reviews.rating} AS DECIMAL)), 0)`,
+            rating5: sql`count(*) filter (where ${reviews.rating} = 5)`,
+            rating4: sql`count(*) filter (where ${reviews.rating} = 4)`,
+            rating3: sql`count(*) filter (where ${reviews.rating} = 3)`,
+            rating2: sql`count(*) filter (where ${reviews.rating} = 2)`,
+            rating1: sql`count(*) filter (where ${reviews.rating} = 1)`
+        })
+            .from(reviews)
+            .where(eq(reviews.supplierId, supplierId));
+
+        res.json({
+            success: true,
+            reviews: supplierReviews,
+            total: parseInt(stats.count as string),
+            averageRating: parseFloat(stats.avgRating as string),
+            ratingDistribution: {
+                5: parseInt(stats.rating5 as string),
+                4: parseInt(stats.rating4 as string),
+                3: parseInt(stats.rating3 as string),
+                2: parseInt(stats.rating2 as string),
+                1: parseInt(stats.rating1 as string)
+            },
+            page: Math.floor(parseInt(offset as string) / parseInt(limit as string)) + 1,
+            limit: parseInt(limit as string)
+        });
+
+    } catch (error: any) {
+        console.error('Get supplier reviews error:', error);
+        res.status(500).json({ error: 'Failed to fetch supplier reviews' });
+    }
+});
+
+// ==================== SUPPLIER ANALYTICS API ====================
+
+// Get analytics overview
+router.get('/analytics/overview', authMiddleware, async (req, res) => {
+    try {
+        if (req.user?.role !== 'supplier') {
+            return res.status(403).json({ error: 'Access denied. Supplier role required.' });
+        }
+
+        const supplierProfile = await db.select({ id: supplierProfiles.id })
+            .from(supplierProfiles)
+            .where(eq(supplierProfiles.userId, req.user.id))
+            .limit(1);
+
+        if (supplierProfile.length === 0) {
+            return res.status(404).json({ error: 'Supplier profile not found' });
+        }
+
+        const supplierId = supplierProfile[0].id;
+        const { days = '30' } = req.query;
+        const daysAgo = new Date();
+        daysAgo.setDate(daysAgo.getDate() - parseInt(days as string));
+
+        // Get order statistics
+        const [orderStats] = await db.select({
+            totalOrders: sql`count(*)`,
+            totalRevenue: sql`COALESCE(SUM(CAST(${orders.totalAmount} AS DECIMAL)), 0)`,
+            completedOrders: sql`count(*) filter (where ${orders.status} = 'delivered')`
+        })
+            .from(orders)
+            .where(and(
+                eq(orders.supplierId, supplierId),
+                gte(orders.createdAt, daysAgo)
+            ));
+
+        // Get product views
+        const [productStats] = await db.select({
+            totalViews: sql`COALESCE(SUM(${products.views}), 0)`
+        })
+            .from(products)
+            .where(eq(products.supplierId, supplierId));
+
+        // Get inquiry statistics
+        const [inquiryStats] = await db.select({
+            totalInquiries: sql`count(*)`,
+            repliedInquiries: sql`count(*) filter (where ${inquiries.status} IN ('replied', 'quoted'))`
+        })
+            .from(inquiries)
+            .where(and(
+                eq(inquiries.supplierId, supplierId),
+                gte(inquiries.createdAt, daysAgo)
+            ));
+
+        // Get quotation statistics
+        const [quotationStats] = await db.select({
+            totalQuotations: sql`count(*)`,
+            acceptedQuotations: sql`count(*) filter (where ${inquiryQuotations.status} = 'accepted')`
+        })
+            .from(inquiryQuotations)
+            .where(and(
+                eq(inquiryQuotations.supplierId, supplierId),
+                gte(inquiryQuotations.createdAt, daysAgo)
+            ));
+
+        // Calculate response time (average hours to first reply)
+        // Using quotation creation time as proxy for response time
+        const [responseTimeStats] = await db.select({
+            avgResponseTime: sql`COALESCE(AVG(EXTRACT(EPOCH FROM (${inquiryQuotations.createdAt} - ${inquiries.createdAt})) / 3600), 0)`
+        })
+            .from(inquiryQuotations)
+            .leftJoin(inquiries, eq(inquiryQuotations.inquiryId, inquiries.id))
+            .where(and(
+                eq(inquiryQuotations.supplierId, supplierId),
+                gte(inquiryQuotations.createdAt, daysAgo)
+            ));
+
+        const totalOrders = parseInt(orderStats.totalOrders as string || '0');
+        const totalRevenue = parseFloat(orderStats.totalRevenue as string || '0');
+        const totalInquiries = parseInt(inquiryStats.totalInquiries as string || '0');
+        const repliedInquiries = parseInt(inquiryStats.repliedInquiries as string || '0');
+        const totalQuotations = parseInt(quotationStats.totalQuotations as string || '0');
+        const acceptedQuotations = parseInt(quotationStats.acceptedQuotations as string || '0');
+
+        const overview = {
+            totalRevenue,
+            totalOrders,
+            averageOrderValue: totalOrders > 0 ? totalRevenue / totalOrders : 0,
+            conversionRate: totalQuotations > 0 ? (acceptedQuotations / totalQuotations) * 100 : 0,
+            totalViews: parseInt(productStats.totalViews as string || '0'),
+            totalInquiries,
+            totalQuotations,
+            responseRate: totalInquiries > 0 ? (repliedInquiries / totalInquiries) * 100 : 0,
+            averageResponseTime: parseFloat(responseTimeStats.avgResponseTime as string || '0'),
+            inquiryToQuotationRate: totalInquiries > 0 ? (totalQuotations / totalInquiries) * 100 : 0,
+            quotationToOrderRate: totalQuotations > 0 ? (acceptedQuotations / totalQuotations) * 100 : 0
+        };
+
+        res.json(overview);
+
+    } catch (error: any) {
+        console.error('Get analytics overview error:', error);
+        res.status(500).json({ error: 'Failed to fetch analytics overview' });
+    }
+});
+
+// Get analytics trends
+router.get('/analytics/trends', authMiddleware, async (req, res) => {
+    try {
+        if (req.user?.role !== 'supplier') {
+            return res.status(403).json({ error: 'Access denied. Supplier role required.' });
+        }
+
+        const supplierProfile = await db.select({ id: supplierProfiles.id })
+            .from(supplierProfiles)
+            .where(eq(supplierProfiles.userId, req.user.id))
+            .limit(1);
+
+        if (supplierProfile.length === 0) {
+            return res.status(404).json({ error: 'Supplier profile not found' });
+        }
+
+        const supplierId = supplierProfile[0].id;
+        const { days = '30' } = req.query;
+        const daysAgo = new Date();
+        daysAgo.setDate(daysAgo.getDate() - parseInt(days as string));
+
+        // Get daily trends for orders
+        const orderTrends = await db.select({
+            date: sql`DATE(${orders.createdAt})`,
+            revenue: sql`COALESCE(SUM(CAST(${orders.totalAmount} AS DECIMAL)), 0)`,
+            orders: sql`count(*)`
+        })
+            .from(orders)
+            .where(and(
+                eq(orders.supplierId, supplierId),
+                gte(orders.createdAt, daysAgo)
+            ))
+            .groupBy(sql`DATE(${orders.createdAt})`)
+            .orderBy(asc(sql`DATE(${orders.createdAt})`));
+
+        // Get daily trends for inquiries
+        const inquiryTrends = await db.select({
+            date: sql`DATE(${inquiries.createdAt})`,
+            inquiries: sql`count(*)`
+        })
+            .from(inquiries)
+            .where(and(
+                eq(inquiries.supplierId, supplierId),
+                gte(inquiries.createdAt, daysAgo)
+            ))
+            .groupBy(sql`DATE(${inquiries.createdAt})`)
+            .orderBy(asc(sql`DATE(${inquiries.createdAt})`));
+
+        // Get daily trends for quotations
+        const quotationTrends = await db.select({
+            date: sql`DATE(${inquiryQuotations.createdAt})`,
+            quotations: sql`count(*)`
+        })
+            .from(inquiryQuotations)
+            .where(and(
+                eq(inquiryQuotations.supplierId, supplierId),
+                gte(inquiryQuotations.createdAt, daysAgo)
+            ))
+            .groupBy(sql`DATE(${inquiryQuotations.createdAt})`)
+            .orderBy(asc(sql`DATE(${inquiryQuotations.createdAt})`));
+
+        // Merge all trends by date
+        const trendsMap = new Map();
+        
+        orderTrends.forEach((item: any) => {
+            const dateStr = item.date.toISOString().split('T')[0];
+            trendsMap.set(dateStr, {
+                date: dateStr,
+                revenue: parseFloat(item.revenue as string || '0'),
+                orders: parseInt(item.orders as string || '0'),
+                inquiries: 0,
+                quotations: 0,
+                views: 0
+            });
+        });
+
+        inquiryTrends.forEach((item: any) => {
+            const dateStr = item.date.toISOString().split('T')[0];
+            const existing = trendsMap.get(dateStr) || {
+                date: dateStr,
+                revenue: 0,
+                orders: 0,
+                inquiries: 0,
+                quotations: 0,
+                views: 0
+            };
+            existing.inquiries = parseInt(item.inquiries as string || '0');
+            trendsMap.set(dateStr, existing);
+        });
+
+        quotationTrends.forEach((item: any) => {
+            const dateStr = item.date.toISOString().split('T')[0];
+            const existing = trendsMap.get(dateStr) || {
+                date: dateStr,
+                revenue: 0,
+                orders: 0,
+                inquiries: 0,
+                quotations: 0,
+                views: 0
+            };
+            existing.quotations = parseInt(item.quotations as string || '0');
+            trendsMap.set(dateStr, existing);
+        });
+
+        // Fill in missing dates with zeros
+        const startDate = new Date(daysAgo);
+        const endDate = new Date();
+        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+            const dateStr = d.toISOString().split('T')[0];
+            if (!trendsMap.has(dateStr)) {
+                trendsMap.set(dateStr, {
+                    date: dateStr,
+                    revenue: 0,
+                    orders: 0,
+                    inquiries: 0,
+                    quotations: 0,
+                    views: 0
+                });
+            }
+        }
+
+        const trends = Array.from(trendsMap.values()).sort((a, b) => 
+            a.date.localeCompare(b.date)
+        );
+
+        res.json(trends);
+
+    } catch (error: any) {
+        console.error('Get analytics trends error:', error);
+        res.status(500).json({ error: 'Failed to fetch analytics trends' });
+    }
+});
+
+// Get product performance analytics
+router.get('/analytics/products', authMiddleware, async (req, res) => {
+    try {
+        if (req.user?.role !== 'supplier') {
+            return res.status(403).json({ error: 'Access denied. Supplier role required.' });
+        }
+
+        const supplierProfile = await db.select({ id: supplierProfiles.id })
+            .from(supplierProfiles)
+            .where(eq(supplierProfiles.userId, req.user.id))
+            .limit(1);
+
+        if (supplierProfile.length === 0) {
+            return res.status(404).json({ error: 'Supplier profile not found' });
+        }
+
+        const supplierId = supplierProfile[0].id;
+        const { days = '30' } = req.query;
+        const daysAgo = new Date();
+        daysAgo.setDate(daysAgo.getDate() - parseInt(days as string));
+
+        // Get product performance data
+        const productPerformance = await db.select({
+            productId: products.id,
+            productName: products.name,
+            views: products.views,
+            inquiries: products.inquiries,
+            quotations: sql`COALESCE((
+                SELECT count(*)
+                FROM ${inquiryQuotations}
+                INNER JOIN ${inquiries} ON ${inquiryQuotations.inquiryId} = ${inquiries.id}
+                WHERE ${inquiries.productId} = ${products.id}
+                AND ${inquiryQuotations.supplierId} = ${supplierId}
+                AND ${inquiryQuotations.createdAt} >= ${daysAgo}
+            ), 0)`,
+            orders: sql`COALESCE((
+                SELECT count(*)
+                FROM ${orders}
+                WHERE ${orders.productId} = ${products.id}
+                AND ${orders.supplierId} = ${supplierId}
+                AND ${orders.createdAt} >= ${daysAgo}
+            ), 0)`,
+            revenue: sql`COALESCE((
+                SELECT SUM(CAST(${orders.totalAmount} AS DECIMAL))
+                FROM ${orders}
+                WHERE ${orders.productId} = ${products.id}
+                AND ${orders.supplierId} = ${supplierId}
+                AND ${orders.createdAt} >= ${daysAgo}
+            ), 0)`
+        })
+            .from(products)
+            .where(eq(products.supplierId, supplierId))
+            .orderBy(desc(sql`COALESCE((
+                SELECT SUM(CAST(${orders.totalAmount} AS DECIMAL))
+                FROM ${orders}
+                WHERE ${orders.productId} = ${products.id}
+                AND ${orders.supplierId} = ${supplierId}
+                AND ${orders.createdAt} >= ${daysAgo}
+            ), 0)`))
+            .limit(50);
+
+        const formattedPerformance = productPerformance.map((item: any) => ({
+            productId: item.productId,
+            productName: item.productName,
+            views: parseInt(item.views as string || '0'),
+            inquiries: parseInt(item.inquiries as string || '0'),
+            quotations: parseInt(item.quotations as string || '0'),
+            orders: parseInt(item.orders as string || '0'),
+            revenue: parseFloat(item.revenue as string || '0')
+        }));
+
+        res.json(formattedPerformance);
+
+    } catch (error: any) {
+        console.error('Get product performance error:', error);
+        res.status(500).json({ error: 'Failed to fetch product performance' });
+    }
+});
+
+// Get top buyers analytics
+router.get('/analytics/buyers', authMiddleware, async (req, res) => {
+    try {
+        if (req.user?.role !== 'supplier') {
+            return res.status(403).json({ error: 'Access denied. Supplier role required.' });
+        }
+
+        const supplierProfile = await db.select({ id: supplierProfiles.id })
+            .from(supplierProfiles)
+            .where(eq(supplierProfiles.userId, req.user.id))
+            .limit(1);
+
+        if (supplierProfile.length === 0) {
+            return res.status(404).json({ error: 'Supplier profile not found' });
+        }
+
+        const supplierId = supplierProfile[0].id;
+        const { days = '30' } = req.query;
+        const daysAgo = new Date();
+        daysAgo.setDate(daysAgo.getDate() - parseInt(days as string));
+
+        // Get top buyers by revenue
+        const topBuyers = await db.select({
+            buyerId: orders.buyerId,
+            buyerName: users.firstName,
+            buyerLastName: users.lastName,
+            buyerCompany: users.companyName,
+            totalOrders: sql`count(*)`,
+            totalRevenue: sql`SUM(CAST(${orders.totalAmount} AS DECIMAL))`
+        })
+            .from(orders)
+            .leftJoin(users, eq(orders.buyerId, users.id))
+            .where(and(
+                eq(orders.supplierId, supplierId),
+                gte(orders.createdAt, daysAgo)
+            ))
+            .groupBy(orders.buyerId, users.firstName, users.lastName, users.companyName)
+            .orderBy(desc(sql`SUM(CAST(${orders.totalAmount} AS DECIMAL))`))
+            .limit(20);
+
+        const formattedBuyers = topBuyers.map((item: any) => ({
+            buyerId: item.buyerId,
+            buyerName: `${item.buyerName || ''} ${item.buyerLastName || ''}`.trim(),
+            buyerCompany: item.buyerCompany || 'N/A',
+            totalOrders: parseInt(item.totalOrders as string || '0'),
+            totalRevenue: parseFloat(item.totalRevenue as string || '0')
+        }));
+
+        res.json(formattedBuyers);
+
+    } catch (error: any) {
+        console.error('Get top buyers error:', error);
+        res.status(500).json({ error: 'Failed to fetch top buyers' });
+    }
+});
+
+// Export analytics data as CSV
+router.get('/analytics/export', authMiddleware, async (req, res) => {
+    try {
+        if (req.user?.role !== 'supplier') {
+            return res.status(403).json({ error: 'Access denied. Supplier role required.' });
+        }
+
+        const supplierProfile = await db.select({ id: supplierProfiles.id })
+            .from(supplierProfiles)
+            .where(eq(supplierProfiles.userId, req.user.id))
+            .limit(1);
+
+        if (supplierProfile.length === 0) {
+            return res.status(404).json({ error: 'Supplier profile not found' });
+        }
+
+        const supplierId = supplierProfile[0].id;
+        const { days = '30' } = req.query;
+        const daysAgo = new Date();
+        daysAgo.setDate(daysAgo.getDate() - parseInt(days as string));
+
+        // Get all orders for the period
+        const ordersData = await db.select({
+            orderNumber: orders.orderNumber,
+            date: orders.createdAt,
+            buyerName: users.firstName,
+            buyerLastName: users.lastName,
+            buyerCompany: users.companyName,
+            productName: products.name,
+            quantity: orders.quantity,
+            unitPrice: orders.unitPrice,
+            totalAmount: orders.totalAmount,
+            status: orders.status
+        })
+            .from(orders)
+            .leftJoin(users, eq(orders.buyerId, users.id))
+            .leftJoin(products, eq(orders.productId, products.id))
+            .where(and(
+                eq(orders.supplierId, supplierId),
+                gte(orders.createdAt, daysAgo)
+            ))
+            .orderBy(desc(orders.createdAt));
+
+        // Generate CSV
+        const csvHeaders = [
+            'Order Number',
+            'Date',
+            'Buyer Name',
+            'Company',
+            'Product',
+            'Quantity',
+            'Unit Price',
+            'Total Amount',
+            'Status'
+        ];
+
+        const csvRows = ordersData.map((order: any) => [
+            order.orderNumber,
+            new Date(order.date).toISOString().split('T')[0],
+            `${order.buyerName || ''} ${order.buyerLastName || ''}`.trim(),
+            order.buyerCompany || 'N/A',
+            order.productName || 'N/A',
+            order.quantity,
+            order.unitPrice,
+            order.totalAmount,
+            order.status
+        ]);
+
+        const csvContent = [
+            csvHeaders.join(','),
+            ...csvRows.map(row => row.map(cell => `"${cell}"`).join(','))
+        ].join('\n');
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename="analytics-${days}days-${new Date().toISOString().split('T')[0]}.csv"`);
+        res.send(csvContent);
+
+    } catch (error: any) {
+        console.error('Export analytics error:', error);
+        res.status(500).json({ error: 'Failed to export analytics' });
     }
 });
 

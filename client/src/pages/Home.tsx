@@ -7,6 +7,7 @@ import FeaturedProductsCarousel from "@/components/FeaturedProductsCarousel";
 import ModernCategoriesSection from "@/components/ModernCategoriesSection";
 import TrustAndTestimonialsSection from "@/components/TrustAndTestimonialsSection";
 import StatsSection from "@/components/StatsSection";
+import FeaturedSuppliers from "@/components/FeaturedSuppliers";
 import ProductCard from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -221,6 +222,9 @@ export default function Home() {
         
         {/* Modern Categories Section */}
         <ModernCategoriesSection />
+        
+        {/* Featured Suppliers Section */}
+        <FeaturedSuppliers />
         
         {/* Trust and Testimonials Section */}
         <TrustAndTestimonialsSection />

@@ -15,7 +15,9 @@ import {
   MessageSquare,
   FileText,
   Bell,
-  Activity
+  Activity,
+  Store,
+  CheckCircle
 } from "lucide-react";
 import {
   Sidebar,
@@ -37,6 +39,16 @@ const adminMenuItems = [
     icon: LayoutDashboard,
   },
   {
+    title: "Suppliers",
+    url: "/admin/suppliers",
+    icon: Store,
+  },
+  {
+    title: "Product Approval",
+    url: "/admin/product-approval",
+    icon: CheckCircle,
+  },
+  {
     title: "Products",
     url: "/admin/products",
     icon: Package,
@@ -52,35 +64,10 @@ const adminMenuItems = [
     icon: FolderTree,
   },
   {
-    title: "Customer Inquiries",
-    url: "/admin/inquiries",
-    icon: MessageSquare,
-  },
-  {
-    title: "Quotations",
-    url: "/admin/quotations",
-    icon: FileSpreadsheet,
-  },
-  {
-    title: "RFQs",
-    url: "/admin/rfqs",
-    icon: FileText,
-  },
-  {
     title: "Orders",
     url: "/admin/orders",
     icon: ShoppingCart,
   },
-  // {
-  //   title: "Order Management",
-  //   url: "/admin/order-management",
-  //   icon: ShoppingCart,
-  // },
-  // {
-  //   title: "Customers",
-  //   url: "/admin/customers",
-  //   icon: Users,
-  // },
   {
     title: "Users",
     url: "/admin/users",

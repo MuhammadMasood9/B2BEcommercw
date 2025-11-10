@@ -86,7 +86,7 @@ export default function AdminActivityLogPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-   
+
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Activity Log</h1>
             <p className="text-sm text-gray-500">Track all admin activities and system events</p>
@@ -146,8 +146,8 @@ export default function AdminActivityLogPage() {
               </Select>
             </div>
             <div className="flex items-end">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => {
                   setSearchQuery('');
                   setFilterType('all');

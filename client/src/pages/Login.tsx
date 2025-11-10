@@ -251,7 +251,7 @@ export default function Login() {
                   </div>
                 </div>
 
-                <div className="mt-6 text-center">
+                <div className="mt-6 text-center space-y-3">
                   <p className="text-sm text-gray-600">
                     Don't have an account?{" "}
                     <Link href="/signup">
@@ -260,6 +260,16 @@ export default function Login() {
                       </span>
                     </Link>
                   </p>
+                  <div className="pt-3 border-t border-gray-200">
+                    <p className="text-sm text-gray-600">
+                      Are you a supplier?{" "}
+                      <Link href="/supplier/login">
+                        <span className="text-purple-600 hover:text-purple-700 font-semibold cursor-pointer">
+                          Supplier Login
+                        </span>
+                      </Link>
+                    </p>
+                  </div>
                 </div>
 
                 {/* Mobile Features */}

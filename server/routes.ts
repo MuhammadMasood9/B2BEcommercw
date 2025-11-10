@@ -8,14 +8,16 @@ import { authMiddleware } from "./auth";
 import categoryRoutes from "./categoryRoutes";
 import uploadRoutes from "./uploadRoutes";
 import chatRoutes from "./chatRoutes";
+import commissionRoutes from "./commissionRoutes";
+import { calculateCommission, markCommissionPaid } from "./commissionRoutes";
 import { upload, uploadUnrestricted } from "./upload";
-import { 
+import {
   insertProductSchema, insertCategorySchema, insertCustomerSchema, insertOrderSchema,
   insertUserSchema, insertBuyerProfileSchema,
   insertRfqSchema, insertQuotationSchema, insertInquirySchema,
   insertConversationSchema, insertMessageSchema, insertReviewSchema,
   insertFavoriteSchema, insertNotificationSchema, insertActivityLogSchema,
-  users, products, categories, orders, inquiries, quotations, rfqs, notifications, activity_logs, conversations, supplierProfiles, inquiryQuotations
+  users, products, categories, orders, inquiries, quotations, rfqs, notifications, activity_logs, conversations, supplierProfiles, inquiryQuotations, reviews
 } from "@shared/schema";
 import { z } from 'zod';
 import { sql, eq, and, gte, desc, or, ilike } from "drizzle-orm";
@@ -24,17 +26,17 @@ import * as fs from 'fs';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   console.log('=== ROUTES LOADING - UPDATED VERSION ===');
-  
+
   // ==================== AUTHENTICATION ROUTES ====================
-  
+
   app.use('/api/auth', authRoutes);
-  
+
   // ==================== SUPPLIER ROUTES ====================
-  
+
   app.use('/api/suppliers', supplierRoutes);
-  
+
   // ==================== ADMIN SUPPLIER MANAGEMENT ====================
-  
+
   // Admin: Get all suppliers with filtering and pagination
   app.get("/api/admin/suppliers", authMiddleware, async (req, res) => {
     try {
@@ -43,7 +45,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { status, verificationLevel, isVerified, isActive, search, limit, offset } = req.query;
-      
+
       let query = db.select({
         id: supplierProfiles.id,
         userId: supplierProfiles.userId,
@@ -72,8 +74,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstName: users.firstName,
         lastName: users.lastName
       })
-      .from(supplierProfiles)
-      .leftJoin(users, eq(supplierProfiles.userId, users.id));
+        .from(supplierProfiles)
+        .leftJoin(users, eq(supplierProfiles.userId, users.id));
 
       const conditions = [];
 
@@ -90,28 +92,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         conditions.push(eq(supplierProfiles.isActive, isActive === 'true'));
       }
       if (search) {
-        conditions.push(
-          or(
-            ilike(supplierProfiles.businessName, `%${search}%`),
-            ilike(supplierProfiles.storeName, `%${search}%`),
-            ilike(users.email, `%${search}%`)
-          )
+        const searchCondition = or(
+          ilike(supplierProfiles.businessName, `%${search}%`),
+          ilike(supplierProfiles.storeName, `%${search}%`),
+          ilike(users.email, `%${search}%`)
         );
+        if (searchCondition) {
+          conditions.push(searchCondition);
+        }
       }
 
       if (conditions.length > 0) {
-        query = query.where(and(...conditions));
+        query = query.where(and(...conditions)) as any;
       }
 
       // Add ordering
-      query = query.orderBy(desc(supplierProfiles.createdAt));
+      query = query.orderBy(desc(supplierProfiles.createdAt)) as any;
 
       // Add pagination if provided
       if (limit) {
-        query = query.limit(parseInt(limit as string));
+        query = query.limit(parseInt(limit as string)) as any;
       }
       if (offset) {
-        query = query.offset(parseInt(offset as string));
+        query = query.offset(parseInt(offset as string)) as any;
       }
 
       const suppliers = await query;
@@ -122,7 +125,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .leftJoin(users, eq(supplierProfiles.userId, users.id));
 
       if (conditions.length > 0) {
-        countQuery = countQuery.where(and(...conditions));
+        countQuery = countQuery.where(and(...conditions)) as any;
       }
 
       const [{ count }] = await countQuery;
@@ -159,7 +162,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const supplierData = supplier[0];
-      
+
       res.json({
         success: true,
         supplier: {
@@ -207,7 +210,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // TODO: Send notification to supplier about approval
-      
+
       res.json({
         success: true,
         message: 'Supplier approved successfully',
@@ -249,7 +252,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // TODO: Send notification to supplier about rejection with reason
-      
+
       res.json({
         success: true,
         message: 'Supplier rejected successfully',
@@ -286,7 +289,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // TODO: Send notification to supplier about suspension
-      
+
       res.json({
         success: true,
         message: 'Supplier suspended successfully',
@@ -496,16 +499,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: supplierProfiles.status,
         count: sql`count(*)`
       })
-      .from(supplierProfiles)
-      .groupBy(supplierProfiles.status);
+        .from(supplierProfiles)
+        .groupBy(supplierProfiles.status);
 
       // Get verification level counts
       const verificationCounts = await db.select({
         verificationLevel: supplierProfiles.verificationLevel,
         count: sql`count(*)`
       })
-      .from(supplierProfiles)
-      .groupBy(supplierProfiles.verificationLevel);
+        .from(supplierProfiles)
+        .groupBy(supplierProfiles.verificationLevel);
 
       // Get recent registrations (last 30 days)
       const thirtyDaysAgo = new Date();
@@ -514,8 +517,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const recentRegistrations = await db.select({
         count: sql`count(*)`
       })
-      .from(supplierProfiles)
-      .where(gte(supplierProfiles.createdAt, thirtyDaysAgo));
+        .from(supplierProfiles)
+        .where(gte(supplierProfiles.createdAt, thirtyDaysAgo));
 
       // Get top performing suppliers
       const topSuppliers = await db.select({
@@ -527,17 +530,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalOrders: supplierProfiles.totalOrders,
         totalReviews: supplierProfiles.totalReviews
       })
-      .from(supplierProfiles)
-      .where(eq(supplierProfiles.status, 'approved'))
-      .orderBy(desc(supplierProfiles.totalSales))
-      .limit(10);
+        .from(supplierProfiles)
+        .where(eq(supplierProfiles.status, 'approved'))
+        .orderBy(desc(supplierProfiles.totalSales))
+        .limit(10);
 
       // Get suppliers needing attention (pending approvals)
       const pendingApprovals = await db.select({
         count: sql`count(*)`
       })
-      .from(supplierProfiles)
-      .where(eq(supplierProfiles.status, 'pending'));
+        .from(supplierProfiles)
+        .where(eq(supplierProfiles.status, 'pending'));
 
       const analytics = {
         totalSuppliers: statusCounts.reduce((sum, item) => sum + parseInt(item.count as string), 0),
@@ -553,8 +556,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pendingApprovals: parseInt(pendingApprovals[0]?.count as string || '0'),
         topPerformers: topSuppliers,
         totalRevenue: topSuppliers.reduce((sum, supplier) => sum + parseFloat(supplier.totalSales || '0'), 0),
-        averageRating: topSuppliers.length > 0 
-          ? topSuppliers.reduce((sum, supplier) => sum + parseFloat(supplier.rating || '0'), 0) / topSuppliers.length 
+        averageRating: topSuppliers.length > 0
+          ? topSuppliers.reduce((sum, supplier) => sum + parseFloat(supplier.rating || '0'), 0) / topSuppliers.length
           : 0
       };
 
@@ -570,6 +573,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ==================== ADMIN PRODUCT APPROVAL MANAGEMENT ====================
+
+  // Admin: Get products by approval status
+  app.get("/api/admin/products/approval", authMiddleware, async (req, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Access denied. Admin role required.' });
+      }
+
+      const { approvalStatus, supplierId, categoryId, search, limit, offset } = req.query;
+
+      let query = db.select({
+        id: products.id,
+        name: products.name,
+        slug: products.slug,
+        description: products.description,
+        shortDescription: products.shortDescription,
+        categoryId: products.categoryId,
+        images: products.images,
+        minOrderQuantity: products.minOrderQuantity,
+        priceRanges: products.priceRanges,
+        approvalStatus: products.approvalStatus,
+        rejectionReason: products.rejectionReason,
+        approvedAt: products.approvedAt,
+        createdAt: products.createdAt,
+        updatedAt: products.updatedAt,
+        // Supplier info
+        supplierId: products.supplierId,
+        supplierName: supplierProfiles.businessName,
+        storeName: supplierProfiles.storeName,
+        // Category info
+        categoryName: categories.name
+      })
+        .from(products)
+        .leftJoin(supplierProfiles, eq(products.supplierId, supplierProfiles.id))
+        .leftJoin(categories, eq(products.categoryId, categories.id));
+
+      const conditions = [];
+
+      if (approvalStatus) {
+        conditions.push(eq(products.approvalStatus, approvalStatus as string));
+      }
+      if (supplierId) {
+        conditions.push(eq(products.supplierId, supplierId as string));
+      }
+      if (categoryId) {
+        conditions.push(eq(products.categoryId, categoryId as string));
+      }
+      if (search) {
+        const searchCondition = or(
+          ilike(products.name, `%${search}%`),
+          ilike(products.description, `%${search}%`),
+          ilike(supplierProfiles.businessName, `%${search}%`)
+        );
+        if (searchCondition) {
+          conditions.push(searchCondition);
+        }
+      }
+
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions)) as any;
+      }
+
+      query = query.orderBy(desc(products.createdAt)) as any;
+
+      if (limit) {
+        query = query.limit(parseInt(limit as string)) as any;
+      }
+      if (offset) {
+        query = query.offset(parseInt(offset as string)) as any;
+      }
+
+      const productsList = await query;
+
+      // Get total count
+      let countQuery = db.select({ count: sql`count(*)` })
+        .from(products)
+        .leftJoin(supplierProfiles, eq(products.supplierId, supplierProfiles.id));
+
+      if (conditions.length > 0) {
+        countQuery = countQuery.where(and(...conditions)) as any;
+      }
+
+      const [{ count }] = await countQuery;
+
+      res.json({
+        success: true,
+        products: productsList,
+        total: parseInt(count as string),
+        page: offset ? Math.floor(parseInt(offset as string) / (parseInt(limit as string) || 20)) + 1 : 1,
+        limit: limit ? parseInt(limit as string) : productsList.length
+      });
+
+    } catch (error: any) {
+      console.error('Get products by approval status error:', error);
+      res.status(500).json({ error: 'Failed to fetch products' });
+    }
+  });
 
   // Admin: Get pending products for approval
   app.get("/api/admin/products/pending", authMiddleware, async (req, res) => {
@@ -600,10 +700,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Category info
         categoryName: categories.name
       })
-      .from(products)
-      .leftJoin(supplierProfiles, eq(products.supplierId, supplierProfiles.id))
-      .leftJoin(categories, eq(products.categoryId, categories.id))
-      .where(eq(products.approvalStatus, 'pending'));
+        .from(products)
+        .leftJoin(supplierProfiles, eq(products.supplierId, supplierProfiles.id))
+        .leftJoin(categories, eq(products.categoryId, categories.id));
 
       const conditions = [eq(products.approvalStatus, 'pending')];
 
@@ -614,42 +713,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
         conditions.push(eq(products.categoryId, categoryId as string));
       }
       if (search) {
-        conditions.push(
-          or(
-            ilike(products.name, `%${search}%`),
-            ilike(products.description, `%${search}%`),
-            ilike(supplierProfiles.businessName, `%${search}%`)
-          )
+        const searchCondition = or(
+          ilike(products.name, `%${search}%`),
+          ilike(products.description, `%${search}%`),
+          ilike(supplierProfiles.businessName, `%${search}%`)
         );
+        if (searchCondition) {
+          conditions.push(searchCondition);
+        }
       }
 
       if (conditions.length > 0) {
-        query = query.where(and(...conditions));
+        query = query.where(and(...conditions)) as any;
       }
 
-      query = query.orderBy(desc(products.createdAt));
+      query = query.orderBy(desc(products.createdAt)) as any;
 
       if (limit) {
-        query = query.limit(parseInt(limit as string));
+        query = query.limit(parseInt(limit as string)) as any;
       }
       if (offset) {
-        query = query.offset(parseInt(offset as string));
+        query = query.offset(parseInt(offset as string)) as any;
       }
 
       const pendingProducts = await query;
 
-      // Get total count
-      let countQuery = db.select({ count: sql`count(*)` })
-        .from(products)
-        .leftJoin(supplierProfiles, eq(products.supplierId, supplierProfiles.id))
-        .where(eq(products.approvalStatus, 'pending'));
+      // Build count query with same conditions
+      let countConditions = [eq(products.approvalStatus, 'pending')];
 
       if (supplierId) {
-        countQuery = countQuery.where(and(
-          eq(products.approvalStatus, 'pending'),
-          eq(products.supplierId, supplierId as string)
-        ));
+        countConditions.push(eq(products.supplierId, supplierId as string));
       }
+      if (categoryId) {
+        countConditions.push(eq(products.categoryId, categoryId as string));
+      }
+      if (search) {
+        const searchCondition = or(
+          ilike(products.name, `%${search}%`),
+          ilike(products.description, `%${search}%`),
+          ilike(supplierProfiles.businessName, `%${search}%`)
+        );
+        if (searchCondition) {
+          countConditions.push(searchCondition);
+        }
+      }
+
+      const countQuery = db.select({ count: sql`count(*)` })
+        .from(products)
+        .leftJoin(supplierProfiles, eq(products.supplierId, supplierProfiles.id))
+        .where(and(...countConditions));
 
       const [{ count }] = await countQuery;
 
@@ -718,12 +830,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Category info
         categoryName: categories.name
       })
-      .from(products)
-      .leftJoin(supplierProfiles, eq(products.supplierId, supplierProfiles.id))
-      .leftJoin(users, eq(supplierProfiles.userId, users.id))
-      .leftJoin(categories, eq(products.categoryId, categories.id))
-      .where(eq(products.id, req.params.id))
-      .limit(1);
+        .from(products)
+        .leftJoin(supplierProfiles, eq(products.supplierId, supplierProfiles.id))
+        .leftJoin(users, eq(supplierProfiles.userId, users.id))
+        .leftJoin(categories, eq(products.categoryId, categories.id))
+        .where(eq(products.id, req.params.id))
+        .limit(1);
 
       if (product.length === 0) {
         return res.status(404).json({ error: 'Product not found' });
@@ -949,15 +1061,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         approvalStatus: products.approvalStatus,
         count: sql`count(*)`
       })
-      .from(products)
-      .groupBy(products.approvalStatus);
+        .from(products)
+        .groupBy(products.approvalStatus);
 
       // Get pending products count
       const pendingCount = await db.select({
         count: sql`count(*)`
       })
-      .from(products)
-      .where(eq(products.approvalStatus, 'pending'));
+        .from(products)
+        .where(eq(products.approvalStatus, 'pending'));
 
       // Get recent submissions (last 7 days)
       const sevenDaysAgo = new Date();
@@ -966,8 +1078,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const recentSubmissions = await db.select({
         count: sql`count(*)`
       })
-      .from(products)
-      .where(gte(products.createdAt, sevenDaysAgo));
+        .from(products)
+        .where(gte(products.createdAt, sevenDaysAgo));
 
       // Get top suppliers by product count
       const topSuppliers = await db.select({
@@ -978,11 +1090,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         approvedCount: sql`sum(case when ${products.approvalStatus} = 'approved' then 1 else 0 end)`,
         pendingCount: sql`sum(case when ${products.approvalStatus} = 'pending' then 1 else 0 end)`
       })
-      .from(products)
-      .leftJoin(supplierProfiles, eq(products.supplierId, supplierProfiles.id))
-      .groupBy(products.supplierId, supplierProfiles.businessName, supplierProfiles.storeName)
-      .orderBy(desc(sql`count(*)`))
-      .limit(10);
+        .from(products)
+        .leftJoin(supplierProfiles, eq(products.supplierId, supplierProfiles.id))
+        .groupBy(products.supplierId, supplierProfiles.businessName, supplierProfiles.storeName)
+        .orderBy(desc(sql`count(*)`))
+        .limit(10);
 
       const analytics = {
         totalProducts: statusCounts.reduce((sum, item) => sum + parseInt(item.count as string), 0),
@@ -1012,33 +1124,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: 'Failed to fetch product approval analytics' });
     }
   });
-  
+
   // ==================== UPLOAD ROUTES ====================
-  
+
   app.use('/api', uploadRoutes);
-  
+
   // ==================== CATEGORY ROUTES ====================
-  
+
   app.use('/api', categoryRoutes);
-  
+
   // ==================== CHAT ROUTES ====================
-  
+
   app.use('/api/chat', chatRoutes);
-  
+
+  // ==================== COMMISSION ROUTES ====================
+
+  app.use('/api/commissions', commissionRoutes);
+
   // ==================== LEGACY AUTHENTICATION (TO BE REMOVED) ====================
-  
+
   app.post("/api/auth/register", async (req, res) => {
     try {
       const validatedData = insertUserSchema.parse(req.body);
-      
+
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(validatedData.email);
       if (existingUser) {
         return res.status(409).json({ error: "User already exists" });
       }
-      
+
       const user = await storage.createUser(validatedData);
-      
+
       // Don't send password back to client
       const { password, ...userWithoutPassword } = user;
       res.status(201).json(userWithoutPassword);
@@ -1050,16 +1166,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { email, password } = req.body;
-      
+
       if (!email || !password) {
         return res.status(400).json({ error: "Email and password are required" });
       }
-      
+
       const user = await storage.verifyPassword(email, password);
       if (!user) {
         return res.status(401).json({ error: "Invalid credentials" });
       }
-      
+
       // Don't send password back to client
       const { password: _, ...userWithoutPassword } = user;
       res.json(userWithoutPassword);
@@ -1067,9 +1183,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: error.message });
     }
   });
-  
+
   // ==================== ANALYTICS ====================
-  
+
   app.get("/api/analytics", async (req, res) => {
     try {
       const analytics = await storage.getAnalytics();
@@ -1090,7 +1206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // ==================== USERS & AUTHENTICATION ====================
-  
+
   app.get("/api/users", async (req, res) => {
     try {
       const users = await storage.getUsers();
@@ -1101,7 +1217,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: error.message });
     }
   });
-  
+
   app.post("/api/users", async (req, res) => {
     try {
       const validatedData = insertUserSchema.parse(req.body);
@@ -1170,7 +1286,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ==================== BUYER PROFILES ====================
-  
+
   app.get("/api/buyers/:userId", async (req, res) => {
     try {
       const profile = await storage.getBuyerProfile(req.params.userId);
@@ -1208,13 +1324,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // ==================== PRODUCTS ====================
-  
+
   app.get("/api/products", async (req, res) => {
     try {
       const { categoryId, search, isPublished, minMOQ, maxMOQ, featured, supplierId, limit, offset } = req.query;
       const filters: any = {};
       const countFilters: any = {}; // Separate filters for count (without pagination)
-      
+
       if (categoryId) {
         filters.categoryId = categoryId as string;
         countFilters.categoryId = categoryId as string;
@@ -1243,11 +1359,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         filters.featured = true;
         countFilters.featured = true;
       }
-      
+
       // Add pagination ONLY to the getProducts filters, NOT to countFilters
       let hasLimit = false;
       let hasOffset = false;
-      
+
       if (limit) {
         filters.limit = parseInt(limit as string);
         hasLimit = true;
@@ -1256,18 +1372,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         filters.offset = parseInt(offset as string);
         hasOffset = true;
       }
-      
+
       const result = await storage.getProducts(filters);
-      
+
       // ALWAYS return paginated response structure when limit/offset are provided
       // Even if total might not be accurate for non-paginated requests
       if (hasLimit || hasOffset) {
         const total = await storage.getProductsCount(countFilters); // Use countFilters (no pagination params)
-        
+
         console.log(`📊 Products API Response: Returning ${result.length} products with total count: ${total}`);
         console.log(`📄 Filters applied:`, countFilters);
-        
-        res.json({ 
+
+        res.json({
           products: result,
           total,
           page: filters.offset ? Math.floor(filters.offset / (filters.limit || 20)) + 1 : 1,
@@ -1346,11 +1462,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updatedProducts = [];
-      
+
       for (const productId of normalizedIds) {
         try {
           const product = await storage.updateProduct(productId, updates);
-          
+
           if (product) {
             updatedProducts.push(product);
           }
@@ -1358,10 +1474,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error(`Failed to update product ${productId}:`, error);
         }
       }
-      
-      res.json({ 
+
+      res.json({
         message: `Updated ${updatedProducts.length} products successfully`,
-        updatedProducts 
+        updatedProducts
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -1381,7 +1497,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const deletedProducts = [];
-      
+
       for (const productId of normalizedIds) {
         try {
           const success = await storage.deleteProduct(productId);
@@ -1392,10 +1508,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error(`Failed to delete product ${productId}:`, error);
         }
       }
-      
-      res.json({ 
+
+      res.json({
         message: `Deleted ${deletedProducts.length} products successfully`,
-        deletedProducts 
+        deletedProducts
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -1431,20 +1547,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/products/:id/stock", async (req, res) => {
     try {
       const { stockQuantity } = req.body;
-      
+
       if (typeof stockQuantity !== 'number' || stockQuantity < 0) {
         return res.status(400).json({ error: "Invalid stock quantity. Must be a non-negative number." });
       }
 
-      const product = await storage.updateProduct(req.params.id, { 
+      const product = await storage.updateProduct(req.params.id, {
         stockQuantity,
-        inStock: stockQuantity > 0 
+        inStock: stockQuantity > 0
       });
-      
+
       if (!product) {
         return res.status(404).json({ error: "Product not found" });
       }
-      
+
       res.json(product);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -1455,24 +1571,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/products/bulk-stock-update", async (req, res) => {
     try {
       const { productIds, stockQuantity } = req.body;
-      
+
       if (!Array.isArray(productIds) || productIds.length === 0) {
         return res.status(400).json({ error: "productIds must be a non-empty array" });
       }
-      
+
       if (typeof stockQuantity !== 'number' || stockQuantity < 0) {
         return res.status(400).json({ error: "Invalid stock quantity. Must be a non-negative number." });
       }
 
       const updatedProducts = [];
-      
+
       for (const productId of productIds) {
         try {
-          const product = await storage.updateProduct(productId, { 
+          const product = await storage.updateProduct(productId, {
             stockQuantity,
-            inStock: stockQuantity > 0 
+            inStock: stockQuantity > 0
           });
-          
+
           if (product) {
             updatedProducts.push(product);
           }
@@ -1480,10 +1596,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error(`Failed to update product ${productId}:`, error);
         }
       }
-      
-      res.json({ 
+
+      res.json({
         message: `Updated ${updatedProducts.length} products successfully`,
-        updatedProducts 
+        updatedProducts
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -1494,22 +1610,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/products/inventory/analytics", async (req, res) => {
     try {
       const products = await storage.getProducts();
-      
+
       const analytics = {
         totalProducts: products.length,
         inStock: products.filter(p => p.inStock && (p.stockQuantity || 0) > 0).length,
         lowStock: products.filter(p => p.inStock && (p.stockQuantity || 0) > 0 && (p.stockQuantity || 0) < 10).length,
         outOfStock: products.filter(p => !p.inStock || (p.stockQuantity || 0) === 0).length,
         totalValue: products.reduce((sum, p) => {
-          const price = Array.isArray(p.priceRanges) && p.priceRanges.length > 0 
-            ? p.priceRanges[0].pricePerUnit || 0 
+          const price = Array.isArray(p.priceRanges) && p.priceRanges.length > 0
+            ? p.priceRanges[0].pricePerUnit || 0
             : 0;
           return sum + (price * (p.stockQuantity || 0));
         }, 0),
         lowStockProducts: products.filter(p => p.inStock && (p.stockQuantity || 0) > 0 && (p.stockQuantity || 0) < 10),
         outOfStockProducts: products.filter(p => !p.inStock || (p.stockQuantity || 0) === 0)
       };
-      
+
       res.json(analytics);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -1523,17 +1639,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!Array.isArray(products)) {
         return res.status(400).json({ error: "Products must be an array" });
       }
-      
+
       const validatedProducts = [];
       const errors = [];
-      
+
       for (let i = 0; i < products.length; i++) {
         const p = products[i];
         try {
           const images = p.images ? (typeof p.images === 'string' ? p.images.split(',').map((img: string) => img.trim()).filter(Boolean) : p.images) : [];
           const tags = p.tags ? (typeof p.tags === 'string' ? p.tags.split(',').map((tag: string) => tag.trim()).filter(Boolean) : p.tags) : [];
           const paymentTerms = p.paymentTerms ? (typeof p.paymentTerms === 'string' ? p.paymentTerms.split(',').map((term: string) => term.trim()).filter(Boolean) : p.paymentTerms) : [];
-          
+
           const productData = {
             name: p.name || p.Name,
             slug: (p.slug || p.name || p.Name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
@@ -1559,23 +1675,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
             sku: p.sku || p.SKU,
             metaData: p.metaData || null,
           };
-          
+
           const validated = insertProductSchema.parse(productData);
           validatedProducts.push(validated);
         } catch (error: any) {
           errors.push({ row: i + 1, error: error.message });
         }
       }
-      
+
       if (errors.length > 0) {
-        return res.status(400).json({ 
-          error: "Validation errors in CSV data", 
+        return res.status(400).json({
+          error: "Validation errors in CSV data",
           errors,
           validCount: validatedProducts.length,
           errorCount: errors.length
         });
       }
-      
+
       const createdProducts = await storage.bulkCreateProducts(validatedProducts);
       res.status(201).json({ count: createdProducts.length, products: createdProducts });
     } catch (error: any) {
@@ -1583,298 +1699,298 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-// Bulk upload with Excel/JSON and actual image files - NO LIMITS
-app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (req, res) => {
-  try {
-    const { products } = req.body;
-    const imageFiles = req.files as Express.Multer.File[];
-    
-    if (!products) {
-      return res.status(400).json({ error: "Products data is required" });
-    }
-    
-    let productsData;
+  // Bulk upload with Excel/JSON and actual image files - NO LIMITS
+  app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (req, res) => {
     try {
-      // Use custom reviver to preserve string types for decimal fields
-      productsData = JSON.parse(products, (key, value) => {
-        // Ensure samplePrice stays as string (decimal fields should be strings)
-        if (key === 'samplePrice' && typeof value === 'number') {
-          console.log(`🔄 Converting samplePrice from number ${value} to string "${value.toString()}"`);
-          return value.toString();
-        }
-        return value;
-      });
-    } catch (error) {
-      return res.status(400).json({ error: "Invalid products JSON format" });
-    }
-    
-    if (!Array.isArray(productsData)) {
-      return res.status(400).json({ error: "Products must be an array" });
-    }
-    
-     console.log(`📦 Received ${productsData.length} products for bulk upload`);
-     console.log(`📁 Received ${imageFiles ? imageFiles.length : 0} image files`);
-     
-     // Log memory usage for large uploads
-     const memUsage = process.memoryUsage();
-     console.log(`💾 Memory usage: RSS=${Math.round(memUsage.rss / 1024 / 1024)}MB, Heap=${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`);
-    
-    // Debug: Log samplePrice types after JSON parsing
-    console.log('🔍 Server-side samplePrice check after JSON.parse:');
-    productsData.forEach((product: any, index: number) => {
-      console.log(`Product ${index + 1}: ${product.name}`);
-      console.log(`  samplePrice: ${product.samplePrice} (type: ${typeof product.samplePrice})`);
-    });
-    
-    // Debug: Log file details
-    if (imageFiles && imageFiles.length > 0) {
-      imageFiles.forEach((file, index) => {
-        console.log(`📄 File ${index + 1}: ${file.originalname}, MIME: ${file.mimetype}, Size: ${file.size} bytes`);
-      });
-    }
-    
-     const validatedProducts = [];
-     const errors = [];
-     
-     // Process products in batches for large uploads
-     const batchSize = 50; // Smaller batches for better memory management
-     const totalBatches = Math.ceil(productsData.length / batchSize);
-     
-     console.log(`🔄 Processing ${productsData.length} products in ${totalBatches} batches of ${batchSize}`);
-     
-     for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
-       const startIndex = batchIndex * batchSize;
-       const endIndex = Math.min(startIndex + batchSize, productsData.length);
-       
-       console.log(`📦 Processing batch ${batchIndex + 1}/${totalBatches} (products ${startIndex + 1}-${endIndex})`);
-       
-       for (let i = startIndex; i < endIndex; i++) {
-      const p = productsData[i];
+      const { products } = req.body;
+      const imageFiles = req.files as Express.Multer.File[];
+
+      if (!products) {
+        return res.status(400).json({ error: "Products data is required" });
+      }
+
+      let productsData;
       try {
-        // Process arrays from Excel/JSON
-        const tags = p.tags ? (Array.isArray(p.tags) ? p.tags : p.tags.split(',').map((tag: string) => tag.trim()).filter(Boolean)) : [];
-        const paymentTerms = p.paymentTerms ? (Array.isArray(p.paymentTerms) ? p.paymentTerms : p.paymentTerms.split(',').map((term: string) => term.trim()).filter(Boolean)) : [];
-        const colors = p.colors ? (Array.isArray(p.colors) ? p.colors : p.colors.split(',').map((color: string) => color.trim()).filter(Boolean)) : [];
-        const sizes = p.sizes ? (Array.isArray(p.sizes) ? p.sizes : p.sizes.split(',').map((size: string) => size.trim()).filter(Boolean)) : [];
-        const keyFeatures = p.keyFeatures ? (Array.isArray(p.keyFeatures) ? p.keyFeatures : p.keyFeatures.split(',').map((feature: string) => feature.trim()).filter(Boolean)) : [];
-        const certifications = p.certifications ? (Array.isArray(p.certifications) ? p.certifications : p.certifications.split(',').map((cert: string) => cert.trim()).filter(Boolean)) : [];
-        
-        // Process specifications JSON
-        let specifications = null;
-        if (p.specifications) {
-          try {
-            specifications = typeof p.specifications === 'string' ? JSON.parse(p.specifications) : p.specifications;
-          } catch (e) {
-            console.warn(`Invalid specifications JSON for product ${i + 1}:`, p.specifications);
+        // Use custom reviver to preserve string types for decimal fields
+        productsData = JSON.parse(products, (key, value) => {
+          // Ensure samplePrice stays as string (decimal fields should be strings)
+          if (key === 'samplePrice' && typeof value === 'number') {
+            console.log(`🔄 Converting samplePrice from number ${value} to string "${value.toString()}"`);
+            return value.toString();
           }
-        }
-        
-        // Process price tiers from Excel/JSON
-        const priceRanges: Array<{minQty: number, maxQty: number | null, pricePerUnit: number}> = [];
-        if (p.priceTiers && Array.isArray(p.priceTiers)) {
-          p.priceTiers.forEach((tier: any) => {
-            if (tier.minQty && tier.pricePerUnit) {
-              priceRanges.push({
-                minQty: parseInt(tier.minQty),
-                maxQty: tier.maxQty ? parseInt(tier.maxQty) : null,
-                pricePerUnit: parseFloat(tier.pricePerUnit)
+          return value;
+        });
+      } catch (error) {
+        return res.status(400).json({ error: "Invalid products JSON format" });
+      }
+
+      if (!Array.isArray(productsData)) {
+        return res.status(400).json({ error: "Products must be an array" });
+      }
+
+      console.log(`📦 Received ${productsData.length} products for bulk upload`);
+      console.log(`📁 Received ${imageFiles ? imageFiles.length : 0} image files`);
+
+      // Log memory usage for large uploads
+      const memUsage = process.memoryUsage();
+      console.log(`💾 Memory usage: RSS=${Math.round(memUsage.rss / 1024 / 1024)}MB, Heap=${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`);
+
+      // Debug: Log samplePrice types after JSON parsing
+      console.log('🔍 Server-side samplePrice check after JSON.parse:');
+      productsData.forEach((product: any, index: number) => {
+        console.log(`Product ${index + 1}: ${product.name}`);
+        console.log(`  samplePrice: ${product.samplePrice} (type: ${typeof product.samplePrice})`);
+      });
+
+      // Debug: Log file details
+      if (imageFiles && imageFiles.length > 0) {
+        imageFiles.forEach((file, index) => {
+          console.log(`📄 File ${index + 1}: ${file.originalname}, MIME: ${file.mimetype}, Size: ${file.size} bytes`);
+        });
+      }
+
+      const validatedProducts = [];
+      const errors = [];
+
+      // Process products in batches for large uploads
+      const batchSize = 50; // Smaller batches for better memory management
+      const totalBatches = Math.ceil(productsData.length / batchSize);
+
+      console.log(`🔄 Processing ${productsData.length} products in ${totalBatches} batches of ${batchSize}`);
+
+      for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+        const startIndex = batchIndex * batchSize;
+        const endIndex = Math.min(startIndex + batchSize, productsData.length);
+
+        console.log(`📦 Processing batch ${batchIndex + 1}/${totalBatches} (products ${startIndex + 1}-${endIndex})`);
+
+        for (let i = startIndex; i < endIndex; i++) {
+          const p = productsData[i];
+          try {
+            // Process arrays from Excel/JSON
+            const tags = p.tags ? (Array.isArray(p.tags) ? p.tags : p.tags.split(',').map((tag: string) => tag.trim()).filter(Boolean)) : [];
+            const paymentTerms = p.paymentTerms ? (Array.isArray(p.paymentTerms) ? p.paymentTerms : p.paymentTerms.split(',').map((term: string) => term.trim()).filter(Boolean)) : [];
+            const colors = p.colors ? (Array.isArray(p.colors) ? p.colors : p.colors.split(',').map((color: string) => color.trim()).filter(Boolean)) : [];
+            const sizes = p.sizes ? (Array.isArray(p.sizes) ? p.sizes : p.sizes.split(',').map((size: string) => size.trim()).filter(Boolean)) : [];
+            const keyFeatures = p.keyFeatures ? (Array.isArray(p.keyFeatures) ? p.keyFeatures : p.keyFeatures.split(',').map((feature: string) => feature.trim()).filter(Boolean)) : [];
+            const certifications = p.certifications ? (Array.isArray(p.certifications) ? p.certifications : p.certifications.split(',').map((cert: string) => cert.trim()).filter(Boolean)) : [];
+
+            // Process specifications JSON
+            let specifications = null;
+            if (p.specifications) {
+              try {
+                specifications = typeof p.specifications === 'string' ? JSON.parse(p.specifications) : p.specifications;
+              } catch (e) {
+                console.warn(`Invalid specifications JSON for product ${i + 1}:`, p.specifications);
+              }
+            }
+
+            // Process price tiers from Excel/JSON
+            const priceRanges: Array<{ minQty: number, maxQty: number | null, pricePerUnit: number }> = [];
+            if (p.priceTiers && Array.isArray(p.priceTiers)) {
+              p.priceTiers.forEach((tier: any) => {
+                if (tier.minQty && tier.pricePerUnit) {
+                  priceRanges.push({
+                    minQty: parseInt(tier.minQty),
+                    maxQty: tier.maxQty ? parseInt(tier.maxQty) : null,
+                    pricePerUnit: parseFloat(tier.pricePerUnit)
+                  });
+                }
               });
             }
-          });
-        }
-        
-        // Process images from Excel/JSON (both filenames and embedded image data)
-        const productImages = [];
-        const imageFields = ['mainImage', 'image1', 'image2', 'image3', 'image4', 'image5'];
-        
-        // Collect image filenames from Excel/JSON
-        const excelImageFilenames: string[] = [];
-        imageFields.forEach(field => {
-          if (p[field] && p[field].trim()) {
-            let filename = p[field].trim();
-            // Remove "FILE:" prefix if present (to prevent Google Sheets from treating as images)
-            if (filename.startsWith('FILE: ')) {
-              filename = filename.substring(6);
-            }
-            excelImageFilenames.push(filename);
-          }
-        });
-        
-        // Process images array - can contain both filenames and base64 data
-        if (p.images && Array.isArray(p.images)) {
-          console.log(`🖼️ Processing ${p.images.length} images for product: ${p.name}`);
-          
-          p.images.forEach((imageData: string, imageIndex: number) => {
-            if (imageData && imageData.trim()) {
-              console.log(`📸 Processing image ${imageIndex + 1} for product ${p.name}: ${imageData.substring(0, 50)}...`);
-              console.log(`🔍 Image data type: ${typeof imageData}, length: ${imageData.length}`);
-              console.log(`🔍 Starts with data:image: ${imageData.startsWith('data:image')}`);
-              
-              // Check if it's base64 image data
-              if (imageData.startsWith('data:image')) {
-                try {
-                  // Extract base64 data and save as file
-                  const base64Data = imageData.split(',')[1];
-                  if (!base64Data) {
-                    console.error(`No base64 data found in image ${imageIndex + 1} for product ${p.name}`);
-                    return;
-                  }
-                  
-                  const buffer = Buffer.from(base64Data, 'base64');
-                  console.log(`Converted base64 to buffer: ${buffer.length} bytes`);
-                  
-                  // Generate unique filename
-                  const timestamp = Date.now();
-                  const randomSuffix = Math.random().toString(36).substring(2, 8);
-                  const filename = `excel-image-${timestamp}-${randomSuffix}.jpg`;
-                   const filePath = path.join(process.cwd(), 'public', 'uploads', filename);
-                   
-                   // Ensure uploads directory exists
-                   const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-                   if (!fs.existsSync(uploadsDir)) {
-                     fs.mkdirSync(uploadsDir, { recursive: true });
-                   }
-                   
-                   fs.writeFileSync(filePath, buffer);
-                  productImages.push(`/uploads/${filename}`);
-                  console.log(`✅ Saved embedded image: ${filename} (${buffer.length} bytes)`);
-                } catch (error: any) {
-                  console.error(`❌ Failed to save embedded image ${imageIndex + 1} for product ${p.name}: ${error.message}`);
-                }
-              } else {
-                // It's a filename
-                let filename = imageData.trim();
+
+            // Process images from Excel/JSON (both filenames and embedded image data)
+            const productImages = [];
+            const imageFields = ['mainImage', 'image1', 'image2', 'image3', 'image4', 'image5'];
+
+            // Collect image filenames from Excel/JSON
+            const excelImageFilenames: string[] = [];
+            imageFields.forEach(field => {
+              if (p[field] && p[field].trim()) {
+                let filename = p[field].trim();
+                // Remove "FILE:" prefix if present (to prevent Google Sheets from treating as images)
                 if (filename.startsWith('FILE: ')) {
                   filename = filename.substring(6);
                 }
                 excelImageFilenames.push(filename);
-                console.log(`Added filename: ${filename}`);
+              }
+            });
+
+            // Process images array - can contain both filenames and base64 data
+            if (p.images && Array.isArray(p.images)) {
+              console.log(`🖼️ Processing ${p.images.length} images for product: ${p.name}`);
+
+              p.images.forEach((imageData: string, imageIndex: number) => {
+                if (imageData && imageData.trim()) {
+                  console.log(`📸 Processing image ${imageIndex + 1} for product ${p.name}: ${imageData.substring(0, 50)}...`);
+                  console.log(`🔍 Image data type: ${typeof imageData}, length: ${imageData.length}`);
+                  console.log(`🔍 Starts with data:image: ${imageData.startsWith('data:image')}`);
+
+                  // Check if it's base64 image data
+                  if (imageData.startsWith('data:image')) {
+                    try {
+                      // Extract base64 data and save as file
+                      const base64Data = imageData.split(',')[1];
+                      if (!base64Data) {
+                        console.error(`No base64 data found in image ${imageIndex + 1} for product ${p.name}`);
+                        return;
+                      }
+
+                      const buffer = Buffer.from(base64Data, 'base64');
+                      console.log(`Converted base64 to buffer: ${buffer.length} bytes`);
+
+                      // Generate unique filename
+                      const timestamp = Date.now();
+                      const randomSuffix = Math.random().toString(36).substring(2, 8);
+                      const filename = `excel-image-${timestamp}-${randomSuffix}.jpg`;
+                      const filePath = path.join(process.cwd(), 'public', 'uploads', filename);
+
+                      // Ensure uploads directory exists
+                      const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+                      if (!fs.existsSync(uploadsDir)) {
+                        fs.mkdirSync(uploadsDir, { recursive: true });
+                      }
+
+                      fs.writeFileSync(filePath, buffer);
+                      productImages.push(`/uploads/${filename}`);
+                      console.log(`✅ Saved embedded image: ${filename} (${buffer.length} bytes)`);
+                    } catch (error: any) {
+                      console.error(`❌ Failed to save embedded image ${imageIndex + 1} for product ${p.name}: ${error.message}`);
+                    }
+                  } else {
+                    // It's a filename
+                    let filename = imageData.trim();
+                    if (filename.startsWith('FILE: ')) {
+                      filename = filename.substring(6);
+                    }
+                    excelImageFilenames.push(filename);
+                    console.log(`Added filename: ${filename}`);
+                  }
+                }
+              });
+            }
+
+            // Match uploaded files with Excel/JSON filenames
+            if (imageFiles && imageFiles.length > 0 && excelImageFilenames.length > 0) {
+              excelImageFilenames.forEach(filename => {
+                const matchingFile = imageFiles.find(file => file.originalname === filename);
+                if (matchingFile) {
+                  productImages.push(`/uploads/${matchingFile.filename}`);
+                }
+              });
+            }
+
+            // If no uploaded files match, check if images exist in uploads directory
+            if (productImages.length === 0 && excelImageFilenames.length > 0) {
+              const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+
+              excelImageFilenames.forEach(filename => {
+                const filePath = path.join(uploadsDir, filename);
+                if (fs.existsSync(filePath)) {
+                  productImages.push(`/uploads/${filename}`);
+                }
+              });
+            }
+
+            // If no Excel/JSON image fields specified, fall back to even distribution
+            if (productImages.length === 0 && imageFiles && imageFiles.length > 0) {
+              const imagesPerProduct = Math.ceil(imageFiles.length / productsData.length);
+              const startIndex = i * imagesPerProduct;
+              const endIndex = Math.min(startIndex + imagesPerProduct, imageFiles.length);
+
+              for (let j = startIndex; j < endIndex; j++) {
+                if (imageFiles[j]) {
+                  productImages.push(`/uploads/${imageFiles[j].filename}`);
+                }
               }
             }
-          });
-        }
-        
-        // Match uploaded files with Excel/JSON filenames
-        if (imageFiles && imageFiles.length > 0 && excelImageFilenames.length > 0) {
-          excelImageFilenames.forEach(filename => {
-            const matchingFile = imageFiles.find(file => file.originalname === filename);
-            if (matchingFile) {
-              productImages.push(`/uploads/${matchingFile.filename}`);
-            }
-          });
-        }
-        
-         // If no uploaded files match, check if images exist in uploads directory
-         if (productImages.length === 0 && excelImageFilenames.length > 0) {
-           const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-          
-          excelImageFilenames.forEach(filename => {
-            const filePath = path.join(uploadsDir, filename);
-            if (fs.existsSync(filePath)) {
-              productImages.push(`/uploads/${filename}`);
-            }
-          });
-        }
-        
-        // If no Excel/JSON image fields specified, fall back to even distribution
-        if (productImages.length === 0 && imageFiles && imageFiles.length > 0) {
-          const imagesPerProduct = Math.ceil(imageFiles.length / productsData.length);
-          const startIndex = i * imagesPerProduct;
-          const endIndex = Math.min(startIndex + imagesPerProduct, imageFiles.length);
-          
-          for (let j = startIndex; j < endIndex; j++) {
-            if (imageFiles[j]) {
-              productImages.push(`/uploads/${imageFiles[j].filename}`);
-            }
+
+            // Generate unique slug using name and SKU to avoid duplicates
+            const baseSlug = (p.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+            const uniqueSlug = p.sku ? `${baseSlug}-${p.sku.toLowerCase().replace(/[^a-z0-9]+/g, '-')}` : `${baseSlug}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+            const productData = {
+              name: p.name,
+              slug: uniqueSlug,
+              shortDescription: p.shortDescription,
+              description: p.description,
+              categoryId: p.categoryId,
+              specifications,
+              images: productImages,
+              videos: [],
+              minOrderQuantity: parseInt(p.minOrderQuantity || '1'),
+              priceRanges: priceRanges.length > 0 ? priceRanges : null,
+              sampleAvailable: p.sampleAvailable === 'true' || p.sampleAvailable === true,
+              samplePrice: p.samplePrice ? p.samplePrice.toString() : null,
+              customizationAvailable: p.customizationAvailable === 'true' || p.customizationAvailable === true,
+              customizationDetails: p.customizationDetails,
+              leadTime: p.leadTime,
+              port: p.port,
+              paymentTerms,
+              inStock: p.inStock === 'true' || p.inStock === true,
+              stockQuantity: parseInt(p.stockQuantity || '0'),
+              isPublished: p.isPublished === 'true' || p.isPublished === true,
+              isFeatured: p.isFeatured === 'true' || p.isFeatured === true,
+              colors,
+              sizes,
+              keyFeatures,
+              certifications,
+              tags,
+              hasTradeAssurance: p.hasTradeAssurance === 'true' || p.hasTradeAssurance === true,
+              sku: p.sku,
+              metaData: null,
+            };
+
+            console.log(`💾 Final product data for ${p.name}:`);
+            console.log(`📁 Images array:`, productImages);
+            console.log(`📊 Images count: ${productImages.length}`);
+            console.log(`🔍 First image: ${productImages[0] || 'No images'}`);
+            console.log(`💰 samplePrice before processing: ${p.samplePrice} (type: ${typeof p.samplePrice})`);
+            console.log(`💰 samplePrice after processing: ${productData.samplePrice} (type: ${typeof productData.samplePrice})`);
+
+            const validated = insertProductSchema.parse(productData);
+            validatedProducts.push(validated);
+          } catch (error: any) {
+            errors.push({ row: i + 1, error: error.message });
           }
         }
-        
-        // Generate unique slug using name and SKU to avoid duplicates
-        const baseSlug = (p.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-        const uniqueSlug = p.sku ? `${baseSlug}-${p.sku.toLowerCase().replace(/[^a-z0-9]+/g, '-')}` : `${baseSlug}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-        
-        const productData = {
-          name: p.name,
-          slug: uniqueSlug,
-          shortDescription: p.shortDescription,
-          description: p.description,
-          categoryId: p.categoryId,
-          specifications,
-          images: productImages,
-          videos: [],
-          minOrderQuantity: parseInt(p.minOrderQuantity || '1'),
-          priceRanges: priceRanges.length > 0 ? priceRanges : null,
-          sampleAvailable: p.sampleAvailable === 'true' || p.sampleAvailable === true,
-          samplePrice: p.samplePrice ? p.samplePrice.toString() : null,
-          customizationAvailable: p.customizationAvailable === 'true' || p.customizationAvailable === true,
-          customizationDetails: p.customizationDetails,
-          leadTime: p.leadTime,
-          port: p.port,
-          paymentTerms,
-          inStock: p.inStock === 'true' || p.inStock === true,
-          stockQuantity: parseInt(p.stockQuantity || '0'),
-          isPublished: p.isPublished === 'true' || p.isPublished === true,
-          isFeatured: p.isFeatured === 'true' || p.isFeatured === true,
-          colors,
-          sizes,
-          keyFeatures,
-          certifications,
-          tags,
-          hasTradeAssurance: p.hasTradeAssurance === 'true' || p.hasTradeAssurance === true,
-          sku: p.sku,
-          metaData: null,
-        };
-        
-        console.log(`💾 Final product data for ${p.name}:`);
-        console.log(`📁 Images array:`, productImages);
-        console.log(`📊 Images count: ${productImages.length}`);
-        console.log(`🔍 First image: ${productImages[0] || 'No images'}`);
-        console.log(`💰 samplePrice before processing: ${p.samplePrice} (type: ${typeof p.samplePrice})`);
-        console.log(`💰 samplePrice after processing: ${productData.samplePrice} (type: ${typeof productData.samplePrice})`);
-        
-        const validated = insertProductSchema.parse(productData);
-        validatedProducts.push(validated);
-      } catch (error: any) {
-        errors.push({ row: i + 1, error: error.message });
+
+        // Log batch completion
+        console.log(`✅ Completed batch ${batchIndex + 1}/${totalBatches}`);
+
+        // Small delay between batches to prevent memory overload
+        if (batchIndex < totalBatches - 1) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
       }
-    }
-    
-    // Log batch completion
-    console.log(`✅ Completed batch ${batchIndex + 1}/${totalBatches}`);
-    
-    // Small delay between batches to prevent memory overload
-    if (batchIndex < totalBatches - 1) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-    }
-    
-    if (errors.length > 0) {
-      return res.status(400).json({ 
-        error: "Validation errors in Excel/JSON data", 
-        errors,
-        validCount: validatedProducts.length,
-        errorCount: errors.length
+
+      if (errors.length > 0) {
+        return res.status(400).json({
+          error: "Validation errors in Excel/JSON data",
+          errors,
+          validCount: validatedProducts.length,
+          errorCount: errors.length
+        });
+      }
+
+      console.log(`💾 Creating ${validatedProducts.length} products in database...`);
+      const createdProducts = await storage.bulkCreateProducts(validatedProducts);
+
+      console.log(`✅ Successfully created ${createdProducts.length} products in database`);
+      res.status(201).json({
+        success: true,
+        count: createdProducts.length,
+        products: createdProducts,
+        message: `Successfully uploaded ${createdProducts.length} products to database`
       });
-    }
-    
-    console.log(`💾 Creating ${validatedProducts.length} products in database...`);
-    const createdProducts = await storage.bulkCreateProducts(validatedProducts);
-    
-    console.log(`✅ Successfully created ${createdProducts.length} products in database`);
-    res.status(201).json({ 
-      success: true,
-      count: createdProducts.length, 
-      products: createdProducts,
-      message: `Successfully uploaded ${createdProducts.length} products to database`
-    });
-  } catch (error: any) {
-    console.error('Excel/JSON bulk upload error:', error);
+    } catch (error: any) {
+      console.error('Excel/JSON bulk upload error:', error);
       res.status(400).json({ error: error.message });
     }
   });
 
   // ==================== CATEGORIES ====================
-  
+
   app.get("/api/categories", async (req, res) => {
     try {
       console.log('=== CATEGORIES API CALLED ===');
@@ -1883,22 +1999,22 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       if (parentId !== undefined) filters.parentId = parentId === 'null' ? null : parentId as string;
       if (isActive !== undefined) filters.isActive = isActive === 'true';
       if (featured === 'true') filters.featured = true;
-      
+
       console.log('Filters:', filters);
       const categories = await storage.getCategories(filters);
       console.log('Raw categories from storage:', categories);
-      
+
       // Add comprehensive data to each category
       const categoriesWithCount = await Promise.all(
         categories.map(async (category) => {
           const products = await storage.getProducts({ categoryId: category.id, isPublished: true });
           const subcategories = await storage.getCategories({ parentId: category.id, isActive: true });
-          
+
           // Calculate trend based on product views and inquiries
           const totalViews = products.reduce((sum, product) => sum + (product.views || 0), 0);
           const totalInquiries = products.reduce((sum, product) => sum + (product.inquiries || 0), 0);
           const trendScore = totalViews + (totalInquiries * 10); // Weight inquiries more
-          
+
           const result = {
             ...category,
             productCount: products.length,
@@ -1914,7 +2030,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
           return result;
         })
       );
-      
+
       console.log('Sending categories with counts:', categoriesWithCount);
       res.json(categoriesWithCount);
     } catch (error: any) {
@@ -1926,12 +2042,12 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
   app.get("/api/categories/stats", async (req, res) => {
     try {
       const categories = await storage.getCategories({ isActive: true });
-      
+
       const stats = await Promise.all(
         categories.map(async (category) => {
           const products = await storage.getProducts({ categoryId: category.id, isPublished: true });
           const subcategories = await storage.getCategories({ parentId: category.id, isActive: true });
-          
+
           const result = {
             categoryId: category.id,
             categoryName: category.name,
@@ -1943,7 +2059,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
           return result;
         })
       );
-      
+
       console.log('Sending category stats:', stats);
       res.json(stats);
     } catch (error: any) {
@@ -1988,29 +2104,29 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
         let images = [];
         if (product.images) {
           try {
-            images = typeof product.images === 'string' 
-              ? JSON.parse(product.images) 
+            images = typeof product.images === 'string'
+              ? JSON.parse(product.images)
               : product.images;
           } catch (error) {
             images = [];
           }
         }
-        
+
         let priceRanges = [];
         if (product.priceRanges) {
           try {
-            priceRanges = typeof product.priceRanges === 'string' 
-              ? JSON.parse(product.priceRanges) 
+            priceRanges = typeof product.priceRanges === 'string'
+              ? JSON.parse(product.priceRanges)
               : product.priceRanges;
           } catch (error) {
             priceRanges = [];
           }
         }
-        
-        const minPrice = priceRanges.length > 0 
+
+        const minPrice = priceRanges.length > 0
           ? Math.min(...priceRanges.map((r: any) => r.pricePerUnit))
           : 0;
-        
+
         suggestions.push({
           id: product.id,
           name: product.name,
@@ -2041,7 +2157,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
         suggestions.push({
           id: category.id,
           name: category.name,
-          image: category.imageUrl 
+          image: category.imageUrl
             ? (category.imageUrl.startsWith('/uploads/') ? category.imageUrl : `/uploads/${category.imageUrl}`)
             : 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=100&h=100&fit=crop',
           price: '',
@@ -2127,7 +2243,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
   // NOTE: These RFQ management routes are deprecated in the multivendor system.
   // RFQs are now managed directly by suppliers, not admin.
   // These routes remain for backward compatibility but should not be used in admin panel.
-  
+
   app.get("/api/rfqs", async (req, res) => {
     try {
       const { buyerId, status, categoryId } = req.query;
@@ -2135,7 +2251,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       if (buyerId) filters.buyerId = buyerId as string;
       if (status) filters.status = status as string;
       if (categoryId) filters.categoryId = categoryId as string;
-      
+
       const rfqs = await storage.getRfqs(filters);
       res.json(rfqs);
     } catch (error: any) {
@@ -2160,7 +2276,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       console.log('=== RFQ POST REQUEST ===');
       console.log('Request body:', req.body);
       console.log('productId received:', req.body.productId);
-      
+
       // Handle file uploads
       const uploadedFiles = req.files as Express.Multer.File[] || [];
       const filePaths = uploadedFiles.map(file => `/uploads/${file.filename}`);
@@ -2174,9 +2290,9 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
           supplierId: products.supplierId,
           name: products.name
         })
-        .from(products)
-        .where(eq(products.id, req.body.productId))
-        .limit(1);
+          .from(products)
+          .where(eq(products.id, req.body.productId))
+          .limit(1);
 
         if (product.length === 0) {
           return res.status(404).json({ error: 'Product not found' });
@@ -2193,9 +2309,9 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
           isActive: supplierProfiles.isActive,
           userId: supplierProfiles.userId
         })
-        .from(supplierProfiles)
-        .where(eq(supplierProfiles.id, product[0].supplierId))
-        .limit(1);
+          .from(supplierProfiles)
+          .where(eq(supplierProfiles.id, product[0].supplierId))
+          .limit(1);
 
         if (supplier.length === 0) {
           return res.status(400).json({ error: 'Product supplier not found' });
@@ -2228,7 +2344,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
 
       // Use partial schema since some fields are optional
       const validatedData = insertRfqSchema.partial().parse(rfqData);
-      
+
       // Remove undefined values to avoid validation errors
       Object.keys(validatedData).forEach((key: string) => {
         if ((validatedData as any)[key] === undefined) {
@@ -2237,7 +2353,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       });
 
       console.log('Validated RFQ data:', validatedData);
-      
+
       const rfq = await storage.createRfq(validatedData as any);
 
       // If RFQ is routed to a specific supplier, notify them
@@ -2245,9 +2361,9 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
         const supplier = await db.select({
           userId: supplierProfiles.userId
         })
-        .from(supplierProfiles)
-        .where(eq(supplierProfiles.id, supplierId))
-        .limit(1);
+          .from(supplierProfiles)
+          .where(eq(supplierProfiles.id, supplierId))
+          .limit(1);
 
         if (supplier.length > 0) {
           await createNotification({
@@ -2264,7 +2380,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
         // This could be implemented later to notify suppliers in the category
         console.log('General RFQ created - category-based supplier notification not implemented yet');
       }
-      
+
       res.status(201).json(rfq);
     } catch (error: any) {
       console.error('Error creating RFQ:', error);
@@ -2288,7 +2404,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
   app.delete("/api/rfqs/:id", async (req, res) => {
     try {
       const rfqId = req.params.id;
-      
+
       // Check if RFQ has quotations
       const quotations = await storage.getQuotations({ rfqId });
       if (quotations && quotations.length > 0) {
@@ -2312,14 +2428,14 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
   // NOTE: These quotation management routes are deprecated in the multivendor system.
   // Quotations are now created and managed directly by suppliers, not admin.
   // These routes remain for backward compatibility but should not be used in admin panel.
-  
+
   app.get("/api/quotations", async (req, res) => {
     try {
       const { rfqId, status } = req.query;
       const filters: any = {};
       if (rfqId) filters.rfqId = rfqId as string;
       if (status) filters.status = status as string;
-      
+
       const quotations = await storage.getQuotations(filters);
       res.json(quotations);
     } catch (error: any) {
@@ -2341,7 +2457,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
 
   // REMOVED: Admin quotation creation - now handled by suppliers
   app.post("/api/quotations", async (req, res) => {
-    res.status(410).json({ 
+    res.status(410).json({
       error: 'Admin quotation management has been removed. Quotations are now created by suppliers.',
       message: 'Use /api/suppliers/quotations for RFQ quotations or /api/suppliers/inquiry-quotations for inquiry quotations',
       redirect: '/api/suppliers/quotations'
@@ -2351,7 +2467,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
   // REMOVED: Admin quotation update - now handled by suppliers
   app.patch("/api/quotations/:id", async (req, res) => {
     try {
-      res.status(410).json({ 
+      res.status(410).json({
         error: 'Admin quotation management has been removed. Quotations are now updated by suppliers.',
         message: 'Use /api/suppliers/quotations/:id for RFQ quotations or /api/suppliers/inquiry-quotations/:id for inquiry quotations',
         redirect: '/api/suppliers/quotations'
@@ -2393,13 +2509,13 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       }
 
       // Update quotation status
-      await storage.updateQuotation(quotationId, { 
+      await storage.updateQuotation(quotationId, {
         status: 'rejected'
       });
 
-      res.json({ 
-        success: true, 
-        message: 'Quotation rejected successfully' 
+      res.json({
+        success: true,
+        message: 'Quotation rejected successfully'
       });
     } catch (error: any) {
       console.error('Error rejecting RFQ quotation:', error);
@@ -2411,7 +2527,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
   app.post("/api/quotations/accept", async (req, res) => {
     try {
       const { quotationId, inquiryId, shippingAddress, billingAddress } = req.body;
-      
+
       if (!quotationId || !inquiryId || !shippingAddress) {
         return res.status(400).json({ error: "Missing required fields" });
       }
@@ -2429,9 +2545,9 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
         message: inquiryQuotations.message,
         status: inquiryQuotations.status
       })
-      .from(inquiryQuotations)
-      .where(eq(inquiryQuotations.id, quotationId))
-      .limit(1);
+        .from(inquiryQuotations)
+        .where(eq(inquiryQuotations.id, quotationId))
+        .limit(1);
 
       if (quotation.length === 0) {
         return res.status(404).json({ error: "Quotation not found" });
@@ -2452,9 +2568,9 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
         targetPrice: inquiries.targetPrice,
         message: inquiries.message
       })
-      .from(inquiries)
-      .where(eq(inquiries.id, inquiryId))
-      .limit(1);
+        .from(inquiries)
+        .where(eq(inquiries.id, inquiryId))
+        .limit(1);
 
       if (inquiry.length === 0) {
         return res.status(404).json({ error: "Inquiry not found" });
@@ -2499,7 +2615,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
 
       // Update quotation status to accepted
       await db.update(inquiryQuotations)
-        .set({ 
+        .set({
           status: 'accepted',
           message: `${quotationData.message || ''}\n\nOrder created: ${orderNumber}`
         })
@@ -2510,11 +2626,43 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
         .set({ status: 'closed' })
         .where(eq(inquiries.id, inquiryId));
 
-      // TODO: Send notification to supplier about new order
-      // TODO: Send notification to buyer about order creation
+      // Send notifications
+      const { notificationService } = await import('./notificationService');
+      
+      // Get supplier user ID
+      if (quotationData.supplierId) {
+        const supplierProfile = await db.select({ userId: supplierProfiles.userId })
+          .from(supplierProfiles)
+          .where(eq(supplierProfiles.id, quotationData.supplierId))
+          .limit(1);
+        
+        if (supplierProfile.length > 0) {
+        // Notify supplier about quotation acceptance
+        await notificationService.notifyQuotationUpdate(
+          supplierProfile[0].userId,
+          quotationId,
+          'accepted'
+        );
+        
+        // Get buyer name
+        const buyer = await db.select({ firstName: users.firstName, lastName: users.lastName })
+          .from(users)
+          .where(eq(users.id, inquiryData.buyerId))
+          .limit(1);
+        
+        const buyerName = buyer.length > 0 ? `${buyer[0].firstName} ${buyer[0].lastName}` : 'A buyer';
+        
+        // Notify supplier about new order
+        await notificationService.notifyNewOrder(
+          supplierProfile[0].userId,
+          createdOrder.id,
+          buyerName
+        );
+        }
+      }
 
-      res.status(200).json({ 
-        success: true, 
+      res.status(200).json({
+        success: true,
         message: 'Quotation accepted and order created successfully. The supplier will confirm your order.',
         order: createdOrder,
         orderNumber: createdOrder.orderNumber,
@@ -2530,7 +2678,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
   app.post("/api/quotations/reject", async (req, res) => {
     try {
       const { quotationId, reason } = req.body;
-      
+
       if (!quotationId) {
         return res.status(400).json({ error: "Quotation ID is required" });
       }
@@ -2542,14 +2690,14 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       }
 
       // Update quotation status to rejected
-      await storage.updateInquiryQuotation(quotationId, { 
+      await storage.updateInquiryQuotation(quotationId, {
         status: 'rejected',
         message: reason ? `Rejected: ${reason}` : quotation.message
       });
 
-      res.json({ 
-        success: true, 
-        message: 'Quotation rejected successfully' 
+      res.json({
+        success: true,
+        message: 'Quotation rejected successfully'
       });
     } catch (error: any) {
       console.error('Error rejecting quotation:', error);
@@ -2561,20 +2709,20 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
   // NOTE: These inquiry management routes are deprecated in the multivendor system.
   // Inquiries are now routed directly to suppliers, not admin.
   // These routes remain for backward compatibility but should not be used in admin panel.
-  
+
   app.get("/api/inquiries", async (req, res) => {
     try {
       const { productId, buyerId, status } = req.query;
-      
+
       // IMPORTANT: Get buyer ID from authenticated session if not admin
       // @ts-ignore - req.user is added by auth middleware
       const currentUserId = req.user?.id;
       // @ts-ignore
       const currentUserRole = req.user?.role;
-      
+
       const filters: any = {};
       if (productId) filters.productId = productId as string;
-      
+
       // If buyer is logged in and not admin, only show their inquiries
       if (currentUserId && currentUserRole === 'buyer') {
         filters.buyerId = currentUserId;
@@ -2582,9 +2730,9 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
         // Admin can filter by specific buyer
         filters.buyerId = buyerId as string;
       }
-      
+
       if (status) filters.status = status as string;
-      
+
       const inquiries = await storage.getInquiries(filters);
       res.json({ inquiries });
     } catch (error: any) {
@@ -2596,11 +2744,11 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
   app.get("/api/buyer/dashboard/stats", authMiddleware, async (req, res) => {
     try {
       const buyerId = req.user?.id;
-      
+
       if (!buyerId) {
         return res.status(401).json({ error: "Authentication required" });
       }
-      
+
       const stats = await storage.getBuyerDashboardStats(buyerId);
       res.json(stats);
     } catch (error) {
@@ -2613,37 +2761,37 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
   app.get("/api/buyer/quotations", async (req, res) => {
     try {
       const { status, search, sort, type } = req.query;
-      
+
       // IMPORTANT: Get buyer ID from authenticated session
       // @ts-ignore - req.user is added by auth middleware
       const buyerId = req.user?.id;
-      
+
       if (!buyerId) {
         return res.status(401).json({ error: "Authentication required" });
       }
-      
+
       // Get both inquiry quotations and RFQ quotations
       const [inquiryQuotations, allRfqQuotations] = await Promise.all([
         storage.getInquiryQuotations(),
         storage.getQuotations({})
       ]);
-      
+
       // Filter inquiry quotations for this buyer
-      let buyerInquiryQuotations = inquiryQuotations.filter((q: any) => 
+      let buyerInquiryQuotations = inquiryQuotations.filter((q: any) =>
         q.buyerId && q.buyerId.toString() === buyerId.toString()
       ).map((q: any) => ({ ...q, type: 'inquiry' }));
-      
+
       // Get RFQs for this buyer and filter RFQ quotations
       const buyerRfqs = await storage.getRfqs({ buyerId });
       const buyerRfqIds = new Set(buyerRfqs.map((r: any) => r.id));
-      
+
       // Enhance RFQ quotations with RFQ and product data
       const buyerRfqQuotations = await Promise.all(
         allRfqQuotations
           .filter((q: any) => buyerRfqIds.has(q.rfqId))
           .map(async (quotation: any) => {
             quotation.type = 'rfq';
-            
+
             // Fetch RFQ details
             const rfq = await storage.getRfq(quotation.rfqId);
             if (rfq) {
@@ -2651,7 +2799,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
               quotation.rfqTitle = rfq.title;
               quotation.quantity = rfq.quantity;
               quotation.targetPrice = rfq.targetPrice;
-              
+
               // Fetch product if exists
               if (rfq.productId) {
                 try {
@@ -2667,61 +2815,61 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
                 }
               }
             }
-            
+
             return quotation;
           })
       );
-      
+
       // Combine both types
       let allQuotations = [...buyerInquiryQuotations, ...buyerRfqQuotations];
-      
+
       // Filter by type if provided
       if (type && type !== 'all') {
         allQuotations = allQuotations.filter((q: any) => q.type === type);
       }
-      
+
       // Filter by status if provided
       if (status && status !== 'all') {
         allQuotations = allQuotations.filter((q: any) => q.status === status);
       }
-      
+
       // Search filter
       if (search) {
         const searchLower = (search as string).toLowerCase();
-        allQuotations = allQuotations.filter((q: any) => 
+        allQuotations = allQuotations.filter((q: any) =>
           q.productName?.toLowerCase().includes(searchLower) ||
           q.rfqTitle?.toLowerCase().includes(searchLower) ||
           q.buyerName?.toLowerCase().includes(searchLower) ||
           q.buyerCompany?.toLowerCase().includes(searchLower)
         );
       }
-      
+
       // Sort
       if (sort) {
-        switch(sort) {
+        switch (sort) {
           case 'newest':
-            allQuotations.sort((a: any, b: any) => 
+            allQuotations.sort((a: any, b: any) =>
               new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
             );
             break;
           case 'oldest':
-            allQuotations.sort((a: any, b: any) => 
+            allQuotations.sort((a: any, b: any) =>
               new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
             );
             break;
           case 'price-high':
-            allQuotations.sort((a: any, b: any) => 
+            allQuotations.sort((a: any, b: any) =>
               (parseFloat(b.pricePerUnit) || 0) - (parseFloat(a.pricePerUnit) || 0)
             );
             break;
           case 'price-low':
-            allQuotations.sort((a: any, b: any) => 
+            allQuotations.sort((a: any, b: any) =>
               (parseFloat(a.pricePerUnit) || 0) - (parseFloat(b.pricePerUnit) || 0)
             );
             break;
         }
       }
-      
+
       res.json({ quotations: allQuotations });
     } catch (error: any) {
       console.error('Error fetching buyer quotations:', error);
@@ -2745,16 +2893,16 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
     try {
       console.log('=== RECEIVED INQUIRY REQUEST ===');
       console.log('Request body:', req.body);
-      
+
       // Get product to find its supplier
       const product = await db.select({
         id: products.id,
         supplierId: products.supplierId,
         name: products.name
       })
-      .from(products)
-      .where(eq(products.id, req.body.productId))
-      .limit(1);
+        .from(products)
+        .where(eq(products.id, req.body.productId))
+        .limit(1);
 
       if (product.length === 0) {
         return res.status(404).json({ error: 'Product not found' });
@@ -2771,9 +2919,9 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
         isActive: supplierProfiles.isActive,
         userId: supplierProfiles.userId
       })
-      .from(supplierProfiles)
-      .where(eq(supplierProfiles.id, product[0].supplierId))
-      .limit(1);
+        .from(supplierProfiles)
+        .where(eq(supplierProfiles.id, product[0].supplierId))
+        .limit(1);
 
       if (supplier.length === 0) {
         return res.status(400).json({ error: 'Product supplier not found' });
@@ -2782,7 +2930,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       if (supplier[0].status !== 'approved' || !supplier[0].isActive) {
         return res.status(400).json({ error: 'Product supplier is not active or approved' });
       }
-      
+
       // Clean up the request body - only include fields that exist in schema
       // Note: decimal fields should be strings, not numbers (drizzle-zod requirement)
       const cleanedData: any = {
@@ -2808,28 +2956,35 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       // Validate with schema
       const validatedData = insertInquirySchema.parse(cleanedData);
       console.log('Validated inquiry data:', validatedData);
-      
+
       const inquiry = await storage.createInquiry(validatedData);
       console.log('✅ Inquiry created successfully:', inquiry.id);
-      
+
       // Increment product inquiry count
       await storage.incrementProductInquiries(validatedData.productId);
+
+      // Notify the supplier with real-time notification
+      const { notificationService } = await import('./notificationService');
       
-      // Notify the supplier instead of admin
-      await createNotification({
-        userId: supplier[0].userId,
-        type: 'info',
-        title: 'New Inquiry Received',
-        message: `A new inquiry has been received for your product "${product[0].name}"`,
-        relatedId: inquiry.id,
-        relatedType: 'inquiry'
-      });
+      // Get buyer name for notification
+      const buyer = await db.select({ firstName: users.firstName, lastName: users.lastName })
+        .from(users)
+        .where(eq(users.id, req.body.buyerId))
+        .limit(1);
       
+      const buyerName = buyer.length > 0 ? `${buyer[0].firstName} ${buyer[0].lastName}` : 'A buyer';
+      
+      await notificationService.notifyNewInquiry(
+        supplier[0].userId,
+        inquiry.id,
+        buyerName
+      );
+
       res.status(201).json(inquiry);
     } catch (error: any) {
       console.error('❌ Error creating inquiry:', error);
       console.error('Error details:', error.errors || error.message);
-      res.status(400).json({ 
+      res.status(400).json({
         error: error.message || 'Failed to create inquiry',
         details: error.errors || undefined
       });
@@ -2853,7 +3008,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
   app.post("/api/inquiries/negotiate", async (req, res) => {
     try {
       const { inquiryId, message, targetPrice, quantity } = req.body;
-      
+
       if (!inquiryId) {
         return res.status(400).json({ error: "Inquiry ID is required" });
       }
@@ -2878,8 +3033,8 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
         createdBy: inquiry.buyerId
       });
 
-      res.status(201).json({ 
-        success: true, 
+      res.status(201).json({
+        success: true,
         message: 'Negotiation request sent successfully',
         revision
       });
@@ -2893,7 +3048,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
   // NOTE: Admin inquiry management is deprecated in the multivendor system.
   // Inquiries are now managed directly by suppliers.
   // These routes remain for backward compatibility but should not be used in admin panel.
-  
+
   // REMOVED: Admin inquiry management - now handled by suppliers
   // app.get("/api/admin/inquiries", async (req, res) => {
   //   res.status(410).json({ 
@@ -2914,7 +3069,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
   // NOTE: Admin quotation management is deprecated in the multivendor system.
   // Quotations are now managed directly by suppliers.
   // These routes remain for backward compatibility but should not be used in admin panel.
-  
+
   // REMOVED: Admin quotations listing - now handled by suppliers
   // app.get("/api/admin/quotations", async (req, res) => {
   //   res.status(410).json({ 
@@ -2929,7 +3084,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       // IMPORTANT: Get buyer ID from authenticated session
       // @ts-ignore - req.user is added by auth middleware
       const buyerId = req.user?.id;
-      
+
       if (!buyerId) {
         return res.status(401).json({ error: "Authentication required" });
       }
@@ -2972,14 +3127,14 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       console.log('=== REJECT INQUIRY QUOTATION API HIT ===');
       console.log('Quotation ID:', req.params.id);
       console.log('Request body:', req.body);
-      
+
       const { reason } = req.body;
       const quotationId = req.params.id;
 
       // IMPORTANT: Get buyer ID from authenticated session
       // @ts-ignore - req.user is added by auth middleware
       const buyerId = req.user?.id;
-      
+
       if (!buyerId) {
         return res.status(401).json({ error: "Authentication required" });
       }
@@ -3000,14 +3155,14 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       }
 
       // Update quotation status to rejected
-      await storage.updateInquiryQuotation(quotationId, { 
+      await storage.updateInquiryQuotation(quotationId, {
         status: 'rejected',
         message: reason ? `Rejected: ${reason}` : quotation.message
       });
 
-      res.json({ 
-        success: true, 
-        message: 'Quotation rejected successfully' 
+      res.json({
+        success: true,
+        message: 'Quotation rejected successfully'
       });
     } catch (error: any) {
       console.error('Error rejecting inquiry quotation:', error);
@@ -3022,22 +3177,22 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       // IMPORTANT: Get buyer ID from authenticated session
       // @ts-ignore - req.user is added by auth middleware
       const buyerId = req.user?.id;
-      
+
       if (!buyerId) {
         return res.status(401).json({ error: "Authentication required" });
       }
 
       // Get all orders
       let orders = await storage.getOrders();
-      
+
       // FILTER: Only show orders for THIS buyer
       orders = orders.filter((order: any) => order.buyerId && order.buyerId.toString() === buyerId.toString());
-      
+
       // Filter by status if provided
       if (status && status !== 'all') {
         orders = orders.filter((order: any) => order.status === status);
       }
-      
+
       // Search filter
       if (search) {
         const searchLower = (search as string).toLowerCase();
@@ -3047,10 +3202,10 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
           order.supplierName?.toLowerCase().includes(searchLower)
         );
       }
-      
+
       // Sort
       if (sort) {
-        switch(sort) {
+        switch (sort) {
           case 'newest':
             orders.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
             break;
@@ -3065,7 +3220,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
             break;
         }
       }
-      
+
       res.json({ orders });
     } catch (error: any) {
       console.error('Error fetching buyer orders:', error);
@@ -3079,7 +3234,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       // IMPORTANT: Get buyer ID from authenticated session
       // @ts-ignore - req.user is added by auth middleware
       const buyerId = req.user?.id;
-      
+
       if (!buyerId) {
         return res.status(401).json({ error: "Authentication required" });
       }
@@ -3107,7 +3262,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       // IMPORTANT: Get buyer ID from authenticated session
       // @ts-ignore - req.user is added by auth middleware
       const buyerId = req.user?.id;
-      
+
       if (!buyerId) {
         return res.status(401).json({ error: "Authentication required" });
       }
@@ -3127,14 +3282,14 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       }
 
       const { reason } = req.body;
-      
+
       // Update order status to cancelled
-      await storage.updateOrder(req.params.id, { 
+      await storage.updateOrder(req.params.id, {
         status: 'cancelled',
         notes: (order.notes || '') + `\n\nOrder cancelled by buyer. Reason: ${reason || 'No reason provided'}`
       });
 
-      res.json({ 
+      res.json({
         message: 'Order cancelled successfully',
         order: await storage.getOrder(req.params.id)
       });
@@ -3178,7 +3333,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
   app.post("/api/inquiries/:id/counter-offer", async (req, res) => {
     try {
       const { quantity, targetPrice, message, requirements } = req.body;
-      
+
       if (!quantity) {
         return res.status(400).json({ error: "Quantity is required" });
       }
@@ -3239,17 +3394,17 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
   app.get("/api/rfqs/:rfqId/quotations", async (req, res) => {
     try {
       const { rfqId } = req.params;
-      
+
       // Get all quotations for this RFQ
       const quotations = await storage.getQuotations({ rfqId });
-      
+
       // Sort by creation date (newest first)
       quotations.sort((a: any, b: any) => {
         const dateA = new Date(a.createdAt || 0).getTime();
         const dateB = new Date(b.createdAt || 0).getTime();
         return dateB - dateA;
       });
-      
+
       res.json({ quotations, rfqId });
     } catch (error: any) {
       console.error('Error fetching RFQ quotation history:', error);
@@ -3261,7 +3416,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
   app.post("/api/inquiries/:id/accept-quotation", async (req, res) => {
     try {
       const { quotationId } = req.body;
-      
+
       if (!quotationId) {
         return res.status(400).json({ error: "Quotation ID is required" });
       }
@@ -3323,7 +3478,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
   app.post("/api/inquiries/:id/reject-quotation", async (req, res) => {
     try {
       const { quotationId } = req.body;
-      
+
       if (!quotationId) {
         return res.status(400).json({ error: "Quotation ID is required" });
       }
@@ -3344,7 +3499,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
   app.post("/api/orders", async (req, res) => {
     try {
       const { quotationId, inquiryId, productId, quantity, unitPrice, totalAmount, shippingAddress, paymentMethod, buyerId } = req.body;
-      
+
       if (!quotationId || !productId || !quantity || !unitPrice || !totalAmount) {
         return res.status(400).json({ error: "Missing required order fields" });
       }
@@ -3392,34 +3547,34 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
     try {
       const { status, search } = req.query;
       const filters: any = {};
-      
+
       // IMPORTANT: Get buyer ID from authenticated session
       // @ts-ignore - req.user is added by auth middleware
       const buyerId = req.user?.id;
-      
+
       if (!buyerId) {
         return res.status(401).json({ error: "Authentication required" });
       }
-      
+
       filters.buyerId = buyerId;
-      
+
       if (status) {
         filters.status = status as string;
       }
-      
+
       const orders = await storage.getOrdersWithDetails(filters);
-      
+
       // Apply search filter if provided
       let filteredOrders = orders;
       if (search) {
         const searchLower = (search as string).toLowerCase();
-        filteredOrders = orders.filter((order: any) => 
+        filteredOrders = orders.filter((order: any) =>
           order.orderNumber?.toLowerCase().includes(searchLower) ||
           order.productName?.toLowerCase().includes(searchLower) ||
           order.trackingNumber?.toLowerCase().includes(searchLower)
         );
       }
-      
+
       res.json({ orders: filteredOrders });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -3453,11 +3608,11 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
   // ==================== ADMIN ORDER CREATION FROM QUOTATION (DEPRECATED) ====================
   // NOTE: Order creation from quotations is now handled directly by suppliers in the multivendor system.
   // This route remains for backward compatibility but should not be used in admin panel.
-  
+
   // DEPRECATED: Admin order creation is now handled by suppliers
   // This endpoint is kept for backward compatibility but should not be used
   app.post("/api/admin/orders/create-from-quotation", async (req, res) => {
-    res.status(410).json({ 
+    res.status(410).json({
       error: "This endpoint is deprecated. Orders are now created directly when quotations are accepted and managed by suppliers.",
       message: "Please use the new supplier-managed order workflow."
     });
@@ -3467,7 +3622,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
   app.post("/api/orders/:id/accept", async (req, res) => {
     try {
       const orderId = req.params.id;
-      
+
       // Get the order
       const order = await storage.getOrder(orderId);
       if (!order) {
@@ -3487,15 +3642,15 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       }
 
       // Update order status to confirmed
-      const updatedOrder = await storage.updateOrder(orderId, { 
+      const updatedOrder = await storage.updateOrder(orderId, {
         status: 'confirmed',
         notes: (order.notes || '') + '\n\nOrder accepted by buyer.'
       });
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: 'Order accepted successfully',
-        order: updatedOrder 
+        order: updatedOrder
       });
     } catch (error: any) {
       console.error('Error accepting order:', error);
@@ -3507,7 +3662,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
   app.post("/api/orders/:id/confirm", async (req, res) => {
     try {
       const orderId = req.params.id;
-      
+
       // Get the order
       const order = await storage.getOrder(orderId);
       if (!order) {
@@ -3515,15 +3670,15 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       }
 
       // Update order status to confirmed
-      const updatedOrder = await storage.updateOrder(orderId, { 
+      const updatedOrder = await storage.updateOrder(orderId, {
         status: 'confirmed',
         notes: 'Order confirmed by admin'
       });
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: 'Order confirmed successfully',
-        order: updatedOrder 
+        order: updatedOrder
       });
     } catch (error: any) {
       console.error('Error confirming order:', error);
@@ -3560,9 +3715,9 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
         supplierName: supplierProfiles.businessName,
         storeName: supplierProfiles.storeName
       })
-      .from(orders)
-      .leftJoin(users, eq(orders.buyerId, users.id))
-      .leftJoin(supplierProfiles, eq(orders.supplierId, supplierProfiles.id));
+        .from(orders)
+        .leftJoin(users, eq(orders.buyerId, users.id))
+        .leftJoin(supplierProfiles, eq(orders.supplierId, supplierProfiles.id));
 
       const conditions = [];
 
@@ -3573,39 +3728,40 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
         conditions.push(eq(orders.supplierId, supplierId as string));
       }
       if (search) {
-        conditions.push(
-          or(
-            ilike(orders.orderNumber, `%${search}%`),
-            ilike(users.firstName, `%${search}%`),
-            ilike(users.lastName, `%${search}%`),
-            ilike(supplierProfiles.businessName, `%${search}%`)
-          )
+        const searchCondition = or(
+          ilike(orders.orderNumber, `%${search}%`),
+          ilike(users.firstName, `%${search}%`),
+          ilike(users.lastName, `%${search}%`),
+          ilike(supplierProfiles.businessName, `%${search}%`)
         );
+        if (searchCondition) {
+          conditions.push(searchCondition);
+        }
       }
 
       if (conditions.length > 0) {
-        query = query.where(and(...conditions));
+        query = query.where(and(...conditions)) as any;
       }
 
-      query = query.orderBy(desc(orders.createdAt));
+      query = query.orderBy(desc(orders.createdAt)) as any;
 
       if (limit) {
-        query = query.limit(parseInt(limit as string));
+        query = query.limit(parseInt(limit as string)) as any;
       }
       if (offset) {
-        query = query.offset(parseInt(offset as string));
+        query = query.offset(parseInt(offset as string)) as any;
       }
 
       const adminOrders = await query;
 
-      // Get total count
-      let countQuery = db.select({ count: sql`count(*)` }).from(orders);
-      if (conditions.length > 0) {
-        countQuery = countQuery.where(and(...conditions));
-      }
+      // Get total count - build query with all conditions at once
+      const countQuery = db.select({ count: sql`count(*)` })
+        .from(orders)
+        .where(conditions.length > 0 ? and(...conditions) : undefined);
+      
       const [{ count }] = await countQuery;
 
-      res.json({ 
+      res.json({
         success: true,
         orders: adminOrders,
         total: parseInt(count as string),
@@ -3618,21 +3774,21 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
 
   // DEPRECATED: Admin order updates are now handled by suppliers
   app.patch("/api/admin/orders/:id", async (req, res) => {
-    res.status(410).json({ 
+    res.status(410).json({
       error: "Direct admin order management is deprecated. Orders are now managed by suppliers.",
       message: "Suppliers handle order status updates, tracking, and fulfillment through their dashboard."
     });
   });
 
   // ==================== CONVERSATIONS ====================
-  
+
   app.get("/api/conversations/:userId", async (req, res) => {
     try {
       const { role } = req.query;
       if (!role || (role !== 'buyer' && role !== 'admin')) {
         return res.status(400).json({ error: "Role must be 'buyer' or 'admin'" });
       }
-      
+
       const conversations = await storage.getConversations(req.params.userId, role as 'buyer' | 'admin');
       res.json(conversations);
     } catch (error: any) {
@@ -3658,7 +3814,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       if (!buyerId) {
         return res.status(400).json({ error: "buyerId is required" });
       }
-      
+
       const conversation = await storage.getOrCreateConversation(buyerId);
       res.json(conversation);
     } catch (error: any) {
@@ -3681,14 +3837,14 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
 
 
   // ==================== REVIEWS ====================
-  
+
   app.get("/api/reviews", async (req, res) => {
     try {
       const { productId, buyerId } = req.query;
       const filters: any = {};
       if (productId) filters.productId = productId as string;
       if (buyerId) filters.buyerId = buyerId as string;
-      
+
       const reviews = await storage.getReviews(filters);
       res.json(reviews);
     } catch (error: any) {
@@ -3771,76 +3927,101 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
     try {
       // @ts-ignore
       const buyerId = req.user?.id;
+
+      if (!buyerId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
       // Validate minimal review payload (buyerId injected from session)
       const body = z.object({
-        productId: z.string(),
+        productId: z.string().optional(),
+        supplierId: z.string(),
         rating: z.number().int().min(1).max(5),
-        comment: z.string().optional()
+        comment: z.string().optional(),
+        orderReference: z.string().optional()
       }).parse(req.body);
 
-      if (body.buyerId && body.buyerId !== buyerId) {
-        return res.status(403).json({ error: "Cannot review as a different user" });
+      // Check if user already reviewed this supplier (or product if specified)
+      const existingConditions = [
+        eq(reviews.buyerId, buyerId),
+        eq(reviews.supplierId, body.supplierId)
+      ];
+
+      if (body.productId) {
+        existingConditions.push(eq(reviews.productId, body.productId));
       }
 
-      if (!body.productId) {
-        return res.status(400).json({ error: "productId is required" });
+      const existing = await db.select()
+        .from(reviews)
+        .where(and(...existingConditions))
+        .limit(1);
+
+      if (existing.length > 0) {
+        return res.status(409).json({ error: "You have already reviewed this supplier" + (body.productId ? " for this product" : "") });
       }
 
-      // Check if user already reviewed this product
-      const existing = await storage.getReviews({ productId: body.productId, buyerId });
-      if (existing && existing.length > 0) {
-        return res.status(409).json({ error: "You have already reviewed this product" });
-      }
+      // Verify the buyer has an order with this supplier that is shipped or delivered
+      const buyerOrders = await db.select()
+        .from(orders)
+        .where(and(
+          eq(orders.buyerId, buyerId),
+          eq(orders.supplierId, body.supplierId),
+          or(
+            eq(orders.status, 'shipped'),
+            eq(orders.status, 'delivered'),
+            eq(orders.status, 'completed')
+          )!
+        ))
+        .limit(1);
 
-      // Verify the buyer has an order that includes this product and is shipped or delivered
-      const buyerOrders = await storage.getOrdersWithDetails({ buyerId });
-      const eligibleOrder = (buyerOrders || []).find((o: any) => {
-        const status = String(o.status || '').toLowerCase();
-        if (!(status === 'shipped' || status === 'delivered')) return false;
-        // Direct productId match or within items array
-        if (o.productId === body.productId) return true;
-        try {
-          const items = (o as any).items || [];
-          return Array.isArray(items) && items.some((it: any) => it?.productId === body.productId);
-        } catch {
-          return false;
-        }
-      });
-
-      if (!eligibleOrder) {
-        return res.status(403).json({ error: "You can only review products after they are shipped or delivered" });
-      }
-
-      // Determine supplier id (admin in this app) if not present on order
-      let supplierId: string | undefined = (eligibleOrder as any).supplierId;
-      if (!supplierId) {
-        try {
-          const [adminUser] = await db.select({ id: users.id }).from(users).where(eq(users.role as any, 'admin')).limit(1);
-          supplierId = adminUser?.id;
-        } catch {}
+      if (buyerOrders.length === 0) {
+        return res.status(403).json({ error: "You can only review suppliers after receiving an order from them" });
       }
 
       const reviewToCreate = {
-        ...body,
+        productId: body.productId || null,
+        rating: body.rating,
+        comment: body.comment || null,
         buyerId,
-        supplierId: supplierId || 'admin',
-        orderReference: eligibleOrder.orderNumber || eligibleOrder.id,
-      } as any;
+        supplierId: body.supplierId,
+        orderReference: body.orderReference || buyerOrders[0].orderNumber || buyerOrders[0].id,
+      };
 
-      const review = await storage.createReview(reviewToCreate);
-      res.status(201).json(review);
+      const [review] = await db.insert(reviews).values(reviewToCreate).returning();
+
+      // Update supplier rating and review count
+      const [stats] = await db.select({
+        avgRating: sql`COALESCE(AVG(CAST(${reviews.rating} AS DECIMAL)), 0)`,
+        count: sql`count(*)`
+      })
+        .from(reviews)
+        .where(eq(reviews.supplierId, body.supplierId));
+
+      const avgRating = stats.avgRating ? parseFloat(stats.avgRating.toString()) : 0;
+      const totalReviews = stats.count ? parseInt(stats.count.toString()) : 0;
+
+      await db.update(supplierProfiles)
+        .set({
+          rating: avgRating.toString(),
+          totalReviews: totalReviews,
+          updatedAt: new Date()
+        })
+        .where(eq(supplierProfiles.id, body.supplierId));
+
+      res.status(201).json({ success: true, review });
     } catch (error: any) {
+      console.error('Create review error:', error);
       res.status(400).json({ error: error.message });
     }
   });
 
   // ==================== FAVORITES ====================
-  
+
   app.get("/api/favorites/:userId", async (req, res) => {
     try {
       const { itemType } = req.query;
       const favorites = await storage.getFavorites(
-        req.params.userId, 
+        req.params.userId,
         itemType as 'product' | undefined
       );
       res.json(favorites);
@@ -3857,7 +4038,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       if (existing) {
         return res.status(409).json({ error: "Already favorited" });
       }
-      
+
       const favorite = await storage.createFavorite(validatedData);
       res.status(201).json(favorite);
     } catch (error: any) {
@@ -3879,7 +4060,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
 
 
   // ==================== CUSTOMERS (Legacy) ====================
-  
+
   app.get("/api/customers", async (req, res) => {
     try {
       const customers = await storage.getCustomers();
@@ -3938,7 +4119,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
 
 
   // ==================== ORDERS ====================
-  
+
 
   // Duplicate endpoint removed - using the one above with proper quotation handling
 
@@ -3973,8 +4154,8 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
   app.get("/api/admin/test", async (req, res) => {
     try {
       console.log('Admin test API called');
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: "Admin API is working",
         timestamp: new Date().toISOString()
       });
@@ -3988,7 +4169,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
   app.get("/api/admin/dashboard/stats", async (req, res) => {
     try {
       console.log('Admin dashboard stats API called');
-      
+
       // Check if database is available
       if (!process.env.DATABASE_URL) {
         console.log('No DATABASE_URL found, returning mock data');
@@ -4004,39 +4185,39 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
         };
         return res.json(mockStats);
       }
-      
+
       // Get total counts
       const totalProducts = await db.select({ count: sql<number>`count(*)` }).from(products);
       const totalUsers = await db.select({ count: sql<number>`count(*)` }).from(users).where(eq(users.role, 'buyer'));
       const totalOrders = await db.select({ count: sql<number>`count(*)` }).from(orders);
       const totalInquiries = await db.select({ count: sql<number>`count(*)` }).from(inquiries);
       const totalQuotations = await db.select({ count: sql<number>`count(*)` }).from(quotations);
-      
+
       // Get revenue (sum of all order totals)
-      const revenueResult = await db.select({ 
-        total: sql<number>`coalesce(sum(${orders.totalAmount}), 0)` 
+      const revenueResult = await db.select({
+        total: sql<number>`coalesce(sum(${orders.totalAmount}), 0)`
       }).from(orders).where(eq(orders.status, 'completed'));
-      
+
       // Get pending inquiries
-      const pendingInquiries = await db.select({ 
-        count: sql<number>`count(*)` 
+      const pendingInquiries = await db.select({
+        count: sql<number>`count(*)`
       }).from(inquiries).where(eq(inquiries.status, 'pending'));
-      
+
       // Get new users today
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const newUsersToday = await db.select({ 
-        count: sql<number>`count(*)` 
+      const newUsersToday = await db.select({
+        count: sql<number>`count(*)`
       }).from(users).where(
         and(
           eq(users.role, 'buyer'),
           gte(users.createdAt, today)
         )
       );
-      
+
       // Get total product views (if you have a views table, otherwise use inquiries as proxy)
-      const productsViewed = await db.select({ 
-        count: sql<number>`count(distinct ${inquiries.productId})` 
+      const productsViewed = await db.select({
+        count: sql<number>`count(distinct ${inquiries.productId})`
       }).from(inquiries);
 
       const statsData = {
@@ -4049,7 +4230,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
         newUsersToday: newUsersToday[0]?.count || 0,
         productsViewed: productsViewed[0]?.count || 0
       };
-      
+
       console.log('Stats data:', statsData);
       res.json(statsData);
     } catch (error: any) {
@@ -4103,9 +4284,9 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
         ];
         return res.json(mockActivities);
       }
-      
+
       const activities: any[] = [];
-      
+
       // Get recent user registrations
       const recentUsers = await db
         .select({
@@ -4180,7 +4361,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
 
       // Sort by timestamp and return latest 10
       activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      
+
       res.json(activities.slice(0, 10));
     } catch (error: any) {
       console.error('Error fetching recent activity:', error);
@@ -4244,7 +4425,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
         ];
         return res.json(mockProducts);
       }
-      
+
       const topProducts = await db
         .select({
           id: products.id,
@@ -4335,7 +4516,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
         ];
         return res.json(mockInquiries);
       }
-      
+
       const recentInquiries = await db
         .select({
           id: inquiries.id,
@@ -4450,7 +4631,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       const userId = (req as any).user?.id;
       console.log('=== FETCHING BUYER NOTIFICATIONS ===');
       console.log('User ID:', userId);
-      
+
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -4477,7 +4658,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       const adminId = (req as any).user?.id;
       console.log('=== FETCHING ADMIN NOTIFICATIONS ===');
       console.log('Admin ID:', adminId);
-      
+
       if (!adminId) {
         return res.status(401).json({ error: "Unauthorized" });
       }
@@ -4576,15 +4757,16 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
 
       // Build query with conditions
       let whereConditions = [];
-      
+
       if (search) {
-        whereConditions.push(
-          or(
-            ilike(activity_logs.action, `%${search}%`),
-            ilike(activity_logs.description, `%${search}%`),
-            ilike(activity_logs.entityName, `%${search}%`)
-          )
+        const searchCondition = or(
+          ilike(activity_logs.action, `%${search}%`),
+          ilike(activity_logs.description, `%${search}%`),
+          ilike(activity_logs.entityName, `%${search}%`)
         );
+        if (searchCondition) {
+          whereConditions.push(searchCondition);
+        }
       }
 
       if (type && type !== 'all') {
@@ -4648,7 +4830,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
     try {
       console.log('=== CREATING NOTIFICATION ===');
       console.log('Notification data:', data);
-      
+
       const result = await db.insert(notifications).values(data);
       console.log('Notification created successfully:', result);
     } catch (error) {
@@ -4679,7 +4861,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
   app.post("/api/test/notification", async (req, res) => {
     try {
       const { userId, type = 'info', title, message } = req.body;
-      
+
       if (!userId || !title || !message) {
         return res.status(400).json({ error: "userId, title, and message are required" });
       }
@@ -4729,7 +4911,7 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
     try {
       const userId = req.user?.id;
       const userRole = req.user?.role;
-      
+
       if (!userId) {
         return res.status(401).json({ error: "Unauthorized" });
       }

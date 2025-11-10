@@ -386,7 +386,7 @@ export default function Signup() {
                   </div>
                 </div>
 
-                <div className="mt-6 text-center">
+                <div className="mt-6 text-center space-y-3">
                   <p className="text-sm text-gray-600">
                     Already have an account?{" "}
                     <Link href="/login">
@@ -395,6 +395,16 @@ export default function Signup() {
                       </span>
                     </Link>
                   </p>
+                  <div className="pt-3 border-t border-gray-200">
+                    <p className="text-sm text-gray-600">
+                      Want to sell on our platform?{" "}
+                      <Link href="/supplier/register">
+                        <span className="text-purple-600 hover:text-purple-700 font-semibold cursor-pointer">
+                          Register as Supplier
+                        </span>
+                      </Link>
+                    </p>
+                  </div>
                 </div>
 
                 {/* Mobile Features */}

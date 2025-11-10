@@ -87,4 +87,28 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
   res.status(401).json({ error: 'Unauthorized' });
 };
 
+// Supplier-specific auth middleware
+export const supplierAuthMiddleware = (req: Request, res: Response, next: NextFunction) => {
+  if (req.isAuthenticated() && req.user?.role === 'supplier') {
+    return next();
+  }
+  res.status(403).json({ error: 'Access denied. Supplier role required.' });
+};
+
+// Admin-specific auth middleware
+export const adminAuthMiddleware = (req: Request, res: Response, next: NextFunction) => {
+  if (req.isAuthenticated() && req.user?.role === 'admin') {
+    return next();
+  }
+  res.status(403).json({ error: 'Access denied. Admin role required.' });
+};
+
+// Buyer-specific auth middleware
+export const buyerAuthMiddleware = (req: Request, res: Response, next: NextFunction) => {
+  if (req.isAuthenticated() && req.user?.role === 'buyer') {
+    return next();
+  }
+  res.status(403).json({ error: 'Access denied. Buyer role required.' });
+};
+
 export { passport };

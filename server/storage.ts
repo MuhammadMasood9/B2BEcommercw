@@ -1,8 +1,9 @@
-import { eq, and, or, desc, asc, like, sql as drizzleSql, sql, ne, count } from "drizzle-orm";
+import { eq, and, or, desc, asc, like, ilike, sql as drizzleSql, sql, ne, count, gte } from "drizzle-orm";
 import { db } from "./db";
 import {
   type User, type InsertUser, users,
   type BuyerProfile, type InsertBuyerProfile, buyerProfiles,
+  type SupplierProfile, type InsertSupplierProfile, supplierProfiles,
   type Product, type InsertProduct, products,
   type Category, type InsertCategory, categories,
   type Rfq, type InsertRfq, rfqs,
@@ -26,30 +27,32 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   verifyPassword(email: string, password: string): Promise<User | null>;
-  
+
   // Buyer Profile operations
   getBuyerProfile(userId: string): Promise<BuyerProfile | undefined>;
   createBuyerProfile(profile: InsertBuyerProfile): Promise<BuyerProfile>;
   updateBuyerProfile(userId: string, profile: Partial<InsertBuyerProfile>): Promise<BuyerProfile | undefined>;
-  
+
   // Product operations
-  getProducts(filters?: { 
-    categoryId?: string; 
-    search?: string; 
+  getProducts(filters?: {
+    categoryId?: string;
+    search?: string;
     isPublished?: boolean;
     minMOQ?: number;
     maxMOQ?: number;
     featured?: boolean;
+    supplierId?: string;
     limit?: number;
     offset?: number;
   }): Promise<Product[]>;
-  getProductsCount(filters?: { 
-    categoryId?: string; 
-    search?: string; 
+  getProductsCount(filters?: {
+    categoryId?: string;
+    search?: string;
     isPublished?: boolean;
     minMOQ?: number;
     maxMOQ?: number;
     featured?: boolean;
+    supplierId?: string;
   }): Promise<number>;
   getProduct(id: string): Promise<Product | undefined>;
   getProductBySlug(slug: string): Promise<Product | undefined>;
@@ -59,7 +62,7 @@ export interface IStorage {
   bulkCreateProducts(products: InsertProduct[]): Promise<Product[]>;
   incrementProductViews(id: string): Promise<void>;
   incrementProductInquiries(id: string): Promise<void>;
-  
+
   // Category operations
   getCategories(filters?: { parentId?: string | null; isActive?: boolean; search?: string; featured?: boolean }): Promise<Category[]>;
   getCategory(id: string): Promise<Category | undefined>;
@@ -67,41 +70,41 @@ export interface IStorage {
   createCategory(category: InsertCategory): Promise<Category>;
   updateCategory(id: string, category: Partial<InsertCategory>): Promise<Category | undefined>;
   deleteCategory(id: string): Promise<boolean>;
-  
+
   // RFQ operations
   getRfqs(filters?: { buyerId?: string; status?: string; categoryId?: string }): Promise<Rfq[]>;
   getRfq(id: string): Promise<Rfq | undefined>;
   createRfq(rfq: InsertRfq): Promise<Rfq>;
   updateRfq(id: string, rfq: Partial<InsertRfq>): Promise<Rfq | undefined>;
   incrementRfqQuotationCount(id: string): Promise<void>;
-  
+
   // Quotation operations
   getQuotations(filters?: { rfqId?: string; status?: string }): Promise<Quotation[]>;
   getQuotation(id: string): Promise<Quotation | undefined>;
   createQuotation(quotation: InsertQuotation): Promise<Quotation>;
   updateQuotation(id: string, quotation: Partial<InsertQuotation>): Promise<Quotation | undefined>;
-  
+
   // Inquiry operations
   getInquiries(filters?: { productId?: string; buyerId?: string; status?: string }): Promise<any[]>;
   getInquiry(id: string): Promise<any | undefined>;
   createInquiry(inquiry: InsertInquiry): Promise<Inquiry>;
   updateInquiry(id: string, inquiry: Partial<InsertInquiry>): Promise<Inquiry | undefined>;
-  
+
   // Admin Inquiry operations
   getAdminInquiries(filters?: { status?: string; search?: string }): Promise<any[]>;
   addQuotationToInquiry(inquiryId: string, quotation: any): Promise<Inquiry | undefined>;
-  
+
   // Inquiry Quotation operations
   createInquiryQuotation(quotation: InsertInquiryQuotation): Promise<InquiryQuotation>;
   getInquiryQuotations(inquiryId?: string): Promise<any[]>;
   updateInquiryQuotation(id: string, quotation: Partial<InsertInquiryQuotation>): Promise<InquiryQuotation | undefined>;
   getInquiryQuotation(id: string): Promise<InquiryQuotation | undefined>;
-  
+
   // Inquiry revision operations
   createInquiryRevision(revision: InsertInquiryRevision): Promise<InquiryRevision>;
   getInquiryRevisions(inquiryId: string): Promise<any[]>;
   updateInquiryStatus(inquiryId: string, status: string): Promise<void>;
-  
+
   // Order operations
   createOrder(order: InsertOrder): Promise<Order>;
   getOrders(filters?: { buyerId?: string; status?: string }): Promise<Order[]>;
@@ -110,39 +113,39 @@ export interface IStorage {
   updateOrder(id: string, order: Partial<InsertOrder>): Promise<Order | undefined>;
   deleteOrder(id: string): Promise<boolean>;
   getAdminOrders(filters?: { status?: string; search?: string }): Promise<any[]>;
-  
+
   // Conversation operations
   getConversations(userId: string, role: 'buyer' | 'admin'): Promise<Conversation[]>;
   getConversation(id: string): Promise<Conversation | undefined>;
   getOrCreateConversation(buyerId: string): Promise<Conversation>;
   updateConversation(id: string, conversation: Partial<InsertConversation>): Promise<Conversation | undefined>;
-  
+
   // Message operations
   getMessages(conversationId: string): Promise<Message[]>;
   getMessage(id: string): Promise<Message | undefined>;
   createMessage(message: InsertMessage): Promise<Message>;
   markMessageAsRead(id: string): Promise<void>;
   markConversationMessagesAsRead(conversationId: string, userId: string): Promise<void>;
-  
+
   // Review operations
   getReviews(filters?: { productId?: string; buyerId?: string }): Promise<Review[]>;
   getReview(id: string): Promise<Review | undefined>;
-  createReview(review: InsertReview): Promise<Review>;
-  
+  createReview(review: InsertReview & { buyerId: string; supplierId: string }): Promise<Review>;
+
   // Favorite operations
   getFavorites(userId: string, itemType?: 'product'): Promise<Favorite[]>;
   getFavorite(userId: string, itemId: string): Promise<Favorite | undefined>;
   createFavorite(favorite: InsertFavorite): Promise<Favorite>;
   deleteFavorite(userId: string, itemId: string): Promise<boolean>;
-  
+
   // Customer operations (legacy)
   getCustomers(): Promise<Customer[]>;
   getCustomer(id: string): Promise<Customer | undefined>;
   createCustomer(customer: InsertCustomer): Promise<Customer>;
   updateCustomer(id: string, customer: Partial<InsertCustomer>): Promise<Customer | undefined>;
   deleteCustomer(id: string): Promise<boolean>;
-  
-  
+
+
   // Analytics
   getAnalytics(): Promise<{
     totalProducts: number;
@@ -151,7 +154,7 @@ export interface IStorage {
     totalRevenue: number;
     recentOrders: Order[];
   }>;
-  
+
   getBuyerDashboardStats(buyerId: string): Promise<{
     activeRfqs: number;
     pendingInquiries: number;
@@ -167,7 +170,7 @@ export interface IStorage {
     recentConversations: any[];
     recentNotifications: any[];
   }>;
-  
+
   // Users
   getUsers(): Promise<User[]>;
   updateUser(id: string, user: Partial<InsertUser>): Promise<User | undefined>;
@@ -201,7 +204,7 @@ export class PostgresStorage implements IStorage {
   async verifyPassword(email: string, password: string): Promise<User | null> {
     const user = await this.getUserByEmail(email);
     if (!user) return null;
-    
+
     const isValid = await bcrypt.compare(password, user.password);
     return isValid ? user : null;
   }
@@ -229,10 +232,10 @@ export class PostgresStorage implements IStorage {
 
   async updateUserOnlineStatus(userId: string, isOnline: boolean): Promise<void> {
     await db.update(users)
-      .set({ 
-        isOnline, 
+      .set({
+        isOnline,
         lastSeen: new Date(),
-        updatedAt: new Date() 
+        updatedAt: new Date()
       })
       .where(eq(users.id, userId));
   }
@@ -242,10 +245,10 @@ export class PostgresStorage implements IStorage {
       isOnline: users.isOnline,
       lastSeen: users.lastSeen
     })
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
-    
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
     return user ? { isOnline: user.isOnline || false, lastSeen: user.lastSeen } : undefined;
   }
 
@@ -269,19 +272,68 @@ export class PostgresStorage implements IStorage {
   }
 
   // Product operations
-  async getProducts(filters?: { 
-    categoryId?: string; 
-    search?: string; 
+  async getProducts(filters?: {
+    categoryId?: string;
+    search?: string;
     isPublished?: boolean;
     minMOQ?: number;
     maxMOQ?: number;
     featured?: boolean;
+    supplierId?: string;
     limit?: number;
     offset?: number;
   }): Promise<Product[]> {
-    let query = db.select().from(products);
+    let query = db.select({
+      // Product fields
+      id: products.id,
+      name: products.name,
+      slug: products.slug,
+      shortDescription: products.shortDescription,
+      description: products.description,
+      categoryId: products.categoryId,
+      specifications: products.specifications,
+      images: products.images,
+      videos: products.videos,
+      minOrderQuantity: products.minOrderQuantity,
+      priceRanges: products.priceRanges,
+      sampleAvailable: products.sampleAvailable,
+      samplePrice: products.samplePrice,
+      customizationAvailable: products.customizationAvailable,
+      leadTime: products.leadTime,
+      port: products.port,
+      paymentTerms: products.paymentTerms,
+      inStock: products.inStock,
+      stockQuantity: products.stockQuantity,
+      isPublished: products.isPublished,
+      isFeatured: products.isFeatured,
+      views: products.views,
+      inquiries: products.inquiries,
+      colors: products.colors,
+      sizes: products.sizes,
+      keyFeatures: products.keyFeatures,
+      customizationDetails: products.customizationDetails,
+      certifications: products.certifications,
+      hasTradeAssurance: products.hasTradeAssurance,
+      tags: products.tags,
+      sku: products.sku,
+      metaData: products.metaData,
+      supplierId: products.supplierId,
+      approvalStatus: products.approvalStatus,
+      createdAt: products.createdAt,
+      updatedAt: products.updatedAt,
+      // Supplier fields
+      supplierName: supplierProfiles.businessName,
+      storeName: supplierProfiles.storeName,
+      storeSlug: supplierProfiles.storeSlug,
+      supplierRating: supplierProfiles.rating,
+      supplierVerified: supplierProfiles.isVerified,
+      supplierActive: supplierProfiles.isActive
+    })
+      .from(products)
+      .leftJoin(supplierProfiles, eq(products.supplierId, supplierProfiles.id));
+
     const conditions = [];
-    
+
     if (filters?.categoryId) {
       conditions.push(eq(products.categoryId, filters.categoryId));
     }
@@ -291,45 +343,51 @@ export class PostgresStorage implements IStorage {
     if (filters?.featured !== undefined) {
       conditions.push(eq(products.isFeatured, filters.featured));
     }
+    if (filters?.supplierId) {
+      conditions.push(eq(products.supplierId, filters.supplierId));
+    }
     if (filters?.search) {
       const searchPattern = `%${filters.search}%`;
       conditions.push(
         or(
           like(products.name, searchPattern),
-          like(products.description, searchPattern)
+          like(products.description, searchPattern),
+          like(supplierProfiles.businessName, searchPattern),
+          like(supplierProfiles.storeName, searchPattern)
         )
       );
     }
-    
+
     if (conditions.length > 0) {
       query = query.where(and(...conditions)) as any;
     }
-    
+
     // Add ordering
     query = query.orderBy(desc(products.createdAt)) as any;
-    
+
     // Add pagination
     if (filters?.offset) {
       query = query.offset(filters.offset) as any;
     }
-    
+
     if (filters?.limit) {
       query = query.limit(filters.limit) as any;
     }
-    
+
     return await query;
   }
 
-  async getProductsCount(filters?: { 
-    categoryId?: string; 
-    search?: string; 
+  async getProductsCount(filters?: {
+    categoryId?: string;
+    search?: string;
     isPublished?: boolean;
     minMOQ?: number;
     maxMOQ?: number;
     featured?: boolean;
+    supplierId?: string;
   }): Promise<number> {
     const conditions = [];
-    
+
     if (filters?.categoryId) {
       conditions.push(eq(products.categoryId, filters.categoryId));
     }
@@ -338,6 +396,9 @@ export class PostgresStorage implements IStorage {
     }
     if (filters?.featured !== undefined) {
       conditions.push(eq(products.isFeatured, filters.featured));
+    }
+    if (filters?.supplierId) {
+      conditions.push(eq(products.supplierId, filters.supplierId));
     }
     if (filters?.search) {
       const searchPattern = `%${filters.search}%`;
@@ -348,27 +409,125 @@ export class PostgresStorage implements IStorage {
         )
       );
     }
-    
-    let query = db.select({ count: sql<number>`count(*)::int` }).from(products);
-    
+
+    let query = db.select({ count: sql`count(*)::int` }).from(products);
+
     if (conditions.length > 0) {
       query = query.where(and(...conditions)) as any;
     }
-    
+
     const result = await query;
-    const total = result[0]?.count || 0;
+    const total = parseInt(result[0]?.count as string) || 0;
     console.log(`🔢 getProductsCount: ${total} products found`);
     return total;
   }
 
   async getProduct(id: string): Promise<Product | undefined> {
-    const [product] = await db.select().from(products).where(eq(products.id, id)).limit(1);
-    return product;
+    const [result] = await db.select({
+      // Product fields
+      id: products.id,
+      name: products.name,
+      slug: products.slug,
+      shortDescription: products.shortDescription,
+      description: products.description,
+      categoryId: products.categoryId,
+      specifications: products.specifications,
+      images: products.images,
+      videos: products.videos,
+      minOrderQuantity: products.minOrderQuantity,
+      priceRanges: products.priceRanges,
+      sampleAvailable: products.sampleAvailable,
+      samplePrice: products.samplePrice,
+      customizationAvailable: products.customizationAvailable,
+      leadTime: products.leadTime,
+      port: products.port,
+      paymentTerms: products.paymentTerms,
+      inStock: products.inStock,
+      stockQuantity: products.stockQuantity,
+      isPublished: products.isPublished,
+      isFeatured: products.isFeatured,
+      views: products.views,
+      inquiries: products.inquiries,
+      colors: products.colors,
+      sizes: products.sizes,
+      keyFeatures: products.keyFeatures,
+      customizationDetails: products.customizationDetails,
+      certifications: products.certifications,
+      hasTradeAssurance: products.hasTradeAssurance,
+      tags: products.tags,
+      sku: products.sku,
+      metaData: products.metaData,
+      supplierId: products.supplierId,
+      approvalStatus: products.approvalStatus,
+      createdAt: products.createdAt,
+      updatedAt: products.updatedAt,
+      // Supplier fields
+      supplierName: supplierProfiles.businessName,
+      storeName: supplierProfiles.storeName,
+      storeSlug: supplierProfiles.storeSlug,
+      supplierRating: supplierProfiles.rating,
+      supplierVerified: supplierProfiles.isVerified,
+      supplierActive: supplierProfiles.isActive
+    })
+      .from(products)
+      .leftJoin(supplierProfiles, eq(products.supplierId, supplierProfiles.id))
+      .where(eq(products.id, id))
+      .limit(1);
+    return result;
   }
 
   async getProductBySlug(slug: string): Promise<Product | undefined> {
-    const [product] = await db.select().from(products).where(eq(products.slug, slug)).limit(1);
-    return product;
+    const [result] = await db.select({
+      // Product fields
+      id: products.id,
+      name: products.name,
+      slug: products.slug,
+      shortDescription: products.shortDescription,
+      description: products.description,
+      categoryId: products.categoryId,
+      specifications: products.specifications,
+      images: products.images,
+      videos: products.videos,
+      minOrderQuantity: products.minOrderQuantity,
+      priceRanges: products.priceRanges,
+      sampleAvailable: products.sampleAvailable,
+      samplePrice: products.samplePrice,
+      customizationAvailable: products.customizationAvailable,
+      leadTime: products.leadTime,
+      port: products.port,
+      paymentTerms: products.paymentTerms,
+      inStock: products.inStock,
+      stockQuantity: products.stockQuantity,
+      isPublished: products.isPublished,
+      isFeatured: products.isFeatured,
+      views: products.views,
+      inquiries: products.inquiries,
+      colors: products.colors,
+      sizes: products.sizes,
+      keyFeatures: products.keyFeatures,
+      customizationDetails: products.customizationDetails,
+      certifications: products.certifications,
+      hasTradeAssurance: products.hasTradeAssurance,
+      tags: products.tags,
+      sku: products.sku,
+      metaData: products.metaData,
+      supplierId: products.supplierId,
+      approvalStatus: products.approvalStatus,
+      createdAt: products.createdAt,
+      updatedAt: products.updatedAt,
+      // Supplier fields
+      supplierName: supplierProfiles.businessName,
+      storeName: supplierProfiles.storeName,
+      storeSlug: supplierProfiles.storeSlug,
+      supplierRating: supplierProfiles.rating,
+      supplierVerified: supplierProfiles.isVerified,
+      supplierActive: supplierProfiles.isActive
+    })
+      .from(products)
+      .leftJoin(supplierProfiles, eq(products.supplierId, supplierProfiles.id))
+      .where(eq(products.slug, slug))
+      .limit(1);
+    return result;
   }
 
   async createProduct(product: InsertProduct): Promise<Product> {
@@ -411,7 +570,7 @@ export class PostgresStorage implements IStorage {
   async getCategories(filters?: { parentId?: string | null; isActive?: boolean; search?: string; featured?: boolean }): Promise<Category[]> {
     let query = db.select().from(categories);
     const conditions = [];
-    
+
     if (filters?.parentId !== undefined) {
       if (filters.parentId === null) {
         conditions.push(drizzleSql`${categories.parentId} IS NULL`);
@@ -429,11 +588,11 @@ export class PostgresStorage implements IStorage {
       const searchPattern = `%${filters.search}%`;
       conditions.push(like(categories.name, searchPattern));
     }
-    
+
     if (conditions.length > 0) {
       query = query.where(and(...conditions)) as any;
     }
-    
+
     return await query.orderBy(asc(categories.displayOrder));
   }
 
@@ -469,7 +628,7 @@ export class PostgresStorage implements IStorage {
   async getRfqs(filters?: { buyerId?: string; status?: string; categoryId?: string }): Promise<Rfq[]> {
     let query = db.select().from(rfqs);
     const conditions = [];
-    
+
     if (filters?.buyerId) {
       conditions.push(eq(rfqs.buyerId, filters.buyerId));
     }
@@ -479,11 +638,11 @@ export class PostgresStorage implements IStorage {
     if (filters?.categoryId) {
       conditions.push(eq(rfqs.categoryId, filters.categoryId));
     }
-    
+
     if (conditions.length > 0) {
       query = query.where(and(...conditions)) as any;
     }
-    
+
     return await query.orderBy(desc(rfqs.createdAt));
   }
 
@@ -515,18 +674,18 @@ export class PostgresStorage implements IStorage {
   async getQuotations(filters?: { rfqId?: string; status?: string }): Promise<Quotation[]> {
     let query = db.select().from(quotations);
     const conditions = [];
-    
+
     if (filters?.rfqId) {
       conditions.push(eq(quotations.rfqId, filters.rfqId));
     }
     if (filters?.status) {
       conditions.push(eq(quotations.status, filters.status));
     }
-    
+
     if (conditions.length > 0) {
       query = query.where(and(...conditions)) as any;
     }
-    
+
     return await query.orderBy(desc(quotations.createdAt));
   }
 
@@ -551,7 +710,7 @@ export class PostgresStorage implements IStorage {
   // Inquiry operations
   async getInquiries(filters?: { productId?: string; buyerId?: string; status?: string }): Promise<any[]> {
     let whereConditions = [];
-    
+
     if (filters?.productId) {
       whereConditions.push(eq(inquiries.productId, filters.productId));
     }
@@ -561,7 +720,7 @@ export class PostgresStorage implements IStorage {
     if (filters?.status) {
       whereConditions.push(eq(inquiries.status, filters.status));
     }
-    
+
     const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
 
     const results = await db.select({
@@ -588,18 +747,18 @@ export class PostgresStorage implements IStorage {
       supplierCountry: sql`'USA'`.as('supplierCountry'),
       supplierVerified: sql`true`.as('supplierVerified')
     })
-    .from(inquiries)
-    .leftJoin(products, eq(inquiries.productId, products.id))
-    .leftJoin(users, eq(inquiries.buyerId, users.id))
-    .leftJoin(buyerProfiles, eq(inquiries.buyerId, buyerProfiles.userId))
-    .where(whereClause)
-    .orderBy(desc(inquiries.createdAt));
-    
+      .from(inquiries)
+      .leftJoin(products, eq(inquiries.productId, products.id))
+      .leftJoin(users, eq(inquiries.buyerId, users.id))
+      .leftJoin(buyerProfiles, eq(inquiries.buyerId, buyerProfiles.userId))
+      .where(whereClause)
+      .orderBy(desc(inquiries.createdAt));
+
     // Fetch quotations for each inquiry
     const resultsWithQuotations = await Promise.all(
       results.map(async (inquiry) => {
         const quotations = await this.getInquiryQuotations(inquiry.id);
-        
+
         // Parse product image
         let productImage = null;
         try {
@@ -610,7 +769,7 @@ export class PostgresStorage implements IStorage {
         } catch (error) {
           productImage = null;
         }
-        
+
         return {
           ...inquiry,
           productImage,
@@ -637,10 +796,10 @@ export class PostgresStorage implements IStorage {
       productName: products.name,
       productImage: products.images
     })
-    .from(inquiries)
-    .leftJoin(products, eq(inquiries.productId, products.id))
-    .where(eq(inquiries.id, id))
-    .limit(1);
+      .from(inquiries)
+      .leftJoin(products, eq(inquiries.productId, products.id))
+      .where(eq(inquiries.id, id))
+      .limit(1);
     return inquiry;
   }
 
@@ -695,18 +854,18 @@ export class PostgresStorage implements IStorage {
       buyerCountry: buyerProfiles.country,
       buyerPhone: buyerProfiles.phone
     })
-    .from(inquiries)
-    .leftJoin(products, eq(inquiries.productId, products.id))
-    .leftJoin(users, eq(inquiries.buyerId, users.id))
-    .leftJoin(buyerProfiles, eq(inquiries.buyerId, buyerProfiles.userId))
-    .where(whereClause)
-    .orderBy(desc(inquiries.createdAt));
-    
+      .from(inquiries)
+      .leftJoin(products, eq(inquiries.productId, products.id))
+      .leftJoin(users, eq(inquiries.buyerId, users.id))
+      .leftJoin(buyerProfiles, eq(inquiries.buyerId, buyerProfiles.userId))
+      .where(whereClause)
+      .orderBy(desc(inquiries.createdAt));
+
     // Fetch quotations for each inquiry
     const resultsWithQuotations = await Promise.all(
       results.map(async (inquiry) => {
         const quotations = await this.getInquiryQuotations(inquiry.id);
-        
+
         // Parse product image
         let productImage = null;
         try {
@@ -717,7 +876,7 @@ export class PostgresStorage implements IStorage {
         } catch (error) {
           productImage = null;
         }
-        
+
         return {
           ...inquiry,
           productImage,
@@ -735,17 +894,17 @@ export class PostgresStorage implements IStorage {
       .set({ status: 'replied' })
       .where(eq(inquiries.id, inquiryId))
       .returning();
-    
+
     // In a real implementation, you would also store the quotation in a separate table
     // For now, we'll just update the inquiry status
-    
+
     return updated;
   }
 
   // Conversation operations
   async getConversations(userId: string, role: 'buyer' | 'admin'): Promise<Conversation[]> {
     const condition = eq(conversations.buyerId, userId);
-    
+
     return await db.select().from(conversations)
       .where(condition)
       .orderBy(desc(conversations.lastMessageAt));
@@ -760,11 +919,11 @@ export class PostgresStorage implements IStorage {
     const [existing] = await db.select().from(conversations)
       .where(eq(conversations.buyerId, buyerId))
       .limit(1);
-    
+
     if (existing) return existing;
-    
+
     const [created] = await db.insert(conversations)
-      .values({ 
+      .values({
         buyerId,
         unreadCountAdmin: '0',
         unreadCountBuyer: 0,
@@ -809,17 +968,17 @@ export class PostgresStorage implements IStorage {
         eq(messages.receiverId, userId),
         eq(messages.isRead, false)
       ));
-    
+
     // Reset unread count
     const conversation = await db.select().from(conversations)
       .where(eq(conversations.id, conversationId))
       .limit(1);
-    
+
     if (conversation[0]) {
-      const unreadField = userId === conversation[0].buyerId 
-        ? 'unreadCountBuyer' 
+      const unreadField = userId === conversation[0].buyerId
+        ? 'unreadCountBuyer'
         : 'unreadCountAdmin';
-      
+
       await db.update(conversations)
         .set({ [unreadField]: 0 })
         .where(eq(conversations.id, conversationId));
@@ -830,18 +989,18 @@ export class PostgresStorage implements IStorage {
   async getReviews(filters?: { productId?: string; buyerId?: string }): Promise<Review[]> {
     let query = db.select().from(reviews);
     const conditions = [];
-    
+
     if (filters?.productId) {
       conditions.push(eq(reviews.productId, filters.productId));
     }
     if (filters?.buyerId) {
       conditions.push(eq(reviews.buyerId, filters.buyerId));
     }
-    
+
     if (conditions.length > 0) {
       query = query.where(and(...conditions)) as any;
     }
-    
+
     return await query.orderBy(desc(reviews.createdAt));
   }
 
@@ -850,7 +1009,7 @@ export class PostgresStorage implements IStorage {
     return review;
   }
 
-  async createReview(review: InsertReview): Promise<Review> {
+  async createReview(review: InsertReview & { buyerId: string; supplierId: string }): Promise<Review> {
     const [created] = await db.insert(reviews).values(review).returning();
     return created;
   }
@@ -858,11 +1017,11 @@ export class PostgresStorage implements IStorage {
   // Favorite operations
   async getFavorites(userId: string, itemType?: 'product'): Promise<Favorite[]> {
     const conditions = [eq(favorites.userId, userId)];
-    
+
     if (itemType) {
       conditions.push(eq(favorites.itemType, itemType));
     }
-    
+
     return await db.select().from(favorites)
       .where(and(...conditions))
       .orderBy(desc(favorites.createdAt));
@@ -924,18 +1083,18 @@ export class PostgresStorage implements IStorage {
   async getOrders(filters?: { buyerId?: string; status?: string }): Promise<Order[]> {
     let query = db.select().from(orders);
     const conditions = [];
-    
+
     if (filters?.buyerId) {
       conditions.push(eq(orders.buyerId, filters.buyerId));
     }
     if (filters?.status) {
       conditions.push(eq(orders.status, filters.status));
     }
-    
+
     if (conditions.length > 0) {
       query = query.where(and(...conditions)) as any;
     }
-    
+
     return await query.orderBy(desc(orders.createdAt));
   }
 
@@ -965,55 +1124,55 @@ export class PostgresStorage implements IStorage {
 
   // Analytics
   async getAnalytics() {
-    const [productCount] = await db.select({ count: drizzleSql<number>`count(*)::int` }).from(products);
-    const [orderCount] = await db.select({ count: drizzleSql<number>`count(*)::int` }).from(orders);
-    const [customerCount] = await db.select({ count: drizzleSql<number>`count(*)::int` }).from(customers);
-    
-    const [revenueResult] = await db.select({ 
-      total: drizzleSql<number>`COALESCE(SUM(CAST(${orders.totalAmount} AS DECIMAL)), 0)` 
+    const [productCount] = await db.select({ count: drizzleSql`count(*)::int` }).from(products);
+    const [orderCount] = await db.select({ count: drizzleSql`count(*)::int` }).from(orders);
+    const [customerCount] = await db.select({ count: drizzleSql`count(*)::int` }).from(customers);
+
+    const [revenueResult] = await db.select({
+      total: drizzleSql`COALESCE(SUM(CAST(${orders.totalAmount} AS DECIMAL)), 0)`
     }).from(orders);
-    
+
     const recentOrders = await db.select().from(orders)
       .orderBy(desc(orders.createdAt))
       .limit(5);
-    
+
     return {
-      totalProducts: productCount.count || 0,
-      totalOrders: orderCount.count || 0,
-      totalCustomers: customerCount.count || 0,
-      totalRevenue: revenueResult.total || 0,
+      totalProducts: parseInt(productCount.count as string) || 0,
+      totalOrders: parseInt(orderCount.count as string) || 0,
+      totalCustomers: parseInt(customerCount.count as string) || 0,
+      totalRevenue: parseFloat(revenueResult.total as string) || 0,
       recentOrders
     };
   }
 
   async getBuyerDashboardStats(buyerId: string) {
     // Get basic counts
-    const [activeRfqCount] = await db.select({ count: drizzleSql<number>`count(*)::int` })
+    const [activeRfqCount] = await db.select({ count: drizzleSql`count(*)::int` })
       .from(rfqs)
       .where(and(eq(rfqs.buyerId, buyerId), eq(rfqs.status, 'open')));
-    
-    const [pendingInquiryCount] = await db.select({ count: drizzleSql<number>`count(*)::int` })
+
+    const [pendingInquiryCount] = await db.select({ count: drizzleSql`count(*)::int` })
       .from(inquiries)
       .where(and(eq(inquiries.buyerId, buyerId), eq(inquiries.status, 'pending')));
-    
-    const [unreadMessageCount] = await db.select({ 
-      total: drizzleSql<number>`COALESCE(SUM(${conversations.unreadCountBuyer}), 0)::int` 
+
+    const [unreadMessageCount] = await db.select({
+      total: drizzleSql`COALESCE(SUM(${conversations.unreadCountBuyer}), 0)::int`
     })
       .from(conversations)
       .where(eq(conversations.buyerId, buyerId));
-    
-    const [favoriteProductCount] = await db.select({ count: drizzleSql<number>`count(*)::int` })
+
+    const [favoriteProductCount] = await db.select({ count: drizzleSql`count(*)::int` })
       .from(favorites)
       .where(and(eq(favorites.userId, buyerId), eq(favorites.itemType, 'product')));
-    
+
     // Get total quotations count
     const quotations = await this.getInquiryQuotations();
     const buyerQuotations = quotations.filter((q: any) => q.buyerId && q.buyerId.toString() === buyerId.toString());
-    
+
     // Get total orders count and total spent
     const orders = await this.getOrders({ buyerId });
     const totalSpent = orders.reduce((sum: number, order: any) => sum + (order.totalAmount || 0), 0);
-    
+
     // Get recent data (last 5 of each)
     const recentInquiries = await db.select({
       id: inquiries.id,
@@ -1023,37 +1182,37 @@ export class PostgresStorage implements IStorage {
       createdAt: inquiries.createdAt,
       estimatedValue: inquiries.targetPrice
     })
-    .from(inquiries)
-    .leftJoin(products, eq(inquiries.productId, products.id))
-    .where(eq(inquiries.buyerId, buyerId))
-    .orderBy(desc(inquiries.createdAt))
-    .limit(5);
-    
+      .from(inquiries)
+      .leftJoin(products, eq(inquiries.productId, products.id))
+      .where(eq(inquiries.buyerId, buyerId))
+      .orderBy(desc(inquiries.createdAt))
+      .limit(5);
+
     const recentRFQs = await db.select()
       .from(rfqs)
       .where(eq(rfqs.buyerId, buyerId))
       .orderBy(desc(rfqs.createdAt))
       .limit(5);
-    
+
     const recentQuotations = buyerQuotations.slice(0, 5);
-    
+
     const recentOrders = orders.slice(0, 5);
-    
+
     const recentConversations = await this.getBuyerConversations(buyerId);
     const recentConversationsLimited = recentConversations.slice(0, 5);
-    
+
     // Get recent notifications
     const recentNotifications = await db.select()
       .from(notifications)
       .where(eq(notifications.userId, buyerId))
       .orderBy(desc(notifications.createdAt))
       .limit(5);
-    
+
     return {
-      activeRfqs: activeRfqCount.count || 0,
-      pendingInquiries: pendingInquiryCount.count || 0,
-      unreadMessages: unreadMessageCount.total || 0,
-      favoriteProducts: favoriteProductCount.count || 0,
+      activeRfqs: parseInt(activeRfqCount.count as string) || 0,
+      pendingInquiries: parseInt(pendingInquiryCount.count as string) || 0,
+      unreadMessages: parseInt(unreadMessageCount.total as string) || 0,
+      favoriteProducts: parseInt(favoriteProductCount.count as string) || 0,
       totalQuotations: buyerQuotations.length,
       totalOrders: orders.length,
       totalSpent: totalSpent,
@@ -1107,13 +1266,13 @@ export class PostgresStorage implements IStorage {
       supplierName: sql`'Admin Supplier'`.as('supplierName'),
       supplierCountry: sql`'USA'`.as('supplierCountry')
     })
-    .from(inquiryQuotations)
-    .leftJoin(inquiries, eq(inquiryQuotations.inquiryId, inquiries.id))
-    .leftJoin(products, eq(inquiries.productId, products.id))
-    .leftJoin(users, eq(inquiries.buyerId, users.id))
-    .leftJoin(buyerProfiles, eq(inquiries.buyerId, buyerProfiles.userId))
-    .where(whereCondition)
-    .orderBy(desc(inquiryQuotations.createdAt));
+      .from(inquiryQuotations)
+      .leftJoin(inquiries, eq(inquiryQuotations.inquiryId, inquiries.id))
+      .leftJoin(products, eq(inquiries.productId, products.id))
+      .leftJoin(users, eq(inquiries.buyerId, users.id))
+      .leftJoin(buyerProfiles, eq(inquiries.buyerId, buyerProfiles.userId))
+      .where(whereCondition)
+      .orderBy(desc(inquiryQuotations.createdAt));
 
     // Transform results to include parsed product images
     return results.map(result => {
@@ -1126,7 +1285,7 @@ export class PostgresStorage implements IStorage {
       } catch (error) {
         productImage = null;
       }
-      
+
       return {
         ...result,
         productImage
@@ -1177,20 +1336,20 @@ export class PostgresStorage implements IStorage {
       supplierName: sql`'Admin Supplier'`.as('supplierName'),
       supplierCountry: sql`'USA'`.as('supplierCountry')
     })
-    .from(inquiryQuotations)
-    .leftJoin(inquiries, eq(inquiryQuotations.inquiryId, inquiries.id))
-    .leftJoin(products, eq(inquiries.productId, products.id))
-    .leftJoin(users, eq(inquiries.buyerId, users.id))
-    .leftJoin(buyerProfiles, eq(inquiries.buyerId, buyerProfiles.userId))
-    .where(eq(inquiryQuotations.id, id))
-    .limit(1);
+      .from(inquiryQuotations)
+      .leftJoin(inquiries, eq(inquiryQuotations.inquiryId, inquiries.id))
+      .leftJoin(products, eq(inquiries.productId, products.id))
+      .leftJoin(users, eq(inquiries.buyerId, users.id))
+      .leftJoin(buyerProfiles, eq(inquiries.buyerId, buyerProfiles.userId))
+      .where(eq(inquiryQuotations.id, id))
+      .limit(1);
 
     if (results.length === 0) {
       return undefined;
     }
 
     const result = results[0];
-    
+
     // Parse product image
     let productImage = null;
     try {
@@ -1244,12 +1403,12 @@ export class PostgresStorage implements IStorage {
       buyerEmail: users.email,
       buyerCompany: buyerProfiles.companyName
     })
-    .from(orders)
-    .leftJoin(products, eq(orders.productId, products.id))
-    .leftJoin(users, eq(orders.buyerId, users.id))
-    .leftJoin(buyerProfiles, eq(orders.buyerId, buyerProfiles.userId))
-    .where(whereClause)
-    .orderBy(desc(orders.createdAt));
+      .from(orders)
+      .leftJoin(products, eq(orders.productId, products.id))
+      .leftJoin(users, eq(orders.buyerId, users.id))
+      .leftJoin(buyerProfiles, eq(orders.buyerId, buyerProfiles.userId))
+      .where(whereClause)
+      .orderBy(desc(orders.createdAt));
 
     return results;
   }
@@ -1301,12 +1460,12 @@ export class PostgresStorage implements IStorage {
       buyerPhone: buyerProfiles.phone,
       buyerCountry: buyerProfiles.country
     })
-    .from(orders)
-    .leftJoin(products, eq(orders.productId, products.id))
-    .leftJoin(users, eq(orders.buyerId, users.id))
-    .leftJoin(buyerProfiles, eq(orders.buyerId, buyerProfiles.userId))
-    .where(whereClause)
-    .orderBy(desc(orders.createdAt));
+      .from(orders)
+      .leftJoin(products, eq(orders.productId, products.id))
+      .leftJoin(users, eq(orders.buyerId, users.id))
+      .leftJoin(buyerProfiles, eq(orders.buyerId, buyerProfiles.userId))
+      .where(whereClause)
+      .orderBy(desc(orders.createdAt));
 
     return results;
   }
@@ -1333,10 +1492,10 @@ export class PostgresStorage implements IStorage {
       creatorName: users.firstName,
       creatorEmail: users.email
     })
-    .from(inquiryRevisions)
-    .leftJoin(users, eq(inquiryRevisions.createdBy, users.id))
-    .where(eq(inquiryRevisions.inquiryId, inquiryId))
-    .orderBy(asc(inquiryRevisions.revisionNumber));
+      .from(inquiryRevisions)
+      .leftJoin(users, eq(inquiryRevisions.createdBy, users.id))
+      .where(eq(inquiryRevisions.inquiryId, inquiryId))
+      .orderBy(asc(inquiryRevisions.revisionNumber));
 
     return results;
   }
@@ -1366,11 +1525,11 @@ export class PostgresStorage implements IStorage {
       productName: products.name,
       productImages: products.images
     })
-    .from(conversations)
-    .leftJoin(users, eq(conversations.unreadCountAdmin, users.id))
-    .leftJoin(products, eq(conversations.productId, products.id))
-    .where(eq(conversations.buyerId, buyerId))
-    .orderBy(desc(conversations.lastMessageAt));
+      .from(conversations)
+      .leftJoin(users, eq(conversations.unreadCountAdmin, users.id))
+      .leftJoin(products, eq(conversations.productId, products.id))
+      .where(eq(conversations.buyerId, buyerId))
+      .orderBy(desc(conversations.lastMessageAt));
 
     return results;
   }
@@ -1392,18 +1551,18 @@ export class PostgresStorage implements IStorage {
       productName: products.name,
       productImages: products.images
     })
-    .from(conversations)
-    .leftJoin(users, eq(conversations.buyerId, users.id))
-    .leftJoin(products, eq(conversations.productId, products.id))
-    .where(eq(conversations.unreadCountAdmin, adminId))
-    .orderBy(desc(conversations.lastMessageAt));
+      .from(conversations)
+      .leftJoin(users, eq(conversations.buyerId, users.id))
+      .leftJoin(products, eq(conversations.productId, products.id))
+      .where(eq(conversations.unreadCountAdmin, adminId))
+      .orderBy(desc(conversations.lastMessageAt));
 
     return results;
   }
 
   async getAllConversationsForAdmin(adminId?: string) {
     let whereCondition = sql`1=1`; // Default condition
-    
+
     if (adminId) {
       whereCondition = eq(conversations.unreadCountAdmin, adminId);
     }
@@ -1427,11 +1586,11 @@ export class PostgresStorage implements IStorage {
       productName: products.name,
       productImages: products.images
     })
-    .from(conversations)
-    .leftJoin(users, eq(conversations.buyerId, users.id))
-    .leftJoin(products, eq(conversations.productId, products.id))
-    .where(whereCondition)
-    .orderBy(desc(conversations.lastMessageAt));
+      .from(conversations)
+      .leftJoin(users, eq(conversations.buyerId, users.id))
+      .leftJoin(products, eq(conversations.productId, products.id))
+      .where(whereCondition)
+      .orderBy(desc(conversations.lastMessageAt));
 
     return results;
   }
@@ -1442,16 +1601,16 @@ export class PostgresStorage implements IStorage {
       buyerId: conversations.buyerId,
       adminId: conversations.unreadCountAdmin // This field actually stores adminId
     })
-    .from(conversations)
-    .where(eq(conversations.id, conversationId))
-    .limit(1);
+      .from(conversations)
+      .where(eq(conversations.id, conversationId))
+      .limit(1);
 
     if (!conversation[0]) {
       return [];
     }
 
     let { buyerId, adminId } = conversation[0];
-    
+
     // If current user is admin and conversation has generic admin ID, update it
     if (userRole === 'admin' && adminId === 'admin') {
       await db.update(conversations)
@@ -1475,10 +1634,10 @@ export class PostgresStorage implements IStorage {
       senderEmail: users.email,
       senderCompany: users.companyName
     })
-    .from(messages)
-    .leftJoin(users, eq(messages.senderId, users.id))
-    .where(eq(messages.conversationId, conversationId))
-    .orderBy(asc(messages.createdAt));
+      .from(messages)
+      .leftJoin(users, eq(messages.senderId, users.id))
+      .where(eq(messages.conversationId, conversationId))
+      .orderBy(asc(messages.createdAt));
 
     // Add proper sender type based on current user role and conversation data
     const processedResults = results.map(msg => {
@@ -1486,11 +1645,11 @@ export class PostgresStorage implements IStorage {
       const isCurrentAdmin = msg.senderId === userId && userRole === 'admin';
       // Check if the sender matches the conversation's admin ID
       const isConversationAdmin = msg.senderId === adminId;
-      
+
       // Determine if this is an admin message
       // Priority: if current user is admin and sent the message, it's admin
       const isAdminMessage = isCurrentAdmin || isConversationAdmin;
-      
+
       console.log('Message processing:', {
         messageId: msg.id,
         senderId: msg.senderId,
@@ -1502,12 +1661,12 @@ export class PostgresStorage implements IStorage {
         isAdminMessage: isAdminMessage,
         finalSenderType: isAdminMessage ? 'admin' : 'buyer'
       });
-      
+
       return {
         ...msg,
         senderType: isAdminMessage ? 'admin' : 'buyer',
-        senderName: isAdminMessage 
-          ? (msg.senderName || 'Admin') 
+        senderName: isAdminMessage
+          ? (msg.senderName || 'Admin')
           : (msg.senderName || 'Customer')
       };
     });
@@ -1538,15 +1697,15 @@ export class PostgresStorage implements IStorage {
 
   async createMessage(message: InsertMessage): Promise<Message> {
     const [created] = await db.insert(messages).values(message).returning();
-    
+
     // Update conversation
     const conversation = await db.select().from(conversations)
       .where(eq(conversations.id, message.conversationId))
       .limit(1);
-    
+
     if (conversation[0]) {
       const isFromBuyer = message.senderId === conversation[0].buyerId;
-      
+
       if (isFromBuyer) {
         // Message from buyer, increment admin unread count
         await db.update(conversations)
@@ -1567,7 +1726,7 @@ export class PostgresStorage implements IStorage {
           .where(eq(conversations.id, message.conversationId));
       }
     }
-    
+
     return created;
   }
 
@@ -1580,7 +1739,7 @@ export class PostgresStorage implements IStorage {
   async markMessagesAsRead(conversationId: string, userId: string) {
     // Mark messages as read
     await db.update(messages)
-      .set({ 
+      .set({
         isRead: true
       })
       .where(
@@ -1597,7 +1756,7 @@ export class PostgresStorage implements IStorage {
 
     if (conversation[0]) {
       const isFromBuyer = userId === conversation[0].buyerId;
-      
+
       if (isFromBuyer) {
         // Buyer read messages, reset admin unread count
         await db.update(conversations)
@@ -1638,8 +1797,8 @@ export class PostgresStorage implements IStorage {
       email: users.email,
       companyName: users.companyName
     })
-    .from(users)
-    .where(eq(users.role, 'admin'));
+      .from(users)
+      .where(eq(users.role, 'admin'));
 
     return results;
   }

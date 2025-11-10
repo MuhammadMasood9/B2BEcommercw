@@ -36,6 +36,20 @@
       "when": 1760650000000,
       "tag": "0008_add_productid_to_rfqs",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1762693095928,
+      "tag": "0005_clear_nextwave",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1762696467563,
+      "tag": "0006_same_carlie_cooper",
+      "breakpoints": true
     }
   ]
 }

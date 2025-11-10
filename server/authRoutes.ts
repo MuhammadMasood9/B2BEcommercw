@@ -2,20 +2,66 @@ import { Router } from 'express';
 import passport from 'passport';
 import bcrypt from 'bcryptjs';
 import { db } from './db';
-import { users, buyerProfiles } from '@shared/schema';
+import { users, buyerProfiles, supplierProfiles } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 
 const router = Router();
 
 // Login route
 router.post('/login', (req, res, next) => {
-  passport.authenticate('local', (err: any, user: any, info: any) => {
+  passport.authenticate('local', async (err: any, user: any, info: any) => {
     if (err) {
       return res.status(500).json({ error: 'Internal server error' });
     }
     
     if (!user) {
       return res.status(401).json({ error: info?.message || 'Authentication failed' });
+    }
+    
+    // Additional checks for supplier users
+    if (user.role === 'supplier') {
+      try {
+        const supplierProfile = await db.select({
+          status: supplierProfiles.status,
+          isActive: supplierProfiles.isActive
+        })
+        .from(supplierProfiles)
+        .where(eq(supplierProfiles.userId, user.id))
+        .limit(1);
+        
+        if (supplierProfile.length === 0) {
+          return res.status(401).json({ error: 'Supplier profile not found' });
+        }
+        
+        const profile = supplierProfile[0];
+        
+        if (profile.status === 'rejected') {
+          return res.status(401).json({ 
+            error: 'Your supplier account has been rejected. Please contact support.' 
+          });
+        }
+        
+        if (profile.status === 'suspended') {
+          return res.status(401).json({ 
+            error: 'Your supplier account has been suspended. Please contact support.' 
+          });
+        }
+        
+        if (profile.status === 'pending') {
+          return res.status(401).json({ 
+            error: 'Your supplier account is pending approval. You will be notified once approved.' 
+          });
+        }
+        
+        if (!profile.isActive) {
+          return res.status(401).json({ 
+            error: 'Your supplier account is inactive. Please contact support.' 
+          });
+        }
+      } catch (error) {
+        console.error('Supplier login check error:', error);
+        return res.status(500).json({ error: 'Login validation failed' });
+      }
     }
     
     req.logIn(user, (err) => {
@@ -43,7 +89,7 @@ router.post('/login', (req, res, next) => {
   })(req, res, next);
 });
 
-// Register route
+// Register route (for buyers and admins only - suppliers use separate endpoint)
 router.post('/register', async (req, res) => {
   try {
     const { 
@@ -63,6 +109,13 @@ router.post('/register', async (req, res) => {
     // Validate required fields
     if (!email || !password || !firstName || !lastName || !role) {
       return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Prevent supplier registration through this endpoint
+    if (role === 'supplier') {
+      return res.status(400).json({ 
+        error: 'Suppliers must register through the supplier registration endpoint' 
+      });
     }
 
     // Check if user already exists

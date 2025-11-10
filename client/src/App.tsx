@@ -85,6 +85,7 @@ import GlobalChatButton from "@/components/GlobalChatButton";
 import FloatingActionButtons from "@/components/FloatingActionButtons";
 import NotificationPage from "@/pages/buyer/NotificationPage";
 import ProfilePage from "@/pages/buyer/ProfilePage";
+import SupplierDashboard from "@/pages/SupplierDashboard";
 import NotFound from "@/pages/not-found";
 
 function AdminRouter() {
@@ -321,6 +322,11 @@ function PublicRouter() {
       <Route path="/category/:slug" component={CategoryProducts} />
       <Route path="/subcategory/:slug" component={SubcategoryProducts} />
       <Route path="/get-verified" component={GetVerified} />
+      <Route path="/supplier/dashboard">
+        <ProtectedRoute requiredRole="supplier">
+          <SupplierDashboard />
+        </ProtectedRoute>
+      </Route>
       <Route path="/notifications">
         <ProtectedRoute>
           <NotificationPage />

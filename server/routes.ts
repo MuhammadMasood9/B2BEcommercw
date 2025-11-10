@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { db } from "./db";
 import { authRoutes } from "./authRoutes";
+import supplierRoutes from "./supplierRoutes";
 import { authMiddleware } from "./auth";
 import categoryRoutes from "./categoryRoutes";
 import uploadRoutes from "./uploadRoutes";
@@ -14,7 +15,7 @@ import {
   insertRfqSchema, insertQuotationSchema, insertInquirySchema,
   insertConversationSchema, insertMessageSchema, insertReviewSchema,
   insertFavoriteSchema, insertNotificationSchema, insertActivityLogSchema,
-  users, products, categories, orders, inquiries, quotations, rfqs, notifications, activity_logs, conversations
+  users, products, categories, orders, inquiries, quotations, rfqs, notifications, activity_logs, conversations, supplierProfiles, inquiryQuotations
 } from "@shared/schema";
 import { z } from 'zod';
 import { sql, eq, and, gte, desc, or, ilike } from "drizzle-orm";
@@ -27,6 +28,990 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ==================== AUTHENTICATION ROUTES ====================
   
   app.use('/api/auth', authRoutes);
+  
+  // ==================== SUPPLIER ROUTES ====================
+  
+  app.use('/api/suppliers', supplierRoutes);
+  
+  // ==================== ADMIN SUPPLIER MANAGEMENT ====================
+  
+  // Admin: Get all suppliers with filtering and pagination
+  app.get("/api/admin/suppliers", authMiddleware, async (req, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Access denied. Admin role required.' });
+      }
+
+      const { status, verificationLevel, isVerified, isActive, search, limit, offset } = req.query;
+      
+      let query = db.select({
+        id: supplierProfiles.id,
+        userId: supplierProfiles.userId,
+        businessName: supplierProfiles.businessName,
+        businessType: supplierProfiles.businessType,
+        storeName: supplierProfiles.storeName,
+        storeSlug: supplierProfiles.storeSlug,
+        contactPerson: supplierProfiles.contactPerson,
+        phone: supplierProfiles.phone,
+        city: supplierProfiles.city,
+        country: supplierProfiles.country,
+        verificationLevel: supplierProfiles.verificationLevel,
+        isVerified: supplierProfiles.isVerified,
+        verifiedAt: supplierProfiles.verifiedAt,
+        status: supplierProfiles.status,
+        isActive: supplierProfiles.isActive,
+        isFeatured: supplierProfiles.isFeatured,
+        rating: supplierProfiles.rating,
+        totalReviews: supplierProfiles.totalReviews,
+        totalSales: supplierProfiles.totalSales,
+        totalOrders: supplierProfiles.totalOrders,
+        createdAt: supplierProfiles.createdAt,
+        updatedAt: supplierProfiles.updatedAt,
+        // Join user data
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName
+      })
+      .from(supplierProfiles)
+      .leftJoin(users, eq(supplierProfiles.userId, users.id));
+
+      const conditions = [];
+
+      if (status) {
+        conditions.push(eq(supplierProfiles.status, status as string));
+      }
+      if (verificationLevel) {
+        conditions.push(eq(supplierProfiles.verificationLevel, verificationLevel as string));
+      }
+      if (isVerified !== undefined) {
+        conditions.push(eq(supplierProfiles.isVerified, isVerified === 'true'));
+      }
+      if (isActive !== undefined) {
+        conditions.push(eq(supplierProfiles.isActive, isActive === 'true'));
+      }
+      if (search) {
+        conditions.push(
+          or(
+            ilike(supplierProfiles.businessName, `%${search}%`),
+            ilike(supplierProfiles.storeName, `%${search}%`),
+            ilike(users.email, `%${search}%`)
+          )
+        );
+      }
+
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
+
+      // Add ordering
+      query = query.orderBy(desc(supplierProfiles.createdAt));
+
+      // Add pagination if provided
+      if (limit) {
+        query = query.limit(parseInt(limit as string));
+      }
+      if (offset) {
+        query = query.offset(parseInt(offset as string));
+      }
+
+      const suppliers = await query;
+
+      // Get total count for pagination
+      let countQuery = db.select({ count: sql`count(*)` })
+        .from(supplierProfiles)
+        .leftJoin(users, eq(supplierProfiles.userId, users.id));
+
+      if (conditions.length > 0) {
+        countQuery = countQuery.where(and(...conditions));
+      }
+
+      const [{ count }] = await countQuery;
+
+      res.json({
+        success: true,
+        suppliers,
+        total: parseInt(count as string),
+        page: offset ? Math.floor(parseInt(offset as string) / (parseInt(limit as string) || 20)) + 1 : 1,
+        limit: limit ? parseInt(limit as string) : suppliers.length
+      });
+
+    } catch (error: any) {
+      console.error('Get suppliers error:', error);
+      res.status(500).json({ error: 'Failed to fetch suppliers' });
+    }
+  });
+
+  // Admin: Get supplier details with verification documents
+  app.get("/api/admin/suppliers/:id", authMiddleware, async (req, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Access denied. Admin role required.' });
+      }
+
+      const supplier = await db.select()
+        .from(supplierProfiles)
+        .leftJoin(users, eq(supplierProfiles.userId, users.id))
+        .where(eq(supplierProfiles.id, req.params.id))
+        .limit(1);
+
+      if (supplier.length === 0) {
+        return res.status(404).json({ error: 'Supplier not found' });
+      }
+
+      const supplierData = supplier[0];
+      
+      res.json({
+        success: true,
+        supplier: {
+          ...supplierData.supplier_profiles,
+          user: {
+            id: supplierData.users?.id,
+            email: supplierData.users?.email,
+            firstName: supplierData.users?.firstName,
+            lastName: supplierData.users?.lastName,
+            isActive: supplierData.users?.isActive,
+            createdAt: supplierData.users?.createdAt
+          }
+        }
+      });
+
+    } catch (error: any) {
+      console.error('Get supplier details error:', error);
+      res.status(500).json({ error: 'Failed to fetch supplier details' });
+    }
+  });
+
+  // Admin: Approve supplier
+  app.post("/api/admin/suppliers/:id/approve", authMiddleware, async (req, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Access denied. Admin role required.' });
+      }
+
+      const { verificationLevel = 'basic' } = req.body;
+
+      const updatedSupplier = await db.update(supplierProfiles)
+        .set({
+          status: 'approved',
+          isActive: true,
+          verificationLevel: verificationLevel,
+          isVerified: true,
+          verifiedAt: new Date(),
+          updatedAt: new Date()
+        })
+        .where(eq(supplierProfiles.id, req.params.id))
+        .returning();
+
+      if (updatedSupplier.length === 0) {
+        return res.status(404).json({ error: 'Supplier not found' });
+      }
+
+      // TODO: Send notification to supplier about approval
+      
+      res.json({
+        success: true,
+        message: 'Supplier approved successfully',
+        supplier: updatedSupplier[0]
+      });
+
+    } catch (error: any) {
+      console.error('Approve supplier error:', error);
+      res.status(500).json({ error: 'Failed to approve supplier' });
+    }
+  });
+
+  // Admin: Reject supplier
+  app.post("/api/admin/suppliers/:id/reject", authMiddleware, async (req, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Access denied. Admin role required.' });
+      }
+
+      const { reason } = req.body;
+
+      if (!reason) {
+        return res.status(400).json({ error: 'Rejection reason is required' });
+      }
+
+      const updatedSupplier = await db.update(supplierProfiles)
+        .set({
+          status: 'rejected',
+          isActive: false,
+          isVerified: false,
+          verificationLevel: 'none',
+          updatedAt: new Date()
+        })
+        .where(eq(supplierProfiles.id, req.params.id))
+        .returning();
+
+      if (updatedSupplier.length === 0) {
+        return res.status(404).json({ error: 'Supplier not found' });
+      }
+
+      // TODO: Send notification to supplier about rejection with reason
+      
+      res.json({
+        success: true,
+        message: 'Supplier rejected successfully',
+        supplier: updatedSupplier[0],
+        rejectionReason: reason
+      });
+
+    } catch (error: any) {
+      console.error('Reject supplier error:', error);
+      res.status(500).json({ error: 'Failed to reject supplier' });
+    }
+  });
+
+  // Admin: Suspend supplier
+  app.post("/api/admin/suppliers/:id/suspend", authMiddleware, async (req, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Access denied. Admin role required.' });
+      }
+
+      const { reason } = req.body;
+
+      const updatedSupplier = await db.update(supplierProfiles)
+        .set({
+          status: 'suspended',
+          isActive: false,
+          updatedAt: new Date()
+        })
+        .where(eq(supplierProfiles.id, req.params.id))
+        .returning();
+
+      if (updatedSupplier.length === 0) {
+        return res.status(404).json({ error: 'Supplier not found' });
+      }
+
+      // TODO: Send notification to supplier about suspension
+      
+      res.json({
+        success: true,
+        message: 'Supplier suspended successfully',
+        supplier: updatedSupplier[0],
+        suspensionReason: reason
+      });
+
+    } catch (error: any) {
+      console.error('Suspend supplier error:', error);
+      res.status(500).json({ error: 'Failed to suspend supplier' });
+    }
+  });
+
+  // Admin: Reactivate supplier
+  app.post("/api/admin/suppliers/:id/reactivate", authMiddleware, async (req, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Access denied. Admin role required.' });
+      }
+
+      const updatedSupplier = await db.update(supplierProfiles)
+        .set({
+          status: 'approved',
+          isActive: true,
+          updatedAt: new Date()
+        })
+        .where(eq(supplierProfiles.id, req.params.id))
+        .returning();
+
+      if (updatedSupplier.length === 0) {
+        return res.status(404).json({ error: 'Supplier not found' });
+      }
+
+      res.json({
+        success: true,
+        message: 'Supplier reactivated successfully',
+        supplier: updatedSupplier[0]
+      });
+
+    } catch (error: any) {
+      console.error('Reactivate supplier error:', error);
+      res.status(500).json({ error: 'Failed to reactivate supplier' });
+    }
+  });
+
+  // Admin: Update supplier verification level
+  app.patch("/api/admin/suppliers/:id/verification", authMiddleware, async (req, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Access denied. Admin role required.' });
+      }
+
+      const { verificationLevel, isVerified } = req.body;
+
+      if (!['none', 'basic', 'business', 'premium'].includes(verificationLevel)) {
+        return res.status(400).json({ error: 'Invalid verification level' });
+      }
+
+      const updateData: any = {
+        verificationLevel,
+        updatedAt: new Date()
+      };
+
+      if (isVerified !== undefined) {
+        updateData.isVerified = isVerified;
+        if (isVerified) {
+          updateData.verifiedAt = new Date();
+        } else {
+          updateData.verifiedAt = null;
+        }
+      }
+
+      const updatedSupplier = await db.update(supplierProfiles)
+        .set(updateData)
+        .where(eq(supplierProfiles.id, req.params.id))
+        .returning();
+
+      if (updatedSupplier.length === 0) {
+        return res.status(404).json({ error: 'Supplier not found' });
+      }
+
+      res.json({
+        success: true,
+        message: 'Supplier verification updated successfully',
+        supplier: updatedSupplier[0]
+      });
+
+    } catch (error: any) {
+      console.error('Update supplier verification error:', error);
+      res.status(500).json({ error: 'Failed to update supplier verification' });
+    }
+  });
+
+  // Admin: Bulk supplier operations
+  app.post("/api/admin/suppliers/bulk", authMiddleware, async (req, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Access denied. Admin role required.' });
+      }
+
+      const { supplierIds, action, data } = req.body;
+
+      if (!Array.isArray(supplierIds) || supplierIds.length === 0) {
+        return res.status(400).json({ error: 'Supplier IDs array is required' });
+      }
+
+      if (!['approve', 'reject', 'suspend', 'reactivate', 'verify', 'feature'].includes(action)) {
+        return res.status(400).json({ error: 'Invalid action' });
+      }
+
+      let updateData: any = { updatedAt: new Date() };
+
+      switch (action) {
+        case 'approve':
+          updateData = {
+            ...updateData,
+            status: 'approved',
+            isActive: true,
+            isVerified: true,
+            verifiedAt: new Date(),
+            verificationLevel: data?.verificationLevel || 'basic'
+          };
+          break;
+        case 'reject':
+          updateData = {
+            ...updateData,
+            status: 'rejected',
+            isActive: false,
+            isVerified: false,
+            verificationLevel: 'none'
+          };
+          break;
+        case 'suspend':
+          updateData = {
+            ...updateData,
+            status: 'suspended',
+            isActive: false
+          };
+          break;
+        case 'reactivate':
+          updateData = {
+            ...updateData,
+            status: 'approved',
+            isActive: true
+          };
+          break;
+        case 'verify':
+          updateData = {
+            ...updateData,
+            isVerified: data?.isVerified ?? true,
+            verificationLevel: data?.verificationLevel || 'basic',
+            verifiedAt: data?.isVerified !== false ? new Date() : null
+          };
+          break;
+        case 'feature':
+          updateData = {
+            ...updateData,
+            isFeatured: data?.isFeatured ?? true
+          };
+          break;
+      }
+
+      const updatedSuppliers = [];
+      const errors = [];
+
+      for (const supplierId of supplierIds) {
+        try {
+          const result = await db.update(supplierProfiles)
+            .set(updateData)
+            .where(eq(supplierProfiles.id, supplierId))
+            .returning();
+
+          if (result.length > 0) {
+            updatedSuppliers.push(result[0]);
+          } else {
+            errors.push({ supplierId, error: 'Supplier not found' });
+          }
+        } catch (error: any) {
+          errors.push({ supplierId, error: error.message });
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Bulk ${action} completed`,
+        updated: updatedSuppliers.length,
+        errors: errors.length,
+        updatedSuppliers,
+        errorDetails: errors
+      });
+
+    } catch (error: any) {
+      console.error('Bulk supplier operation error:', error);
+      res.status(500).json({ error: 'Failed to perform bulk operation' });
+    }
+  });
+
+  // Admin: Get supplier analytics and statistics
+  app.get("/api/admin/suppliers/analytics", authMiddleware, async (req, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Access denied. Admin role required.' });
+      }
+
+      // Get supplier counts by status
+      const statusCounts = await db.select({
+        status: supplierProfiles.status,
+        count: sql`count(*)`
+      })
+      .from(supplierProfiles)
+      .groupBy(supplierProfiles.status);
+
+      // Get verification level counts
+      const verificationCounts = await db.select({
+        verificationLevel: supplierProfiles.verificationLevel,
+        count: sql`count(*)`
+      })
+      .from(supplierProfiles)
+      .groupBy(supplierProfiles.verificationLevel);
+
+      // Get recent registrations (last 30 days)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const recentRegistrations = await db.select({
+        count: sql`count(*)`
+      })
+      .from(supplierProfiles)
+      .where(gte(supplierProfiles.createdAt, thirtyDaysAgo));
+
+      // Get top performing suppliers
+      const topSuppliers = await db.select({
+        id: supplierProfiles.id,
+        businessName: supplierProfiles.businessName,
+        storeName: supplierProfiles.storeName,
+        rating: supplierProfiles.rating,
+        totalSales: supplierProfiles.totalSales,
+        totalOrders: supplierProfiles.totalOrders,
+        totalReviews: supplierProfiles.totalReviews
+      })
+      .from(supplierProfiles)
+      .where(eq(supplierProfiles.status, 'approved'))
+      .orderBy(desc(supplierProfiles.totalSales))
+      .limit(10);
+
+      // Get suppliers needing attention (pending approvals)
+      const pendingApprovals = await db.select({
+        count: sql`count(*)`
+      })
+      .from(supplierProfiles)
+      .where(eq(supplierProfiles.status, 'pending'));
+
+      const analytics = {
+        totalSuppliers: statusCounts.reduce((sum, item) => sum + parseInt(item.count as string), 0),
+        statusBreakdown: statusCounts.reduce((acc, item) => {
+          acc[item.status as string] = parseInt(item.count as string);
+          return acc;
+        }, {} as Record<string, number>),
+        verificationBreakdown: verificationCounts.reduce((acc, item) => {
+          acc[item.verificationLevel as string] = parseInt(item.count as string);
+          return acc;
+        }, {} as Record<string, number>),
+        recentRegistrations: parseInt(recentRegistrations[0]?.count as string || '0'),
+        pendingApprovals: parseInt(pendingApprovals[0]?.count as string || '0'),
+        topPerformers: topSuppliers,
+        totalRevenue: topSuppliers.reduce((sum, supplier) => sum + parseFloat(supplier.totalSales || '0'), 0),
+        averageRating: topSuppliers.length > 0 
+          ? topSuppliers.reduce((sum, supplier) => sum + parseFloat(supplier.rating || '0'), 0) / topSuppliers.length 
+          : 0
+      };
+
+      res.json({
+        success: true,
+        analytics
+      });
+
+    } catch (error: any) {
+      console.error('Get supplier analytics error:', error);
+      res.status(500).json({ error: 'Failed to fetch supplier analytics' });
+    }
+  });
+
+  // ==================== ADMIN PRODUCT APPROVAL MANAGEMENT ====================
+
+  // Admin: Get pending products for approval
+  app.get("/api/admin/products/pending", authMiddleware, async (req, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Access denied. Admin role required.' });
+      }
+
+      const { supplierId, categoryId, search, limit, offset } = req.query;
+
+      let query = db.select({
+        id: products.id,
+        name: products.name,
+        slug: products.slug,
+        shortDescription: products.shortDescription,
+        categoryId: products.categoryId,
+        images: products.images,
+        minOrderQuantity: products.minOrderQuantity,
+        priceRanges: products.priceRanges,
+        approvalStatus: products.approvalStatus,
+        rejectionReason: products.rejectionReason,
+        createdAt: products.createdAt,
+        updatedAt: products.updatedAt,
+        // Supplier info
+        supplierId: products.supplierId,
+        supplierName: supplierProfiles.businessName,
+        storeName: supplierProfiles.storeName,
+        // Category info
+        categoryName: categories.name
+      })
+      .from(products)
+      .leftJoin(supplierProfiles, eq(products.supplierId, supplierProfiles.id))
+      .leftJoin(categories, eq(products.categoryId, categories.id))
+      .where(eq(products.approvalStatus, 'pending'));
+
+      const conditions = [eq(products.approvalStatus, 'pending')];
+
+      if (supplierId) {
+        conditions.push(eq(products.supplierId, supplierId as string));
+      }
+      if (categoryId) {
+        conditions.push(eq(products.categoryId, categoryId as string));
+      }
+      if (search) {
+        conditions.push(
+          or(
+            ilike(products.name, `%${search}%`),
+            ilike(products.description, `%${search}%`),
+            ilike(supplierProfiles.businessName, `%${search}%`)
+          )
+        );
+      }
+
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
+
+      query = query.orderBy(desc(products.createdAt));
+
+      if (limit) {
+        query = query.limit(parseInt(limit as string));
+      }
+      if (offset) {
+        query = query.offset(parseInt(offset as string));
+      }
+
+      const pendingProducts = await query;
+
+      // Get total count
+      let countQuery = db.select({ count: sql`count(*)` })
+        .from(products)
+        .leftJoin(supplierProfiles, eq(products.supplierId, supplierProfiles.id))
+        .where(eq(products.approvalStatus, 'pending'));
+
+      if (supplierId) {
+        countQuery = countQuery.where(and(
+          eq(products.approvalStatus, 'pending'),
+          eq(products.supplierId, supplierId as string)
+        ));
+      }
+
+      const [{ count }] = await countQuery;
+
+      res.json({
+        success: true,
+        products: pendingProducts,
+        total: parseInt(count as string),
+        page: offset ? Math.floor(parseInt(offset as string) / (parseInt(limit as string) || 20)) + 1 : 1,
+        limit: limit ? parseInt(limit as string) : pendingProducts.length
+      });
+
+    } catch (error: any) {
+      console.error('Get pending products error:', error);
+      res.status(500).json({ error: 'Failed to fetch pending products' });
+    }
+  });
+
+  // Admin: Get product details for approval
+  app.get("/api/admin/products/:id", authMiddleware, async (req, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Access denied. Admin role required.' });
+      }
+
+      const product = await db.select({
+        // Product details
+        id: products.id,
+        name: products.name,
+        slug: products.slug,
+        shortDescription: products.shortDescription,
+        description: products.description,
+        categoryId: products.categoryId,
+        specifications: products.specifications,
+        images: products.images,
+        videos: products.videos,
+        minOrderQuantity: products.minOrderQuantity,
+        priceRanges: products.priceRanges,
+        sampleAvailable: products.sampleAvailable,
+        samplePrice: products.samplePrice,
+        customizationAvailable: products.customizationAvailable,
+        leadTime: products.leadTime,
+        port: products.port,
+        paymentTerms: products.paymentTerms,
+        inStock: products.inStock,
+        stockQuantity: products.stockQuantity,
+        colors: products.colors,
+        sizes: products.sizes,
+        keyFeatures: products.keyFeatures,
+        customizationDetails: products.customizationDetails,
+        certifications: products.certifications,
+        hasTradeAssurance: products.hasTradeAssurance,
+        tags: products.tags,
+        sku: products.sku,
+        metaData: products.metaData,
+        approvalStatus: products.approvalStatus,
+        rejectionReason: products.rejectionReason,
+        createdAt: products.createdAt,
+        updatedAt: products.updatedAt,
+        // Supplier info
+        supplierId: products.supplierId,
+        supplierName: supplierProfiles.businessName,
+        storeName: supplierProfiles.storeName,
+        supplierEmail: users.email,
+        supplierPhone: supplierProfiles.phone,
+        supplierVerified: supplierProfiles.isVerified,
+        // Category info
+        categoryName: categories.name
+      })
+      .from(products)
+      .leftJoin(supplierProfiles, eq(products.supplierId, supplierProfiles.id))
+      .leftJoin(users, eq(supplierProfiles.userId, users.id))
+      .leftJoin(categories, eq(products.categoryId, categories.id))
+      .where(eq(products.id, req.params.id))
+      .limit(1);
+
+      if (product.length === 0) {
+        return res.status(404).json({ error: 'Product not found' });
+      }
+
+      res.json({
+        success: true,
+        product: product[0]
+      });
+
+    } catch (error: any) {
+      console.error('Get product details error:', error);
+      res.status(500).json({ error: 'Failed to fetch product details' });
+    }
+  });
+
+  // Admin: Approve product
+  app.post("/api/admin/products/:id/approve", authMiddleware, async (req, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Access denied. Admin role required.' });
+      }
+
+      const { isFeatured = false } = req.body;
+
+      const updatedProduct = await db.update(products)
+        .set({
+          approvalStatus: 'approved',
+          isPublished: true,
+          isFeatured: isFeatured,
+          approvedBy: req.user.id,
+          approvedAt: new Date(),
+          rejectionReason: null,
+          updatedAt: new Date()
+        })
+        .where(eq(products.id, req.params.id))
+        .returning();
+
+      if (updatedProduct.length === 0) {
+        return res.status(404).json({ error: 'Product not found' });
+      }
+
+      // TODO: Send notification to supplier about approval
+
+      res.json({
+        success: true,
+        message: 'Product approved successfully',
+        product: updatedProduct[0]
+      });
+
+    } catch (error: any) {
+      console.error('Approve product error:', error);
+      res.status(500).json({ error: 'Failed to approve product' });
+    }
+  });
+
+  // Admin: Reject product
+  app.post("/api/admin/products/:id/reject", authMiddleware, async (req, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Access denied. Admin role required.' });
+      }
+
+      const { reason } = req.body;
+
+      if (!reason) {
+        return res.status(400).json({ error: 'Rejection reason is required' });
+      }
+
+      const updatedProduct = await db.update(products)
+        .set({
+          approvalStatus: 'rejected',
+          isPublished: false,
+          isFeatured: false,
+          rejectionReason: reason,
+          updatedAt: new Date()
+        })
+        .where(eq(products.id, req.params.id))
+        .returning();
+
+      if (updatedProduct.length === 0) {
+        return res.status(404).json({ error: 'Product not found' });
+      }
+
+      // TODO: Send notification to supplier about rejection with reason
+
+      res.json({
+        success: true,
+        message: 'Product rejected successfully',
+        product: updatedProduct[0],
+        rejectionReason: reason
+      });
+
+    } catch (error: any) {
+      console.error('Reject product error:', error);
+      res.status(500).json({ error: 'Failed to reject product' });
+    }
+  });
+
+  // Admin: Bulk approve products
+  app.post("/api/admin/products/bulk-approve", authMiddleware, async (req, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Access denied. Admin role required.' });
+      }
+
+      const { productIds, isFeatured = false } = req.body;
+
+      if (!Array.isArray(productIds) || productIds.length === 0) {
+        return res.status(400).json({ error: 'Product IDs array is required' });
+      }
+
+      const updatedProducts = [];
+      const errors = [];
+
+      for (const productId of productIds) {
+        try {
+          const result = await db.update(products)
+            .set({
+              approvalStatus: 'approved',
+              isPublished: true,
+              isFeatured: isFeatured,
+              approvedBy: req.user.id,
+              approvedAt: new Date(),
+              rejectionReason: null,
+              updatedAt: new Date()
+            })
+            .where(eq(products.id, productId))
+            .returning();
+
+          if (result.length > 0) {
+            updatedProducts.push(result[0]);
+          } else {
+            errors.push({ productId, error: 'Product not found' });
+          }
+        } catch (error: any) {
+          errors.push({ productId, error: error.message });
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Bulk approval completed`,
+        approved: updatedProducts.length,
+        errors: errors.length,
+        products: updatedProducts,
+        errorDetails: errors
+      });
+
+    } catch (error: any) {
+      console.error('Bulk approve products error:', error);
+      res.status(500).json({ error: 'Failed to bulk approve products' });
+    }
+  });
+
+  // Admin: Bulk reject products
+  app.post("/api/admin/products/bulk-reject", authMiddleware, async (req, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Access denied. Admin role required.' });
+      }
+
+      const { productIds, reason } = req.body;
+
+      if (!Array.isArray(productIds) || productIds.length === 0) {
+        return res.status(400).json({ error: 'Product IDs array is required' });
+      }
+
+      if (!reason) {
+        return res.status(400).json({ error: 'Rejection reason is required' });
+      }
+
+      const updatedProducts = [];
+      const errors = [];
+
+      for (const productId of productIds) {
+        try {
+          const result = await db.update(products)
+            .set({
+              approvalStatus: 'rejected',
+              isPublished: false,
+              isFeatured: false,
+              rejectionReason: reason,
+              updatedAt: new Date()
+            })
+            .where(eq(products.id, productId))
+            .returning();
+
+          if (result.length > 0) {
+            updatedProducts.push(result[0]);
+          } else {
+            errors.push({ productId, error: 'Product not found' });
+          }
+        } catch (error: any) {
+          errors.push({ productId, error: error.message });
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Bulk rejection completed`,
+        rejected: updatedProducts.length,
+        errors: errors.length,
+        products: updatedProducts,
+        errorDetails: errors
+      });
+
+    } catch (error: any) {
+      console.error('Bulk reject products error:', error);
+      res.status(500).json({ error: 'Failed to bulk reject products' });
+    }
+  });
+
+  // Admin: Get product approval analytics
+  app.get("/api/admin/products/analytics", authMiddleware, async (req, res) => {
+    try {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Access denied. Admin role required.' });
+      }
+
+      // Get product counts by approval status
+      const statusCounts = await db.select({
+        approvalStatus: products.approvalStatus,
+        count: sql`count(*)`
+      })
+      .from(products)
+      .groupBy(products.approvalStatus);
+
+      // Get pending products count
+      const pendingCount = await db.select({
+        count: sql`count(*)`
+      })
+      .from(products)
+      .where(eq(products.approvalStatus, 'pending'));
+
+      // Get recent submissions (last 7 days)
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      const recentSubmissions = await db.select({
+        count: sql`count(*)`
+      })
+      .from(products)
+      .where(gte(products.createdAt, sevenDaysAgo));
+
+      // Get top suppliers by product count
+      const topSuppliers = await db.select({
+        supplierId: products.supplierId,
+        supplierName: supplierProfiles.businessName,
+        storeName: supplierProfiles.storeName,
+        productCount: sql`count(*)`,
+        approvedCount: sql`sum(case when ${products.approvalStatus} = 'approved' then 1 else 0 end)`,
+        pendingCount: sql`sum(case when ${products.approvalStatus} = 'pending' then 1 else 0 end)`
+      })
+      .from(products)
+      .leftJoin(supplierProfiles, eq(products.supplierId, supplierProfiles.id))
+      .groupBy(products.supplierId, supplierProfiles.businessName, supplierProfiles.storeName)
+      .orderBy(desc(sql`count(*)`))
+      .limit(10);
+
+      const analytics = {
+        totalProducts: statusCounts.reduce((sum, item) => sum + parseInt(item.count as string), 0),
+        statusBreakdown: statusCounts.reduce((acc, item) => {
+          acc[item.approvalStatus as string] = parseInt(item.count as string);
+          return acc;
+        }, {} as Record<string, number>),
+        pendingApprovals: parseInt(pendingCount[0]?.count as string || '0'),
+        recentSubmissions: parseInt(recentSubmissions[0]?.count as string || '0'),
+        topSuppliers: topSuppliers.map(supplier => ({
+          supplierId: supplier.supplierId,
+          supplierName: supplier.supplierName,
+          storeName: supplier.storeName,
+          totalProducts: parseInt(supplier.productCount as string),
+          approvedProducts: parseInt(supplier.approvedCount as string),
+          pendingProducts: parseInt(supplier.pendingCount as string)
+        }))
+      };
+
+      res.json({
+        success: true,
+        analytics
+      });
+
+    } catch (error: any) {
+      console.error('Get product approval analytics error:', error);
+      res.status(500).json({ error: 'Failed to fetch product approval analytics' });
+    }
+  });
   
   // ==================== UPLOAD ROUTES ====================
   
@@ -226,7 +1211,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get("/api/products", async (req, res) => {
     try {
-      const { categoryId, search, isPublished, minMOQ, maxMOQ, featured, limit, offset } = req.query;
+      const { categoryId, search, isPublished, minMOQ, maxMOQ, featured, supplierId, limit, offset } = req.query;
       const filters: any = {};
       const countFilters: any = {}; // Separate filters for count (without pagination)
       
@@ -241,6 +1226,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isPublished !== undefined) {
         filters.isPublished = isPublished === 'true';
         countFilters.isPublished = isPublished === 'true';
+      }
+      if (supplierId) {
+        filters.supplierId = supplierId as string;
+        countFilters.supplierId = supplierId as string;
       }
       if (minMOQ) {
         filters.minMOQ = parseInt(minMOQ as string);
@@ -1134,7 +2123,10 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
     }
   });
 
-  // ==================== RFQs ====================
+  // ==================== RFQs (DEPRECATED - MOVED TO SUPPLIER MANAGEMENT) ====================
+  // NOTE: These RFQ management routes are deprecated in the multivendor system.
+  // RFQs are now managed directly by suppliers, not admin.
+  // These routes remain for backward compatibility but should not be used in admin panel.
   
   app.get("/api/rfqs", async (req, res) => {
     try {
@@ -1173,6 +2165,49 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       const uploadedFiles = req.files as Express.Multer.File[] || [];
       const filePaths = uploadedFiles.map(file => `/uploads/${file.filename}`);
 
+      let supplierId = null;
+
+      // If RFQ is for a specific product, route to that product's supplier
+      if (req.body.productId) {
+        const product = await db.select({
+          id: products.id,
+          supplierId: products.supplierId,
+          name: products.name
+        })
+        .from(products)
+        .where(eq(products.id, req.body.productId))
+        .limit(1);
+
+        if (product.length === 0) {
+          return res.status(404).json({ error: 'Product not found' });
+        }
+
+        if (!product[0].supplierId) {
+          return res.status(400).json({ error: 'Product does not have an assigned supplier' });
+        }
+
+        // Verify supplier is active and approved
+        const supplier = await db.select({
+          id: supplierProfiles.id,
+          status: supplierProfiles.status,
+          isActive: supplierProfiles.isActive,
+          userId: supplierProfiles.userId
+        })
+        .from(supplierProfiles)
+        .where(eq(supplierProfiles.id, product[0].supplierId))
+        .limit(1);
+
+        if (supplier.length === 0) {
+          return res.status(400).json({ error: 'Product supplier not found' });
+        }
+
+        if (supplier[0].status !== 'approved' || !supplier[0].isActive) {
+          return res.status(400).json({ error: 'Product supplier is not active or approved' });
+        }
+
+        supplierId = product[0].supplierId;
+      }
+
       // Prepare RFQ data
       const rfqData: any = {
         title: req.body.title,
@@ -1182,7 +2217,8 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
         status: req.body.status || 'open',
         buyerId: req.body.buyerId,
         categoryId: req.body.categoryId || null,
-        productId: req.body.productId || null, // Always include productId
+        productId: req.body.productId || null,
+        supplierId: supplierId, // Route to specific supplier if product-based RFQ
         targetPrice: req.body.targetPrice || null,
         expectedDate: req.body.expectedDate ? new Date(req.body.expectedDate) : null,
         attachments: filePaths.length > 0 ? filePaths : null
@@ -1203,6 +2239,32 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       console.log('Validated RFQ data:', validatedData);
       
       const rfq = await storage.createRfq(validatedData as any);
+
+      // If RFQ is routed to a specific supplier, notify them
+      if (supplierId) {
+        const supplier = await db.select({
+          userId: supplierProfiles.userId
+        })
+        .from(supplierProfiles)
+        .where(eq(supplierProfiles.id, supplierId))
+        .limit(1);
+
+        if (supplier.length > 0) {
+          await createNotification({
+            userId: supplier[0].userId,
+            type: 'info',
+            title: 'New RFQ Received',
+            message: `A new RFQ "${req.body.title}" has been sent to you`,
+            relatedId: rfq.id,
+            relatedType: 'rfq'
+          });
+        }
+      } else {
+        // For general RFQs (category-based), notify all relevant suppliers
+        // This could be implemented later to notify suppliers in the category
+        console.log('General RFQ created - category-based supplier notification not implemented yet');
+      }
+      
       res.status(201).json(rfq);
     } catch (error: any) {
       console.error('Error creating RFQ:', error);
@@ -1246,7 +2308,10 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
     }
   });
 
-  // ==================== QUOTATIONS ====================
+  // ==================== QUOTATIONS (DEPRECATED - MOVED TO SUPPLIER MANAGEMENT) ====================
+  // NOTE: These quotation management routes are deprecated in the multivendor system.
+  // Quotations are now created and managed directly by suppliers, not admin.
+  // These routes remain for backward compatibility but should not be used in admin panel.
   
   app.get("/api/quotations", async (req, res) => {
     try {
@@ -1274,455 +2339,41 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
     }
   });
 
+  // REMOVED: Admin quotation creation - now handled by suppliers
   app.post("/api/quotations", async (req, res) => {
-    try {
-      // Ensure user is authenticated and is an admin
-      if (!req.user || req.user.role !== 'admin') {
-        return res.status(403).json({ error: "Unauthorized: Only admins can create quotations." });
-      }
-      const supplierId = req.user.id; // Admin is the supplier
-
-      // Convert data types before validation
-      const quotationData = {
-        ...req.body,
-        supplierId: supplierId, // Add supplierId from authenticated admin
-        pricePerUnit: req.body.pricePerUnit ? req.body.pricePerUnit.toString() : null,
-        totalPrice: req.body.totalPrice ? req.body.totalPrice.toString() : null,
-        moq: parseInt(req.body.moq),
-        validUntil: req.body.validUntil ? new Date(req.body.validUntil) : null
-      };
-
-      const validatedData = insertQuotationSchema.parse(quotationData);
-      const quotation = await storage.createQuotation(validatedData);
-      
-      // Increment RFQ quotation count
-      await storage.incrementRfqQuotationCount(validatedData.rfqId);
-      
-      res.status(201).json(quotation);
-    } catch (error: any) {
-      console.error('Error creating quotation:', error);
-      res.status(400).json({ error: error.message });
-    }
+    res.status(410).json({ 
+      error: 'Admin quotation management has been removed. Quotations are now created by suppliers.',
+      message: 'Use /api/suppliers/quotations for RFQ quotations or /api/suppliers/inquiry-quotations for inquiry quotations',
+      redirect: '/api/suppliers/quotations'
+    });
   });
 
+  // REMOVED: Admin quotation update - now handled by suppliers
   app.patch("/api/quotations/:id", async (req, res) => {
     try {
-      const validatedData = insertQuotationSchema.partial().parse(req.body);
-      const quotation = await storage.updateQuotation(req.params.id, validatedData);
-      if (!quotation) {
-        return res.status(404).json({ error: "Quotation not found" });
-      }
-      res.json(quotation);
+      res.status(410).json({ 
+        error: 'Admin quotation management has been removed. Quotations are now updated by suppliers.',
+        message: 'Use /api/suppliers/quotations/:id for RFQ quotations or /api/suppliers/inquiry-quotations/:id for inquiry quotations',
+        redirect: '/api/suppliers/quotations'
+      });
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(500).json({ error: 'Failed to redirect quotation update' });
     }
   });
 
-  // Accept RFQ quotation - Proper system for order creation
-  // FLOW EXPLANATION:
-  // 1. Get quotation from quotations table (has rfq_id field)
-  // 2. Use quotation.rfqId to query rfqs table
-  // 3. Extract productId from rfqs.productId field
-  // 4. Use this productId to create order
-  // 
-  // Data Flow: quotations.rfq_id -> rfqs.id -> rfqs.product_id -> orders.product_id
+  // DEPRECATED: RFQ quotation acceptance moved to supplier management
+  // Quotations are now managed by suppliers, not admin
   app.post("/api/quotations/:id/accept", async (req, res) => {
     try {
-      const { shippingAddress } = req.body;
-      const quotationId = req.params.id;
-
-      console.log('=== START: ACCEPTING RFQ QUOTATION ===');
-      console.log('Quotation ID:', quotationId);
-      console.log('Shipping Address:', shippingAddress);
-
-      // Step 1: Get quotation with rfq_id
-      const quotation = await storage.getQuotation(quotationId);
-      if (!quotation) {
-        console.error('❌ Quotation not found:', quotationId);
-        return res.status(404).json({ error: "Quotation not found" });
-      }
-
-      if (quotation.status !== 'pending') {
-        console.error('❌ Quotation not pending:', quotation.status);
-        return res.status(400).json({ error: "Only pending quotations can be accepted" });
-      }
-
-      if (!quotation.rfqId) {
-        console.error('❌ Quotation missing rfqId:', quotationId);
-        return res.status(400).json({ error: "Quotation is not linked to an RFQ" });
-      }
-
-      console.log('✅ Quotation found:', {
-        id: quotation.id,
-        rfqId: quotation.rfqId,
-        status: quotation.status
+      // Redirect to supplier quotation acceptance endpoint
+      return res.status(410).json({
+        error: 'RFQ quotation acceptance has been moved to supplier management.',
+        message: 'Use /api/suppliers/quotations/:id/accept for RFQ quotations',
+        redirect: `/api/suppliers/quotations/${req.params.id}/accept`
       });
-
-      // Step 2: Get RFQ from rfqs table using rfq_id from quotation
-      // CRITICAL: The quotation.rfqId links to rfqs.id, and rfqs.productId contains the product ID
-      console.log('🔍 Querying rfqs table for rfqId:', quotation.rfqId);
-      
-      const [rfqFromDb] = await db.select({
-        id: rfqs.id,
-        buyerId: rfqs.buyerId,
-        productId: rfqs.productId, // THIS IS THE KEY FIELD - productId from rfqs table
-        categoryId: rfqs.categoryId,
-        title: rfqs.title,
-        description: rfqs.description,
-        quantity: rfqs.quantity,
-        targetPrice: rfqs.targetPrice,
-        status: rfqs.status
-      })
-        .from(rfqs)
-        .where(eq(rfqs.id, quotation.rfqId)) // Use rfq_id from quotation to find RFQ
-        .limit(1);
-
-      if (!rfqFromDb) {
-        console.error('❌ RFQ not found in database for rfqId:', quotation.rfqId);
-        return res.status(404).json({ error: "RFQ not found in database" });
-      }
-
-      console.log('✅ RFQ found from rfqs table:', {
-        rfqId: rfqFromDb.id,
-        productId: rfqFromDb.productId,
-        productIdType: typeof rfqFromDb.productId,
-        productIdRaw: JSON.stringify(rfqFromDb.productId),
-        title: rfqFromDb.title,
-        fullRfqData: JSON.stringify(rfqFromDb, null, 2)
-      });
-
-      // Step 3: Extract productId from RFQ - THIS IS THE KEY STEP
-      // The flow is: quotation.rfqId -> rfqs table -> rfqs.productId
-      let productId: string | null = null;
-      
-      // Primary source: Get productId directly from the rfqs table record we just queried
-      const rfqProductId = rfqFromDb.productId;
-      
-      console.log('=== PRODUCT ID EXTRACTION ===');
-      console.log('RFQ from rfqs table - RAW DATA:', {
-        rfqId: rfqFromDb.id,
-        productId_camelCase: rfqFromDb.productId,
-        productId_snakeCase: (rfqFromDb as any).product_id,
-        productIdType: typeof rfqFromDb.productId,
-        productIdValue: rfqProductId,
-        isNull: rfqProductId === null,
-        isUndefined: rfqProductId === undefined,
-        isEmptyString: rfqProductId === '',
-        allFields: Object.keys(rfqFromDb)
-      });
-      
-      // CRITICAL: Check if RFQ actually has a productId
-      if (!rfqProductId || rfqProductId === null || rfqProductId === undefined || rfqProductId === '' || String(rfqProductId).trim() === '' || String(rfqProductId).trim() === 'null') {
-        console.error('❌ RFQ DOES NOT HAVE PRODUCTID IN DATABASE!');
-        console.error('RFQ Details:', {
-          rfqId: rfqFromDb.id,
-          rfqTitle: rfqFromDb.title,
-          categoryId: rfqFromDb.categoryId,
-          productIdFromDb: rfqProductId
-        });
-        
-        // Try fallback immediately before proceeding
-        console.log('⚠️ Attempting fallback strategies...');
-      }
-      
-      // Strategy 1: Use productId directly from rfqs table (PRIMARY METHOD)
-      if (rfqProductId && 
-          rfqProductId !== null &&
-          rfqProductId !== undefined &&
-          rfqProductId !== 'null' && 
-          rfqProductId !== 'undefined' && 
-          String(rfqProductId).trim() !== '' &&
-          String(rfqProductId).trim().length >= 10) {
-        productId = String(rfqProductId).trim();
-        console.log('✅✅✅ Strategy 1 SUCCESS: productId found in rfqs table:', {
-          productId: productId,
-          length: productId.length,
-          source: 'rfqs.productId',
-          isValid: productId.length >= 10
-        });
-      } else {
-        console.error('❌❌❌ Strategy 1 FAILED: RFQ does not have valid productId!', {
-          rfqProductId: rfqProductId,
-          type: typeof rfqProductId,
-          isNull: rfqProductId === null,
-          isUndefined: rfqProductId === undefined,
-          isEmpty: rfqProductId === '',
-          length: rfqProductId ? String(rfqProductId).length : 0
-        });
-        console.log('⚠️ Trying fallback strategies...');
-      }
-
-      // Strategy 2: Find product by category (fallback if rfqs.productId is null)
-      if (!productId && rfqFromDb.categoryId) {
-        try {
-          console.log('🔍 Strategy 2: Searching for product by categoryId:', rfqFromDb.categoryId);
-          const [categoryProduct] = await db.select({ id: products.id })
-            .from(products)
-            .where(and(
-              eq(products.categoryId, rfqFromDb.categoryId),
-              eq(products.isPublished, true)
-            ))
-            .limit(1);
-          
-          if (categoryProduct && categoryProduct.id) {
-            productId = categoryProduct.id;
-            console.log('✅ Strategy 2 SUCCESS: Found product by category:', productId);
-          } else {
-            console.log('⚠️ Strategy 2 FAILED: No products found in category');
-          }
-        } catch (err) {
-          console.error('❌ Strategy 2 ERROR:', err);
-        }
-      }
-
-      // Strategy 3: Find ANY published product as absolute fallback
-      if (!productId) {
-        try {
-          console.log('🔍 Strategy 3: Searching for ANY published product...');
-          const [anyProduct] = await db.select({ id: products.id })
-            .from(products)
-            .where(eq(products.isPublished, true))
-            .orderBy(desc(products.createdAt))
-            .limit(1);
-          
-          if (anyProduct && anyProduct.id) {
-            productId = anyProduct.id;
-            console.log('✅ Strategy 3 SUCCESS: Found fallback product:', productId);
-          } else {
-            console.log('❌ Strategy 3 FAILED: No products exist in database');
-          }
-        } catch (err) {
-          console.error('❌ Strategy 3 ERROR:', err);
-        }
-      }
-
-      // Step 4: CRITICAL VALIDATION - productId MUST exist at this point
-      if (!productId || productId.trim() === '' || productId === 'null' || productId === 'undefined') {
-        console.error('❌ CRITICAL FAILURE: All strategies failed. No productId found!');
-        console.error('RFQ Details:', {
-          rfqId: rfqFromDb.id,
-          rfqProductId: rfqFromDb.productId,
-          categoryId: rfqFromDb.categoryId,
-          title: rfqFromDb.title,
-          quotationId: quotationId
-        });
-        return res.status(400).json({ 
-          error: "Unable to create order: This RFQ is not linked to a product and no fallback product could be found. Please ensure your RFQ is associated with a product before accepting quotations, or contact support." 
-        });
-      }
-
-      // Step 5: Final validation and sanitization
-      productId = String(productId).trim();
-      
-      if (productId.length < 10 || productId === 'null' || productId === 'undefined') {
-        console.error('❌ Invalid productId after sanitization:', productId);
-        return res.status(400).json({ 
-          error: "Invalid product ID format. Please contact support." 
-        });
-      }
-
-      console.log('✅ Final productId confirmed:', {
-        productId: productId,
-        length: productId.length,
-        type: typeof productId
-      });
-      
-      // Step 6: Prepare order creation data
-      // Generate unique order number
-      const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
-      
-      // Get quantity from RFQ or quotation MOQ
-      const quantity = rfqFromDb.quantity || quotation.moq || 1;
-      
-      // Get unit price and total price
-      const unitPrice = parseFloat(quotation.pricePerUnit || '0');
-      const totalPrice = parseFloat(quotation.totalPrice || '0');
-      
-      // Step 7: Final verification - productId MUST be valid before proceeding
-      if (!productId || productId.trim() === '' || productId === 'null' || productId === 'undefined' || productId.trim().length < 10) {
-        console.error('❌ FATAL: productId is invalid after all strategies!', {
-          productId: productId,
-          type: typeof productId,
-          length: productId ? productId.length : 0,
-          rfqId: quotation.rfqId,
-          quotationId: quotationId
-        });
-        return res.status(400).json({ 
-          error: "Unable to create order: No valid product ID found for this RFQ. Please ensure the RFQ is linked to a product or contact support." 
-        });
-      }
-
-      // Normalize productId to ensure it's a valid string
-      productId = String(productId).trim();
-      console.log('✅ FINAL productId before order creation:', {
-        productId: productId,
-        length: productId.length,
-        type: typeof productId,
-        isValid: productId.length >= 10
-      });
-
-      // Step 8: Build order data object - productId is GUARANTEED to be valid at this point
-      const orderData: any = {
-        orderNumber: orderNumber,
-        buyerId: rfqFromDb.buyerId,
-        supplierId: quotation.supplierId,
-        rfqId: quotation.rfqId,
-        quotationId: quotationId,
-        productId: productId, // REQUIRED - guaranteed valid UUID string
-        quantity: quantity,
-        unitPrice: unitPrice ? String(unitPrice) : '0',
-        totalAmount: String(totalPrice), // Must be string for decimal
-        status: 'pending_approval',
-        shippingAddress: JSON.stringify({
-          address: shippingAddress || '',
-          city: '',
-          state: '',
-          country: '',
-          zipCode: ''
-        }),
-        items: JSON.stringify([{
-          productName: rfqFromDb.title || 'RFQ Product',
-          quantity: quantity,
-          unitPrice: unitPrice,
-          totalPrice: totalPrice
-        }])
-      };
-
-      // Final validation: ensure productId is definitely in the order data
-      if (!orderData.productId || orderData.productId.trim() === '' || orderData.productId === 'null') {
-        console.error('❌ CRITICAL: productId missing in orderData after assignment!', {
-          orderData: JSON.stringify(orderData, null, 2),
-          productId: orderData.productId,
-          productIdType: typeof orderData.productId
-        });
-        return res.status(500).json({ 
-          error: "System error: Product ID validation failed during order data preparation. Please contact support." 
-        });
-      }
-      
-      // Verify productId format one more time
-      if (orderData.productId.length < 10) {
-        console.error('❌ CRITICAL: productId format invalid in orderData!', {
-          productId: orderData.productId,
-          length: orderData.productId.length
-        });
-        return res.status(500).json({ 
-          error: "System error: Invalid product ID format. Please contact support." 
-        });
-      }
-
-      console.log('✅✅✅ ORDER DATA BEFORE CREATION - FINAL CHECK:', {
-        orderNumber: orderData.orderNumber,
-        productId: orderData.productId,
-        productIdRaw: JSON.stringify(orderData.productId),
-        productIdType: typeof orderData.productId,
-        productIdLength: orderData.productId?.length,
-        productIdIsNull: orderData.productId === null,
-        productIdIsUndefined: orderData.productId === undefined,
-        productIdIsEmpty: orderData.productId === '',
-        buyerId: orderData.buyerId,
-        rfqId: orderData.rfqId,
-        quotationId: orderData.quotationId,
-        quantity: orderData.quantity,
-        totalAmount: orderData.totalAmount,
-        fullOrderData: JSON.stringify(orderData, null, 2)
-      });
-
-      // ABSOLUTE FINAL CHECK - Do not proceed if productId is null/undefined/empty
-      if (!orderData.productId || 
-          orderData.productId === null || 
-          orderData.productId === undefined || 
-          orderData.productId === '' || 
-          String(orderData.productId).trim() === '' ||
-          String(orderData.productId).trim() === 'null') {
-        console.error('❌❌❌ ABSOLUTE FINAL CHECK FAILED - productId is invalid!');
-        console.error('OrderData productId value:', orderData.productId);
-        console.error('Full orderData:', JSON.stringify(orderData, null, 2));
-        return res.status(400).json({ 
-          error: "Cannot create order: Product ID is missing. The RFQ must be linked to a product. Please contact support or update the RFQ to include a product before accepting quotations." 
-        });
-      }
-
-      try {
-        // CRITICAL: One more explicit check right before database insert
-        // The database has NOT NULL constraint on product_id, so we MUST have a valid value
-        const finalProductId = orderData.productId;
-        
-        if (!finalProductId || 
-            finalProductId === null || 
-            finalProductId === undefined || 
-            finalProductId === '' ||
-            String(finalProductId).trim() === '' ||
-            String(finalProductId).trim() === 'null' ||
-            String(finalProductId).trim().length < 10) {
-          console.error('❌❌❌ PRE-INSERT VALIDATION FAILED!');
-          console.error('Final productId check before DB insert:', {
-            productId: finalProductId,
-            type: typeof finalProductId,
-            isNull: finalProductId === null,
-            isUndefined: finalProductId === undefined,
-            isEmpty: finalProductId === '',
-            trimmedLength: finalProductId ? String(finalProductId).trim().length : 0,
-            orderDataKeys: Object.keys(orderData),
-            orderDataProductId: orderData.productId
-          });
-          return res.status(400).json({ 
-            error: "Cannot create order: Product ID validation failed. The RFQ does not have a product linked. Please ensure the RFQ is associated with a product before accepting quotations." 
-          });
-        }
-
-        console.log('🚀 ATTEMPTING TO CREATE ORDER WITH productId:', finalProductId);
-        console.log('Order data productId field:', orderData.productId);
-        
-        // Ensure productId is explicitly set (defensive programming)
-        orderData.productId = String(finalProductId).trim();
-        
-        console.log('✅ Final orderData.productId after explicit assignment:', orderData.productId);
-        
-        const order = await storage.createOrder(orderData);
-        console.log('✅ Order created successfully:', {
-          orderId: order.id,
-          orderNumber: order.orderNumber,
-          productId: order.productId
-        });
-
-      // Update quotation status to accepted and add order info
-      await storage.updateQuotation(quotationId, { 
-        status: 'accepted',
-        message: `Shipping Address: ${shippingAddress}\n\nOrder Created: ${order.id}\n\n${quotation.message || ''}`
-      });
-
-      // Close the RFQ
-      await storage.updateRfq(quotation.rfqId, { status: 'closed' });
-
-        console.log('✅ RFQ quotation accepted and order created successfully');
-      res.json({ 
-        success: true, 
-        message: 'Quotation accepted and order created successfully!',
-          orderId: order.id,
-          orderNumber: order.orderNumber
-        });
-      } catch (createOrderError: any) {
-        console.error('❌ Error creating order:', createOrderError);
-        console.error('Order data that failed:', JSON.stringify(orderData, null, 2));
-        
-        // Check if it's a productId constraint error
-        if (createOrderError.message && createOrderError.message.includes('product_id') && createOrderError.message.includes('null')) {
-          return res.status(400).json({ 
-            error: "Product ID is required for order creation. The RFQ must be linked to a product. Please contact support." 
-          });
-        }
-        
-        return res.status(500).json({ 
-          error: createOrderError.message || "Failed to create order. Please try again or contact support." 
-        });
-      }
     } catch (error: any) {
-      console.error('❌ Error accepting RFQ quotation:', error);
-      console.error('Error stack:', error.stack);
-      res.status(500).json({ 
-        error: error.message || 'Failed to accept quotation. Please try again.' 
-      });
+      console.error('Error redirecting quotation acceptance:', error);
+      res.status(500).json({ error: 'Failed to redirect quotation acceptance' });
     }
   });
 
@@ -1756,43 +2407,118 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
     }
   });
 
-  // Accept quotation and create order
+  // Accept quotation and create order (now creates order directly with supplier)
   app.post("/api/quotations/accept", async (req, res) => {
     try {
-      const { quotationId, inquiryId, shippingAddress } = req.body;
+      const { quotationId, inquiryId, shippingAddress, billingAddress } = req.body;
       
       if (!quotationId || !inquiryId || !shippingAddress) {
         return res.status(400).json({ error: "Missing required fields" });
       }
 
-      // Get the inquiry quotation
-      const quotation = await storage.getInquiryQuotation(quotationId);
-      if (!quotation) {
+      // Get the inquiry quotation with supplier info
+      const quotation = await db.select({
+        id: inquiryQuotations.id,
+        inquiryId: inquiryQuotations.inquiryId,
+        supplierId: inquiryQuotations.supplierId,
+        pricePerUnit: inquiryQuotations.pricePerUnit,
+        totalPrice: inquiryQuotations.totalPrice,
+        moq: inquiryQuotations.moq,
+        leadTime: inquiryQuotations.leadTime,
+        paymentTerms: inquiryQuotations.paymentTerms,
+        message: inquiryQuotations.message,
+        status: inquiryQuotations.status
+      })
+      .from(inquiryQuotations)
+      .where(eq(inquiryQuotations.id, quotationId))
+      .limit(1);
+
+      if (quotation.length === 0) {
         return res.status(404).json({ error: "Quotation not found" });
       }
 
-      // Get the inquiry for buyer info
-      const inquiry = await storage.getInquiry(inquiryId);
-      if (!inquiry) {
+      const quotationData = quotation[0];
+
+      if (quotationData.status !== 'pending') {
+        return res.status(400).json({ error: "Quotation has already been processed" });
+      }
+
+      // Get the inquiry for buyer and product info
+      const inquiry = await db.select({
+        id: inquiries.id,
+        productId: inquiries.productId,
+        buyerId: inquiries.buyerId,
+        quantity: inquiries.quantity,
+        targetPrice: inquiries.targetPrice,
+        message: inquiries.message
+      })
+      .from(inquiries)
+      .where(eq(inquiries.id, inquiryId))
+      .limit(1);
+
+      if (inquiry.length === 0) {
         return res.status(404).json({ error: "Inquiry not found" });
       }
 
+      const inquiryData = inquiry[0];
+
+      // Create order items array
+      const orderItems = [{
+        productId: inquiryData.productId,
+        quantity: quotationData.moq,
+        unitPrice: parseFloat(quotationData.pricePerUnit.toString()),
+        totalPrice: parseFloat(quotationData.totalPrice.toString())
+      }];
+
+      // Generate order number
+      const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+
+      // Create order directly with supplier
+      const orderData = {
+        orderNumber,
+        buyerId: inquiryData.buyerId,
+        supplierId: quotationData.supplierId, // Direct assignment to supplier
+        productId: inquiryData.productId,
+        inquiryId: inquiryData.id,
+        quotationId: quotationData.id,
+        quantity: quotationData.moq,
+        unitPrice: quotationData.pricePerUnit,
+        totalAmount: quotationData.totalPrice,
+        shippingAmount: "0",
+        taxAmount: "0",
+        items: orderItems,
+        status: 'pending', // Supplier needs to confirm
+        paymentMethod: quotationData.paymentTerms || 'T/T',
+        paymentStatus: 'pending',
+        shippingAddress: typeof shippingAddress === 'string' ? { address: shippingAddress } : shippingAddress,
+        billingAddress: billingAddress || shippingAddress,
+        notes: `Order created from accepted quotation. Lead time: ${quotationData.leadTime || 'TBD'}. Original inquiry: ${inquiryData.message || 'N/A'}`
+      };
+
+      const [createdOrder] = await db.insert(orders).values(orderData).returning();
+
       // Update quotation status to accepted
-      await storage.updateInquiryQuotation(quotationId, { status: 'accepted' });
+      await db.update(inquiryQuotations)
+        .set({ 
+          status: 'accepted',
+          message: `${quotationData.message || ''}\n\nOrder created: ${orderNumber}`
+        })
+        .where(eq(inquiryQuotations.id, quotationId));
 
       // Update inquiry status to closed
-      await storage.updateInquiry(inquiryId, { status: 'closed' });
+      await db.update(inquiries)
+        .set({ status: 'closed' })
+        .where(eq(inquiries.id, inquiryId));
 
-      // Store shipping address in quotation for admin to use later
-      await storage.updateInquiryQuotation(quotationId, { 
-        message: `Shipping Address: ${shippingAddress}\n\n${quotation.message || ''}` 
-      });
+      // TODO: Send notification to supplier about new order
+      // TODO: Send notification to buyer about order creation
 
       res.status(200).json({ 
         success: true, 
-        message: 'Quotation accepted successfully. Admin will create order for your approval.',
-        quotationId,
-        nextStep: 'admin_creates_order'
+        message: 'Quotation accepted and order created successfully. The supplier will confirm your order.',
+        order: createdOrder,
+        orderNumber: createdOrder.orderNumber,
+        nextStep: 'supplier_confirms_order'
       });
     } catch (error: any) {
       console.error('Error accepting quotation:', error);
@@ -1831,7 +2557,10 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
     }
   });
 
-  // ==================== INQUIRIES ====================
+  // ==================== INQUIRIES (DEPRECATED - MOVED TO SUPPLIER MANAGEMENT) ====================
+  // NOTE: These inquiry management routes are deprecated in the multivendor system.
+  // Inquiries are now routed directly to suppliers, not admin.
+  // These routes remain for backward compatibility but should not be used in admin panel.
   
   app.get("/api/inquiries", async (req, res) => {
     try {
@@ -2017,11 +2746,49 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       console.log('=== RECEIVED INQUIRY REQUEST ===');
       console.log('Request body:', req.body);
       
+      // Get product to find its supplier
+      const product = await db.select({
+        id: products.id,
+        supplierId: products.supplierId,
+        name: products.name
+      })
+      .from(products)
+      .where(eq(products.id, req.body.productId))
+      .limit(1);
+
+      if (product.length === 0) {
+        return res.status(404).json({ error: 'Product not found' });
+      }
+
+      if (!product[0].supplierId) {
+        return res.status(400).json({ error: 'Product does not have an assigned supplier' });
+      }
+
+      // Verify supplier is active and approved
+      const supplier = await db.select({
+        id: supplierProfiles.id,
+        status: supplierProfiles.status,
+        isActive: supplierProfiles.isActive,
+        userId: supplierProfiles.userId
+      })
+      .from(supplierProfiles)
+      .where(eq(supplierProfiles.id, product[0].supplierId))
+      .limit(1);
+
+      if (supplier.length === 0) {
+        return res.status(400).json({ error: 'Product supplier not found' });
+      }
+
+      if (supplier[0].status !== 'approved' || !supplier[0].isActive) {
+        return res.status(400).json({ error: 'Product supplier is not active or approved' });
+      }
+      
       // Clean up the request body - only include fields that exist in schema
       // Note: decimal fields should be strings, not numbers (drizzle-zod requirement)
       const cleanedData: any = {
         productId: req.body.productId,
         buyerId: req.body.buyerId,
+        supplierId: product[0].supplierId, // Route directly to product's supplier
         quantity: req.body.quantity ? parseInt(req.body.quantity) : undefined,
         targetPrice: req.body.targetPrice ? String(req.body.targetPrice) : undefined, // Keep as string for decimal field
         message: req.body.message || null,
@@ -2048,23 +2815,15 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
       // Increment product inquiry count
       await storage.incrementProductInquiries(validatedData.productId);
       
-      // Get all admin users to notify them about new inquiry
-      const adminUsers = await db
-        .select({ id: users.id })
-        .from(users)
-        .where(eq(users.role, 'admin'));
-
-      // Create notification for each admin
-      for (const admin of adminUsers) {
-        await createNotification({
-          userId: admin.id,
-          type: 'info',
-          title: 'New Inquiry Received',
-          message: `A new inquiry has been received for product ${validatedData.productId}`,
-          relatedId: inquiry.id,
-          relatedType: 'inquiry'
-        });
-      }
+      // Notify the supplier instead of admin
+      await createNotification({
+        userId: supplier[0].userId,
+        type: 'info',
+        title: 'New Inquiry Received',
+        message: `A new inquiry has been received for your product "${product[0].name}"`,
+        relatedId: inquiry.id,
+        relatedType: 'inquiry'
+      });
       
       res.status(201).json(inquiry);
     } catch (error: any) {
@@ -2130,165 +2889,39 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
     }
   });
 
-  // ==================== ADMIN INQUIRIES ====================
+  // ==================== ADMIN INQUIRIES (DEPRECATED - MOVED TO SUPPLIER MANAGEMENT) ====================
+  // NOTE: Admin inquiry management is deprecated in the multivendor system.
+  // Inquiries are now managed directly by suppliers.
+  // These routes remain for backward compatibility but should not be used in admin panel.
   
-  app.get("/api/admin/inquiries", async (req, res) => {
-    try {
-      const { status, search } = req.query;
-      const filters: any = {};
-      
-      if (status && status !== 'all') {
-        filters.status = status;
-      }
-      
-      if (search) {
-        filters.search = search as string;
-      }
-      
-      const inquiries = await storage.getAdminInquiries(filters);
-      res.json({ inquiries });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
+  // REMOVED: Admin inquiry management - now handled by suppliers
+  // app.get("/api/admin/inquiries", async (req, res) => {
+  //   res.status(410).json({ 
+  //     error: 'Admin inquiry management has been removed. Inquiries are now managed by suppliers.',
+  //     redirect: '/api/suppliers/inquiries'
+  //   });
+  // });
 
-  app.post("/api/admin/inquiries/quotation", async (req, res) => {
-    try {
-      const { inquiryId, quotation } = req.body;
-      
-      if (!inquiryId || !quotation) {
-        return res.status(400).json({ error: "Inquiry ID and quotation data are required" });
-      }
-      
-      // Create quotation
-      const createdQuotation = await storage.createInquiryQuotation({
-        inquiryId,
-        pricePerUnit: quotation.pricePerUnit ? quotation.pricePerUnit.toString() : null,
-        totalPrice: quotation.totalPrice ? quotation.totalPrice.toString() : null,
-        moq: quotation.moq,
-        leadTime: quotation.leadTime,
-        paymentTerms: quotation.paymentTerms,
-        validUntil: quotation.validUntil ? new Date(quotation.validUntil) : null,
-        message: quotation.message,
-        attachments: quotation.attachments || [],
-        status: 'pending'
-      });
-      
-      // Update inquiry status to 'replied'
-      await storage.updateInquiry(inquiryId, { status: 'replied' });
-      
-      res.json({ success: true, quotation: createdQuotation });
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  });
+  // REMOVED: Admin quotation creation - now handled by suppliers
+  // app.post("/api/admin/inquiries/quotation", async (req, res) => {
+  //   res.status(410).json({ 
+  //     error: 'Admin quotation management has been removed. Quotations are now created by suppliers.',
+  //     redirect: '/api/suppliers/inquiry-quotations'
+  //   });
+  // });
 
-  // Get all quotations
-  app.get("/api/admin/quotations", async (req, res) => {
-    try {
-      const { status, search, type } = req.query;
-      
-      // Get both RFQ quotations and Inquiry quotations
-      const [rfqQuotations, inquiryQuotations] = await Promise.all([
-        storage.getQuotations(status ? { status: status as string } : {}),
-        storage.getInquiryQuotations()
-      ]);
-      
-      // Mark each quotation with its type and enhance with related data
-      const enhancedRfqQuotations = await Promise.all(
-        rfqQuotations.map(async (quotation: any) => {
-          quotation.type = 'rfq';
-          quotation.quotationId = quotation.id; // For consistency with inquiry quotations
-          
-          // Fetch RFQ details
-          try {
-            const rfq = await storage.getRfq(quotation.rfqId);
-            if (rfq) {
-              quotation.rfq = rfq;
-              quotation.rfqTitle = rfq.title;
-              quotation.quantity = rfq.quantity;
-              quotation.targetPrice = rfq.targetPrice;
-              
-              // Fetch buyer details
-              if (rfq.buyerId) {
-                const buyer = await storage.getUser(rfq.buyerId);
-                if (buyer) {
-                  quotation.buyer = buyer;
-                  quotation.buyerId = buyer.id;
-                  quotation.buyerName = `${buyer.firstName || ''} ${buyer.lastName || ''}`.trim() || buyer.email;
-                  quotation.buyerCompany = buyer.companyName;
-                  quotation.buyerEmail = buyer.email;
-                  quotation.buyerPhone = buyer.phone;
-                }
-              }
-              
-              // Fetch product details if productId exists
-              if (rfq.productId) {
-                try {
-                  const product = await db.select().from(products).where(eq(products.id, rfq.productId)).limit(1);
-                  if (product[0]) {
-                    quotation.product = product[0];
-                    quotation.productId = product[0].id;
-                    quotation.productName = product[0].name;
-                    quotation.productImages = product[0].images;
-                  }
-                } catch (err) {
-                  console.error('Error fetching product:', err);
-                }
-              }
-            }
-          } catch (err) {
-            console.error('Error enhancing RFQ quotation:', err);
-          }
-          
-          return quotation;
-        })
-      );
-      
-      // Mark inquiry quotations with type
-      const enhancedInquiryQuotations = inquiryQuotations.map((quotation: any) => {
-        quotation.type = 'inquiry';
-        return quotation;
-      });
-      
-      // Combine both types
-      let allQuotations = [...enhancedRfqQuotations, ...enhancedInquiryQuotations];
-      
-      // Filter by type if provided
-      if (type && type !== 'all') {
-        allQuotations = allQuotations.filter((q: any) => q.type === type);
-      }
-      
-      // Filter by status if provided
-      if (status && status !== 'all') {
-        allQuotations = allQuotations.filter((q: any) => q.status === status);
-      }
-      
-      // Search filter
-      if (search) {
-        const searchLower = (search as string).toLowerCase();
-        allQuotations = allQuotations.filter((q: any) => 
-          q.productName?.toLowerCase().includes(searchLower) ||
-          q.buyerName?.toLowerCase().includes(searchLower) ||
-          q.buyerCompany?.toLowerCase().includes(searchLower) ||
-          q.rfqTitle?.toLowerCase().includes(searchLower) ||
-          q.id?.toLowerCase().includes(searchLower)
-        );
-      }
-      
-      // Sort by created date (newest first)
-      allQuotations.sort((a: any, b: any) => {
-        const dateA = new Date(a.createdAt || 0).getTime();
-        const dateB = new Date(b.createdAt || 0).getTime();
-        return dateB - dateA;
-      });
-      
-      res.json({ quotations: allQuotations });
-    } catch (error: any) {
-      console.error('Error fetching admin quotations:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
+  // ==================== ADMIN QUOTATIONS (DEPRECATED - MOVED TO SUPPLIER MANAGEMENT) ====================
+  // NOTE: Admin quotation management is deprecated in the multivendor system.
+  // Quotations are now managed directly by suppliers.
+  // These routes remain for backward compatibility but should not be used in admin panel.
+  
+  // REMOVED: Admin quotations listing - now handled by suppliers
+  // app.get("/api/admin/quotations", async (req, res) => {
+  //   res.status(410).json({ 
+  //     error: 'Admin quotation management has been removed. Quotations are now managed by suppliers.',
+  //     redirect: '/api/suppliers/quotations'
+  //   });
+  // });
 
   // Get specific quotation for buyer (with permission check)
   app.get("/api/buyer/quotations/:id", async (req, res) => {
@@ -2317,109 +2950,19 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
     }
   });
 
-  // Accept inquiry quotation
+  // DEPRECATED: Inquiry quotation acceptance moved to supplier management
+  // Quotations are now managed by suppliers, not admin
   app.post("/api/inquiry-quotations/:id/accept", async (req, res) => {
     try {
-      console.log('=== ACCEPT INQUIRY QUOTATION API HIT ===');
-      console.log('Quotation ID:', req.params.id);
-      console.log('Request body:', req.body);
-      
-      const { shippingAddress } = req.body;
-      const quotationId = req.params.id;
-
-      // IMPORTANT: Get buyer ID from authenticated session
-      // @ts-ignore - req.user is added by auth middleware
-      const buyerId = req.user?.id;
-      
-      if (!buyerId) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
-      if (!shippingAddress) {
-        return res.status(400).json({ error: "Shipping address is required" });
-      }
-
-      // Get the inquiry quotation
-      const quotation = await storage.getInquiryQuotationWithDetails(quotationId);
-      if (!quotation) {
-        return res.status(404).json({ error: "Quotation not found" });
-      }
-
-      // Check if this quotation belongs to the authenticated buyer
-      if (quotation.buyerId && quotation.buyerId.toString() !== buyerId.toString()) {
-        return res.status(403).json({ error: "You don't have permission to accept this quotation" });
-      }
-
-      if (quotation.status !== 'pending') {
-        return res.status(400).json({ error: "Only pending quotations can be accepted" });
-      }
-
-      // Update quotation status to accepted
-      await storage.updateInquiryQuotation(quotationId, { 
-        status: 'accepted'
-      });
-
-      // Update inquiry status to closed
-      await storage.updateInquiry(quotation.inquiryId, { status: 'closed' });
-
-      // Create order
-      const order = await storage.createOrder({
-        orderNumber: `INQ-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        buyerId: buyerId,
-        inquiryId: quotation.inquiryId,
-        quotationId: quotationId,
-        productId: quotation.productId,
-        quantity: quotation.inquiryQuantity || quotation.quantity || 1,
-        unitPrice: quotation.pricePerUnit || '0',
-        totalAmount: quotation.totalPrice || '0',
-        items: JSON.stringify([{
-          productId: quotation.productId,
-          productName: quotation.productName,
-          quantity: quotation.inquiryQuantity || quotation.quantity || 1,
-          unitPrice: quotation.pricePerUnit || '0',
-          totalPrice: quotation.totalPrice || '0'
-        }]),
-        shippingAddress: JSON.stringify(shippingAddress),
-        status: 'pending',
-        notes: `Order created from quotation. Admin: ${quotation.supplierName || 'Admin'}. Message: ${quotation.message || ''}`
-      });
-
-      // Create notifications
-      await createNotification({
-        userId: buyerId,
-        type: 'success',
-        title: 'Quotation Accepted',
-        message: `Your quotation has been accepted and order #${order.orderNumber} has been created`,
-        relatedId: order.id,
-        relatedType: 'order'
-      });
-
-      // Get all admin users to notify them about new order
-      const adminUsers = await db
-        .select({ id: users.id })
-        .from(users)
-        .where(eq(users.role, 'admin'));
-
-      // Notify each admin about new order
-      for (const admin of adminUsers) {
-        await createNotification({
-          userId: admin.id,
-          type: 'info',
-          title: 'New Order Created',
-          message: `Order #${order.orderNumber} has been created from quotation ${quotationId}`,
-          relatedId: order.id,
-          relatedType: 'order'
-        });
-      }
-
-      res.json({ 
-        success: true, 
-        message: 'Quotation accepted and order created successfully!',
-        orderId: order.id
+      // Redirect to supplier quotation acceptance endpoint
+      return res.status(410).json({
+        error: 'Inquiry quotation acceptance has been moved to supplier management.',
+        message: 'Use /api/suppliers/inquiry-quotations/:id/accept for inquiry quotations',
+        redirect: `/api/suppliers/inquiry-quotations/${req.params.id}/accept`
       });
     } catch (error: any) {
-      console.error('Error accepting inquiry quotation:', error);
-      res.status(500).json({ error: error.message });
+      console.error('Error redirecting inquiry quotation acceptance:', error);
+      res.status(500).json({ error: 'Failed to redirect inquiry quotation acceptance' });
     }
   });
 
@@ -2601,78 +3144,25 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
     }
   });
 
-  // Get specific quotation (handles both RFQ and Inquiry quotations)
-  app.get("/api/admin/quotations/:id", async (req, res) => {
-    try {
-      // Try to get as inquiry quotation first
-      let quotation: any = await storage.getInquiryQuotation(req.params.id);
-      if (quotation) {
-        quotation.type = 'inquiry';
-        return res.json(quotation);
-      }
-      
-      // If not found, try as RFQ quotation
-      quotation = await storage.getQuotation(req.params.id);
-      if (quotation) {
-        quotation = { ...quotation, type: 'rfq' };
-        return res.json(quotation);
-      }
-      
-      return res.status(404).json({ error: "Quotation not found" });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
+  // REMOVED: Admin quotation details - now handled by suppliers
+  // app.get("/api/admin/quotations/:id", async (req, res) => {
+  //   res.status(410).json({ 
+  //     error: 'Admin quotation management has been removed. Quotations are now managed by suppliers.',
+  //     redirect: '/api/suppliers/quotations'
+  //   });
+  // });
 
-  // Update quotation (handles both types)
-  app.patch("/api/admin/quotations/:id", async (req, res) => {
-    try {
-      const adminId = (req as any).user?.id;
-      const adminName = (req as any).user?.firstName || (req as any).user?.email || 'Admin';
-      
-      // Try to update as inquiry quotation first
-      let quotation: any = await storage.updateInquiryQuotation(req.params.id, req.body);
-      if (quotation) {
-        // Create activity log
-        await createActivityLog({
-          adminId,
-          adminName,
-          action: 'Updated Quotation',
-          description: `Updated inquiry quotation ${req.params.id}`,
-          entityType: 'quotation',
-          entityId: req.params.id,
-          entityName: `Quotation ${req.params.id}`,
-          ipAddress: req.ip,
-          userAgent: req.get('User-Agent')
-        });
-        return res.json(quotation);
-      }
-      
-      // If not found, try as RFQ quotation
-      quotation = await storage.updateQuotation(req.params.id, req.body);
-      if (quotation) {
-      // Create activity log
-      await createActivityLog({
-        adminId,
-        adminName,
-        action: 'Updated Quotation',
-          description: `Updated RFQ quotation ${req.params.id}`,
-        entityType: 'quotation',
-        entityId: req.params.id,
-        entityName: `Quotation ${req.params.id}`,
-        ipAddress: req.ip,
-        userAgent: req.get('User-Agent')
-      });
-        return res.json(quotation);
-      }
-      
-      return res.status(404).json({ error: "Quotation not found" });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
+  // REMOVED: Admin quotation update - now handled by suppliers
+  // app.patch("/api/admin/quotations/:id", async (req, res) => {
+  //   res.status(410).json({ 
+  //     error: 'Admin quotation management has been removed. Quotations are now updated by suppliers.',
+  //     redirect: '/api/suppliers/quotations/:id'
+  //   });
+  // });
 
-  // ==================== INQUIRY REVISION & NEGOTIATION ROUTES ====================
+  // ==================== INQUIRY REVISION & NEGOTIATION ROUTES (DEPRECATED) ====================
+  // NOTE: Inquiry negotiation is now handled directly between suppliers and buyers.
+  // Admin no longer manages inquiry revisions in the multivendor system.
 
   // Get inquiry revisions (negotiation history)
   app.get("/api/inquiries/:id/revisions", async (req, res) => {
@@ -2724,105 +3214,26 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
     }
   });
 
-  // Admin creates revised quotation
-  app.post("/api/admin/inquiries/:id/revised-quotation", async (req, res) => {
-    try {
-      console.log('Received revised quotation request:', req.body);
-      const { quotation } = req.body;
-      
-      if (!quotation) {
-        console.log('No quotation data provided');
-        return res.status(400).json({ error: "Quotation data is required" });
-      }
-      
-      console.log('Quotation data:', quotation);
-      
-      // Validate required fields
-      if (!quotation.pricePerUnit || !quotation.totalPrice || !quotation.moq) {
-        return res.status(400).json({ error: "Missing required fields: pricePerUnit, totalPrice, moq" });
-      }
-      
-      // Create new quotation
-      const createdQuotation = await storage.createInquiryQuotation({
-        inquiryId: req.params.id,
-        pricePerUnit: quotation.pricePerUnit ? quotation.pricePerUnit.toString() : null,
-        totalPrice: quotation.totalPrice ? quotation.totalPrice.toString() : null,
-        moq: quotation.moq,
-        leadTime: quotation.leadTime,
-        paymentTerms: quotation.paymentTerms,
-        validUntil: quotation.validUntil ? new Date(quotation.validUntil) : null,
-        message: quotation.message,
-        attachments: quotation.attachments || [],
-        status: 'pending'
-      });
-      
-      // Update inquiry status to 'replied'
-      await storage.updateInquiryStatus(req.params.id, 'replied');
-      
-      console.log('Revised quotation created successfully:', createdQuotation);
-      res.json({ success: true, quotation: createdQuotation });
-    } catch (error: any) {
-      console.error('Error creating revised quotation:', error);
-      res.status(400).json({ error: error.message });
-    }
-  });
+  // REMOVED: Admin revised quotation creation - now handled by suppliers
+  // app.post("/api/admin/inquiries/:id/revised-quotation", async (req, res) => {
+  //   res.status(410).json({ 
+  //     error: 'Admin quotation management has been removed. Revised quotations are now created by suppliers.',
+  //     redirect: '/api/suppliers/inquiry-quotations'
+  //   });
+  // });
 
-  // ==================== RFQ QUOTATION NEGOTIATION ROUTES ====================
+  // ==================== RFQ QUOTATION NEGOTIATION ROUTES (DEPRECATED) ====================
+  // NOTE: RFQ quotation negotiation is now handled directly between suppliers and buyers.
+  // Admin no longer creates or manages RFQ quotations in the multivendor system.
+  // These routes remain for backward compatibility but should not be used in admin panel.
 
-  // Admin creates revised RFQ quotation (creates a new quotation for the RFQ)
-  app.post("/api/admin/rfqs/:rfqId/revised-quotation", async (req, res) => {
-    try {
-      if (!req.user || req.user.role !== 'admin') {
-        return res.status(403).json({ error: "Unauthorized: Only admins can create quotations." });
-      }
-      
-      const supplierId = req.user.id;
-      const { rfqId } = req.params;
-      const { pricePerUnit, totalPrice, moq, leadTime, paymentTerms, validUntil, message, attachments } = req.body;
-      
-      // Validate required fields
-      if (!pricePerUnit || !totalPrice || !moq) {
-        return res.status(400).json({ error: "Missing required fields: pricePerUnit, totalPrice, moq" });
-      }
-      
-      // Get the RFQ to verify it exists
-      const rfq = await storage.getRfq(rfqId);
-      if (!rfq) {
-        return res.status(404).json({ error: "RFQ not found" });
-      }
-      
-      // Create new quotation for this RFQ
-      const quotationData = {
-        rfqId,
-        supplierId,
-        pricePerUnit: pricePerUnit.toString(),
-        totalPrice: totalPrice.toString(),
-        moq: parseInt(moq),
-        leadTime: leadTime || null,
-        paymentTerms: paymentTerms || null,
-        validUntil: validUntil ? new Date(validUntil) : null,
-        message: message || null,
-        attachments: attachments || [],
-        status: 'pending'
-      };
-      
-      const validatedData = insertQuotationSchema.parse(quotationData);
-      const createdQuotation = await storage.createQuotation(validatedData);
-      
-      // Increment RFQ quotation count
-      await storage.incrementRfqQuotationCount(rfqId);
-      
-      // Update RFQ status to negotiating if not already
-      if (rfq.status === 'open') {
-        await storage.updateRfq(rfqId, { status: 'open' }); // Keep open, or change logic as needed
-      }
-      
-      res.json({ success: true, quotation: createdQuotation });
-    } catch (error: any) {
-      console.error('Error creating revised RFQ quotation:', error);
-      res.status(400).json({ error: error.message });
-    }
-  });
+  // REMOVED: Admin RFQ revised quotation creation - now handled by suppliers
+  // app.post("/api/admin/rfqs/:rfqId/revised-quotation", async (req, res) => {
+  //   res.status(410).json({ 
+  //     error: 'Admin RFQ quotation management has been removed. RFQ quotations are now created by suppliers.',
+  //     redirect: '/api/suppliers/quotations'
+  //   });
+  // });
 
   // Get RFQ quotation history (all quotations for a specific RFQ)
   app.get("/api/rfqs/:rfqId/quotations", async (req, res) => {
@@ -3039,100 +3450,17 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
     }
   });
 
-  // Admin create order from accepted quotation (Step 2: Admin creates order)
+  // ==================== ADMIN ORDER CREATION FROM QUOTATION (DEPRECATED) ====================
+  // NOTE: Order creation from quotations is now handled directly by suppliers in the multivendor system.
+  // This route remains for backward compatibility but should not be used in admin panel.
+  
+  // DEPRECATED: Admin order creation is now handled by suppliers
+  // This endpoint is kept for backward compatibility but should not be used
   app.post("/api/admin/orders/create-from-quotation", async (req, res) => {
-    try {
-      const { quotationId } = req.body;
-      
-      if (!quotationId) {
-        return res.status(400).json({ error: "Quotation ID is required" });
-      }
-
-      // First try to get as inquiry quotation
-      let quotation = await storage.getInquiryQuotationWithDetails(quotationId);
-      let quotationType = 'inquiry';
-      
-      // If not found, try as RFQ quotation
-      if (!quotation) {
-        quotation = await storage.getQuotation(quotationId);
-        if (quotation) {
-          // Get RFQ details for RFQ quotation
-          const rfq = await storage.getRfq(quotation.rfqId);
-          if (rfq) {
-            quotation = {
-              ...quotation,
-              buyerId: rfq.buyerId,
-              productName: 'Custom Product',
-              productId: null,
-              inquiryId: null,
-              rfqId: quotation.rfqId
-            };
-            quotationType = 'rfq';
-          }
-        }
-      }
-      
-      if (!quotation) {
-        return res.status(404).json({ error: "Quotation not found" });
-      }
-
-      if (quotation.status !== 'accepted') {
-        return res.status(400).json({ error: "Only accepted quotations can be converted to orders" });
-      }
-
-      // Create order with items array using quotation data
-      const orderItems = [{
-        productId: quotation.productId || 'custom',
-        productName: quotation.productName || 'Custom Product',
-        quantity: quotation.moq,
-        unitPrice: parseFloat(quotation.pricePerUnit.toString()),
-        totalPrice: parseFloat(quotation.totalPrice.toString())
-      }];
-
-      const orderData = {
-        buyerId: quotation.buyerId,
-        productId: quotation.productId || null,
-        quantity: quotation.moq,
-        unitPrice: quotation.pricePerUnit,
-        totalAmount: quotation.totalPrice,
-        paymentMethod: quotation.paymentTerms || 'T/T',
-        paymentStatus: 'pending',
-        status: 'pending_approval', // New status: waiting for user approval
-        shippingAddress: quotation.message?.includes('Shipping Address:') 
-          ? quotation.message.split('Shipping Address:')[1]?.split('\n')[0]?.trim() 
-          : 'Address to be provided',
-        orderNumber: `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-        inquiryId: quotationType === 'inquiry' ? quotation.inquiryId : null,
-        rfqId: quotationType === 'rfq' ? quotation.rfqId : null,
-        quotationId,
-        items: orderItems,
-        notes: 'Order created by admin from accepted quotation. Waiting for buyer approval.'
-      } as any;
-
-      const order = await storage.createOrder(orderData);
-
-      // Update quotation to link to the created order
-      if (quotationType === 'inquiry') {
-        await storage.updateInquiryQuotation(quotationId, { 
-          status: 'order_created',
-          message: quotation.message + `\n\nOrder Created: ${order.orderNumber}`
-        });
-      } else {
-        await storage.updateQuotation(quotationId, { 
-          status: 'order_created',
-          message: quotation.message + `\n\nOrder Created: ${order.orderNumber}`
-        });
-      }
-
-      res.status(201).json({ 
-        success: true, 
-        message: 'Order created successfully. Waiting for buyer approval.',
-        order 
-      });
-    } catch (error: any) {
-      console.error('Error creating order from quotation:', error);
-      res.status(500).json({ error: error.message });
-    }
+    res.status(410).json({ 
+      error: "This endpoint is deprecated. Orders are now created directly when quotations are accepted and managed by suppliers.",
+      message: "Please use the new supplier-managed order workflow."
+    });
   });
 
   // User accept order (Step 3: User accepts the order created by admin)
@@ -3203,37 +3531,97 @@ app.post("/api/products/bulk-excel", uploadUnrestricted.array('images'), async (
     }
   });
 
-  // Admin Orders API
+  // DEPRECATED: Admin order management is now handled by suppliers
+  // Admin can only view orders for oversight, not manage them directly
   app.get("/api/admin/orders", async (req, res) => {
     try {
-      const { status, search } = req.query;
-      const filters: any = {};
-      
-      if (status && status !== 'all') {
-        filters.status = status as string;
+      if (!req.user || req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Access denied. Admin role required.' });
       }
-      
+
+      const { status, search, supplierId, limit, offset } = req.query;
+
+      // Build query for admin oversight (read-only)
+      let query = db.select({
+        id: orders.id,
+        orderNumber: orders.orderNumber,
+        buyerId: orders.buyerId,
+        supplierId: orders.supplierId,
+        totalAmount: orders.totalAmount,
+        status: orders.status,
+        paymentStatus: orders.paymentStatus,
+        createdAt: orders.createdAt,
+        updatedAt: orders.updatedAt,
+        // Buyer info
+        buyerName: users.firstName,
+        buyerLastName: users.lastName,
+        buyerEmail: users.email,
+        // Supplier info
+        supplierName: supplierProfiles.businessName,
+        storeName: supplierProfiles.storeName
+      })
+      .from(orders)
+      .leftJoin(users, eq(orders.buyerId, users.id))
+      .leftJoin(supplierProfiles, eq(orders.supplierId, supplierProfiles.id));
+
+      const conditions = [];
+
+      if (status) {
+        conditions.push(eq(orders.status, status as string));
+      }
+      if (supplierId) {
+        conditions.push(eq(orders.supplierId, supplierId as string));
+      }
       if (search) {
-        filters.search = search as string;
+        conditions.push(
+          or(
+            ilike(orders.orderNumber, `%${search}%`),
+            ilike(users.firstName, `%${search}%`),
+            ilike(users.lastName, `%${search}%`),
+            ilike(supplierProfiles.businessName, `%${search}%`)
+          )
+        );
       }
-      
-      const orders = await storage.getAdminOrders(filters);
-      res.json({ orders });
+
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
+
+      query = query.orderBy(desc(orders.createdAt));
+
+      if (limit) {
+        query = query.limit(parseInt(limit as string));
+      }
+      if (offset) {
+        query = query.offset(parseInt(offset as string));
+      }
+
+      const adminOrders = await query;
+
+      // Get total count
+      let countQuery = db.select({ count: sql`count(*)` }).from(orders);
+      if (conditions.length > 0) {
+        countQuery = countQuery.where(and(...conditions));
+      }
+      const [{ count }] = await countQuery;
+
+      res.json({ 
+        success: true,
+        orders: adminOrders,
+        total: parseInt(count as string),
+        message: "Admin can view orders for oversight. Order management is handled by suppliers."
+      });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
+  // DEPRECATED: Admin order updates are now handled by suppliers
   app.patch("/api/admin/orders/:id", async (req, res) => {
-    try {
-      const order = await storage.updateOrder(req.params.id, req.body);
-      if (!order) {
-        return res.status(404).json({ error: "Order not found" });
-      }
-      res.json(order);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
+    res.status(410).json({ 
+      error: "Direct admin order management is deprecated. Orders are now managed by suppliers.",
+      message: "Suppliers handle order status updates, tracking, and fulfillment through their dashboard."
+    });
   });
 
   // ==================== CONVERSATIONS ====================

@@ -13,7 +13,7 @@ export const users = pgTable("users", {
   lastName: text("last_name"),
   companyName: text("company_name"),
   phone: text("phone"),
-  role: text("role").notNull().default("buyer"), // buyer, admin (supplier role replaced with admin)
+  role: text("role").notNull().default("buyer"), // buyer, admin, supplier
   emailVerified: boolean("email_verified").default(false),
   isActive: boolean("is_active").default(true),
   isOnline: boolean("is_online").default(false),
@@ -54,6 +54,74 @@ export const insertBuyerProfileSchema = createInsertSchema(buyerProfiles).omit({
 export type InsertBuyerProfile = z.infer<typeof insertBuyerProfileSchema>;
 export type BuyerProfile = typeof buyerProfiles.$inferSelect;
 
+// ==================== SUPPLIER PROFILES ====================
+
+export const supplierProfiles = pgTable("supplier_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().unique(),
+  businessName: text("business_name").notNull(),
+  businessType: text("business_type").notNull(), // 'manufacturer', 'trading_company', 'wholesaler'
+  storeName: text("store_name").notNull().unique(),
+  storeSlug: text("store_slug").notNull().unique(),
+  storeDescription: text("store_description"),
+  storeLogo: text("store_logo"),
+  storeBanner: text("store_banner"),
+  
+  // Contact Information
+  contactPerson: text("contact_person").notNull(),
+  position: text("position"),
+  phone: text("phone").notNull(),
+  whatsapp: text("whatsapp"),
+  address: text("address").notNull(),
+  city: text("city").notNull(),
+  country: text("country").notNull(),
+  website: text("website"),
+  
+  // Business Details
+  yearEstablished: integer("year_established"),
+  employeesCount: text("employees_count"),
+  annualRevenue: text("annual_revenue"),
+  mainProducts: text("main_products").array(),
+  exportMarkets: text("export_markets").array(),
+  
+  // Verification & Status
+  verificationLevel: text("verification_level").default("none"), // 'none', 'basic', 'business', 'premium'
+  verificationDocuments: json("verification_documents"),
+  isVerified: boolean("is_verified").default(false),
+  verifiedAt: timestamp("verified_at"),
+  
+  // Performance Metrics
+  rating: decimal("rating").default("0"),
+  totalReviews: integer("total_reviews").default(0),
+  responseRate: decimal("response_rate").default("0"),
+  responseTime: text("response_time"), // '< 2 hours'
+  totalSales: decimal("total_sales").default("0"),
+  totalOrders: integer("total_orders").default(0),
+  
+  // Status
+  status: text("status").default("pending"), // 'pending', 'approved', 'rejected', 'suspended'
+  isActive: boolean("is_active").default(false),
+  isFeatured: boolean("is_featured").default(false),
+  
+  // Commission
+  commissionRate: decimal("commission_rate"), // Override default platform commission
+  
+  // Store Settings
+  storePolicies: json("store_policies"),
+  operatingHours: json("operating_hours"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertSupplierProfileSchema = createInsertSchema(supplierProfiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSupplierProfile = z.infer<typeof insertSupplierProfileSchema>;
+export type SupplierProfile = typeof supplierProfiles.$inferSelect;
 
 // ==================== CATEGORIES ====================
 
@@ -130,6 +198,13 @@ export const products = pgTable("products", {
   sku: text("sku"),
   metaData: json("meta_data"),
   
+  // Supplier Management
+  supplierId: varchar("supplier_id"),
+  approvalStatus: text("approval_status").default("pending"), // 'pending', 'approved', 'rejected'
+  approvedBy: varchar("approved_by"), // admin_id
+  approvedAt: timestamp("approved_at"),
+  rejectionReason: text("rejection_reason"),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -149,6 +224,7 @@ export const rfqs = pgTable("rfqs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   buyerId: varchar("buyer_id").notNull(),
   productId: varchar("product_id"), // Product-specific RFQ
+  supplierId: varchar("supplier_id"), // Direct routing to supplier
   title: text("title").notNull(),
   categoryId: varchar("category_id"),
   description: text("description").notNull(),
@@ -176,7 +252,8 @@ export type Rfq = typeof rfqs.$inferSelect;
 export const quotations = pgTable("quotations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   rfqId: varchar("rfq_id").notNull(),
-  supplierId: varchar("supplier_id").notNull(), // Admin is the supplier
+  adminId: varchar("admin_id"), // Legacy admin reference for migration
+  supplierId: varchar("supplier_id"), // New supplier reference
   pricePerUnit: decimal("price_per_unit", { precision: 10, scale: 2 }).notNull(),
   totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
   moq: integer("moq").notNull(),
@@ -203,6 +280,7 @@ export const inquiries = pgTable("inquiries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   productId: varchar("product_id").notNull(),
   buyerId: varchar("buyer_id").notNull(),
+  supplierId: varchar("supplier_id"), // Direct routing to supplier
   quantity: integer("quantity").notNull(),
   targetPrice: decimal("target_price", { precision: 10, scale: 2 }),
   message: text("message"),
@@ -224,6 +302,7 @@ export type Inquiry = typeof inquiries.$inferSelect;
 export const inquiryQuotations = pgTable("inquiry_quotations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   inquiryId: varchar("inquiry_id").notNull(),
+  supplierId: varchar("supplier_id"), // Supplier creating the quotation
   pricePerUnit: decimal("price_per_unit", { precision: 10, scale: 2 }).notNull(),
   totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
   moq: integer("moq").notNull(),
@@ -305,11 +384,58 @@ export const insertOrderSchema = createInsertSchema(orders).omit({
 export type InsertOrder = z.infer<typeof insertOrderSchema>;
 export type Order = typeof orders.$inferSelect;
 
+// ==================== COMMISSIONS ====================
+
+export const commissions = pgTable("commissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orderId: varchar("order_id").notNull(),
+  supplierId: varchar("supplier_id").notNull(),
+  orderAmount: decimal("order_amount").notNull(),
+  commissionRate: decimal("commission_rate").notNull(),
+  commissionAmount: decimal("commission_amount").notNull(),
+  supplierAmount: decimal("supplier_amount").notNull(),
+  status: text("status").default("pending"), // 'pending', 'paid', 'disputed'
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertCommissionSchema = createInsertSchema(commissions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCommission = z.infer<typeof insertCommissionSchema>;
+export type Commission = typeof commissions.$inferSelect;
+
+// ==================== PAYOUTS ====================
+
+export const payouts = pgTable("payouts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  supplierId: varchar("supplier_id").notNull(),
+  amount: decimal("amount").notNull(),
+  commissionDeducted: decimal("commission_deducted").notNull(),
+  netAmount: decimal("net_amount").notNull(),
+  payoutMethod: text("payout_method"), // 'bank_transfer', 'paypal'
+  status: text("status").default("pending"), // 'pending', 'processing', 'completed', 'failed'
+  scheduledDate: timestamp("scheduled_date"),
+  processedDate: timestamp("processed_date"),
+  transactionId: text("transaction_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPayoutSchema = createInsertSchema(payouts).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPayout = z.infer<typeof insertPayoutSchema>;
+export type Payout = typeof payouts.$inferSelect;
+
 // ==================== CONVERSATIONS ====================
 
 export const conversations = pgTable("conversations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   buyerId: varchar("buyer_id").notNull(),
+  supplierId: varchar("supplier_id"), // Supplier in conversation
   unreadCountAdmin: varchar("unread_count_admin").notNull(), // This is actually adminId in existing table
   lastMessage: text("last_message"),
   lastMessageAt: timestamp("last_message_at"),

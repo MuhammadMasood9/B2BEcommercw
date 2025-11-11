@@ -163,9 +163,9 @@ export default function MyOrders() {
   };
 
   const filteredOrders = orders.filter((order: any) =>
-    order.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    order.supplierName.toLowerCase().includes(searchQuery.toLowerCase())
+    (order.productName?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+    (order.orderNumber?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+    (order.supplierName?.toLowerCase() || '').includes(searchQuery.toLowerCase())
   );
 
   const pendingOrders = filteredOrders.filter((order: any) => order.status === "pending");

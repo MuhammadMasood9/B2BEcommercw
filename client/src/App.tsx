@@ -71,6 +71,9 @@ import AdminBulkUpload from "@/pages/admin/AdminBulkUpload";
 import AdminCategories from "@/pages/admin/AdminCategories";
 import AdminCustomers from "@/pages/admin/AdminCustomers";
 import AdminOrders from "@/pages/admin/AdminOrders";
+import AdminCommissions from "@/pages/admin/AdminCommissions";
+import AdminPayouts from "@/pages/admin/AdminPayouts";
+import AdminCommissionPayments from "@/pages/admin/AdminCommissionPayments";
 import AdminOrderManagement from "@/pages/admin/AdminOrderManagement";
 import BuyerOrderManagement from "@/pages/buyer/BuyerOrderManagement";
 import OrderDetail from "@/pages/buyer/OrderDetail";
@@ -89,6 +92,8 @@ import FloatingActionButtons from "@/components/FloatingActionButtons";
 import NotificationPage from "@/pages/buyer/NotificationPage";
 import ProfilePage from "@/pages/buyer/ProfilePage";
 import SupplierDashboard from "@/pages/supplier/SupplierDashboard";
+import SupplierCommissionPayment from "@/pages/supplier/SupplierCommissionPayment";
+import SupplierPaymentHistory from "@/pages/supplier/SupplierPaymentHistory";
 import SupplierDirectory from "@/pages/SupplierDirectory";
 import SupplierStore from "@/pages/SupplierStore";
 import TestSupplierStore from "@/pages/TestSupplierStore";
@@ -104,6 +109,7 @@ import SupplierProducts from "@/pages/supplier/SupplierProducts";
 import SupplierInquiries from "@/pages/supplier/SupplierInquiries";
 import SupplierRFQs from "@/pages/supplier/SupplierRFQs";
 import SupplierQuotations from "@/pages/supplier/SupplierQuotations";
+import SupplierNegotiations from "@/pages/supplier/SupplierNegotiations";
 import SupplierOrders from "@/pages/supplier/SupplierOrders";
 import SupplierAnalytics from "@/pages/supplier/SupplierAnalytics";
 import SupplierStoreManagement from "@/pages/supplier/SupplierStore";
@@ -189,6 +195,23 @@ function AdminRouter() {
           <AdminOrders />
         </ProtectedRoute>
       </Route>
+      <Route path="/admin/commissions">
+        <ProtectedRoute requiredRole="admin">
+          <AdminCommissions />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/admin/payouts">
+        <ProtectedRoute requiredRole="admin">
+          <AdminPayouts />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/admin/commission-payments">
+        <ProtectedRoute requiredRole="admin">
+          <AdminCommissionPayments />
+        </ProtectedRoute>
+      </Route>
       <Route path="/admin/customers">
         <ProtectedRoute requiredRole="admin">
           <AdminCustomers />
@@ -249,6 +272,18 @@ function SupplierRouter() {
           <SupplierDashboard />
         </ProtectedRoute>
       </Route>
+
+      <Route path="/supplier/commission-payment">
+        <ProtectedRoute requiredRole="supplier">
+          <SupplierCommissionPayment />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/supplier/payment-history">
+        <ProtectedRoute requiredRole="supplier">
+          <SupplierPaymentHistory />
+        </ProtectedRoute>
+      </Route>
       <Route path="/supplier/products">
         <ProtectedRoute requiredRole="supplier">
           <SupplierProducts />
@@ -267,6 +302,11 @@ function SupplierRouter() {
       <Route path="/supplier/quotations">
         <ProtectedRoute requiredRole="supplier">
           <SupplierQuotations />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/supplier/negotiations">
+        <ProtectedRoute requiredRole="supplier">
+          <SupplierNegotiations />
         </ProtectedRoute>
       </Route>
       <Route path="/supplier/orders">
@@ -451,18 +491,18 @@ function AppContent() {
   const [location] = useLocation();
   const isAdminRoute = location.startsWith('/admin');
   const isSupplierRoute = location.startsWith('/supplier') && location !== '/suppliers';
-  
+
   // Ensure loader starts in non-loading state
   React.useEffect(() => {
     setLoading(false);
   }, []);
-  
+
   if (isAdminRoute) {
     const style = {
       "--sidebar-width": "16rem",
       "--sidebar-width-icon": "3rem",
     };
-    
+
     return (
       <>
         <SidebarProvider style={style as React.CSSProperties}>
@@ -479,7 +519,7 @@ function AppContent() {
             </div>
           </div>
         </SidebarProvider>
-        <FullScreenLoader 
+        <FullScreenLoader
           isLoading={isLoading}
           message={loadingMessage}
           showProgress={showProgress}
@@ -493,13 +533,13 @@ function AppContent() {
       </>
     );
   }
-  
+
   if (isSupplierRoute) {
     const style = {
       "--sidebar-width": "16rem",
       "--sidebar-width-icon": "3rem",
     };
-    
+
     return (
       <>
         <SidebarProvider style={style as React.CSSProperties}>
@@ -516,7 +556,7 @@ function AppContent() {
             </div>
           </div>
         </SidebarProvider>
-        <FullScreenLoader 
+        <FullScreenLoader
           isLoading={isLoading}
           message={loadingMessage}
           showProgress={showProgress}
@@ -529,14 +569,14 @@ function AppContent() {
       </>
     );
   }
-  
+
   return (
     <>
       <ScrollToTop />
       <PublicRouter />
       <EnhancedB2BAssistant />
       <FloatingActionButtons chatType="general" />
-      <FullScreenLoader 
+      <FullScreenLoader
         isLoading={isLoading}
         message={loadingMessage}
         showProgress={showProgress}

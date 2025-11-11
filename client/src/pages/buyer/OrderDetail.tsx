@@ -186,6 +186,34 @@ export default function OrderDetail() {
     }
   });
 
+  // Mark as paid mutation
+  const markAsPaidMutation = useMutation({
+    mutationFn: async (orderId: string) => {
+      const response = await fetch(`/api/buyer/orders/${orderId}/mark-paid`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to mark order as paid');
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Payment confirmed",
+        description: "Order has been marked as paid. Commission will be calculated."
+      });
+      queryClient.invalidateQueries({ queryKey: ['order', params?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/buyer/orders'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to update payment status",
+        description: error.message || "Please try again later.",
+        variant: "destructive"
+      });
+    }
+  });
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'pending': return <Clock className="w-4 h-4" />;
@@ -593,9 +621,15 @@ export default function OrderDetail() {
                 <CardContent className="space-y-3">
                   <div>
                     <Label className="text-sm text-gray-600">Payment Status</Label>
-                    <Badge className="bg-green-100 text-green-800">
+                    <Badge className={
+                      order.paymentStatus === 'paid' 
+                        ? 'bg-green-100 text-green-800' 
+                        : order.paymentStatus === 'failed'
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-yellow-100 text-yellow-800'
+                    }>
                       <CreditCard className="w-3 h-3 mr-1" />
-                      {order.paymentStatus || 'Paid'}
+                      {order.paymentStatus || 'Pending'}
                     </Badge>
                   </div>
                   <div>
@@ -606,6 +640,26 @@ export default function OrderDetail() {
                     <Label className="text-sm text-gray-600">Total Amount</Label>
                     <p className="font-medium text-green-600">${parseFloat(order.totalAmount || '0').toLocaleString()}</p>
                   </div>
+                  
+                  {order.paymentStatus === 'pending' && (
+                    <Button 
+                      onClick={() => markAsPaidMutation.mutate(order.id)}
+                      disabled={markAsPaidMutation.isPending}
+                      className="w-full bg-green-600 hover:bg-green-700"
+                    >
+                      {markAsPaidMutation.isPending ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-4 h-4 mr-2" />
+                          Mark as Paid
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             </div>

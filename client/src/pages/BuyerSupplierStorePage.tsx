@@ -294,11 +294,11 @@ export default function BuyerSupplierStorePage() {
           className="w-full h-full object-cover opacity-60"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-        
+
         {/* Back Button */}
         <div className="absolute top-6 left-6">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => setLocation("/suppliers")}
             className="bg-white/10 border-white/20 text-white hover:bg-white/20"
           >
@@ -358,7 +358,7 @@ export default function BuyerSupplierStorePage() {
                 </Badge>
               )}
             </div>
-            
+
             <div className="flex items-center gap-3">
               <Button variant="outline" size="sm" onClick={handleFavorite}>
                 <Heart className="w-4 h-4 mr-2" />
@@ -444,7 +444,7 @@ export default function BuyerSupplierStorePage() {
                       className="pl-10"
                     />
                   </div>
-                  
+
                   {categories.length > 0 && (
                     <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                       <SelectTrigger className="w-full lg:w-[200px]">
@@ -492,7 +492,7 @@ export default function BuyerSupplierStorePage() {
                     <Package className="w-4 h-4 mr-2" />
                     In Stock Only
                   </Button>
-                  
+
                   {(searchQuery || selectedCategory !== "all" || showFeaturedOnly || showInStockOnly) && (
                     <Button
                       variant="ghost"
@@ -587,7 +587,7 @@ export default function BuyerSupplierStorePage() {
                       {supplier.storeDescription && (
                         <p className="text-muted-foreground mb-6">{supplier.storeDescription}</p>
                       )}
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-4">
                           <div>
@@ -605,7 +605,7 @@ export default function BuyerSupplierStorePage() {
                             </div>
                           )}
                         </div>
-                        
+
                         <div className="space-y-4">
                           <div>
                             <div className="font-medium text-sm text-muted-foreground">Location</div>
@@ -673,7 +673,7 @@ export default function BuyerSupplierStorePage() {
 
                 {/* Trust Indicators Sidebar */}
                 <div className="lg:col-span-1">
-                  <TrustIndicators 
+                  <TrustIndicators
                     supplier={supplier}
                     variant="detailed"
                   />
@@ -683,7 +683,7 @@ export default function BuyerSupplierStorePage() {
 
             {/* Reviews Tab */}
             <TabsContent value="reviews">
-              <SupplierReviews 
+              <SupplierReviews
                 supplierId={supplier.id}
                 supplierName={supplier.storeName}
               />
@@ -710,7 +710,7 @@ export default function BuyerSupplierStorePage() {
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="flex items-start gap-3">
                       <Phone className="w-5 h-5 text-muted-foreground mt-0.5" />
                       <div>
@@ -734,9 +734,9 @@ export default function BuyerSupplierStorePage() {
                         <Globe className="w-5 h-5 text-muted-foreground mt-0.5" />
                         <div>
                           <div className="font-medium">Website</div>
-                          <a 
-                            href={supplier.website} 
-                            target="_blank" 
+                          <a
+                            href={supplier.website}
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="text-primary hover:underline"
                           >

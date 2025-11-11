@@ -106,6 +106,13 @@ export const supplierProfiles = pgTable("supplier_profiles", {
   // Commission
   commissionRate: decimal("commission_rate"), // Override default platform commission
   
+  // Commission Credit & Restrictions
+  commissionCreditLimit: decimal("commission_credit_limit").default("1000.00"), // Max unpaid commission allowed
+  totalUnpaidCommission: decimal("total_unpaid_commission").default("0.00"), // Current unpaid amount
+  isRestricted: boolean("is_restricted").default(false), // Account restricted when limit exceeded
+  lastPaymentDate: timestamp("last_payment_date"),
+  paymentReminderSentAt: timestamp("payment_reminder_sent_at"),
+  
   // Store Settings
   storePolicies: json("store_policies"),
   operatingHours: json("operating_hours"),
@@ -394,7 +401,13 @@ export const commissions = pgTable("commissions", {
   commissionRate: decimal("commission_rate").notNull(),
   commissionAmount: decimal("commission_amount").notNull(),
   supplierAmount: decimal("supplier_amount").notNull(),
-  status: text("status").default("pending"), // 'pending', 'paid', 'disputed'
+  status: text("status").default("unpaid"), // 'unpaid', 'payment_submitted', 'paid', 'disputed'
+  paymentProofUrl: text("payment_proof_url"),
+  paymentTransactionId: text("payment_transaction_id"),
+  paymentDate: timestamp("payment_date"),
+  paymentSubmittedAt: timestamp("payment_submitted_at"),
+  paymentVerifiedBy: varchar("payment_verified_by"),
+  paymentVerifiedAt: timestamp("payment_verified_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -429,6 +442,71 @@ export const insertPayoutSchema = createInsertSchema(payouts).omit({
 
 export type InsertPayout = z.infer<typeof insertPayoutSchema>;
 export type Payout = typeof payouts.$inferSelect;
+
+// ==================== COMMISSION PAYMENTS ====================
+
+export const commissionPayments = pgTable("commission_payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  supplierId: varchar("supplier_id").notNull(),
+  amount: decimal("amount").notNull(),
+  paymentMethod: text("payment_method").notNull(), // 'bank_transfer', 'paypal', 'stripe'
+  paymentProofUrl: text("payment_proof_url"),
+  transactionId: text("transaction_id"),
+  paymentDate: timestamp("payment_date").notNull(),
+  status: text("status").default("pending"), // 'pending', 'verified', 'rejected'
+  notes: text("notes"),
+  verifiedBy: varchar("verified_by"),
+  verifiedAt: timestamp("verified_at"),
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCommissionPaymentSchema = createInsertSchema(commissionPayments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCommissionPayment = z.infer<typeof insertCommissionPaymentSchema>;
+export type CommissionPayment = typeof commissionPayments.$inferSelect;
+
+// ==================== COMMISSION PAYMENT ITEMS ====================
+
+export const commissionPaymentItems = pgTable("commission_payment_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  paymentId: varchar("payment_id").notNull(),
+  commissionId: varchar("commission_id").notNull(),
+  amount: decimal("amount").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertCommissionPaymentItemSchema = createInsertSchema(commissionPaymentItems).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCommissionPaymentItem = z.infer<typeof insertCommissionPaymentItemSchema>;
+export type CommissionPaymentItem = typeof commissionPaymentItems.$inferSelect;
+
+// ==================== PLATFORM SETTINGS ====================
+
+export const platformSettings = pgTable("platform_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  settingKey: text("setting_key").notNull().unique(),
+  settingValue: text("setting_value").notNull(),
+  description: text("description"),
+  updatedBy: varchar("updated_by"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertPlatformSettingSchema = createInsertSchema(platformSettings).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type InsertPlatformSetting = z.infer<typeof insertPlatformSettingSchema>;
+export type PlatformSetting = typeof platformSettings.$inferSelect;
 
 // ==================== CONVERSATIONS ====================
 

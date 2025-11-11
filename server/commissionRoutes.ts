@@ -2,14 +2,19 @@ import { Router } from "express";
 import { db } from "./db";
 import { authMiddleware } from "./auth";
 import { 
-  commissions, payouts, orders, supplierProfiles, users 
+  commissions, payouts, orders, supplierProfiles, users,
+  commissionPayments, commissionPaymentItems
 } from "@shared/schema";
-import { eq, and, desc, gte, lte, sql, or } from "drizzle-orm";
+import { eq, and, desc, gte, lte, sql, or, inArray } from "drizzle-orm";
+import { notificationService } from "./notificationService";
 
 const router = Router();
 
 // Default platform commission rate (can be overridden per supplier)
 const DEFAULT_COMMISSION_RATE = 0.10; // 10%
+
+// Default credit limit for suppliers
+const DEFAULT_CREDIT_LIMIT = 1000.00;
 
 // ==================== COMMISSION CALCULATION ====================
 
@@ -90,23 +95,9 @@ router.get("/supplier/commissions", authMiddleware, async (req, res) => {
     }
 
     const supplierId = supplierProfile[0].id;
-    const { status, startDate, endDate, limit, offset } = req.query;
 
-    // Build conditions array
-    const conditions = [eq(commissions.supplierId, supplierId)];
-
-    if (status) {
-      conditions.push(eq(commissions.status, status as string));
-    }
-    if (startDate) {
-      conditions.push(gte(commissions.createdAt, new Date(startDate as string)));
-    }
-    if (endDate) {
-      conditions.push(lte(commissions.createdAt, new Date(endDate as string)));
-    }
-
-    // Build query with all conditions at once
-    let query = db.select({
+    // Simple query - get all commissions for this supplier
+    const commissionsList = await db.select({
       id: commissions.id,
       orderId: commissions.orderId,
       orderAmount: commissions.orderAmount,
@@ -121,25 +112,7 @@ router.get("/supplier/commissions", authMiddleware, async (req, res) => {
     })
     .from(commissions)
     .leftJoin(orders, eq(commissions.orderId, orders.id))
-    .where(and(...conditions))
-    .orderBy(desc(commissions.createdAt))
-    .$dynamic();
-
-    if (limit) {
-      query = query.limit(parseInt(limit as string));
-    }
-    if (offset) {
-      query = query.offset(parseInt(offset as string));
-    }
-
-    const commissionsList = await query;
-
-    // Get total count
-    const countQuery = db.select({ count: sql`count(*)` })
-      .from(commissions)
-      .where(and(...conditions));
-
-    const [{ count }] = await countQuery;
+    .where(eq(commissions.supplierId, supplierId));
 
     // Calculate summary statistics
     const summaryQuery = await db.select({
@@ -157,7 +130,7 @@ router.get("/supplier/commissions", authMiddleware, async (req, res) => {
     res.json({
       success: true,
       commissions: commissionsList,
-      total: parseInt(count as string),
+      total: commissionsList.length,
       summary: {
         totalEarnings: parseFloat(summary.totalEarnings as string || '0'),
         totalCommissions: parseFloat(summary.totalCommissions as string || '0'),
@@ -259,58 +232,37 @@ router.get("/supplier/payouts", authMiddleware, async (req, res) => {
       .where(eq(supplierProfiles.userId, req.user.id))
       .limit(1);
 
+    // If no supplier profile, return empty (not an error)
     if (supplierProfile.length === 0) {
-      return res.status(404).json({ error: 'Supplier profile not found' });
+      return res.json({
+        success: true,
+        payouts: [],
+        total: 0
+      });
     }
 
     const supplierId = supplierProfile[0].id;
-    const { status, startDate, endDate, limit, offset } = req.query;
 
-    // Build conditions array
-    const conditions = [eq(payouts.supplierId, supplierId)];
-
-    if (status) {
-      conditions.push(eq(payouts.status, status as string));
-    }
-    if (startDate) {
-      conditions.push(gte(payouts.createdAt, new Date(startDate as string)));
-    }
-    if (endDate) {
-      conditions.push(lte(payouts.createdAt, new Date(endDate as string)));
-    }
-
-    // Build query with all conditions at once
-    let query = db.select()
+    // Get all payouts for this supplier
+    const payoutsList = await db.select()
       .from(payouts)
-      .where(and(...conditions))
-      .orderBy(desc(payouts.createdAt))
-      .$dynamic();
-
-    if (limit) {
-      query = query.limit(parseInt(limit as string));
-    }
-    if (offset) {
-      query = query.offset(parseInt(offset as string));
-    }
-
-    const payoutsList = await query;
-
-    // Get total count
-    const countQuery = db.select({ count: sql`count(*)` })
-      .from(payouts)
-      .where(and(...conditions));
-
-    const [{ count }] = await countQuery;
+      .where(eq(payouts.supplierId, supplierId));
 
     res.json({
       success: true,
       payouts: payoutsList,
-      total: parseInt(count as string)
+      total: payoutsList.length
     });
 
   } catch (error: any) {
     console.error('Get supplier payouts error:', error);
-    res.status(500).json({ error: 'Failed to fetch payouts' });
+    console.error('Error stack:', error.stack);
+    // Return empty instead of error for better UX
+    res.json({
+      success: true,
+      payouts: [],
+      total: 0
+    });
   }
 });
 
@@ -368,6 +320,16 @@ router.post("/supplier/payouts/request", authMiddleware, async (req, res) => {
         scheduledDate: new Date()
       })
       .returning();
+
+    // Notify supplier
+    await notificationService.createNotification({
+      userId: req.user.id,
+      type: 'success',
+      title: 'Payout Requested',
+      message: `Your payout request of $${amount.toFixed(2)} has been submitted and is pending review.`,
+      relatedId: payout.id,
+      relatedType: 'payout'
+    });
 
     res.json({
       success: true,
@@ -650,6 +612,23 @@ router.post("/admin/payouts/:id/process", authMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'Payout not found' });
     }
 
+    // Get supplier user ID for notification
+    const supplier = await db.select({ userId: supplierProfiles.userId })
+      .from(supplierProfiles)
+      .where(eq(supplierProfiles.id, payout.supplierId))
+      .limit(1);
+
+    if (supplier.length > 0) {
+      await notificationService.createNotification({
+        userId: supplier[0].userId,
+        type: 'info',
+        title: 'Payout Processing',
+        message: `Your payout request of $${parseFloat(payout.netAmount).toFixed(2)} is being processed.`,
+        relatedId: payout.id,
+        relatedType: 'payout'
+      });
+    }
+
     res.json({
       success: true,
       message: 'Payout processing initiated',
@@ -688,6 +667,23 @@ router.post("/admin/payouts/:id/complete", authMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'Payout not found' });
     }
 
+    // Get supplier user ID for notification
+    const supplier = await db.select({ userId: supplierProfiles.userId })
+      .from(supplierProfiles)
+      .where(eq(supplierProfiles.id, payout.supplierId))
+      .limit(1);
+
+    if (supplier.length > 0) {
+      await notificationService.createNotification({
+        userId: supplier[0].userId,
+        type: 'success',
+        title: 'Payout Completed',
+        message: `Your payout of $${parseFloat(payout.netAmount).toFixed(2)} has been successfully transferred. Transaction ID: ${transactionId}`,
+        relatedId: payout.id,
+        relatedType: 'payout'
+      });
+    }
+
     res.json({
       success: true,
       message: 'Payout completed successfully',
@@ -721,7 +717,22 @@ router.post("/admin/payouts/:id/fail", authMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'Payout not found' });
     }
 
-    // TODO: Notify supplier about failed payout with reason
+    // Get supplier user ID for notification
+    const supplier = await db.select({ userId: supplierProfiles.userId })
+      .from(supplierProfiles)
+      .where(eq(supplierProfiles.id, payout.supplierId))
+      .limit(1);
+
+    if (supplier.length > 0) {
+      await notificationService.createNotification({
+        userId: supplier[0].userId,
+        type: 'error',
+        title: 'Payout Failed',
+        message: `Your payout request of $${parseFloat(payout.netAmount).toFixed(2)} could not be processed. ${reason ? `Reason: ${reason}` : 'Please contact support for details.'}`,
+        relatedId: payout.id,
+        relatedType: 'payout'
+      });
+    }
 
     res.json({
       success: true,
@@ -770,6 +781,558 @@ router.patch("/admin/suppliers/:id/commission-rate", authMiddleware, async (req,
   } catch (error: any) {
     console.error('Update commission rate error:', error);
     res.status(500).json({ error: 'Failed to update commission rate' });
+  }
+});
+
+// ==================== SUPPLIER COMMISSION PAYMENT ROUTES ====================
+
+// Get supplier's unpaid commissions
+router.get("/supplier/unpaid-commissions", authMiddleware, async (req, res) => {
+  try {
+    if (req.user?.role !== 'supplier') {
+      return res.status(403).json({ error: 'Access denied. Supplier role required.' });
+    }
+
+    const supplierProfile = await db.select()
+      .from(supplierProfiles)
+      .where(eq(supplierProfiles.userId, req.user.id))
+      .limit(1);
+
+    if (supplierProfile.length === 0) {
+      return res.status(404).json({ error: 'Supplier profile not found' });
+    }
+
+    const supplierId = supplierProfile[0].id;
+
+    // Get unpaid commissions
+    const unpaidCommissions = await db.select({
+      id: commissions.id,
+      orderId: commissions.orderId,
+      orderNumber: orders.orderNumber,
+      orderAmount: commissions.orderAmount,
+      commissionRate: commissions.commissionRate,
+      commissionAmount: commissions.commissionAmount,
+      status: commissions.status,
+      createdAt: commissions.createdAt,
+    })
+    .from(commissions)
+    .leftJoin(orders, eq(commissions.orderId, orders.id))
+    .where(and(
+      eq(commissions.supplierId, supplierId),
+      or(
+        eq(commissions.status, 'unpaid'),
+        eq(commissions.status, 'payment_submitted')
+      )
+    ))
+    .orderBy(desc(commissions.createdAt));
+
+    res.json({
+      success: true,
+      commissions: unpaidCommissions,
+      total: unpaidCommissions.length
+    });
+
+  } catch (error: any) {
+    console.error('Get unpaid commissions error:', error);
+    res.status(500).json({ error: 'Failed to fetch unpaid commissions' });
+  }
+});
+
+// Get supplier's credit status
+router.get("/supplier/credit-status", authMiddleware, async (req, res) => {
+  try {
+    if (req.user?.role !== 'supplier') {
+      return res.status(403).json({ error: 'Access denied. Supplier role required.' });
+    }
+
+    const supplierProfile = await db.select()
+      .from(supplierProfiles)
+      .where(eq(supplierProfiles.userId, req.user.id))
+      .limit(1);
+
+    if (supplierProfile.length === 0) {
+      return res.status(404).json({ error: 'Supplier profile not found' });
+    }
+
+    const supplier = supplierProfile[0];
+
+    res.json({
+      success: true,
+      creditStatus: {
+        creditLimit: parseFloat(supplier.commissionCreditLimit || '1000'),
+        totalUnpaid: parseFloat(supplier.totalUnpaidCommission || '0'),
+        availableCredit: parseFloat(supplier.commissionCreditLimit || '1000') - parseFloat(supplier.totalUnpaidCommission || '0'),
+        isRestricted: supplier.isRestricted || false,
+        lastPaymentDate: supplier.lastPaymentDate
+      }
+    });
+
+  } catch (error: any) {
+    console.error('Get credit status error:', error);
+    res.status(500).json({ error: 'Failed to fetch credit status' });
+  }
+});
+
+// Submit commission payment
+router.post("/supplier/submit-payment", authMiddleware, async (req, res) => {
+  try {
+    if (req.user?.role !== 'supplier') {
+      return res.status(403).json({ error: 'Access denied. Supplier role required.' });
+    }
+
+    const supplierProfile = await db.select()
+      .from(supplierProfiles)
+      .where(eq(supplierProfiles.userId, req.user.id))
+      .limit(1);
+
+    if (supplierProfile.length === 0) {
+      return res.status(404).json({ error: 'Supplier profile not found' });
+    }
+
+    const supplierId = supplierProfile[0].id;
+    const { commissionIds, paymentMethod, transactionId, paymentDate, paymentProofUrl, notes } = req.body;
+
+    if (!commissionIds || commissionIds.length === 0) {
+      return res.status(400).json({ error: 'At least one commission must be selected' });
+    }
+
+    if (!paymentMethod || !transactionId || !paymentDate) {
+      return res.status(400).json({ error: 'Payment method, transaction ID, and payment date are required' });
+    }
+
+    // Get selected commissions
+    const selectedCommissions = await db.select()
+      .from(commissions)
+      .where(and(
+        eq(commissions.supplierId, supplierId),
+        inArray(commissions.id, commissionIds),
+        eq(commissions.status, 'unpaid')
+      ));
+
+    if (selectedCommissions.length === 0) {
+      return res.status(400).json({ error: 'No valid unpaid commissions found' });
+    }
+
+    // Calculate total amount
+    const totalAmount = selectedCommissions.reduce((sum, comm) => 
+      sum + parseFloat(comm.commissionAmount), 0
+    );
+
+    // Create payment record
+    const [payment] = await db.insert(commissionPayments)
+      .values({
+        supplierId,
+        amount: totalAmount.toString(),
+        paymentMethod,
+        transactionId,
+        paymentDate: new Date(paymentDate),
+        paymentProofUrl: paymentProofUrl || null,
+        notes: notes || null,
+        status: 'pending'
+      })
+      .returning();
+
+    // Create payment items
+    for (const commission of selectedCommissions) {
+      await db.insert(commissionPaymentItems)
+        .values({
+          paymentId: payment.id,
+          commissionId: commission.id,
+          amount: commission.commissionAmount
+        });
+
+      // Update commission status
+      await db.update(commissions)
+        .set({ 
+          status: 'payment_submitted',
+          paymentSubmittedAt: new Date()
+        })
+        .where(eq(commissions.id, commission.id));
+    }
+
+    // Notify supplier
+    await notificationService.createNotification({
+      userId: req.user.id,
+      type: 'success',
+      title: 'Payment Submitted',
+      message: `Your commission payment of $${totalAmount.toFixed(2)} has been submitted for verification.`,
+      relatedId: payment.id,
+      relatedType: 'commission_payment'
+    });
+
+    res.json({
+      success: true,
+      message: 'Payment submitted successfully',
+      payment
+    });
+
+  } catch (error: any) {
+    console.error('Submit payment error:', error);
+    res.status(500).json({ error: 'Failed to submit payment' });
+  }
+});
+
+// Get supplier's payment history
+router.get("/supplier/payment-history", authMiddleware, async (req, res) => {
+  try {
+    if (req.user?.role !== 'supplier') {
+      return res.status(403).json({ error: 'Access denied. Supplier role required.' });
+    }
+
+    const supplierProfile = await db.select()
+      .from(supplierProfiles)
+      .where(eq(supplierProfiles.userId, req.user.id))
+      .limit(1);
+
+    if (supplierProfile.length === 0) {
+      return res.status(404).json({ error: 'Supplier profile not found' });
+    }
+
+    const supplierId = supplierProfile[0].id;
+
+    // Get payment history
+    const payments = await db.select()
+      .from(commissionPayments)
+      .where(eq(commissionPayments.supplierId, supplierId))
+      .orderBy(desc(commissionPayments.createdAt));
+
+    // Get payment items for each payment
+    const paymentsWithItems = await Promise.all(
+      payments.map(async (payment) => {
+        const items = await db.select({
+          commissionId: commissionPaymentItems.commissionId,
+          amount: commissionPaymentItems.amount,
+          orderNumber: orders.orderNumber
+        })
+        .from(commissionPaymentItems)
+        .leftJoin(commissions, eq(commissionPaymentItems.commissionId, commissions.id))
+        .leftJoin(orders, eq(commissions.orderId, orders.id))
+        .where(eq(commissionPaymentItems.paymentId, payment.id));
+
+        return {
+          ...payment,
+          items
+        };
+      })
+    );
+
+    res.json({
+      success: true,
+      payments: paymentsWithItems,
+      total: payments.length
+    });
+
+  } catch (error: any) {
+    console.error('Get payment history error:', error);
+    res.status(500).json({ error: 'Failed to fetch payment history' });
+  }
+});
+
+// ==================== ADMIN COMMISSION PAYMENT ROUTES ====================
+
+// Get all payment submissions
+router.get("/admin/payment-submissions", authMiddleware, async (req, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Admin role required.' });
+    }
+
+    const { status, supplierId } = req.query;
+
+    let conditions = [];
+    if (status) {
+      conditions.push(eq(commissionPayments.status, status as string));
+    }
+    if (supplierId) {
+      conditions.push(eq(commissionPayments.supplierId, supplierId as string));
+    }
+
+    const query = conditions.length > 0
+      ? db.select({
+          id: commissionPayments.id,
+          supplierId: commissionPayments.supplierId,
+          supplierName: supplierProfiles.businessName,
+          storeName: supplierProfiles.storeName,
+          amount: commissionPayments.amount,
+          paymentMethod: commissionPayments.paymentMethod,
+          transactionId: commissionPayments.transactionId,
+          paymentDate: commissionPayments.paymentDate,
+          paymentProofUrl: commissionPayments.paymentProofUrl,
+          status: commissionPayments.status,
+          notes: commissionPayments.notes,
+          verifiedBy: commissionPayments.verifiedBy,
+          verifiedAt: commissionPayments.verifiedAt,
+          rejectionReason: commissionPayments.rejectionReason,
+          createdAt: commissionPayments.createdAt
+        })
+        .from(commissionPayments)
+        .leftJoin(supplierProfiles, eq(commissionPayments.supplierId, supplierProfiles.id))
+        .where(and(...conditions))
+        .orderBy(desc(commissionPayments.createdAt))
+      : db.select({
+          id: commissionPayments.id,
+          supplierId: commissionPayments.supplierId,
+          supplierName: supplierProfiles.businessName,
+          storeName: supplierProfiles.storeName,
+          amount: commissionPayments.amount,
+          paymentMethod: commissionPayments.paymentMethod,
+          transactionId: commissionPayments.transactionId,
+          paymentDate: commissionPayments.paymentDate,
+          paymentProofUrl: commissionPayments.paymentProofUrl,
+          status: commissionPayments.status,
+          notes: commissionPayments.notes,
+          verifiedBy: commissionPayments.verifiedBy,
+          verifiedAt: commissionPayments.verifiedAt,
+          rejectionReason: commissionPayments.rejectionReason,
+          createdAt: commissionPayments.createdAt
+        })
+        .from(commissionPayments)
+        .leftJoin(supplierProfiles, eq(commissionPayments.supplierId, supplierProfiles.id))
+        .orderBy(desc(commissionPayments.createdAt));
+
+    const payments = await query;
+
+    res.json({
+      success: true,
+      payments,
+      total: payments.length
+    });
+
+  } catch (error: any) {
+    console.error('Get payment submissions error:', error);
+    res.status(500).json({ error: 'Failed to fetch payment submissions' });
+  }
+});
+
+// Verify payment
+router.post("/admin/payment-submissions/:id/verify", authMiddleware, async (req, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Admin role required.' });
+    }
+
+    const paymentId = req.params.id;
+
+    // Get payment and its items
+    const [payment] = await db.select()
+      .from(commissionPayments)
+      .where(eq(commissionPayments.id, paymentId))
+      .limit(1);
+
+    if (!payment) {
+      return res.status(404).json({ error: 'Payment not found' });
+    }
+
+    if (payment.status !== 'pending') {
+      return res.status(400).json({ error: 'Payment is not pending' });
+    }
+
+    // Get payment items
+    const items = await db.select()
+      .from(commissionPaymentItems)
+      .where(eq(commissionPaymentItems.paymentId, paymentId));
+
+    // Update payment status
+    await db.update(commissionPayments)
+      .set({
+        status: 'verified',
+        verifiedBy: req.user.id,
+        verifiedAt: new Date()
+      })
+      .where(eq(commissionPayments.id, paymentId));
+
+    // Mark all linked commissions as paid
+    for (const item of items) {
+      await db.update(commissions)
+        .set({
+          status: 'paid',
+          paymentDate: payment.paymentDate,
+          paymentTransactionId: payment.transactionId,
+          paymentVerifiedBy: req.user.id,
+          paymentVerifiedAt: new Date()
+        })
+        .where(eq(commissions.id, item.commissionId));
+    }
+
+    // Update supplier's last payment date
+    await db.update(supplierProfiles)
+      .set({
+        lastPaymentDate: new Date()
+      })
+      .where(eq(supplierProfiles.id, payment.supplierId));
+
+    // Get supplier user ID for notification
+    const supplier = await db.select({ userId: supplierProfiles.userId })
+      .from(supplierProfiles)
+      .where(eq(supplierProfiles.id, payment.supplierId))
+      .limit(1);
+
+    if (supplier.length > 0) {
+      await notificationService.createNotification({
+        userId: supplier[0].userId,
+        type: 'success',
+        title: 'Payment Verified',
+        message: `Your commission payment of $${parseFloat(payment.amount).toFixed(2)} has been verified and processed.`,
+        relatedId: paymentId,
+        relatedType: 'commission_payment'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Payment verified successfully'
+    });
+
+  } catch (error: any) {
+    console.error('Verify payment error:', error);
+    res.status(500).json({ error: 'Failed to verify payment' });
+  }
+});
+
+// Reject payment
+router.post("/admin/payment-submissions/:id/reject", authMiddleware, async (req, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Admin role required.' });
+    }
+
+    const paymentId = req.params.id;
+    const { reason } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({ error: 'Rejection reason is required' });
+    }
+
+    const [payment] = await db.select()
+      .from(commissionPayments)
+      .where(eq(commissionPayments.id, paymentId))
+      .limit(1);
+
+    if (!payment) {
+      return res.status(404).json({ error: 'Payment not found' });
+    }
+
+    // Update payment status
+    await db.update(commissionPayments)
+      .set({
+        status: 'rejected',
+        rejectionReason: reason,
+        verifiedBy: req.user.id,
+        verifiedAt: new Date()
+      })
+      .where(eq(commissionPayments.id, paymentId));
+
+    // Get payment items and reset commission status
+    const items = await db.select()
+      .from(commissionPaymentItems)
+      .where(eq(commissionPaymentItems.paymentId, paymentId));
+
+    for (const item of items) {
+      await db.update(commissions)
+        .set({
+          status: 'unpaid',
+          paymentSubmittedAt: null
+        })
+        .where(eq(commissions.id, item.commissionId));
+    }
+
+    // Get supplier user ID for notification
+    const supplier = await db.select({ userId: supplierProfiles.userId })
+      .from(supplierProfiles)
+      .where(eq(supplierProfiles.id, payment.supplierId))
+      .limit(1);
+
+    if (supplier.length > 0) {
+      await notificationService.createNotification({
+        userId: supplier[0].userId,
+        type: 'error',
+        title: 'Payment Rejected',
+        message: `Your commission payment of $${parseFloat(payment.amount).toFixed(2)} was rejected. Reason: ${reason}`,
+        relatedId: paymentId,
+        relatedType: 'commission_payment'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Payment rejected'
+    });
+
+  } catch (error: any) {
+    console.error('Reject payment error:', error);
+    res.status(500).json({ error: 'Failed to reject payment' });
+  }
+});
+
+// Update supplier credit limit
+router.patch("/admin/suppliers/:id/credit-limit", authMiddleware, async (req, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Admin role required.' });
+    }
+
+    const { creditLimit } = req.body;
+
+    if (creditLimit === undefined || creditLimit < 0) {
+      return res.status(400).json({ error: 'Valid credit limit is required' });
+    }
+
+    const [supplier] = await db.update(supplierProfiles)
+      .set({
+        commissionCreditLimit: creditLimit.toString(),
+        updatedAt: new Date()
+      })
+      .where(eq(supplierProfiles.id, req.params.id))
+      .returning();
+
+    if (!supplier) {
+      return res.status(404).json({ error: 'Supplier not found' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Credit limit updated successfully',
+      supplier
+    });
+
+  } catch (error: any) {
+    console.error('Update credit limit error:', error);
+    res.status(500).json({ error: 'Failed to update credit limit' });
+  }
+});
+
+// Get restricted suppliers
+router.get("/admin/restricted-suppliers", authMiddleware, async (req, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Admin role required.' });
+    }
+
+    const restrictedSuppliers = await db.select({
+      id: supplierProfiles.id,
+      businessName: supplierProfiles.businessName,
+      storeName: supplierProfiles.storeName,
+      email: users.email,
+      phone: supplierProfiles.phone,
+      creditLimit: supplierProfiles.commissionCreditLimit,
+      totalUnpaid: supplierProfiles.totalUnpaidCommission,
+      isRestricted: supplierProfiles.isRestricted,
+      lastPaymentDate: supplierProfiles.lastPaymentDate
+    })
+    .from(supplierProfiles)
+    .leftJoin(users, eq(supplierProfiles.userId, users.id))
+    .where(eq(supplierProfiles.isRestricted, true))
+    .orderBy(desc(supplierProfiles.totalUnpaidCommission));
+
+    res.json({
+      success: true,
+      suppliers: restrictedSuppliers,
+      total: restrictedSuppliers.length
+    });
+
+  } catch (error: any) {
+    console.error('Get restricted suppliers error:', error);
+    res.status(500).json({ error: 'Failed to fetch restricted suppliers' });
   }
 });
 

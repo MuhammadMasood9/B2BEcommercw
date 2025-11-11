@@ -17,7 +17,8 @@ import {
   Bell,
   Activity,
   Store,
-  CheckCircle
+  CheckCircle,
+  DollarSign
 } from "lucide-react";
 import {
   Sidebar,
@@ -67,6 +68,21 @@ const adminMenuItems = [
     title: "Orders",
     url: "/admin/orders",
     icon: ShoppingCart,
+  },
+  {
+    title: "Commissions",
+    url: "/admin/commissions",
+    icon: DollarSign,
+  },
+  {
+    title: "Payouts",
+    url: "/admin/payouts",
+    icon: DollarSign,
+  },
+  {
+    title: "Payment Verification",
+    url: "/admin/commission-payments",
+    icon: DollarSign,
   },
   {
     title: "Users",

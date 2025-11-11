@@ -49,6 +49,9 @@ export const upload = multer({
 // Single image upload
 export const uploadSingle = upload.single('image');
 
+// Single file upload with 'files' field name (for compatibility)
+export const uploadSingleFile = upload.single('files');
+
 // Multiple images upload
 export const uploadMultiple = upload.array('images', 10); // Max 10 images
 

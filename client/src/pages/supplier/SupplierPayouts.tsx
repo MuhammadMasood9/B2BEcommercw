@@ -32,6 +32,13 @@ export default function SupplierPayouts() {
   // Fetch payouts
   const { data: payoutsData, isLoading } = useQuery({
     queryKey: ["/api/commissions/supplier/payouts"],
+    queryFn: async () => {
+      const response = await fetch("/api/commissions/supplier/payouts", {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch payouts");
+      return response.json();
+    },
   });
 
   const payouts: Payout[] = payoutsData?.payouts || [];
@@ -39,6 +46,13 @@ export default function SupplierPayouts() {
   // Fetch commission summary to show available balance
   const { data: summaryData } = useQuery({
     queryKey: ["/api/commissions/supplier/commissions/summary"],
+    queryFn: async () => {
+      const response = await fetch("/api/commissions/supplier/commissions/summary", {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch commission summary");
+      return response.json();
+    },
   });
 
   const availableBalance = summaryData?.summary?.paidAmount || 0;
@@ -282,7 +296,7 @@ export default function SupplierPayouts() {
           <div className="space-y-2">
             <h4 className="font-medium">Processing Time</h4>
             <p className="text-sm text-muted-foreground">
-              Payout requests are typically processed within 3-5 business days. 
+              Payout requests are typically processed within 3-5 business days.
               You'll receive a notification once your payout is completed.
             </p>
           </div>

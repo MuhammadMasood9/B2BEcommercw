@@ -155,8 +155,15 @@ export default function SupplierQuotations() {
     newValidUntil.setDate(newValidUntil.getDate() + 30);
     
     editQuotationMutation.mutate({
-      ...quotation,
+      id: quotation.id,
+      type: quotation.type,
+      pricePerUnit: quotation.pricePerUnit,
+      totalPrice: quotation.totalPrice,
+      moq: quotation.moq,
+      leadTime: quotation.leadTime,
+      paymentTerms: quotation.paymentTerms,
       validUntil: newValidUntil.toISOString(),
+      message: quotation.message,
     });
   };
 
@@ -520,6 +527,13 @@ export default function SupplierQuotations() {
             <form onSubmit={(e) => {
               e.preventDefault();
               const formData = new FormData(e.currentTarget);
+              const validUntilDate = formData.get('validUntil') as string;
+              
+              // Convert date to ISO datetime string
+              const validUntilISO = validUntilDate 
+                ? new Date(validUntilDate + 'T23:59:59.999Z').toISOString()
+                : null;
+              
               const data = {
                 id: selectedQuotation.id,
                 type: selectedQuotation.type,
@@ -528,7 +542,7 @@ export default function SupplierQuotations() {
                 moq: formData.get('moq'),
                 leadTime: formData.get('leadTime'),
                 paymentTerms: formData.get('paymentTerms'),
-                validUntil: formData.get('validUntil'),
+                validUntil: validUntilISO,
                 message: formData.get('message'),
               };
               editQuotationMutation.mutate(data);

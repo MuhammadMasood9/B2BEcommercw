@@ -200,7 +200,7 @@ export default function SupplierInfoCard({
               className="w-full border-blue-200 hover:bg-blue-50"
               size="lg"
             >
-              <Link href={`/supplier/${supplierSlug}`}>
+              <Link href={`/store/${supplierSlug}`}>
                 <Building2 className="w-4 h-4 mr-2" />
                 Visit Supplier Store
                 <ChevronRight className="w-4 h-4 ml-auto" />

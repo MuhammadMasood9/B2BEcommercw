@@ -33,11 +33,18 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   const connect = useCallback(() => {
     if (!user?.id) {
       console.log('Cannot connect WebSocket: No user logged in');
+      setIsConnected(false);
       return;
     }
 
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       console.log('WebSocket already connected');
+      return;
+    }
+
+    // Don't try to connect if we've exceeded max attempts
+    if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
+      console.log('Max reconnection attempts reached, not attempting to connect');
       return;
     }
 
@@ -79,15 +86,22 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         wsRef.current = null;
         onDisconnect?.();
 
+        // Don't reconnect if it's a normal closure or authentication failure
+        if (event.code === 1000 || event.code === 1008) {
+          console.log('WebSocket closed normally or authentication failed');
+          return;
+        }
+
         // Attempt to reconnect if not a normal closure
-        if (event.code !== 1000 && reconnectAttemptsRef.current < maxReconnectAttempts) {
+        if (reconnectAttemptsRef.current < maxReconnectAttempts) {
           reconnectAttemptsRef.current++;
           console.log(`Reconnecting... Attempt ${reconnectAttemptsRef.current}/${maxReconnectAttempts}`);
           
           reconnectTimeoutRef.current = setTimeout(() => {
             connect();
           }, reconnectInterval);
-        } else if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
+        } else {
+          console.log('Max reconnection attempts reached');
           setConnectionError('Failed to reconnect after multiple attempts');
         }
       };
@@ -125,7 +139,12 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   // Auto-connect when user is available
   useEffect(() => {
     if (user?.id) {
+      // Reset reconnection attempts when user changes
+      reconnectAttemptsRef.current = 0;
       connect();
+    } else {
+      // Disconnect if user logs out
+      disconnect();
     }
 
     return () => {

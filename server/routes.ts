@@ -17,7 +17,7 @@ import {
   insertRfqSchema, insertQuotationSchema, insertInquirySchema,
   insertConversationSchema, insertMessageSchema, insertReviewSchema,
   insertFavoriteSchema, insertNotificationSchema, insertActivityLogSchema,
-  users, products, categories, orders, inquiries, quotations, rfqs, notifications, activity_logs, conversations, supplierProfiles, inquiryQuotations, reviews
+  users, products, categories, orders, inquiries, quotations, rfqs, notifications, activity_logs, conversations, supplierProfiles, inquiryQuotations, reviews, commissions
 } from "@shared/schema";
 import { z } from 'zod';
 import { sql, eq, and, gte, desc, or, ilike } from "drizzle-orm";
@@ -332,6 +332,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('Reactivate supplier error:', error);
       res.status(500).json({ error: 'Failed to reactivate supplier' });
+    }
+  });
+
+  // Admin: Update supplier commission rate
+  app.patch("/api/admin/suppliers/:id/commission-rate", authMiddleware, async (req, res) => {
+    try {
+      console.log('=== UPDATE COMMISSION RATE ===');
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Access denied. Admin role required.' });
+      }
+
+      const { commissionRate } = req.body;
+      console.log('Commission rate:', commissionRate);
+
+      if (commissionRate === undefined || commissionRate === null) {
+        return res.status(400).json({ error: 'Commission rate is required' });
+      }
+
+      const rate = parseFloat(commissionRate);
+      if (isNaN(rate) || rate < 0 || rate > 100) {
+        return res.status(400).json({ error: 'Commission rate must be between 0 and 100' });
+      }
+
+      const updatedSupplier = await db.update(supplierProfiles)
+        .set({
+          commissionRate: rate.toString(),
+          updatedAt: new Date()
+        })
+        .where(eq(supplierProfiles.id, req.params.id))
+        .returning();
+
+      if (updatedSupplier.length === 0) {
+        return res.status(404).json({ error: 'Supplier not found' });
+      }
+
+      console.log('Commission rate updated successfully');
+
+      res.json({
+        success: true,
+        message: 'Commission rate updated successfully',
+        supplier: updatedSupplier[0]
+      });
+
+    } catch (error: any) {
+      console.error('Update commission rate error:', error);
+      res.status(500).json({ error: 'Failed to update commission rate' });
     }
   });
 
@@ -2477,19 +2523,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // DEPRECATED: RFQ quotation acceptance moved to supplier management
-  // Quotations are now managed by suppliers, not admin
+  // Accept RFQ quotation (Buyer accepts supplier's quotation)
   app.post("/api/quotations/:id/accept", async (req, res) => {
     try {
-      // Redirect to supplier quotation acceptance endpoint
-      return res.status(410).json({
-        error: 'RFQ quotation acceptance has been moved to supplier management.',
-        message: 'Use /api/suppliers/quotations/:id/accept for RFQ quotations',
-        redirect: `/api/suppliers/quotations/${req.params.id}/accept`
+      console.log('=== ACCEPT RFQ QUOTATION ===');
+      const quotationId = req.params.id;
+      const { shippingAddress, billingAddress } = req.body;
+      console.log('Quotation ID:', quotationId);
+
+      // Get the quotation with RFQ details
+      const quotation = await storage.getQuotation(quotationId);
+      console.log('Quotation found:', quotation);
+      
+      if (!quotation) {
+        return res.status(404).json({ error: "Quotation not found" });
+      }
+
+      if (quotation.status !== 'pending') {
+        return res.status(400).json({ error: "Only pending quotations can be accepted" });
+      }
+
+      if (!quotation.rfqId) {
+        return res.status(400).json({ error: "This quotation is not associated with an RFQ" });
+      }
+
+      // Get RFQ details
+      const rfq = await storage.getRfq(quotation.rfqId);
+      console.log('RFQ found:', rfq);
+      
+      if (!rfq) {
+        return res.status(404).json({ error: "Associated RFQ not found" });
+      }
+
+      // Update quotation status
+      console.log('Updating quotation status to accepted...');
+      await storage.updateQuotation(quotationId, {
+        status: 'accepted'
+      });
+
+      // Close the RFQ
+      console.log('Closing RFQ...');
+      await storage.updateRfq(quotation.rfqId, {
+        status: 'closed'
+      });
+
+      // Create order
+      const orderNumber = `ORD-${Date.now()}`;
+      const orderData = {
+        orderNumber,
+        buyerId: rfq.buyerId,
+        rfqId: quotation.rfqId,
+        quotationId: quotationId,
+        supplierId: quotation.supplierId || null,
+        totalAmount: quotation.totalPrice.toString(),
+        items: [{
+          title: rfq.title,
+          quantity: rfq.quantity,
+          pricePerUnit: quotation.pricePerUnit.toString(),
+          totalPrice: quotation.totalPrice.toString()
+        }],
+        shippingAddress: shippingAddress || null,
+        billingAddress: billingAddress || null,
+        status: 'pending',
+        paymentStatus: 'pending'
+      };
+      
+      console.log('Creating order with data:', JSON.stringify(orderData, null, 2));
+      const order = await storage.createOrder(orderData);
+      console.log('Order created:', order);
+
+      res.json({
+        success: true,
+        message: 'Quotation accepted successfully',
+        order
       });
     } catch (error: any) {
-      console.error('Error redirecting quotation acceptance:', error);
-      res.status(500).json({ error: 'Failed to redirect quotation acceptance' });
+      console.error('Error accepting RFQ quotation:', error);
+      console.error('Error stack:', error.stack);
+      res.status(500).json({ error: error.message });
     }
   });
 
@@ -3105,19 +3216,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // DEPRECATED: Inquiry quotation acceptance moved to supplier management
-  // Quotations are now managed by suppliers, not admin
+  // Accept inquiry quotation (Buyer accepts supplier's quotation)
   app.post("/api/inquiry-quotations/:id/accept", async (req, res) => {
     try {
-      // Redirect to supplier quotation acceptance endpoint
-      return res.status(410).json({
-        error: 'Inquiry quotation acceptance has been moved to supplier management.',
-        message: 'Use /api/suppliers/inquiry-quotations/:id/accept for inquiry quotations',
-        redirect: `/api/suppliers/inquiry-quotations/${req.params.id}/accept`
+      const quotationId = req.params.id;
+      const { shippingAddress, billingAddress } = req.body;
+
+      // Get the inquiry quotation
+      const [quotation] = await db.select()
+        .from(inquiryQuotations)
+        .where(eq(inquiryQuotations.id, quotationId))
+        .limit(1);
+
+      if (!quotation) {
+        return res.status(404).json({ error: "Quotation not found" });
+      }
+
+      if (quotation.status !== 'pending') {
+        return res.status(400).json({ error: "Only pending quotations can be accepted" });
+      }
+
+      if (!quotation.inquiryId) {
+        return res.status(400).json({ error: "This quotation is not associated with an inquiry" });
+      }
+
+      // Get inquiry details
+      const [inquiry] = await db.select()
+        .from(inquiries)
+        .where(eq(inquiries.id, quotation.inquiryId))
+        .limit(1);
+
+      if (!inquiry) {
+        return res.status(404).json({ error: "Associated inquiry not found" });
+      }
+
+      // Update quotation status
+      await db.update(inquiryQuotations)
+        .set({ status: 'accepted' })
+        .where(eq(inquiryQuotations.id, quotationId));
+
+      // Close the inquiry
+      await db.update(inquiries)
+        .set({ status: 'closed' })
+        .where(eq(inquiries.id, quotation.inquiryId));
+
+      // Create order
+      const orderNumber = `ORD-${Date.now()}`;
+      const order = await storage.createOrder({
+        orderNumber,
+        buyerId: inquiry.buyerId,
+        inquiryId: quotation.inquiryId,
+        quotationId: quotationId,
+        productId: inquiry.productId,
+        supplierId: quotation.supplierId || null,
+        quantity: inquiry.quantity,
+        unitPrice: quotation.pricePerUnit.toString(),
+        totalAmount: quotation.totalPrice.toString(),
+        items: [{
+          productId: inquiry.productId,
+          quantity: inquiry.quantity,
+          pricePerUnit: quotation.pricePerUnit.toString(),
+          totalPrice: quotation.totalPrice.toString()
+        }],
+        shippingAddress: shippingAddress || null,
+        billingAddress: billingAddress || null,
+        status: 'pending',
+        paymentStatus: 'pending'
+      });
+
+      res.json({
+        success: true,
+        message: 'Quotation accepted successfully',
+        order
       });
     } catch (error: any) {
-      console.error('Error redirecting inquiry quotation acceptance:', error);
-      res.status(500).json({ error: 'Failed to redirect inquiry quotation acceptance' });
+      console.error('Error accepting inquiry quotation:', error);
+      res.status(500).json({ error: error.message });
     }
   });
 
@@ -3295,6 +3469,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('Error cancelling buyer order:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Mark order as paid (triggers commission calculation)
+  app.patch("/api/buyer/orders/:id/mark-paid", async (req, res) => {
+    try {
+      console.log('=== MARK ORDER AS PAID ===');
+      // @ts-ignore - req.user is added by auth middleware
+      const buyerId = req.user?.id;
+
+      if (!buyerId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const order = await storage.getOrder(req.params.id);
+      console.log('Order found:', order);
+      
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+
+      // Check if this order belongs to the authenticated buyer
+      if (order.buyerId && order.buyerId.toString() !== buyerId.toString()) {
+        return res.status(403).json({ error: "You don't have permission to update this order" });
+      }
+
+      if (order.paymentStatus === 'paid') {
+        return res.status(400).json({ error: "Order is already marked as paid" });
+      }
+
+      // Update payment status to paid
+      console.log('Updating payment status to paid...');
+      await storage.updateOrder(req.params.id, {
+        paymentStatus: 'paid'
+      });
+
+      // Calculate and create commission if supplier exists
+      if (order.supplierId) {
+        console.log('Creating commission for supplier:', order.supplierId);
+        
+        // Get supplier profile to check for custom commission rate
+        const [supplierProfile] = await db.select()
+          .from(supplierProfiles)
+          .where(eq(supplierProfiles.id, order.supplierId))
+          .limit(1);
+
+        // Use supplier's custom rate or default platform rate (10%)
+        const commissionRate = supplierProfile?.commissionRate 
+          ? parseFloat(supplierProfile.commissionRate.toString()) 
+          : 10.0;
+
+        const orderAmount = parseFloat(order.totalAmount.toString());
+        const commissionAmount = (orderAmount * commissionRate) / 100;
+        const supplierAmount = orderAmount - commissionAmount;
+
+        console.log('Commission calculation:', {
+          orderAmount,
+          commissionRate,
+          commissionAmount,
+          supplierAmount
+        });
+
+        // Create commission record
+        await db.insert(commissions).values({
+          orderId: order.id,
+          supplierId: order.supplierId,
+          orderAmount: orderAmount.toString(),
+          commissionRate: commissionRate.toString(),
+          commissionAmount: commissionAmount.toString(),
+          supplierAmount: supplierAmount.toString(),
+          status: 'pending'
+        });
+
+        console.log('Commission created successfully');
+
+        // Notify supplier
+        const supplier = await db.select()
+          .from(supplierProfiles)
+          .where(eq(supplierProfiles.id, order.supplierId))
+          .limit(1);
+
+        if (supplier.length > 0) {
+          await createNotification({
+            userId: supplier[0].userId,
+            type: 'success',
+            title: 'Payment Received',
+            message: `Payment confirmed for order ${order.orderNumber}. Commission: $${commissionAmount.toFixed(2)}`,
+            relatedId: order.id,
+            relatedType: 'order'
+          });
+        }
+      }
+
+      const updatedOrder = await storage.getOrder(req.params.id);
+      
+      res.json({
+        success: true,
+        message: 'Order marked as paid successfully. Commission has been calculated.',
+        order: updatedOrder
+      });
+    } catch (error: any) {
+      console.error('Error marking order as paid:', error);
+      console.error('Error stack:', error.stack);
       res.status(500).json({ error: error.message });
     }
   });

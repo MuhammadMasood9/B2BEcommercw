@@ -46,13 +46,32 @@ export default function AdminCommissions() {
   // Fetch commission analytics
   const { data: analyticsData } = useQuery({
     queryKey: ["/api/commissions/admin/commissions/analytics"],
+    queryFn: async () => {
+      const response = await fetch("/api/commissions/admin/commissions/analytics", {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch commission analytics");
+      return response.json();
+    },
   });
 
   const analytics: CommissionAnalytics | undefined = analyticsData?.analytics;
 
   // Fetch commissions list
   const { data: commissionsData, isLoading } = useQuery({
-    queryKey: ["/api/commissions/admin/commissions", { status: statusFilter !== "all" ? statusFilter : undefined }],
+    queryKey: ["/api/commissions/admin/commissions", statusFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (statusFilter !== "all") {
+        params.append("status", statusFilter);
+      }
+      const url = `/api/commissions/admin/commissions${params.toString() ? `?${params.toString()}` : ""}`;
+      const response = await fetch(url, {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch commissions");
+      return response.json();
+    },
   });
 
   const commissions: Commission[] = commissionsData?.commissions || [];

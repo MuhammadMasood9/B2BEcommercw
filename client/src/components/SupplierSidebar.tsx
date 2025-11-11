@@ -16,7 +16,8 @@ import {
   Send,
   Gavel,
   Handshake,
-  User
+  User,
+  CreditCard
 } from "lucide-react";
 import {
   Sidebar,
@@ -129,9 +130,14 @@ const financeMenuItems = [
     href: "/supplier/commissions",
   },
   {
-    title: "Payouts",
+    title: "Pay Commissions",
+    icon: CreditCard,
+    href: "/supplier/commission-payment",
+  },
+  {
+    title: "Payment History",
     icon: TrendingUp,
-    href: "/supplier/payouts",
+    href: "/supplier/payment-history",
   },
 ];
 

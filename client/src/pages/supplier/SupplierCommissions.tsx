@@ -38,13 +38,32 @@ export default function SupplierCommissions() {
   // Fetch commission summary
   const { data: summaryData } = useQuery({
     queryKey: ["/api/commissions/supplier/commissions/summary"],
+    queryFn: async () => {
+      const response = await fetch("/api/commissions/supplier/commissions/summary", {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch commission summary");
+      return response.json();
+    },
   });
 
   const summary: CommissionSummary | undefined = summaryData?.summary;
 
   // Fetch commissions list
   const { data: commissionsData, isLoading } = useQuery({
-    queryKey: ["/api/commissions/supplier/commissions", { status: statusFilter !== "all" ? statusFilter : undefined }],
+    queryKey: ["/api/commissions/supplier/commissions", statusFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (statusFilter !== "all") {
+        params.append("status", statusFilter);
+      }
+      const url = `/api/commissions/supplier/commissions${params.toString() ? `?${params.toString()}` : ""}`;
+      const response = await fetch(url, {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch commissions");
+      return response.json();
+    },
   });
 
   const commissions: Commission[] = commissionsData?.commissions || [];

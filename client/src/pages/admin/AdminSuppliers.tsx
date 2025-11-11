@@ -69,6 +69,11 @@ export default function AdminSuppliers() {
     action: 'approve' | 'reject' | 'suspend' | 'verify' | null;
     supplier: Supplier | null;
   }>({ open: false, action: null, supplier: null });
+  const [commissionDialog, setCommissionDialog] = useState<{
+    open: boolean;
+    supplier: Supplier | null;
+  }>({ open: false, supplier: null });
+  const [commissionRate, setCommissionRate] = useState("");
   const [actionReason, setActionReason] = useState("");
   const [verificationLevel, setVerificationLevel] = useState("basic");
   const { toast } = useToast();
@@ -174,6 +179,28 @@ export default function AdminSuppliers() {
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to reactivate supplier", variant: "destructive" });
+    },
+  });
+
+  const updateCommissionRateMutation = useMutation({
+    mutationFn: async ({ id, commissionRate }: { id: string; commissionRate: string }) => {
+      const response = await fetch(`/api/admin/suppliers/${id}/commission-rate`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ commissionRate: parseFloat(commissionRate) }),
+      });
+      if (!response.ok) throw new Error('Failed to update commission rate');
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/suppliers'] });
+      toast({ title: "Success", description: "Commission rate updated successfully" });
+      setCommissionDialog({ open: false, supplier: null });
+      setCommissionRate("");
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update commission rate", variant: "destructive" });
     },
   });
 
@@ -484,6 +511,18 @@ export default function AdminSuppliers() {
                             </Button>
                             <Button
                               size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setCommissionDialog({ open: true, supplier });
+                                setCommissionRate((supplier as any).commissionRate || "10");
+                              }}
+                              title="Set Commission Rate"
+                            >
+                              <DollarSign className="h-4 w-4 mr-1" />
+                              Commission
+                            </Button>
+                            <Button
+                              size="sm"
                               variant="destructive"
                               onClick={() => setActionDialog({ open: true, action: 'suspend', supplier })}
                             >
@@ -575,6 +614,78 @@ export default function AdminSuppliers() {
             </Button>
             <Button onClick={handleAction}>
               Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Commission Rate Dialog */}
+      <Dialog open={commissionDialog.open} onOpenChange={(open) => setCommissionDialog({ ...commissionDialog, open })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-green-600" />
+              Set Commission Rate
+            </DialogTitle>
+          </DialogHeader>
+          
+          {commissionDialog.supplier && (
+            <div className="space-y-4">
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <p className="font-medium">{commissionDialog.supplier.storeName}</p>
+                <p className="text-sm text-muted-foreground">{commissionDialog.supplier.businessName}</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="commissionRate">Commission Rate (%)</Label>
+                <Input
+                  id="commissionRate"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={commissionRate}
+                  onChange={(e) => setCommissionRate(e.target.value)}
+                  placeholder="Enter commission rate (e.g., 10 for 10%)"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Default platform rate is 10%. Set a custom rate for this supplier.
+                </p>
+              </div>
+
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm font-medium text-blue-900">Example Calculation</p>
+                <p className="text-sm text-blue-700 mt-1">
+                  Order Amount: $1,000 → Commission: ${((parseFloat(commissionRate) || 0) * 10).toFixed(2)} → 
+                  Supplier Receives: ${(1000 - (parseFloat(commissionRate) || 0) * 10).toFixed(2)}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setCommissionDialog({ open: false, supplier: null });
+                setCommissionRate("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                if (commissionDialog.supplier && commissionRate) {
+                  updateCommissionRateMutation.mutate({
+                    id: commissionDialog.supplier.id,
+                    commissionRate
+                  });
+                }
+              }}
+              disabled={!commissionRate || parseFloat(commissionRate) < 0 || parseFloat(commissionRate) > 100}
+            >
+              <DollarSign className="h-4 w-4 mr-2" />
+              Update Commission Rate
             </Button>
           </DialogFooter>
         </DialogContent>

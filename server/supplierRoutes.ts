@@ -7,7 +7,8 @@ import {
 } from '@shared/schema';
 import { eq, and, desc, sql, ilike, or, gte, asc } from 'drizzle-orm';
 import { authMiddleware } from './auth';
-import { uploadMultiple } from './upload';
+import { checkSupplierRestriction, warnCreditLimit } from './restrictionMiddleware';
+import { uploadMultiple, uploadSingle, uploadSingleFile } from './upload';
 import { z } from 'zod';
 import { calculateCommission } from './commissionRoutes';
 
@@ -164,6 +165,29 @@ router.post('/register', async (req, res) => {
         }
 
         res.status(500).json({ error: 'Registration failed' });
+    }
+});
+
+// Get public supplier profile by ID (no auth required)
+router.get('/:id/profile', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const profile = await db.select()
+            .from(supplierProfiles)
+            .where(eq(supplierProfiles.id, id))
+            .limit(1);
+
+        if (profile.length === 0) {
+            return res.status(404).json({ error: 'Supplier profile not found' });
+        }
+
+        // Return public profile information
+        res.json(profile[0]);
+
+    } catch (error: any) {
+        console.error('Get public supplier profile error:', error);
+        res.status(500).json({ error: 'Failed to fetch supplier profile' });
     }
 });
 
@@ -385,18 +409,17 @@ router.get('/verification/status', authMiddleware, async (req, res) => {
 // ==================== STORE CUSTOMIZATION API ====================
 
 // Upload store logo
-router.post('/store/logo', authMiddleware, uploadMultiple, async (req, res) => {
+router.post('/store/logo', authMiddleware, uploadSingleFile, async (req, res) => {
     try {
         if (!req.user || req.user.role !== 'supplier') {
             return res.status(403).json({ error: 'Access denied. Supplier role required.' });
         }
 
-        if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
+        if (!req.file) {
             return res.status(400).json({ error: 'No logo file uploaded' });
         }
 
-        const logoFile = req.files[0];
-        const logoUrl = `/uploads/${logoFile.filename}`;
+        const logoUrl = `/uploads/${req.file.filename}`;
 
         const updatedProfile = await db.update(supplierProfiles)
             .set({
@@ -423,18 +446,17 @@ router.post('/store/logo', authMiddleware, uploadMultiple, async (req, res) => {
 });
 
 // Upload store banner
-router.post('/store/banner', authMiddleware, uploadMultiple, async (req, res) => {
+router.post('/store/banner', authMiddleware, uploadSingleFile, async (req, res) => {
     try {
         if (!req.user || req.user.role !== 'supplier') {
             return res.status(403).json({ error: 'Access denied. Supplier role required.' });
         }
 
-        if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
+        if (!req.file) {
             return res.status(400).json({ error: 'No banner file uploaded' });
         }
 
-        const bannerFile = req.files[0];
-        const bannerUrl = `/uploads/${bannerFile.filename}`;
+        const bannerUrl = `/uploads/${req.file.filename}`;
 
         const updatedProfile = await db.update(supplierProfiles)
             .set({
@@ -995,15 +1017,15 @@ router.get('/store/:slug', async (req, res) => {
 router.get('/store/:slug/products', async (req, res) => {
     try {
         const { slug } = req.params;
-        const { 
-            categoryId, 
-            search, 
-            featured, 
-            minPrice, 
-            maxPrice, 
+        const {
+            categoryId,
+            search,
+            featured,
+            minPrice,
+            maxPrice,
             inStock,
-            page = '1', 
-            limit = '20' 
+            page = '1',
+            limit = '20'
         } = req.query;
 
         // Get supplier profile
@@ -1579,6 +1601,18 @@ router.patch('/orders/:id/status', authMiddleware, async (req, res) => {
             .set(updateData)
             .where(eq(orders.id, req.params.id))
             .returning();
+
+        // Mark commission as paid when order is delivered or completed
+        if (validatedData.status === 'delivered' || validatedData.status === 'completed') {
+            try {
+                const { markCommissionPaid } = await import('./commissionRoutes');
+                await markCommissionPaid(req.params.id);
+                console.log('✅ Commission marked as paid for order:', req.params.id);
+            } catch (error) {
+                console.error('⚠️ Failed to mark commission as paid:', error);
+                // Don't fail the order update if commission update fails
+            }
+        }
 
         // Send notification to buyer about status update
         if (updatedOrder[0] && currentOrder.buyerId) {
@@ -2353,7 +2387,7 @@ router.post('/rfqs/:id/respond', authMiddleware, async (req, res) => {
             .limit(1);
 
         if (existingQuotation.length > 0) {
-            return res.status(409).json({ 
+            return res.status(409).json({
                 error: 'You have already responded to this RFQ',
                 quotationId: existingQuotation[0].id
             });
@@ -2469,7 +2503,7 @@ router.get('/inquiries/:id', authMiddleware, async (req, res) => {
 });
 
 // Create quotation for RFQ
-router.post('/quotations', authMiddleware, async (req, res) => {
+router.post('/quotations', authMiddleware, checkSupplierRestriction, async (req, res) => {
     try {
         if (req.user?.role !== 'supplier') {
             return res.status(403).json({ error: 'Access denied. Supplier role required.' });
@@ -2574,8 +2608,10 @@ router.post('/quotations', authMiddleware, async (req, res) => {
     }
 });
 
+// REMOVED: Duplicate endpoint - see line 2869 for the correct implementation that fetches both RFQ and inquiry quotations
+
 // Create quotation for inquiry
-router.post('/inquiry-quotations', authMiddleware, async (req, res) => {
+router.post('/inquiry-quotations', authMiddleware, checkSupplierRestriction, async (req, res) => {
     try {
         if (req.user?.role !== 'supplier') {
             return res.status(403).json({ error: 'Access denied. Supplier role required.' });
@@ -2666,9 +2702,9 @@ router.post('/inquiry-quotations', authMiddleware, async (req, res) => {
             .from(supplierProfiles)
             .where(eq(supplierProfiles.id, supplierId))
             .limit(1);
-        
+
         const supplierName = supplier.length > 0 ? supplier[0].storeName : 'A supplier';
-        
+
         await notificationService.notifyQuotationReceived(
             inquiry[0].buyerId,
             newQuotation[0].id,
@@ -3574,7 +3610,7 @@ router.get('/products/:id', authMiddleware, async (req, res) => {
 });
 
 // Create new product
-router.post('/products', authMiddleware, async (req, res) => {
+router.post('/products', authMiddleware, checkSupplierRestriction, async (req, res) => {
     try {
         if (req.user?.role !== 'supplier') {
             return res.status(403).json({ error: 'Access denied. Supplier role required.' });
@@ -3781,7 +3817,7 @@ router.delete('/products/:id', authMiddleware, async (req, res) => {
 });
 
 // Bulk product upload
-router.post('/products/bulk', authMiddleware, async (req, res) => {
+router.post('/products/bulk', authMiddleware, checkSupplierRestriction, async (req, res) => {
     try {
         if (req.user?.role !== 'supplier') {
             return res.status(403).json({ error: 'Access denied. Supplier role required.' });
@@ -5359,7 +5395,7 @@ router.get('/analytics/trends', authMiddleware, async (req, res) => {
 
         // Merge all trends by date
         const trendsMap = new Map();
-        
+
         orderTrends.forEach((item: any) => {
             const dateStr = item.date.toISOString().split('T')[0];
             trendsMap.set(dateStr, {
@@ -5417,7 +5453,7 @@ router.get('/analytics/trends', authMiddleware, async (req, res) => {
             }
         }
 
-        const trends = Array.from(trendsMap.values()).sort((a, b) => 
+        const trends = Array.from(trendsMap.values()).sort((a, b) =>
             a.date.localeCompare(b.date)
         );
 

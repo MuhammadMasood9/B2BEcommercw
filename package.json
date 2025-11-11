@@ -14,6 +14,8 @@
     "db:seed": "tsx server/seed.ts",
     "migrate:multivendor": "tsx scripts/run-data-migration.ts",
     "migrate:rollback": "tsx scripts/rollback-data-migration.ts",
+    "migrate:supplier": "tsx server/migrate.ts",
+    "fix:supplier-store": "tsx scripts/fix-supplier-store.ts",
     "test:integrity": "tsx scripts/test-data-integrity.ts",
     "test": "vitest --run",
     "test:watch": "vitest",

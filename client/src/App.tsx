@@ -91,6 +91,10 @@ import ProfilePage from "@/pages/buyer/ProfilePage";
 import SupplierDashboard from "@/pages/supplier/SupplierDashboard";
 import SupplierDirectory from "@/pages/SupplierDirectory";
 import SupplierStore from "@/pages/SupplierStore";
+import TestSupplierStore from "@/pages/TestSupplierStore";
+import BuyerSupplierDemo from "@/pages/BuyerSupplierDemo";
+import BuyerSupplierStorePage from "@/pages/BuyerSupplierStorePage";
+import SupplierStoreDemo from "@/pages/SupplierStoreDemo";
 import SupplierLogin from "@/pages/supplier/SupplierLogin";
 import SupplierRegister from "@/pages/supplier/SupplierRegister";
 import SupplierMessages from "@/pages/supplier/SupplierMessages";
@@ -421,6 +425,10 @@ function PublicRouter() {
       <Route path="/category/:slug" component={CategoryProducts} />
       <Route path="/subcategory/:slug" component={SubcategoryProducts} />
       <Route path="/get-verified" component={GetVerified} />
+      <Route path="/test-supplier-store" component={TestSupplierStore} />
+      <Route path="/buyer-supplier-demo" component={BuyerSupplierDemo} />
+      <Route path="/supplier-store-demo" component={SupplierStoreDemo} />
+      <Route path="/store/:slug" component={BuyerSupplierStorePage} />
       <Route path="/suppliers" component={SupplierDirectory} />
       <Route path="/suppliers/:slug" component={SupplierStore} />
       <Route path="/notifications">

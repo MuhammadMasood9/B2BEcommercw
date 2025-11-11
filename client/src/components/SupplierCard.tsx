@@ -65,7 +65,7 @@ export default function SupplierCard({ supplier }: SupplierCardProps) {
 
   return (
     <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300 h-full flex flex-col">
-      <Link href={`/suppliers/${supplier.storeSlug}`} className="block">
+      <Link href={`/store/${supplier.storeSlug}`} className="block">
         {/* Banner */}
         <div className="relative aspect-[16/9] overflow-hidden bg-muted">
           <img 
@@ -106,7 +106,7 @@ export default function SupplierCard({ supplier }: SupplierCardProps) {
       <CardContent className="p-4 pt-10 space-y-3 flex-1">
         {/* Store Name and Business Type */}
         <div>
-          <Link href={`/suppliers/${supplier.storeSlug}`}>
+          <Link href={`/store/${supplier.storeSlug}`}>
             <h3 className="font-semibold text-lg mb-1 hover:text-primary transition-colors line-clamp-1">
               {supplier.storeName}
             </h3>
@@ -180,7 +180,7 @@ export default function SupplierCard({ supplier }: SupplierCardProps) {
       </CardContent>
 
       <CardFooter className="p-4 pt-0">
-        <Link href={`/suppliers/${supplier.storeSlug}`} className="w-full">
+        <Link href={`/store/${supplier.storeSlug}`} className="w-full">
           <Button className="w-full" variant="outline">
             <Building2 className="w-4 h-4 mr-2" />
             View Store

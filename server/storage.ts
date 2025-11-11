@@ -1718,20 +1718,57 @@ export class PostgresStorage implements IStorage {
     subject?: string;
     productId?: string;
   }) {
-    const [conversation] = await db.insert(conversations)
-      .values({
-        buyerId: data.buyerId,
-        unreadCountAdmin: data.adminId || data.supplierId || data.buyerId, // Store adminId or supplierId in unreadCountAdmin column (legacy schema)
-        supplierId: data.supplierId,
-        lastMessage: data.subject || '',
-        lastMessageAt: new Date(),
-        productId: data.productId,
-        unreadCountBuyer: 0, // Initialize unread count for buyer
-        unreadCountSupplier: 0 // Initialize unread count for supplier
-      })
-      .returning();
+    // First, try to check what columns exist in the conversations table
+    try {
+      // Try the full insert with all columns
+      const [conversation] = await db.insert(conversations)
+        .values({
+          buyerId: data.buyerId,
+          unreadCountAdmin: data.adminId || data.supplierId || data.buyerId, // Store adminId or supplierId in unreadCountAdmin column (legacy schema)
+          supplierId: data.supplierId,
+          lastMessage: data.subject || '',
+          lastMessageAt: new Date(),
+          productId: data.productId,
+          unreadCountBuyer: 0, // Initialize unread count for buyer
+          unreadCountSupplier: 0 // Initialize unread count for supplier
+        })
+        .returning();
 
-    return conversation;
+      return conversation;
+    } catch (error: any) {
+      console.warn('⚠️  Full conversation creation failed, trying fallback:', error.message);
+      
+      // Try with minimal columns (only the ones that should definitely exist)
+      try {
+        const [conversation] = await db.insert(conversations)
+          .values({
+            buyerId: data.buyerId,
+            unreadCountAdmin: data.adminId || data.supplierId || data.buyerId
+          })
+          .returning();
+
+        return conversation;
+      } catch (fallbackError: any) {
+        console.error('❌ Even fallback conversation creation failed:', fallbackError.message);
+        
+        // Last resort: use raw SQL with only essential columns
+        try {
+          const result = await db.execute(sql`
+            INSERT INTO conversations (id, buyer_id, unread_count_admin, created_at)
+            VALUES (gen_random_uuid(), ${data.buyerId}, ${data.adminId || data.supplierId || data.buyerId}, NOW())
+            RETURNING *
+          `);
+          
+          if (result.rows && result.rows.length > 0) {
+            return result.rows[0] as any;
+          }
+        } catch (rawError: any) {
+          console.error('❌ Raw SQL conversation creation also failed:', rawError.message);
+        }
+        
+        throw new Error(`Failed to create conversation: ${error.message}`);
+      }
+    }
   }
 
   async createMessage(message: InsertMessage): Promise<Message> {

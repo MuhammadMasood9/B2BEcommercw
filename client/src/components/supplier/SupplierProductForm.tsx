@@ -16,21 +16,36 @@ import { Plus, Minus, Package } from "lucide-react";
 
 const productSchema = z.object({
   name: z.string().min(1, "Product name is required"),
-  description: z.string().min(10, "Description must be at least 10 characters"),
+  slug: z.string().optional(), // Will be generated on backend
+  shortDescription: z.string().optional(),
+  description: z.string().optional(),
   categoryId: z.string().min(1, "Category is required"),
-  images: z.array(z.string()).min(1, "At least one image is required"),
+  specifications: z.any().optional(),
+  images: z.array(z.string()).optional(),
+  videos: z.array(z.string()).optional(),
+  minOrderQuantity: z.number().int().min(1, "Minimum order quantity must be at least 1"),
   priceRanges: z.array(z.object({
-    minQty: z.number().min(1, "Minimum quantity must be at least 1"),
-    maxQty: z.number().min(1, "Maximum quantity must be at least 1"),
-    pricePerUnit: z.number().min(0.01, "Price must be greater than 0"),
+    minQty: z.number().int().min(1),
+    maxQty: z.number().int().optional(),
+    pricePerUnit: z.number().min(0)
   })).min(1, "At least one price range is required"),
-  specifications: z.record(z.string()),
-  tags: z.array(z.string()),
-  inStock: z.boolean().default(true),
-  stockQuantity: z.number().min(0, "Stock quantity cannot be negative"),
-  moq: z.number().min(1, "MOQ must be at least 1"),
+  sampleAvailable: z.boolean().optional(),
+  samplePrice: z.number().min(0).optional(),
+  customizationAvailable: z.boolean().optional(),
   leadTime: z.string().optional(),
-  shippingInfo: z.string().optional(),
+  port: z.string().optional(),
+  paymentTerms: z.array(z.string()).optional(),
+  inStock: z.boolean().optional(),
+  stockQuantity: z.number().int().min(0).optional(),
+  colors: z.array(z.string()).optional(),
+  sizes: z.array(z.string()).optional(),
+  keyFeatures: z.array(z.string()).optional(),
+  customizationDetails: z.string().optional(),
+  certifications: z.array(z.string()).optional(),
+  hasTradeAssurance: z.boolean().optional(),
+  tags: z.array(z.string()).optional(),
+  sku: z.string().optional(),
+  metaData: z.any().optional()
 });
 
 type ProductFormData = z.infer<typeof productSchema>;
@@ -63,17 +78,31 @@ export default function SupplierProductForm({
     resolver: zodResolver(productSchema),
     defaultValues: {
       name: product?.name || "",
+      shortDescription: product?.shortDescription || "",
       description: product?.description || "",
       categoryId: product?.categoryId || "",
-      images: product?.images || [],
-      priceRanges: product?.priceRanges || [{ minQty: 1, maxQty: 99, pricePerUnit: 0 }],
       specifications: product?.specifications || {},
-      tags: product?.tags || [],
+      images: product?.images || [],
+      videos: product?.videos || [],
+      minOrderQuantity: product?.minOrderQuantity || 1,
+      priceRanges: product?.priceRanges || [{ minQty: 1, maxQty: 99, pricePerUnit: 0 }],
+      sampleAvailable: product?.sampleAvailable || false,
+      samplePrice: product?.samplePrice || 0,
+      customizationAvailable: product?.customizationAvailable || false,
+      leadTime: product?.leadTime || "",
+      port: product?.port || "",
+      paymentTerms: product?.paymentTerms || [],
       inStock: product?.inStock ?? true,
       stockQuantity: product?.stockQuantity || 0,
-      moq: product?.moq || 1,
-      leadTime: product?.leadTime || "",
-      shippingInfo: product?.shippingInfo || "",
+      colors: product?.colors || [],
+      sizes: product?.sizes || [],
+      keyFeatures: product?.keyFeatures || [],
+      customizationDetails: product?.customizationDetails || "",
+      certifications: product?.certifications || [],
+      hasTradeAssurance: product?.hasTradeAssurance || false,
+      tags: product?.tags || [],
+      sku: product?.sku || "",
+      metaData: product?.metaData || {}
     },
   });
 
@@ -83,8 +112,12 @@ export default function SupplierProductForm({
   });
 
   const handleSubmit = (data: ProductFormData) => {
+    // Remove slug from data as it will be generated on backend
+    const submitData = { ...data };
+    delete submitData.slug;
+    
     onSubmit({
-      ...data,
+      ...submitData,
       specifications,
     });
   };
@@ -120,9 +153,23 @@ export default function SupplierProductForm({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Product Name</FormLabel>
+                  <FormLabel>Product Name *</FormLabel>
                   <FormControl>
                     <Input placeholder="Enter product name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="shortDescription"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Short Description</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Brief product summary" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -192,22 +239,41 @@ export default function SupplierProductForm({
           </CardContent>
         </Card>
 
-        {/* Images */}
+        {/* Images & Videos */}
         <Card>
           <CardHeader>
-            <CardTitle>Product Images</CardTitle>
+            <CardTitle>Product Images & Videos</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <FormField
               control={form.control}
               name="images"
               render={({ field }) => (
                 <FormItem>
+                  <FormLabel>Product Images</FormLabel>
                   <FormControl>
                     <ImageUpload
-                      value={field.value}
+                      value={field.value || []}
                       onChange={field.onChange}
                       maxFiles={5}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="videos"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Video URLs</FormLabel>
+                  <FormControl>
+                    <TagInput
+                      value={field.value || []}
+                      onChange={field.onChange}
+                      placeholder="Add video URLs (YouTube, Vimeo, etc.)"
                     />
                   </FormControl>
                   <FormMessage />
@@ -306,16 +372,16 @@ export default function SupplierProductForm({
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="moq"
+                name="minOrderQuantity"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Minimum Order Quantity (MOQ)</FormLabel>
+                    <FormLabel>Minimum Order Quantity (MOQ) *</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
                         placeholder="1"
                         {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
                       />
                     </FormControl>
                     <FormMessage />
@@ -440,23 +506,230 @@ export default function SupplierProductForm({
           </CardContent>
         </Card>
 
-        {/* Shipping Information */}
+        {/* Additional Details */}
         <Card>
           <CardHeader>
-            <CardTitle>Shipping Information</CardTitle>
+            <CardTitle>Additional Details</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="sku"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>SKU</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Product SKU" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="port"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Port</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Shipping port" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="sampleAvailable"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Sample Available</FormLabel>
+                    <Select onValueChange={(value) => field.onChange(value === "true")} defaultValue={field.value?.toString()}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="true">Yes</SelectItem>
+                        <SelectItem value="false">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="samplePrice"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Sample Price ($)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        {...field}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="customizationAvailable"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Customization Available</FormLabel>
+                    <Select onValueChange={(value) => field.onChange(value === "true")} defaultValue={field.value?.toString()}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="true">Yes</SelectItem>
+                        <SelectItem value="false">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="hasTradeAssurance"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Trade Assurance</FormLabel>
+                    <Select onValueChange={(value) => field.onChange(value === "true")} defaultValue={field.value?.toString()}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="true">Yes</SelectItem>
+                        <SelectItem value="false">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <FormField
               control={form.control}
-              name="shippingInfo"
+              name="customizationDetails"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Shipping Details</FormLabel>
+                  <FormLabel>Customization Details</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Provide shipping information, packaging details, etc."
+                      placeholder="Describe available customization options"
                       rows={3}
                       {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="keyFeatures"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Key Features</FormLabel>
+                  <FormControl>
+                    <TagInput
+                      value={field.value || []}
+                      onChange={field.onChange}
+                      placeholder="Add key features"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="colors"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Available Colors</FormLabel>
+                  <FormControl>
+                    <TagInput
+                      value={field.value || []}
+                      onChange={field.onChange}
+                      placeholder="Add available colors"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="sizes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Available Sizes</FormLabel>
+                  <FormControl>
+                    <TagInput
+                      value={field.value || []}
+                      onChange={field.onChange}
+                      placeholder="Add available sizes"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="certifications"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Certifications</FormLabel>
+                  <FormControl>
+                    <TagInput
+                      value={field.value || []}
+                      onChange={field.onChange}
+                      placeholder="Add certifications (e.g., CE, ISO, FDA)"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="paymentTerms"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Payment Terms</FormLabel>
+                  <FormControl>
+                    <TagInput
+                      value={field.value || []}
+                      onChange={field.onChange}
+                      placeholder="Add payment terms (e.g., T/T, L/C, PayPal)"
                     />
                   </FormControl>
                   <FormMessage />

@@ -694,6 +694,428 @@ router.put('/metrics', authMiddleware, async (req, res) => {
     }
 });
 
+// ==================== TEST DATA API ====================
+
+// Create test supplier data (development only)
+router.post('/test/create-sample-data', async (req, res) => {
+    try {
+        // Only allow in development
+        if (process.env.NODE_ENV === 'production') {
+            return res.status(403).json({ error: 'Not available in production' });
+        }
+
+        // Sample suppliers data
+        const sampleSuppliers = [
+            {
+                businessName: 'Tech Innovations Ltd',
+                businessType: 'manufacturer' as const,
+                storeName: 'Tech Innovations Ltd',
+                storeSlug: 'tech-innovations-ltd',
+                storeDescription: 'Leading manufacturer of electronic components and IoT devices with over 15 years of experience in the industry.',
+                contactPerson: 'John Smith',
+                position: 'Sales Manager',
+                phone: '+1-555-0123',
+                whatsapp: '+1-555-0123',
+                address: '123 Tech Street',
+                city: 'San Francisco',
+                country: 'USA',
+                website: 'https://techinnovations.com',
+                yearEstablished: 2008,
+                employeesCount: '100-200',
+                annualRevenue: '$10M - $50M',
+                mainProducts: ['Electronic Components', 'IoT Devices', 'Sensors', 'Microcontrollers'],
+                exportMarkets: ['North America', 'Europe', 'Asia Pacific'],
+                verificationLevel: 'premium',
+                isVerified: true,
+                rating: '4.8',
+                totalReviews: 127,
+                responseRate: '98',
+                responseTime: '< 2h',
+                totalSales: '2500000',
+                totalOrders: 1250,
+                status: 'approved',
+                isActive: true,
+                isFeatured: true,
+                storePolicies: {
+                    shipping: 'Free shipping on orders over $500. Standard delivery 5-7 business days.',
+                    returns: '30-day return policy for defective items. Return shipping paid by seller.',
+                    payment: 'T/T, L/C, PayPal accepted. 30% deposit, 70% before shipment.',
+                    warranty: '1-year warranty on all electronic components.'
+                }
+            },
+            {
+                businessName: 'Global Textiles Co',
+                businessType: 'manufacturer' as const,
+                storeName: 'Global Textiles Co',
+                storeSlug: 'global-textiles-co',
+                storeDescription: 'Premium textile manufacturer specializing in sustainable fabrics and custom textile solutions.',
+                contactPerson: 'Maria Garcia',
+                position: 'Export Manager',
+                phone: '+86-138-0013-8000',
+                address: '456 Textile Avenue',
+                city: 'Guangzhou',
+                country: 'China',
+                website: 'https://globaltextiles.com',
+                yearEstablished: 2003,
+                employeesCount: '200-500',
+                annualRevenue: '$50M - $100M',
+                mainProducts: ['Cotton Fabrics', 'Synthetic Textiles', 'Eco-friendly Materials', 'Custom Textiles'],
+                exportMarkets: ['Europe', 'North America', 'South America', 'Africa'],
+                verificationLevel: 'business',
+                isVerified: true,
+                rating: '4.6',
+                totalReviews: 89,
+                responseRate: '95',
+                responseTime: '< 4h',
+                totalSales: '1800000',
+                totalOrders: 890,
+                status: 'approved',
+                isActive: true,
+                isFeatured: false
+            },
+            {
+                businessName: 'Precision Machinery Corp',
+                businessType: 'manufacturer' as const,
+                storeName: 'Precision Machinery',
+                storeSlug: 'precision-machinery',
+                storeDescription: 'Industrial machinery and automation solutions for manufacturing industries worldwide.',
+                contactPerson: 'Hans Mueller',
+                position: 'Technical Director',
+                phone: '+49-30-12345678',
+                address: '789 Industrial Park',
+                city: 'Munich',
+                country: 'Germany',
+                website: 'https://precisionmachinery.de',
+                yearEstablished: 1995,
+                employeesCount: '50-100',
+                annualRevenue: '$5M - $10M',
+                mainProducts: ['CNC Machines', 'Automation Equipment', 'Industrial Robots', 'Precision Tools'],
+                exportMarkets: ['Europe', 'Asia', 'North America'],
+                verificationLevel: 'business',
+                isVerified: true,
+                rating: '4.9',
+                totalReviews: 45,
+                responseRate: '100',
+                responseTime: '< 1h',
+                totalSales: '850000',
+                totalOrders: 156,
+                status: 'approved',
+                isActive: true,
+                isFeatured: true
+            }
+        ];
+
+        // Create users and supplier profiles
+        const createdSuppliers = [];
+        for (const supplierData of sampleSuppliers) {
+            // Create user
+            const hashedPassword = await bcrypt.hash('password123', 12);
+            const newUser = await db.insert(users).values({
+                email: `${supplierData.storeSlug}@example.com`,
+                password: hashedPassword,
+                firstName: supplierData.contactPerson.split(' ')[0],
+                lastName: supplierData.contactPerson.split(' ')[1] || '',
+                role: 'supplier',
+                emailVerified: true,
+                isActive: true,
+                createdAt: new Date(),
+                updatedAt: new Date()
+            }).returning();
+
+            // Create supplier profile
+            const supplierProfile = await db.insert(supplierProfiles).values({
+                userId: newUser[0].id,
+                ...supplierData,
+                createdAt: new Date(),
+                updatedAt: new Date()
+            }).returning();
+
+            createdSuppliers.push(supplierProfile[0]);
+        }
+
+        res.json({
+            success: true,
+            message: 'Sample supplier data created successfully',
+            suppliers: createdSuppliers.map(s => ({
+                id: s.id,
+                storeName: s.storeName,
+                storeSlug: s.storeSlug
+            }))
+        });
+
+    } catch (error: any) {
+        console.error('Create sample data error:', error);
+        res.status(500).json({ error: 'Failed to create sample data' });
+    }
+});
+
+// ==================== PUBLIC STORE API ====================
+
+// Get public supplier store data by slug
+router.get('/store/:slug', async (req, res) => {
+    try {
+        const { slug } = req.params;
+
+        // Get supplier profile with store information
+        const supplierProfile = await db.select({
+            id: supplierProfiles.id,
+            userId: supplierProfiles.userId,
+            businessName: supplierProfiles.businessName,
+            businessType: supplierProfiles.businessType,
+            storeName: supplierProfiles.storeName,
+            storeSlug: supplierProfiles.storeSlug,
+            storeDescription: supplierProfiles.storeDescription,
+            storeLogo: supplierProfiles.storeLogo,
+            storeBanner: supplierProfiles.storeBanner,
+            contactPerson: supplierProfiles.contactPerson,
+            position: supplierProfiles.position,
+            phone: supplierProfiles.phone,
+            whatsapp: supplierProfiles.whatsapp,
+            address: supplierProfiles.address,
+            city: supplierProfiles.city,
+            country: supplierProfiles.country,
+            website: supplierProfiles.website,
+            yearEstablished: supplierProfiles.yearEstablished,
+            employeesCount: supplierProfiles.employeesCount,
+            annualRevenue: supplierProfiles.annualRevenue,
+            mainProducts: supplierProfiles.mainProducts,
+            exportMarkets: supplierProfiles.exportMarkets,
+            verificationLevel: supplierProfiles.verificationLevel,
+            isVerified: supplierProfiles.isVerified,
+            rating: supplierProfiles.rating,
+            totalReviews: supplierProfiles.totalReviews,
+            responseRate: supplierProfiles.responseRate,
+            responseTime: supplierProfiles.responseTime,
+            totalSales: supplierProfiles.totalSales,
+            totalOrders: supplierProfiles.totalOrders,
+            status: supplierProfiles.status,
+            isActive: supplierProfiles.isActive,
+            isFeatured: supplierProfiles.isFeatured,
+            storePolicies: supplierProfiles.storePolicies,
+            operatingHours: supplierProfiles.operatingHours,
+            createdAt: supplierProfiles.createdAt
+        })
+            .from(supplierProfiles)
+            .where(and(
+                eq(supplierProfiles.storeSlug, slug),
+                eq(supplierProfiles.isActive, true),
+                eq(supplierProfiles.status, 'approved')
+            ))
+            .limit(1);
+
+        if (supplierProfile.length === 0) {
+            return res.status(404).json({ error: 'Supplier store not found' });
+        }
+
+        const supplier = supplierProfile[0];
+
+        // Get supplier's published products with category information
+        const supplierProducts = await db.select({
+            id: products.id,
+            name: products.name,
+            slug: products.slug,
+            shortDescription: products.shortDescription,
+            description: products.description,
+            categoryId: products.categoryId,
+            images: products.images,
+            minOrderQuantity: products.minOrderQuantity,
+            priceRanges: products.priceRanges,
+            sampleAvailable: products.sampleAvailable,
+            samplePrice: products.samplePrice,
+            customizationAvailable: products.customizationAvailable,
+            leadTime: products.leadTime,
+            port: products.port,
+            paymentTerms: products.paymentTerms,
+            inStock: products.inStock,
+            stockQuantity: products.stockQuantity,
+            isFeatured: products.isFeatured,
+            views: products.views,
+            inquiries: products.inquiries,
+            hasTradeAssurance: products.hasTradeAssurance,
+            certifications: products.certifications,
+            approvalStatus: products.approvalStatus,
+            createdAt: products.createdAt,
+            // Category information
+            categoryName: categories.name
+        })
+            .from(products)
+            .leftJoin(categories, eq(products.categoryId, categories.id))
+            .where(and(
+                eq(products.supplierId, supplier.id),
+                eq(products.isPublished, true),
+                eq(products.approvalStatus, 'approved')
+            ))
+            .orderBy(desc(products.isFeatured), desc(products.createdAt));
+
+        // Calculate additional metrics
+        const totalProducts = supplierProducts.length;
+        const featuredProducts = supplierProducts.filter(p => p.isFeatured).length;
+        const totalViews = supplierProducts.reduce((sum, p) => sum + (p.views || 0), 0);
+        const totalInquiries = supplierProducts.reduce((sum, p) => sum + (p.inquiries || 0), 0);
+
+        // Get categories for this supplier's products
+        const supplierCategories = await db.select({
+            id: categories.id,
+            name: categories.name,
+            slug: categories.slug,
+            productCount: sql`count(${products.id})::int`
+        })
+            .from(categories)
+            .innerJoin(products, and(
+                eq(products.categoryId, categories.id),
+                eq(products.supplierId, supplier.id),
+                eq(products.isPublished, true),
+                eq(products.approvalStatus, 'approved')
+            ))
+            .groupBy(categories.id, categories.name, categories.slug)
+            .orderBy(desc(sql`count(${products.id})`));
+
+        res.json({
+            success: true,
+            supplier: {
+                ...supplier,
+                metrics: {
+                    totalProducts,
+                    featuredProducts,
+                    totalViews,
+                    totalInquiries
+                }
+            },
+            products: supplierProducts,
+            categories: supplierCategories
+        });
+
+    } catch (error: any) {
+        console.error('Get supplier store error:', error);
+        res.status(500).json({ error: 'Failed to fetch supplier store' });
+    }
+});
+
+// Get supplier store products with filters
+router.get('/store/:slug/products', async (req, res) => {
+    try {
+        const { slug } = req.params;
+        const { 
+            categoryId, 
+            search, 
+            featured, 
+            minPrice, 
+            maxPrice, 
+            inStock,
+            page = '1', 
+            limit = '20' 
+        } = req.query;
+
+        // Get supplier profile
+        const supplierProfile = await db.select({ id: supplierProfiles.id })
+            .from(supplierProfiles)
+            .where(and(
+                eq(supplierProfiles.storeSlug, slug),
+                eq(supplierProfiles.isActive, true),
+                eq(supplierProfiles.status, 'approved')
+            ))
+            .limit(1);
+
+        if (supplierProfile.length === 0) {
+            return res.status(404).json({ error: 'Supplier store not found' });
+        }
+
+        const supplierId = supplierProfile[0].id;
+        const pageNum = parseInt(page as string) || 1;
+        const limitNum = parseInt(limit as string) || 20;
+        const offset = (pageNum - 1) * limitNum;
+
+        // Build query conditions
+        const conditions = [
+            eq(products.supplierId, supplierId),
+            eq(products.isPublished, true),
+            eq(products.approvalStatus, 'approved')
+        ];
+
+        if (categoryId) {
+            conditions.push(eq(products.categoryId, categoryId as string));
+        }
+
+        if (featured === 'true') {
+            conditions.push(eq(products.isFeatured, true));
+        }
+
+        if (inStock === 'true') {
+            conditions.push(eq(products.inStock, true));
+        }
+
+        if (search) {
+            const searchPattern = `%${search}%`;
+            conditions.push(
+                or(
+                    ilike(products.name, searchPattern),
+                    ilike(products.description, searchPattern)
+                )
+            );
+        }
+
+        // Get products with pagination
+        const supplierProducts = await db.select({
+            id: products.id,
+            name: products.name,
+            slug: products.slug,
+            shortDescription: products.shortDescription,
+            description: products.description,
+            categoryId: products.categoryId,
+            images: products.images,
+            minOrderQuantity: products.minOrderQuantity,
+            priceRanges: products.priceRanges,
+            sampleAvailable: products.sampleAvailable,
+            samplePrice: products.samplePrice,
+            customizationAvailable: products.customizationAvailable,
+            leadTime: products.leadTime,
+            port: products.port,
+            paymentTerms: products.paymentTerms,
+            inStock: products.inStock,
+            stockQuantity: products.stockQuantity,
+            isFeatured: products.isFeatured,
+            views: products.views,
+            inquiries: products.inquiries,
+            hasTradeAssurance: products.hasTradeAssurance,
+            certifications: products.certifications,
+            createdAt: products.createdAt,
+            // Category information
+            categoryName: categories.name
+        })
+            .from(products)
+            .leftJoin(categories, eq(products.categoryId, categories.id))
+            .where(and(...conditions))
+            .orderBy(desc(products.isFeatured), desc(products.createdAt))
+            .limit(limitNum)
+            .offset(offset);
+
+        // Get total count for pagination
+        const totalCountResult = await db.select({ count: sql`count(*)::int` })
+            .from(products)
+            .where(and(...conditions));
+
+        const totalCount = totalCountResult[0]?.count || 0;
+        const totalPages = Math.ceil(totalCount / limitNum);
+
+        res.json({
+            success: true,
+            products: supplierProducts,
+            pagination: {
+                page: pageNum,
+                limit: limitNum,
+                total: totalCount,
+                totalPages,
+                hasNext: pageNum < totalPages,
+                hasPrev: pageNum > 1
+            }
+        });
+
+    } catch (error: any) {
+        console.error('Get supplier store products error:', error);
+        res.status(500).json({ error: 'Failed to fetch supplier products' });
+    }
+});
+
 // ==================== STATUS MANAGEMENT API ====================
 
 // Get supplier status information
@@ -2923,7 +3345,7 @@ router.get('/admin/suppliers', authMiddleware, async (req, res) => {
 // Product validation schema
 const productSchema = z.object({
     name: z.string().min(1, 'Product name is required'),
-    slug: z.string().min(1, 'Product slug is required'),
+    slug: z.string().optional(), // Slug will be generated from name
     shortDescription: z.string().optional(),
     description: z.string().optional(),
     categoryId: z.string().min(1, 'Category is required'),
@@ -3468,115 +3890,7 @@ router.post('/products/bulk', authMiddleware, async (req, res) => {
     }
 });
 
-// Get product analytics for supplier dashboard
-router.get('/analytics/products', authMiddleware, async (req, res) => {
-    try {
-        if (req.user?.role !== 'supplier') {
-            return res.status(403).json({ error: 'Access denied. Supplier role required.' });
-        }
-
-        // Get supplier profile to get supplierId
-        const supplierProfile = await db.select({ id: supplierProfiles.id })
-            .from(supplierProfiles)
-            .where(eq(supplierProfiles.userId, req.user.id))
-            .limit(1);
-
-        if (supplierProfile.length === 0) {
-            return res.status(404).json({ error: 'Supplier profile not found' });
-        }
-
-        const supplierId = supplierProfile[0].id;
-
-        // Get product counts by status
-        const statusCounts = await db.select({
-            approvalStatus: products.approvalStatus,
-            count: sql`count(*)`
-        })
-            .from(products)
-            .where(eq(products.supplierId, supplierId))
-            .groupBy(products.approvalStatus);
-
-        // Get total views and inquiries
-        const totalStats = await db.select({
-            totalViews: sql`sum(${products.views})`,
-            totalInquiries: sql`sum(${products.inquiries})`,
-            totalProducts: sql`count(*)`
-        })
-            .from(products)
-            .where(eq(products.supplierId, supplierId));
-
-        // Get top performing products
-        const topProducts = await db.select({
-            id: products.id,
-            name: products.name,
-            slug: products.slug,
-            views: products.views,
-            inquiries: products.inquiries,
-            approvalStatus: products.approvalStatus,
-            createdAt: products.createdAt
-        })
-            .from(products)
-            .where(eq(products.supplierId, supplierId))
-            .orderBy(desc(products.views))
-            .limit(10);
-
-        // Get recent products (last 30 days)
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-        const recentProducts = await db.select({
-            count: sql`count(*)`
-        })
-            .from(products)
-            .where(and(
-                eq(products.supplierId, supplierId),
-                gte(products.createdAt, thirtyDaysAgo)
-            ));
-
-        // Get products by category
-        const categoryStats = await db.select({
-            categoryId: products.categoryId,
-            categoryName: categories.name,
-            count: sql`count(*)`
-        })
-            .from(products)
-            .leftJoin(categories, eq(products.categoryId, categories.id))
-            .where(eq(products.supplierId, supplierId))
-            .groupBy(products.categoryId, categories.name);
-
-        const analytics = {
-            totalProducts: parseInt(totalStats[0]?.totalProducts as string || '0'),
-            totalViews: parseInt(totalStats[0]?.totalViews as string || '0'),
-            totalInquiries: parseInt(totalStats[0]?.totalInquiries as string || '0'),
-            recentProducts: parseInt(recentProducts[0]?.count as string || '0'),
-            statusBreakdown: statusCounts.reduce((acc, item) => {
-                acc[item.approvalStatus as string] = parseInt(item.count as string);
-                return acc;
-            }, {} as Record<string, number>),
-            categoryBreakdown: categoryStats.map(cat => ({
-                categoryId: cat.categoryId,
-                categoryName: cat.categoryName,
-                count: parseInt(cat.count as string)
-            })),
-            topPerformers: topProducts,
-            averageViewsPerProduct: totalStats[0]?.totalProducts
-                ? Math.round(parseInt(totalStats[0]?.totalViews as string || '0') / parseInt(totalStats[0]?.totalProducts as string))
-                : 0,
-            conversionRate: totalStats[0]?.totalViews && parseInt(totalStats[0]?.totalViews as string) > 0
-                ? Math.round((parseInt(totalStats[0]?.totalInquiries as string || '0') / parseInt(totalStats[0]?.totalViews as string)) * 100 * 100) / 100
-                : 0
-        };
-
-        res.json({
-            success: true,
-            analytics
-        });
-
-    } catch (error: any) {
-        console.error('Get product analytics error:', error);
-        res.status(500).json({ error: 'Failed to fetch product analytics' });
-    }
-});
+// This route was removed - duplicate of the one below
 
 // Admin: Update supplier status (approve, reject, suspend)
 router.put('/admin/suppliers/:supplierId/status', authMiddleware, async (req, res) => {

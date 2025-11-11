@@ -7,14 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { 
-  Mail, 
-  Lock, 
-  Eye, 
-  EyeOff, 
-  Building2, 
-  User, 
-  Phone, 
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  Building2,
+  User,
+  Phone,
   Loader2,
   Store,
   ArrowRight,
@@ -37,14 +38,22 @@ export default function SupplierRegister() {
     lastName: '',
     email: '',
     businessName: '',
+    businessType: 'trading_company' as 'manufacturer' | 'trading_company' | 'wholesaler',
     storeName: '',
+    contactPerson: '',
     phone: '',
+    address: '',
+    city: '',
+    country: '',
     password: '',
     terms: false
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    console.log('Current form data:', formData);
+
     if (!formData.terms) {
       toast({
         title: "Terms Required",
@@ -53,23 +62,32 @@ export default function SupplierRegister() {
       });
       return;
     }
-    
+
     setIsSubmitting(true);
-    
+
     try {
+      const requestData = {
+        email: formData.email,
+        password: formData.password,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        businessName: formData.businessName,
+        businessType: formData.businessType,
+        storeName: formData.storeName,
+        contactPerson: formData.contactPerson,
+        phone: formData.phone,
+        address: formData.address,
+        city: formData.city,
+        country: formData.country,
+      };
+
+      console.log('Sending registration data:', requestData);
+
       const response = await fetch('/api/suppliers/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          businessName: formData.businessName,
-          storeName: formData.storeName,
-          phone: formData.phone,
-        })
+        body: JSON.stringify(requestData)
       });
 
       if (response.ok) {
@@ -93,35 +111,35 @@ export default function SupplierRegister() {
         variant: "destructive"
       });
     }
-    
+
     setIsSubmitting(false);
   };
 
   const benefits = [
-    { 
-      icon: Store, 
-      title: "Your Own Store", 
+    {
+      icon: Store,
+      title: "Your Own Store",
       description: "Customizable storefront",
       color: "from-blue-100 to-blue-200",
       iconColor: "text-blue-600"
     },
-    { 
-      icon: Package, 
-      title: "Unlimited Products", 
+    {
+      icon: Package,
+      title: "Unlimited Products",
       description: "List as many as you want",
       color: "from-green-100 to-green-200",
       iconColor: "text-green-600"
     },
-    { 
-      icon: Globe, 
-      title: "Global Reach", 
+    {
+      icon: Globe,
+      title: "Global Reach",
       description: "Access worldwide buyers",
       color: "from-purple-100 to-purple-200",
       iconColor: "text-purple-600"
     },
-    { 
-      icon: Award, 
-      title: "Verified Badge", 
+    {
+      icon: Award,
+      title: "Verified Badge",
       description: "Build trust with buyers",
       color: "from-yellow-100 to-yellow-200",
       iconColor: "text-yellow-600"
@@ -130,8 +148,8 @@ export default function SupplierRegister() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-white">
-      <Header />
-      
+      {/* <Header /> */}
+
       <main className="flex-1 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
         <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
           {/* Left Side - Branding & Benefits */}
@@ -283,6 +301,29 @@ export default function SupplierRegister() {
                   </div>
 
                   <div className="space-y-2">
+                    <Label htmlFor="businessType" className="text-sm font-medium">
+                      Business Type
+                    </Label>
+                    <Select
+                      value={formData.businessType}
+                      onValueChange={(value) => setFormData({ ...formData, businessType: value as any })}
+                      required
+                    >
+                      <SelectTrigger className="h-11">
+                        <div className="flex items-center">
+                          <Building2 className="mr-2 h-4 w-4 text-gray-400" />
+                          <SelectValue placeholder="Select business type" />
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="trading_company">Trading Company</SelectItem>
+                        <SelectItem value="manufacturer">Manufacturer</SelectItem>
+                        <SelectItem value="wholesaler">Wholesaler</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
                     <Label htmlFor="storeName" className="text-sm font-medium">
                       Store Name
                     </Label>
@@ -293,6 +334,23 @@ export default function SupplierRegister() {
                         placeholder="My Store"
                         value={formData.storeName}
                         onChange={(e) => setFormData({ ...formData, storeName: e.target.value })}
+                        required
+                        className="pl-10 h-11"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="contactPerson" className="text-sm font-medium">
+                      Contact Person
+                    </Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Input
+                        id="contactPerson"
+                        placeholder="Contact person name"
+                        value={formData.contactPerson}
+                        onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
                         required
                         className="pl-10 h-11"
                       />
@@ -314,6 +372,59 @@ export default function SupplierRegister() {
                         required
                         className="pl-10 h-11"
                       />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="address" className="text-sm font-medium">
+                      Business Address
+                    </Label>
+                    <div className="relative">
+                      <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Input
+                        id="address"
+                        placeholder="123 Business Street"
+                        value={formData.address}
+                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                        required
+                        className="pl-10 h-11"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="city" className="text-sm font-medium">
+                        City
+                      </Label>
+                      <div className="relative">
+                        <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <Input
+                          id="city"
+                          placeholder="New York"
+                          value={formData.city}
+                          onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                          required
+                          className="pl-10 h-11"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="country" className="text-sm font-medium">
+                        Country
+                      </Label>
+                      <div className="relative">
+                        <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <Input
+                          id="country"
+                          placeholder="United States"
+                          value={formData.country}
+                          onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                          required
+                          className="pl-10 h-11"
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -347,8 +458,8 @@ export default function SupplierRegister() {
                   </div>
 
                   <div className="flex items-start space-x-2">
-                    <Checkbox 
-                      id="terms" 
+                    <Checkbox
+                      id="terms"
                       checked={formData.terms}
                       onCheckedChange={(checked) => setFormData({ ...formData, terms: checked === true })}
                       required
@@ -414,7 +525,7 @@ export default function SupplierRegister() {
         </div>
       </main>
 
-      <Footer />
+      {/* <Footer /> */}
     </div>
   );
 }

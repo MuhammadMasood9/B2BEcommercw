@@ -311,59 +311,59 @@ export default function AdminUsers() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Total Users - Blue */}
-        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
+        {/* Total Users - Primary Orange */}
+        <Card className="bg-gradient-to-br from-primary to-primary/80 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-blue-100">Total Users</CardTitle>
-            <UserCheck className="h-6 w-6 text-blue-200" />
+            <CardTitle className="text-sm font-medium text-primary-foreground/80">Total Users</CardTitle>
+            <UserCheck className="h-6 w-6 text-primary-foreground/70" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-white">
               {isLoading ? "..." : users.length}
             </div>
-            <p className="text-sm text-blue-100 mt-1">All registered users</p>
+            <p className="text-sm text-primary-foreground/80 mt-1">All registered users</p>
           </CardContent>
         </Card>
 
-        {/* Active Users - Green */}
-        <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-lg">
+        {/* Active Users - Secondary Dark Grey */}
+        <Card className="bg-gradient-to-br from-secondary to-secondary/80 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-green-100">Active Users</CardTitle>
-            <CheckCircle className="h-6 w-6 text-green-200" />
+            <CardTitle className="text-sm font-medium text-secondary-foreground/80">Active Users</CardTitle>
+            <CheckCircle className="h-6 w-6 text-secondary-foreground/70" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-white">
               {isLoading ? "..." : users.filter(u => u.isActive).length}
             </div>
-            <p className="text-sm text-green-100 mt-1">Currently active</p>
+            <p className="text-sm text-secondary-foreground/80 mt-1">Currently active</p>
           </CardContent>
         </Card>
 
-        {/* Verified Users - Purple */}
-        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-lg">
+        {/* Verified Users - Orange Accent */}
+        <Card className="bg-gradient-to-br from-accent to-accent/80 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-purple-100">Verified Users</CardTitle>
-            <CheckCircle className="h-6 w-6 text-purple-200" />
+            <CardTitle className="text-sm font-medium text-accent-foreground/80">Verified Users</CardTitle>
+            <CheckCircle className="h-6 w-6 text-accent-foreground/70" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-white">
               {isLoading ? "..." : users.filter(u => u.emailVerified).length}
             </div>
-            <p className="text-sm text-purple-100 mt-1">Email verified</p>
+            <p className="text-sm text-accent-foreground/80 mt-1">Email verified</p>
           </CardContent>
         </Card>
 
-        {/* Admins (including suppliers) - Orange */}
-        <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 shadow-lg">
+        {/* Admins (including suppliers) - Dark Grey */}
+        <Card className="bg-gradient-to-br from-brand-grey-800 to-brand-grey-900 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-orange-100">Admins</CardTitle>
-            <Shield className="h-6 w-6 text-orange-200" />
+            <CardTitle className="text-sm font-medium text-white/80">Admins</CardTitle>
+            <Shield className="h-6 w-6 text-white/70" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-white">
               {isLoading ? "..." : users.filter(u => u.role === 'admin' || u.role === 'supplier').length}
             </div>
-            <p className="text-sm text-orange-100 mt-1">Admin users (including suppliers)</p>
+            <p className="text-sm text-white/80 mt-1">Admin users (including suppliers)</p>
           </CardContent>
         </Card>
       </div>
@@ -475,7 +475,7 @@ export default function AdminUsers() {
         <CardContent>
           {isLoading ? (
             <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
               <p className="text-muted-foreground">Loading users...</p>
             </div>
           ) : error ? (
@@ -511,7 +511,7 @@ export default function AdminUsers() {
                   const RoleIcon = getRoleIcon(user.role);
                   const isSelected = selectedUsers.includes(user.id);
                   return (
-                    <TableRow key={user.id} data-testid={`row-user-${user.id}`} className={isSelected ? "bg-blue-50" : ""}>
+                    <TableRow key={user.id} data-testid={`row-user-${user.id}`} className={isSelected ? "bg-primary/5" : ""}>
                       <TableCell>
                         <Checkbox
                           checked={isSelected}
@@ -894,12 +894,12 @@ function UserForm({
                 </div>
               )}
 
-              <div className="p-4 border rounded-lg bg-blue-50">
+              <div className="p-4 border rounded-lg bg-primary/5">
                 <div className="flex items-center gap-2 mb-2">
-                  <AlertCircle className="w-4 h-4 text-blue-600" />
-                  <h4 className="font-medium text-blue-900">Security Note</h4>
+                  <AlertCircle className="w-4 h-4 text-primary" />
+                  <h4 className="font-medium text-foreground">Security Note</h4>
                 </div>
-                <p className="text-sm text-blue-800">
+                <p className="text-sm text-muted-foreground">
                   Admin users have full access to the system. Use caution when creating or modifying admin accounts.
                 </p>
               </div>

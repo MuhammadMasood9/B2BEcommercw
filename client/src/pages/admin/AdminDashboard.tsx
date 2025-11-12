@@ -147,7 +147,7 @@ export default function AdminDashboard() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'replied': return 'bg-blue-100 text-blue-800';
+      case 'replied': return 'bg-primary text-primary';
       case 'negotiating': return 'bg-purple-100 text-purple-800';
       case 'completed': return 'bg-green-100 text-green-800';
       default: return 'bg-gray-100 text-gray-800';
@@ -165,15 +165,15 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-8 space-y-6 bg-background theme-transition">
       {/* Breadcrumb */}
       <Breadcrumb items={[{ label: "Admin Dashboard" }]} />
 
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Platform Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Monitor platform performance, supplier activity, and marketplace health.</p>
+          <h1 className="text-3xl font-bold text-foreground theme-transition">Platform Dashboard</h1>
+          <p className="text-muted-foreground mt-1 theme-transition">Monitor platform performance, supplier activity, and marketplace health.</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline">
@@ -185,81 +185,81 @@ export default function AdminDashboard() {
 
       {/* Quick Stats - Platform Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-        {/* Total Suppliers Card - Blue */}
-        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
+        {/* Total Suppliers Card - Primary Orange */}
+        <Card className="bg-gradient-to-br from-primary to-primary/80 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-blue-100">Total Suppliers</CardTitle>
-            <Store className="h-6 w-6 text-blue-200" />
+            <CardTitle className="text-sm font-medium text-primary-foreground/80">Total Suppliers</CardTitle>
+            <Store className="h-6 w-6 text-primary-foreground/70" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-white">
               {statsLoading ? "..." : (statsData.totalSuppliers || 0).toLocaleString()}
             </div>
-            <p className="text-sm text-blue-100 mt-1">
+            <p className="text-sm text-primary-foreground/80 mt-1">
               <span className="text-green-300">+{statsData.newSuppliersToday || 0}</span> new today
             </p>
           </CardContent>
         </Card>
 
-        {/* Pending Approvals Card - Yellow */}
-        <Card className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white border-0 shadow-lg">
+        {/* Pending Approvals Card - Secondary Dark Grey */}
+        <Card className="bg-gradient-to-br from-secondary to-secondary/80 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-yellow-100">Pending Approvals</CardTitle>
-            <AlertCircle className="h-6 w-6 text-yellow-200" />
+            <CardTitle className="text-sm font-medium text-secondary-foreground/80">Pending Approvals</CardTitle>
+            <AlertCircle className="h-6 w-6 text-secondary-foreground/70" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-white">
               {statsLoading ? "..." : (statsData.pendingSuppliers || 0) + (statsData.pendingProducts || 0)}
             </div>
-            <p className="text-sm text-yellow-100 mt-1">
+            <p className="text-sm text-secondary-foreground/80 mt-1">
               {statsData.pendingSuppliers || 0} suppliers • {statsData.pendingProducts || 0} products
             </p>
           </CardContent>
         </Card>
 
-        {/* Total Products Card - Green */}
-        <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-lg">
+        {/* Total Products Card - Orange Accent */}
+        <Card className="bg-gradient-to-br from-accent to-accent/80 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-green-100">Total Products</CardTitle>
-            <Package className="h-6 w-6 text-green-200" />
+            <CardTitle className="text-sm font-medium text-accent-foreground/80">Total Products</CardTitle>
+            <Package className="h-6 w-6 text-accent-foreground/70" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-white">
               {statsLoading ? "..." : statsData.totalProducts.toLocaleString()}
             </div>
-            <p className="text-sm text-green-100 mt-1">
+            <p className="text-sm text-accent-foreground/80 mt-1">
               <span className="text-green-300">+12%</span> from last month
             </p>
           </CardContent>
         </Card>
 
-        {/* Total Buyers Card - Purple */}
-        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-lg">
+        {/* Total Buyers Card - Primary Orange Variant */}
+        <Card className="bg-gradient-to-br from-brand-orange-600 to-brand-orange-700 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-purple-100">Total Buyers</CardTitle>
-            <Users className="h-6 w-6 text-purple-200" />
+            <CardTitle className="text-sm font-medium text-white/80">Total Buyers</CardTitle>
+            <Users className="h-6 w-6 text-white/70" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-white">
               {statsLoading ? "..." : (statsData.totalBuyers || statsData.totalUsers || 0).toLocaleString()}
             </div>
-            <p className="text-sm text-purple-100 mt-1">
+            <p className="text-sm text-white/80 mt-1">
               <span className="text-green-300">+8%</span> from last month
             </p>
           </CardContent>
         </Card>
 
-        {/* Platform Revenue Card - Orange */}
-        <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 shadow-lg">
+        {/* Platform Revenue Card - Dark Grey */}
+        <Card className="bg-gradient-to-br from-brand-grey-800 to-brand-grey-900 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-orange-100">Platform Revenue</CardTitle>
-            <DollarSign className="h-6 w-6 text-orange-200" />
+            <CardTitle className="text-sm font-medium text-white/80">Platform Revenue</CardTitle>
+            <DollarSign className="h-6 w-6 text-white/70" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-white">
               ${statsLoading ? "..." : (statsData.platformRevenue || statsData.totalRevenue || 0).toLocaleString()}
             </div>
-            <p className="text-sm text-orange-100 mt-1">
+            <p className="text-sm text-white/80 mt-1">
               <span className="text-green-300">+18%</span> from last month
             </p>
           </CardContent>
@@ -293,7 +293,7 @@ export default function AdminDashboard() {
                     activityData.map((activity: any) => (
                       <div key={activity.id} className="flex items-center gap-3">
                         <div className="p-2 rounded-full bg-gray-100">
-                          <Activity className="h-4 w-4 text-blue-600" />
+                          <Activity className="h-4 w-4 text-primary" />
                         </div>
                         <div className="flex-1">
                           <p className="text-sm font-medium">{activity.message || activity.description}</p>
@@ -324,7 +324,7 @@ export default function AdminDashboard() {
                     productsData.map((product: any, index: number) => (
                       <div key={product.id} className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-semibold text-blue-600">
+                          <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-sm font-semibold text-primary">
                             {index + 1}
                           </div>
                           <div>
@@ -380,7 +380,7 @@ export default function AdminDashboard() {
                 
                 <div className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex items-center gap-3">
-                    <Store className="h-5 w-5 text-blue-600" />
+                    <Store className="h-5 w-5 text-primary" />
                     <div>
                       <p className="font-medium">Active Suppliers</p>
                       <p className="text-sm text-muted-foreground">{statsData.activeSuppliers || 0} suppliers online</p>
@@ -402,13 +402,13 @@ export default function AdminDashboard() {
 
                 <div className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex items-center gap-3">
-                    <TrendingUp className="h-5 w-5 text-orange-600" />
+                    <TrendingUp className="h-5 w-5 text-primary" />
                     <div>
                       <p className="font-medium">Platform Growth</p>
                       <p className="text-sm text-muted-foreground">+15% this month</p>
                     </div>
                   </div>
-                  <Badge className="bg-orange-100 text-orange-800">Growing</Badge>
+                  <Badge className="bg-primary/10 text-primary">Growing</Badge>
                 </div>
               </div>
             </CardContent>

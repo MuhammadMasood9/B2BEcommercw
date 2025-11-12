@@ -211,12 +211,12 @@ export default function BuyerInquiries() {
       <Header />
       
       {/* Hero Section with Gradient */}
-      <section className="relative py-16 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
+      <section className="relative py-16 bg-gradient-to-br from-secondary via-secondary/90 to-secondary/80 overflow-hidden">
         {/* Background Elements */}
         <div className="absolute inset-0">
-          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-600/10 to-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-primary/20 to-primary/15 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-primary/25 to-primary/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-primary/15 to-primary/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -228,7 +228,7 @@ export default function BuyerInquiries() {
             
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
               My
-              <span className="bg-gradient-to-r from-blue-200 via-white to-blue-200 bg-clip-text text-transparent block">
+              <span className="bg-gradient-to-r from-primary/80 via-white to-primary/80 bg-clip-text text-transparent block">
                 Inquiries
               </span>
             </h1>
@@ -333,8 +333,8 @@ export default function BuyerInquiries() {
             
             <Card className="bg-white border-gray-100 shadow-lg">
               <CardContent className="p-6 text-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <DollarSign className="w-6 h-6 text-blue-600" />
+                <div className="w-12 h-12 bg-gradient-to-br from-primary/10 to-primary/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+                  <DollarSign className="w-6 h-6 text-primary" />
                 </div>
                 <div className="text-2xl font-bold text-gray-900">
                   ${inquiries.reduce((sum: number, inquiry: any) => sum + (inquiry.totalAmount ?? 0), 0).toLocaleString()}
@@ -365,7 +365,7 @@ export default function BuyerInquiries() {
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                        <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-primary transition-colors">
                           {inquiry.productName}
                         </CardTitle>
                         <p className="text-sm text-gray-600 mt-1">Inquiry #{inquiry.id}</p>
@@ -433,7 +433,7 @@ export default function BuyerInquiries() {
                 {searchQuery ? 'Try adjusting your search criteria' : 'You haven\'t made any inquiries yet'}
               </p>
               <Link href="/products">
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
                   <Plus className="w-4 h-4 mr-2" />
                   Browse Products
                 </Button>
@@ -443,7 +443,7 @@ export default function BuyerInquiries() {
 
           {/* CTA Section */}
           <div className="text-center mt-12">
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-3xl p-8">
+            <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-3xl p-8">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">
                 Need to Make an Inquiry?
               </h3>
@@ -451,7 +451,7 @@ export default function BuyerInquiries() {
                 Browse our products and send inquiries to verified admins
               </p>
               <Link href="/products">
-                <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3">
+                <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3">
                   Browse Products
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>

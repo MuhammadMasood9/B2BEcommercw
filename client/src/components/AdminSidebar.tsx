@@ -138,8 +138,8 @@ export function AdminSidebar() {
   
   return (
     <Sidebar>
-      <SidebarHeader className="p-4">
-        <h2 className="text-lg font-semibold">Admin Panel</h2>
+      <SidebarHeader className="p-4 bg-secondary/10 border-b">
+        <h2 className="text-lg font-semibold text-foreground">Admin Panel</h2>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>

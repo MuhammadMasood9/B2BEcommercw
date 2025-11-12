@@ -724,9 +724,9 @@ export default function AdminProducts() {
           <CardContent className="space-y-6">
             {/* Inventory Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-4 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">{inventoryStats.inStock}</div>
-                <div className="text-sm text-blue-600">In Stock</div>
+              <div className="text-center p-4 bg-primary/5 rounded-lg">
+                <div className="text-2xl font-bold text-primary">{inventoryStats.inStock}</div>
+                <div className="text-sm text-primary">In Stock</div>
               </div>
               <div className="text-center p-4 bg-orange-50 rounded-lg">
                 <div className="text-2xl font-bold text-orange-600">{inventoryStats.lowStock}</div>
@@ -931,9 +931,9 @@ export default function AdminProducts() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">{dashboardAnalytics.totalRevenue || '0'}</div>
-                <div className="text-sm text-blue-600">Total Revenue (30d)</div>
+              <div className="text-center p-4 bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg">
+                <div className="text-2xl font-bold text-primary">{dashboardAnalytics.totalRevenue || '0'}</div>
+                <div className="text-sm text-primary">Total Revenue (30d)</div>
                 <div className="text-xs text-green-600 mt-1">
                   +{dashboardAnalytics.revenueGrowth || '0'}% vs last month
                 </div>
@@ -1034,7 +1034,7 @@ export default function AdminProducts() {
             <div className="space-y-3">
               {recentActivities.slice(0, 5).map((activity: any, index: number) => (
                 <div key={activity.id || index} className="flex items-center gap-3 p-3 border rounded-lg">
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs">
+                  <div className="w-8 h-8 bg-gradient-to-br from-primary to-purple-600 rounded-full flex items-center justify-center text-white text-xs">
                     {activity.type?.[0] || 'A'}
                   </div>
                   <div className="flex-1">
@@ -1055,10 +1055,10 @@ export default function AdminProducts() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-9 gap-4">
-        {/* Total Products - Blue */}
-        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
+        {/* Total Products - Orange */}
+        <Card className="bg-gradient-to-br from-primary to-primary/80 text-white border-0 shadow-lg">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-blue-100">Total Products</CardTitle>
+            <CardTitle className="text-sm font-medium text-primary-foreground/80">Total Products</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-white">{stats.total}</div>
@@ -1106,9 +1106,9 @@ export default function AdminProducts() {
         </Card>
         
         {/* Total Views - Indigo */}
-        <Card className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white border-0 shadow-lg">
+        <Card className="bg-gradient-to-br from-orange-600 to-orange-600 text-white border-0 shadow-lg">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-indigo-100">Total Views</CardTitle>
+            <CardTitle className="text-sm font-medium text-orange-600">Total Views</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-white">{stats.totalViews.toLocaleString()}</div>
@@ -1127,13 +1127,13 @@ export default function AdminProducts() {
         </Card>
 
         {/* Conversion Rate - Indigo */}
-        <Card className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white border-0 shadow-lg">
+        <Card className="bg-gradient-to-br from-orange-600 to-orange-600 text-white border-0 shadow-lg">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-indigo-100">Conversion Rate</CardTitle>
+            <CardTitle className="text-sm font-medium text-orange-600">Conversion Rate</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-white">{stats.conversionRate}%</div>
-            <div className="text-xs text-indigo-100 mt-1">Views to Inquiries</div>
+            <div className="text-xs text-orange-600 mt-1">Views to Inquiries</div>
           </CardContent>
         </Card>
 

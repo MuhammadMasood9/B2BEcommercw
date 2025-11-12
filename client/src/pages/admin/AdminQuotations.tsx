@@ -388,11 +388,11 @@ function AdminQuotations() {
       case 'rejected':
         return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
       case 'negotiating':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+        return 'bg-primary/10 text-primary';
       case 'counter_offered':
         return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
       case 'revised':
-        return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300';
+        return 'bg-orange-600 text-orange-600 dark:bg-orange-600 dark:text-orange-600';
       case 'under_review':
         return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
       case 'awaiting_response':
@@ -595,54 +595,54 @@ function AdminQuotations() {
 
         {/* Key Metrics Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+          <Card className="bg-gradient-to-r from-primary to-primary/80 text-white">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-blue-100 text-sm font-medium">Total Quotations</p>
+                  <p className="text-primary-foreground/80 text-sm font-medium">Total Quotations</p>
                   <p className="text-3xl font-bold">{stats.total}</p>
-                  <p className="text-blue-200 text-xs">{formatPrice(stats.totalValue)} value</p>
+                  <p className="text-primary-foreground/70 text-xs">{formatPrice(stats.totalValue)} value</p>
                 </div>
-                <FileText className="h-8 w-8 text-blue-200" />
+                <FileText className="h-8 w-8 text-primary-foreground/70" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+          <Card className="bg-gradient-to-r from-secondary to-secondary/80 text-white">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-green-100 text-sm font-medium">Conversion Rate</p>
+                  <p className="text-secondary-foreground/80 text-sm font-medium">Conversion Rate</p>
                   <p className="text-3xl font-bold">{stats.conversionRate}%</p>
-                  <p className="text-green-200 text-xs">Quotations to Orders</p>
+                  <p className="text-secondary-foreground/70 text-xs">Quotations to Orders</p>
                 </div>
-                <TrendingUp className="h-8 w-8 text-green-200" />
+                <TrendingUp className="h-8 w-8 text-secondary-foreground/70" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+          <Card className="bg-gradient-to-r from-accent to-accent/80 text-white">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-purple-100 text-sm font-medium">Negotiation Rate</p>
+                  <p className="text-accent-foreground/80 text-sm font-medium">Negotiation Rate</p>
                   <p className="text-3xl font-bold">{stats.negotiationSuccessRate}%</p>
-                  <p className="text-purple-200 text-xs">Active Negotiations</p>
+                  <p className="text-accent-foreground/70 text-xs">Active Negotiations</p>
                 </div>
-                <MessageSquare className="h-8 w-8 text-purple-200" />
+                <MessageSquare className="h-8 w-8 text-accent-foreground/70" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+          <Card className="bg-gradient-to-r from-brand-grey-800 to-brand-grey-900 text-white">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-orange-100 text-sm font-medium">Total Value</p>
+                  <p className="text-white/80 text-sm font-medium">Total Value</p>
                   <p className="text-3xl font-bold">${stats.totalValue.toLocaleString()}</p>
-                  <p className="text-orange-200 text-xs">Quotation Value</p>
+                  <p className="text-white/70 text-xs">Quotation Value</p>
                 </div>
-                <DollarSign className="h-8 w-8 text-orange-200" />
+                <DollarSign className="h-8 w-8 text-white/70" />
               </div>
             </CardContent>
           </Card>
@@ -675,7 +675,7 @@ function AdminQuotations() {
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                    <div className="w-3 h-3 bg-primary rounded-full"></div>
                     <span className="text-sm">Negotiating</span>
                   </div>
                   <span className="font-semibold">{stats.negotiating}</span>
@@ -844,7 +844,7 @@ function AdminQuotations() {
             <div className="space-y-4">
               {isLoading ? (
                 <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                   <span className="ml-3 text-gray-600">Loading quotations...</span>
                 </div>
               ) : error ? (
@@ -879,7 +879,7 @@ function AdminQuotations() {
                   <Card key={quotation.id} className={`hover:shadow-xl transition-all duration-300 ${
                     quotation.type === 'rfq' 
                       ? 'border-l-4 border-l-purple-500' 
-                      : 'border-l-4 border-l-blue-500'
+                      : 'border-l-4 border-l-primary'
                   }`}>
                     <CardContent className="p-6">
                       <div className="flex items-start justify-between gap-6">
@@ -897,8 +897,8 @@ function AdminQuotations() {
                             </div>
                           ) : quotation.type === 'inquiry' ? (
                             <div className="flex-shrink-0">
-                              <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 rounded-xl flex items-center justify-center shadow-md">
-                                <Package className="h-10 w-10 text-blue-600 dark:text-blue-400" />
+                              <div className="w-24 h-24 bg-gradient-to-br from-primary/10 to-primary/20 rounded-xl flex items-center justify-center shadow-md">
+                                <Package className="h-10 w-10 text-primary" />
                               </div>
                             </div>
                           ) : (
@@ -918,7 +918,7 @@ function AdminQuotations() {
                               <Badge 
                                 className={quotation.type === 'rfq' 
                                   ? 'bg-purple-100 text-purple-800 border-purple-300 font-semibold' 
-                                  : 'bg-blue-100 text-blue-800 border-blue-300 font-semibold'}
+                                  : 'bg-primary/10 text-primary border-primary/30 font-semibold'}
                               >
                                 {quotation.type === 'rfq' ? 'RFQ Quotation' : 'Inquiry Quotation'}
                               </Badge>
@@ -939,7 +939,7 @@ function AdminQuotations() {
                               <div className={`p-3 rounded-lg ${
                                 quotation.type === 'rfq' 
                                   ? 'bg-purple-50 dark:bg-purple-900/20' 
-                                  : 'bg-blue-50 dark:bg-blue-900/20'
+                                  : 'bg-primary/5'
                               }`}>
                                 <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Price/Unit</p>
                                 <p className="text-lg font-bold text-gray-900 dark:text-white">{formatPrice(parseFloat(quotation.pricePerUnit) || 0)}</p>
@@ -951,7 +951,7 @@ function AdminQuotations() {
                               <div className={`p-3 rounded-lg ${
                                 quotation.type === 'rfq' 
                                   ? 'bg-purple-50 dark:bg-purple-900/20' 
-                                  : 'bg-blue-50 dark:bg-blue-900/20'
+                                  : 'bg-primary/5'
                               }`}>
                                 <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">MOQ</p>
                                 <p className="text-lg font-bold text-gray-900 dark:text-white">{quotation.moq || quotation.inquiryQuantity || quotation.quantity || 'N/A'} units</p>
@@ -1137,7 +1137,7 @@ function AdminQuotations() {
                             </Badge>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                            <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+                            <div className="bg-primary/5 p-3 rounded-lg">
                               <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Price/Unit</p>
                               <p className="text-lg font-bold text-gray-900 dark:text-white">{formatPrice(parseFloat(quotation.pricePerUnit) || 0)}</p>
                             </div>
@@ -1254,7 +1254,7 @@ function AdminQuotations() {
                   (statusFilter === 'all' || q.status === statusFilter) &&
                   (!searchQuery || q.productName?.toLowerCase().includes(searchQuery.toLowerCase()) || q.buyerName?.toLowerCase().includes(searchQuery.toLowerCase()))
                 ).map((quotation: any) => (
-                  <Card key={quotation.id} className="hover:shadow-xl transition-all duration-300 border-l-4 border-l-blue-500">
+                  <Card key={quotation.id} className="hover:shadow-xl transition-all duration-300 border-l-4 border-l-primary">
                     <CardContent className="p-6">
                       <div className="flex items-start justify-between gap-6">
                         <div className="flex gap-4 flex-1">
@@ -1269,8 +1269,8 @@ function AdminQuotations() {
                                 />
                               </div>
                             ) : (
-                              <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 rounded-xl flex items-center justify-center shadow-md">
-                                <Package className="h-10 w-10 text-blue-600 dark:text-blue-400" />
+                              <div className="w-24 h-24 bg-gradient-to-br from-primary/10 to-primary/20 rounded-xl flex items-center justify-center shadow-md">
+                                <Package className="h-10 w-10 text-primary" />
                               </div>
                             )}
                           </div>
@@ -1280,7 +1280,7 @@ function AdminQuotations() {
                               <h3 className="text-xl font-bold text-gray-900 dark:text-white">
                                 {quotation.productName || 'Inquiry Quotation'}
                               </h3>
-                              <Badge className="bg-blue-100 text-blue-800 border-blue-300 font-semibold">
+                              <Badge className="bg-primary/10 text-primary border-primary/30 font-semibold">
                                 Inquiry Quotation
                               </Badge>
                               <Badge className={getStatusColor(quotation.status)}>
@@ -1289,7 +1289,7 @@ function AdminQuotations() {
                               </Badge>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                              <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+                              <div className="bg-primary/5 p-3 rounded-lg">
                                 <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Price/Unit</p>
                                 <p className="text-lg font-bold text-gray-900 dark:text-white">{formatPrice(parseFloat(quotation.pricePerUnit) || 0)}</p>
                               </div>
@@ -1395,7 +1395,7 @@ function AdminQuotations() {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">Negotiating</span>
-                      <span className="font-semibold text-blue-600">{stats.negotiating}</span>
+                      <span className="font-semibold text-primary">{stats.negotiating}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">Pending</span>
@@ -1413,7 +1413,7 @@ function AdminQuotations() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Edit className="w-5 h-5 text-blue-600" />
+              <Edit className="w-5 h-5 text-primary" />
               Edit Quotation
             </DialogTitle>
             <DialogDescription>
@@ -1524,7 +1524,7 @@ function AdminQuotations() {
               <Button
                 onClick={handleUpdateQuotation}
                 disabled={updateQuotationMutation.isPending}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-primary hover:bg-primary/90"
               >
                 {updateQuotationMutation.isPending ? (
                   <>
@@ -1548,7 +1548,7 @@ function AdminQuotations() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-blue-600" />
+              <TrendingUp className="w-5 h-5 text-primary" />
               Send Revised Quotation
             </DialogTitle>
             <DialogDescription>
@@ -1558,9 +1558,9 @@ function AdminQuotations() {
           {selectedQuotation && (
             <div className="space-y-6">
               {/* Current Quotation Details */}
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-xl border border-blue-200">
+              <div className="bg-gradient-to-r from-primary/5 to-purple-50 p-6 rounded-xl border border-primary/20">
                 <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-blue-600" />
+                  <FileText className="w-4 h-4 text-primary" />
                   Current Quotation Details
                 </h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -1604,14 +1604,14 @@ function AdminQuotations() {
                       placeholder="Enter revised price"
                       value={negotiationForm.newPrice}
                       onChange={(e) => setNegotiationForm({...negotiationForm, newPrice: e.target.value})}
-                      className="border-gray-300 focus:border-blue-500"
+                      className="border-gray-300 focus:border-primary"
                     />
                     <p className="text-xs text-gray-500 mt-1">Consider market conditions and buyer's counter-offer</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-2 block">Urgency Level</label>
                     <Select value={negotiationForm.urgency} onValueChange={(value) => setNegotiationForm({...negotiationForm, urgency: value})}>
-                      <SelectTrigger className="border-gray-300 focus:border-blue-500">
+                      <SelectTrigger className="border-gray-300 focus:border-primary">
                         <SelectValue placeholder="Select urgency" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1631,7 +1631,7 @@ function AdminQuotations() {
                       placeholder="e.g., 2-3 weeks"
                       value={negotiationForm.newLeadTime}
                       onChange={(e) => setNegotiationForm({...negotiationForm, newLeadTime: e.target.value})}
-                      className="border-gray-300 focus:border-blue-500"
+                      className="border-gray-300 focus:border-primary"
                     />
                   </div>
                   <div>
@@ -1640,7 +1640,7 @@ function AdminQuotations() {
                       placeholder="e.g., 30% advance, 70% on delivery"
                       value={negotiationForm.newPaymentTerms}
                       onChange={(e) => setNegotiationForm({...negotiationForm, newPaymentTerms: e.target.value})}
-                      className="border-gray-300 focus:border-blue-500"
+                      className="border-gray-300 focus:border-primary"
                     />
                   </div>
                 </div>
@@ -1652,7 +1652,7 @@ function AdminQuotations() {
                     value={negotiationForm.message}
                     onChange={(e) => setNegotiationForm({...negotiationForm, message: e.target.value})}
                     rows={4}
-                    className="border-gray-300 focus:border-blue-500"
+                    className="border-gray-300 focus:border-primary"
                   />
                   <p className="text-xs text-gray-500 mt-1">Be professional and explain the value proposition</p>
                 </div>
@@ -1693,7 +1693,7 @@ function AdminQuotations() {
             <Button 
               onClick={handleSendRevisedQuotation}
               disabled={!negotiationForm.newPrice || sendRevisedQuotationMutation.isPending}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-primary hover:bg-primary/90 text-white"
             >
               {sendRevisedQuotationMutation.isPending ? (
                 <>
@@ -1731,8 +1731,8 @@ function AdminQuotations() {
                   <div key={revision.id} className="border border-gray-200 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <GitCommit className="w-4 h-4 text-blue-600" />
+                        <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                          <GitCommit className="w-4 h-4 text-primary" />
                         </div>
                         <div>
                           <h4 className="font-medium text-gray-900">Revision #{revision.revisionNumber}</h4>
@@ -1792,8 +1792,8 @@ function AdminQuotations() {
                     )}
                     
                     {revision.requirements && (
-                      <div className="bg-blue-50 p-3 rounded-lg mt-2">
-                        <p className="text-sm text-blue-700">
+                      <div className="bg-primary/5 p-3 rounded-lg mt-2">
+                        <p className="text-sm text-muted-foreground">
                           <strong>Requirements:</strong> {revision.requirements}
                         </p>
                       </div>

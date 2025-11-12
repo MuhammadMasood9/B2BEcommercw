@@ -38,7 +38,7 @@ export default function AIAssistant({ isOpen, onClose, onMinimize, isMinimized }
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: "Hello! I'm your AI assistant for Global Trade Hub. How can I help you today? I can assist with product inquiries, order tracking, account questions, and general marketplace guidance.",
+      text: "Hello! I'm your AI assistant for Bago. How can I help you today? I can assist with product inquiries, order tracking, account questions, and general marketplace guidance.",
       sender: 'ai',
       timestamp: new Date()
     }
@@ -60,9 +60,9 @@ export default function AIAssistant({ isOpen, onClose, onMinimize, isMinimized }
     
     const responses = {
       greeting: [
-        "Hello! Welcome to Global Trade Hub. I'm here to help you with any questions about our B2B marketplace.",
+        "Hello! Welcome to Bago. I'm here to help you with any questions about our B2B marketplace.",
         "Hi there! How can I assist you with your trading needs today?",
-        "Greetings! I'm your AI assistant, ready to help you navigate Global Trade Hub."
+        "Greetings! I'm your AI assistant, ready to help you navigate Bago."
       ],
       products: [
         "I can help you find products! You can browse by categories, use our search feature, or check out our 'Ready to Ship' section for quick delivery options.",
@@ -81,7 +81,7 @@ export default function AIAssistant({ isOpen, onClose, onMinimize, isMinimized }
       ],
       support: [
         "I'm here to help! You can ask me about products, orders, account settings, or general marketplace questions. For urgent issues, you can also contact our human support team.",
-        "I can assist with most common questions about Global Trade Hub. For complex issues, I can connect you with our support team.",
+        "I can assist with most common questions about Bago. For complex issues, I can connect you with our support team.",
         "Support is available 24/7 through me! I can help with marketplace navigation, product inquiries, and account management."
       ],
       default: [
@@ -158,7 +158,7 @@ export default function AIAssistant({ isOpen, onClose, onMinimize, isMinimized }
       <div className="fixed bottom-4 right-4 z-50">
         <Button
           onClick={onMinimize}
-          className="h-14 w-14 rounded-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg"
+          className="h-14 w-14 rounded-full bg-gradient-to-r from-primary to-orange-600 hover:from-primary hover:to-orange-600 shadow-lg"
         >
           <Bot className="h-6 w-6 text-white" />
         </Button>
@@ -169,7 +169,7 @@ export default function AIAssistant({ isOpen, onClose, onMinimize, isMinimized }
   return (
     <div className="fixed bottom-4 right-4 z-50 w-96 h-[600px]">
       <Card className="h-full flex flex-col shadow-2xl border-0 bg-white/95 backdrop-blur-sm">
-        <CardHeader className="pb-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
+        <CardHeader className="pb-3 bg-gradient-to-r from-primary to-orange-600 text-white rounded-t-lg">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
@@ -182,7 +182,7 @@ export default function AIAssistant({ isOpen, onClose, onMinimize, isMinimized }
                     <div className="w-2 h-2 bg-green-300 rounded-full mr-1 animate-pulse"></div>
                     Online
                   </Badge>
-                  <span className="text-xs text-blue-100">Global Trade Hub</span>
+                  <span className="text-xs text-primary">Bago</span>
                 </div>
               </div>
             </div>
@@ -220,18 +220,18 @@ export default function AIAssistant({ isOpen, onClose, onMinimize, isMinimized }
                 <div
                   className={`max-w-[80%] rounded-lg px-3 py-2 ${
                     message.sender === 'user'
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-primary text-white'
                       : 'bg-gray-100 text-gray-900'
                   }`}
                 >
                   <div className="flex items-start gap-2">
                     {message.sender === 'ai' && (
-                      <Bot className="w-4 h-4 mt-0.5 text-blue-600 flex-shrink-0" />
+                      <Bot className="w-4 h-4 mt-0.5 text-primary flex-shrink-0" />
                     )}
                     <div className="flex-1">
                       <p className="text-sm">{message.text}</p>
                       <p className={`text-xs mt-1 ${
-                        message.sender === 'user' ? 'text-blue-100' : 'text-gray-500'
+                        message.sender === 'user' ? 'text-primary' : 'text-gray-500'
                       }`}>
                         {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </p>
@@ -244,8 +244,8 @@ export default function AIAssistant({ isOpen, onClose, onMinimize, isMinimized }
             {isLoading && (
               <div className="flex justify-start">
                 <div className="bg-gray-100 rounded-lg px-3 py-2 flex items-center gap-2">
-                  <Bot className="w-4 h-4 text-blue-600" />
-                  <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                  <Bot className="w-4 h-4 text-primary" />
+                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
                   <span className="text-sm text-gray-600">AI is typing...</span>
                 </div>
               </div>
@@ -269,7 +269,7 @@ export default function AIAssistant({ isOpen, onClose, onMinimize, isMinimized }
                 onClick={handleSendMessage}
                 disabled={!inputText.trim() || isLoading}
                 size="sm"
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-primary hover:bg-primary"
               >
                 <Send className="w-4 h-4" />
               </Button>

@@ -472,7 +472,7 @@ export default function SupplierStore() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Globe className="h-5 w-5 text-blue-600" />
+                <Globe className="h-5 w-5 text-brand-orange-600" />
                 <div>
                   <p className="text-sm font-medium">Public Store URL</p>
                   <p className="text-sm text-muted-foreground">{publicStoreUrl}</p>
@@ -1267,9 +1267,9 @@ export default function SupplierStore() {
                     ))}
                   </div>
 
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h4 className="font-medium text-blue-900 mb-2">Tips for Setting Operating Hours:</h4>
-                    <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+                  <div className="bg-brand-orange-50 border border-brand-orange-200 rounded-lg p-4">
+                    <h4 className="font-medium text-brand-orange-900 mb-2">Tips for Setting Operating Hours:</h4>
+                    <ul className="text-sm text-brand-orange-800 space-y-1 list-disc list-inside">
                       <li>Use consistent format: "9:00 AM - 5:00 PM" or "09:00 - 17:00"</li>
                       <li>For closed days, enter "Closed" or leave blank</li>
                       <li>For 24/7 operations, enter "24 Hours" or "Open 24/7"</li>

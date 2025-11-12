@@ -26,8 +26,8 @@ export default function Privacy() {
         "Communication Data: Messages, inquiries, RFQs, and correspondence with other users",
         "Usage Data: Information about how you use our platform, including browsing history and search queries"
       ],
-      color: "from-blue-100 to-blue-200",
-      iconColor: "text-blue-600"
+      color: "from-primary/10 to-primary/20",
+      iconColor: "text-primary"
     },
     {
       icon: Eye,
@@ -154,10 +154,10 @@ export default function Privacy() {
       <main className="flex-1">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           {/* Introduction */}
-          <Card className="mb-8 bg-gradient-to-r from-green-50 to-blue-50 border-green-100">
+          <Card className="mb-8 bg-gradient-to-r from-green-50 to-primary/5 border-green-100">
             <CardContent className="p-6">
               <p className="text-gray-700 leading-relaxed">
-                At Global Trade Hub, we take your privacy seriously. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our B2B marketplace platform. Please read this privacy policy carefully. By using the platform, you agree to the collection and use of information in accordance with this policy.
+                At Bago, we take your privacy seriously. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our B2B marketplace platform. Please read this privacy policy carefully. By using the platform, you agree to the collection and use of information in accordance with this policy.
               </p>
             </CardContent>
           </Card>
@@ -211,11 +211,11 @@ export default function Privacy() {
           </Card>
 
           {/* GDPR & CCPA Notice */}
-          <Card className="mt-8 bg-gradient-to-r from-blue-50 to-purple-50 border-blue-100">
+          <Card className="mt-8 bg-gradient-to-r from-primary/5 to-secondary/5 border-primary/20">
             <CardContent className="p-6">
               <div className="flex items-start gap-4">
-                <div className="p-3 bg-blue-100 rounded-full flex-shrink-0">
-                  <FileText className="w-6 h-6 text-blue-600" />
+                <div className="p-3 bg-primary/10 rounded-full flex-shrink-0">
+                  <FileText className="w-6 h-6 text-primary" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-2">GDPR & CCPA Compliance</h3>
@@ -232,7 +232,7 @@ export default function Privacy() {
                       CCPA Compliant
                     </span>
                     <span className="inline-flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg text-xs font-medium text-gray-700">
-                      <Shield className="w-3 h-3 text-blue-600" />
+                      <Shield className="w-3 h-3 text-primary" />
                       ISO 27001 Certified
                     </span>
                   </div>
@@ -262,7 +262,7 @@ export default function Privacy() {
 
           {/* Contact Section */}
           <div className="mt-8 text-center">
-            <Card className="bg-gradient-to-r from-green-50 to-blue-50 border-green-100">
+            <Card className="bg-gradient-to-r from-green-50 to-primary/5 border-green-100">
               <CardContent className="p-8">
                 <h3 className="text-xl font-bold text-gray-900 mb-4">Questions About Your Privacy?</h3>
                 <p className="text-gray-700 mb-6">

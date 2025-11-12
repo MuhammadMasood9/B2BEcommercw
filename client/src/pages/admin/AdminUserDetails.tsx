@@ -191,7 +191,7 @@ export default function AdminUserDetails() {
       <div className="p-8">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
             <p className="text-muted-foreground">Loading user details...</p>
           </div>
         </div>
@@ -522,8 +522,8 @@ export default function AdminUserDetails() {
                   const ActivityIcon = getActivityIcon(activity.type);
                   return (
                     <div key={activity.id} className="flex items-start gap-3 p-3 border rounded-lg">
-                      <div className="p-2 bg-blue-100 rounded-full">
-                        <ActivityIcon className="w-4 h-4 text-blue-600" />
+                      <div className="p-2 bg-primary/10 rounded-full">
+                        <ActivityIcon className="w-4 h-4 text-primary" />
                       </div>
                       <div className="flex-1">
                         <p className="font-medium">{activity.description}</p>

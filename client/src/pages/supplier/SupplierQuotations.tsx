@@ -125,7 +125,7 @@ export default function SupplierQuotations() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
-      case 'sent': return 'bg-blue-100 text-blue-800';
+      case 'sent': return 'bg-brand-orange-100 text-brand-orange-800';
       case 'accepted': return 'bg-green-100 text-green-800';
       case 'rejected': return 'bg-red-100 text-red-800';
       case 'expired': return 'bg-gray-100 text-gray-800';
@@ -292,7 +292,7 @@ export default function SupplierQuotations() {
                 <p className="text-sm text-muted-foreground">Total Sent</p>
                 <p className="text-2xl font-bold">{quotations.length}</p>
               </div>
-              <Send className="h-8 w-8 text-blue-600" />
+              <Send className="h-8 w-8 text-brand-orange-600" />
             </div>
           </CardContent>
         </Card>
@@ -303,7 +303,7 @@ export default function SupplierQuotations() {
                 <p className="text-sm text-muted-foreground">Pending</p>
                 <p className="text-2xl font-bold">{sentQuotations.length}</p>
               </div>
-              <Clock className="h-8 w-8 text-blue-600" />
+              <Clock className="h-8 w-8 text-brand-orange-600" />
             </div>
           </CardContent>
         </Card>

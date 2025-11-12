@@ -134,14 +134,14 @@ export default function SupplierStoreDemo() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-brand-orange-50 via-white to-brand-orange-100">
       <Header />
       
       <main className="flex-1 p-6">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-brand-orange-600 to-brand-orange-700 bg-clip-text text-transparent">
               Dedicated Buyer Store Experience
             </h1>
             <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
@@ -164,10 +164,10 @@ export default function SupplierStoreDemo() {
             <div className="bg-white rounded-lg p-6 shadow-sm border max-w-4xl mx-auto mb-8">
               <h3 className="text-lg font-semibold mb-4">Route Structure</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div className="p-4 bg-blue-50 rounded-lg">
-                  <div className="font-semibold text-blue-800 mb-2">👥 Buyer-Facing Store</div>
-                  <div className="font-mono text-blue-600">/store/{"{slug}"}</div>
-                  <div className="text-blue-700 mt-2">Public store page for buyers to browse products and contact suppliers</div>
+                <div className="p-4 bg-brand-orange-50 rounded-lg">
+                  <div className="font-semibold text-brand-orange-800 mb-2">👥 Buyer-Facing Store</div>
+                  <div className="font-mono text-brand-orange-600">/store/{"{slug}"}</div>
+                  <div className="text-brand-orange-700 mt-2">Public store page for buyers to browse products and contact suppliers</div>
                 </div>
                 <div className="p-4 bg-green-50 rounded-lg">
                   <div className="font-semibold text-green-800 mb-2">🏪 Supplier Management</div>
@@ -182,7 +182,7 @@ export default function SupplierStoreDemo() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
             <Card className="text-center hover:shadow-lg transition-shadow">
               <CardContent className="p-6">
-                <Store className="w-12 h-12 text-blue-500 mx-auto mb-4" />
+                <Store className="w-12 h-12 text-brand-orange-500 mx-auto mb-4" />
                 <h3 className="font-semibold mb-2">Dedicated Route</h3>
                 <p className="text-sm text-muted-foreground">
                   Separate /store/{"{slug}"} route for buyer-facing store pages
@@ -254,7 +254,7 @@ export default function SupplierStoreDemo() {
                   Click on any supplier card to visit their dedicated buyer-facing store page
                 </p>
               </div>
-              <Badge className="bg-gradient-to-r from-blue-500 to-purple-500 text-white">
+              <Badge className="bg-gradient-to-r from-brand-orange-500 to-brand-orange-600 text-white">
                 New Route: /store/{"{slug}"}
               </Badge>
             </div>
@@ -275,7 +275,7 @@ export default function SupplierStoreDemo() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 <div>
                   <h4 className="font-semibold mb-3 flex items-center gap-2">
-                    <Store className="w-5 h-5 text-blue-500" />
+                    <Store className="w-5 h-5 text-brand-orange-500" />
                     Store Presentation
                   </h4>
                   <ul className="space-y-2 text-sm text-muted-foreground">
@@ -359,8 +359,8 @@ export default function SupplierStoreDemo() {
             <CardContent>
               <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                 <div className="text-center">
-                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-3">
-                    <Building2 className="w-8 h-8 text-blue-600" />
+                  <div className="w-16 h-16 bg-brand-orange-100 rounded-full flex items-center justify-center mb-3">
+                    <Building2 className="w-8 h-8 text-brand-orange-600" />
                   </div>
                   <h4 className="font-semibold mb-2">1. Browse Suppliers</h4>
                   <p className="text-sm text-muted-foreground">

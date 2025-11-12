@@ -20,7 +20,7 @@ const categories = [
   { name: "Automotive", icon: Car, count: "1.2M+ products", color: "from-red-500 to-red-600", href: "/category/automotive" },
   { name: "Home & Garden", icon: Home, count: "3.1M+ products", color: "from-green-500 to-emerald-500", href: "/category/home" },
   { name: "Construction", icon: Hammer, count: "720K+ products", color: "from-yellow-500 to-yellow-600", href: "/category/construction" },
-  { name: "Packaging", icon: Package, count: "890K+ products", color: "from-purple-500 to-indigo-500", href: "/category/packaging" },
+  { name: "Packaging", icon: Package, count: "890K+ products", color: "from-purple-500 to-orange-600", href: "/category/packaging" },
   { name: "Lighting", icon: Lightbulb, count: "650K+ products", color: "from-gray-600 to-gray-700", href: "/category/lighting" },
 ];
 

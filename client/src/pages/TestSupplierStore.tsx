@@ -79,7 +79,7 @@ export default function TestSupplierStore() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-brand-orange-600 to-brand-orange-700 bg-clip-text text-transparent">
             Supplier Store Demo
           </h1>
           <p className="text-lg text-muted-foreground mb-6">
@@ -96,7 +96,7 @@ export default function TestSupplierStore() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Store className="w-5 h-5 text-blue-500" />
+                <Store className="w-5 h-5 text-brand-orange-500" />
                 Store Information
               </CardTitle>
             </CardHeader>
@@ -262,7 +262,7 @@ export default function TestSupplierStore() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div>
                 <h4 className="font-semibold mb-3 flex items-center gap-2">
-                  <Building2 className="w-5 h-5 text-blue-500" />
+                  <Building2 className="w-5 h-5 text-brand-orange-500" />
                   Store Profile
                 </h4>
                 <ul className="space-y-1 text-sm text-muted-foreground">

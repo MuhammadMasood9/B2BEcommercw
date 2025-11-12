@@ -1,0 +1,137 @@
+{
+  "timestamp": "2025-11-12T11:28:14.907Z",
+  "fontFiles": {
+    "existing": [],
+    "missing": [
+      {
+        "family": "Base Neue",
+        "weight": 400,
+        "format": "woff2",
+        "filename": "base-neue-regular.woff2",
+        "critical": true
+      },
+      {
+        "family": "Base Neue",
+        "weight": 400,
+        "format": "woff",
+        "filename": "base-neue-regular.woff",
+        "critical": true
+      },
+      {
+        "family": "Base Neue",
+        "weight": 500,
+        "format": "woff2",
+        "filename": "base-neue-medium.woff2",
+        "critical": true
+      },
+      {
+        "family": "Base Neue",
+        "weight": 500,
+        "format": "woff",
+        "filename": "base-neue-medium.woff",
+        "critical": true
+      },
+      {
+        "family": "Base Neue",
+        "weight": 600,
+        "format": "woff2",
+        "filename": "base-neue-semibold.woff2",
+        "critical": true
+      },
+      {
+        "family": "Base Neue",
+        "weight": 600,
+        "format": "woff",
+        "filename": "base-neue-semibold.woff",
+        "critical": true
+      },
+      {
+        "family": "Base Neue",
+        "weight": 700,
+        "format": "woff2",
+        "filename": "base-neue-bold.woff2",
+        "critical": false
+      },
+      {
+        "family": "Base Neue",
+        "weight": 700,
+        "format": "woff",
+        "filename": "base-neue-bold.woff",
+        "critical": false
+      },
+      {
+        "family": "Base Neue Mono",
+        "weight": 400,
+        "format": "woff2",
+        "filename": "base-neue-mono-regular.woff2",
+        "critical": false
+      },
+      {
+        "family": "Base Neue Mono",
+        "weight": 400,
+        "format": "woff",
+        "filename": "base-neue-mono-regular.woff",
+        "critical": false
+      }
+    ],
+    "totalSize": 0
+  },
+  "preloadHints": [
+    {
+      "href": "/fonts/base-neue-regular.woff2",
+      "as": "font",
+      "type": "font/woff2",
+      "crossorigin": "anonymous",
+      "family": "Base Neue",
+      "weight": 400,
+      "html": "<link rel=\"preload\" href=\"/fonts/base-neue-regular.woff2\" as=\"font\" type=\"font/woff2\" crossorigin>"
+    },
+    {
+      "href": "/fonts/base-neue-medium.woff2",
+      "as": "font",
+      "type": "font/woff2",
+      "crossorigin": "anonymous",
+      "family": "Base Neue",
+      "weight": 500,
+      "html": "<link rel=\"preload\" href=\"/fonts/base-neue-medium.woff2\" as=\"font\" type=\"font/woff2\" crossorigin>"
+    },
+    {
+      "href": "/fonts/base-neue-semibold.woff2",
+      "as": "font",
+      "type": "font/woff2",
+      "crossorigin": "anonymous",
+      "family": "Base Neue",
+      "weight": 600,
+      "html": "<link rel=\"preload\" href=\"/fonts/base-neue-semibold.woff2\" as=\"font\" type=\"font/woff2\" crossorigin>"
+    }
+  ],
+  "optimizedCSS": "/* Optimized Font Loading CSS */\n\n@font-face {\n  font-family: 'Base Neue';\n  src: url('/fonts/base-neue-regular.woff2') format('woff2'),\n       url('/fonts/base-neue-regular.woff') format('woff');\n  font-weight: 400;\n  font-style: normal;\n  font-display: swap;\n  font-feature-settings: 'kern' 1, 'liga' 1;\n}\n\n@font-face {\n  font-family: 'Base Neue';\n  src: url('/fonts/base-neue-medium.woff2') format('woff2'),\n       url('/fonts/base-neue-medium.woff') format('woff');\n  font-weight: 500;\n  font-style: normal;\n  font-display: swap;\n  font-feature-settings: 'kern' 1, 'liga' 1;\n}\n\n@font-face {\n  font-family: 'Base Neue';\n  src: url('/fonts/base-neue-semibold.woff2') format('woff2'),\n       url('/fonts/base-neue-semibold.woff') format('woff');\n  font-weight: 600;\n  font-style: normal;\n  font-display: swap;\n  font-feature-settings: 'kern' 1, 'liga' 1;\n}\n\n@font-face {\n  font-family: 'Base Neue';\n  src: url('/fonts/base-neue-bold.woff2') format('woff2'),\n       url('/fonts/base-neue-bold.woff') format('woff');\n  font-weight: 700;\n  font-style: normal;\n  font-display: swap;\n  font-feature-settings: 'kern' 1, 'liga' 1;\n}\n\n@font-face {\n  font-family: 'Base Neue Mono';\n  src: url('/fonts/base-neue-mono-regular.woff2') format('woff2'),\n       url('/fonts/base-neue-mono-regular.woff') format('woff');\n  font-weight: 400;\n  font-style: normal;\n  font-display: swap;\n  font-feature-settings: 'liga' 0, 'calt' 0;\n}\n\n/* Font Loading Optimization */\n.font-loading {\n  font-display: swap;\n  font-variation-settings: normal;\n}\n\n.font-loaded {\n  font-display: auto;\n}\n\n/* Fallback Font Metrics Matching */\n@font-face {\n  font-family: 'Base Neue Fallback';\n  src: local('Inter'), local('system-ui');\n  ascent-override: 90%;\n  descent-override: 22%;\n  line-gap-override: 0%;\n  size-adjust: 107%;\n}\n\n",
+  "performanceMetrics": {
+    "criticalFontSize": 144384,
+    "totalFontSize": 236544,
+    "estimatedLoadTime": {
+      "fast3G": 705,
+      "slow3G": 2820,
+      "broadband": 91.796875
+    },
+    "layoutShiftRisk": "medium",
+    "performanceScore": 70
+  },
+  "recommendations": [
+    {
+      "type": "warning",
+      "message": "Critical font size exceeds 100KB. Consider reducing the number of critical font weights.",
+      "impact": "high"
+    },
+    {
+      "type": "info",
+      "message": "Using WOFF2 format for optimal compression and performance.",
+      "impact": "medium"
+    },
+    {
+      "type": "success",
+      "message": "Using font-display: swap for optimal loading performance.",
+      "impact": "high"
+    }
+  ]
+}

@@ -173,12 +173,12 @@ export default function AdminUserImportExport() {
                 </div>
               </div>
               
-              <div className="p-4 bg-blue-50 rounded-lg">
+              <div className="p-4 bg-primary/5 rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
-                  <AlertCircle className="w-4 h-4 text-blue-600" />
-                  <h4 className="font-medium text-blue-900">Important Notes</h4>
+                  <AlertCircle className="w-4 h-4 text-primary" />
+                  <h4 className="font-medium text-foreground">Important Notes</h4>
                 </div>
-                <ul className="text-sm text-blue-800 space-y-1">
+                <ul className="text-sm text-muted-foreground space-y-1">
                   <li>• File must be in CSV format</li>
                   <li>• First row should contain column headers</li>
                   <li>• Maximum file size: 10MB</li>
@@ -267,7 +267,7 @@ export default function AdminUserImportExport() {
                     <Card>
                       <CardContent className="p-4">
                         <div className="flex items-center gap-2">
-                          <Database className="w-5 h-5 text-blue-600" />
+                          <Database className="w-5 h-5 text-primary" />
                           <div>
                             <p className="text-2xl font-bold">{importResults.total}</p>
                             <p className="text-sm text-muted-foreground">Total</p>

@@ -269,7 +269,7 @@ export default function ChatInterface({ userRole, userId }: ChatInterfaceProps) 
                   
                   <div className="flex items-center space-x-4">
                     <div className="relative">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
+                      <div className="w-12 h-12 bg-gradient-to-br from-primary to-orange-600 rounded-full flex items-center justify-center shadow-lg">
                         {userRole === 'buyer' ? (
                           <Shield className="h-6 w-6 text-white" />
                         ) : (
@@ -312,7 +312,7 @@ export default function ChatInterface({ userRole, userId }: ChatInterfaceProps) 
 
                 <div className="flex items-center space-x-3">
                   {selectedConversation?.productId && (
-                    <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                    <Badge variant="outline" className="text-xs bg-primary text-primary border-primary">
                       Product Inquiry
                     </Badge>
                   )}
@@ -321,10 +321,10 @@ export default function ChatInterface({ userRole, userId }: ChatInterfaceProps) 
                   </Badge>
                   
                   <div className="flex items-center space-x-2">
-                    <Button variant="ghost" size="sm" className="h-10 w-10 p-0 hover:bg-blue-50 rounded-full">
+                    <Button variant="ghost" size="sm" className="h-10 w-10 p-0 hover:bg-primary rounded-full">
                       <Phone className="h-5 w-5 text-gray-600" />
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-10 w-10 p-0 hover:bg-blue-50 rounded-full">
+                    <Button variant="ghost" size="sm" className="h-10 w-10 p-0 hover:bg-primary rounded-full">
                       <Video className="h-5 w-5 text-gray-600" />
                     </Button>
                     <Button variant="ghost" size="sm" className="h-10 w-10 p-0 hover:bg-gray-50 rounded-full">

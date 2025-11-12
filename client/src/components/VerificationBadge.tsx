@@ -48,7 +48,7 @@ export default function VerificationBadge({
           icon: ShieldCheck,
           label: 'Business Verified',
           shortLabel: 'Business',
-          color: 'bg-blue-600 hover:bg-blue-700 text-white border-0',
+          color: 'bg-primary hover:bg-primary text-white border-0',
           description: 'Business verified supplier with confirmed business registration and documentation.'
         };
       case 'basic':

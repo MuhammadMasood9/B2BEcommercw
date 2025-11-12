@@ -352,12 +352,12 @@ export default function Products() {
       <Header />
       
       {/* Hero Section with Gradient */}
-      <section className="relative py-20 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
+      <section className="relative py-20 bg-gradient-to-br from-secondary via-secondary/90 to-secondary/80 overflow-hidden">
         {/* Background Elements */}
         <div className="absolute inset-0">
-          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-600/10 to-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-primary/20 to-primary/15 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-primary/25 to-primary/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-primary/15 to-primary/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -369,13 +369,13 @@ export default function Products() {
             
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
               Find Your Perfect
-              <span className="bg-gradient-to-r from-blue-200 via-white to-blue-200 bg-clip-text text-transparent block">
+              <span className="bg-gradient-to-r from-primary/80 via-white to-primary/80 bg-clip-text text-transparent block">
                 Products
               </span>
             </h1>
             
             <p className="text-xl text-white/90 max-w-2xl mx-auto mb-8">
-              Browse thousands of verified products from trusted admins worldwide
+              Browse thousands of verified products from trusted suppliers worldwide
             </p>
 
             {/* Search Bar */}
@@ -414,7 +414,7 @@ export default function Products() {
                       if (selectedCategory && selectedCategory !== 'all') searchParams.set('category', selectedCategory);
                       window.location.href = `/products?${searchParams.toString()}`;
                     }}
-                    className="h-14 px-8 shadow-lg hover:shadow-xl transition-all duration-200 bg-blue-600 hover:bg-blue-700"
+                    className="h-14 px-8 shadow-lg hover:shadow-xl transition-all duration-200 bg-primary hover:bg-primary/90"
                   >
                     <Search className="w-5 h-5 mr-2" />
                     Search
@@ -630,10 +630,10 @@ export default function Products() {
               {/* Results Header */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">
+                  <h2 className="text-2xl font-bold text-foreground">
                     {sortedProducts.length} Products Found
                   </h2>
-                  <p className="text-gray-600">
+                  <p className="text-muted-foreground">
                     Showing results for "{searchQuery || 'all products'}"
                       </p>
                     </div>

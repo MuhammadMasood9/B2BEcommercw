@@ -125,7 +125,7 @@ export default function FloatingActionButtons({
               <TooltipTrigger asChild>
                 <Button
                   size="sm"
-                  className="h-14 w-14 rounded-full shadow-2xl bg-blue-500 hover:bg-blue-600 text-white border-4 border-white"
+                  className="h-14 w-14 rounded-full shadow-2xl bg-primary hover:bg-primary text-white border-4 border-white"
                   onClick={() => setIsChatOpen(!isChatOpen)}
                 >
                   <MessageCircle className="h-6 w-6" />

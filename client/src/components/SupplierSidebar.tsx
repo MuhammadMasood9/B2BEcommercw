@@ -164,17 +164,17 @@ export function SupplierSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="border-b px-6 py-4">
+      <SidebarHeader className="border-b px-6 py-4 bg-secondary/10">
         <Link href="/supplier/dashboard">
           <div className="flex items-center gap-3 cursor-pointer group">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all">
-              <Store className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all">
+              <Store className="w-5 h-5 text-primary-foreground" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+              <h2 className="text-lg font-bold text-foreground dark:text-white">
                 Supplier Portal
               </h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-muted-foreground">
                 {user?.firstName} {user?.lastName}
               </p>
             </div>
@@ -198,7 +198,7 @@ export function SupplierSidebar() {
                       className={cn(
                         "w-full justify-start gap-3 px-3 py-2.5",
                         isActive(item.href) &&
-                          "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-semibold"
+                          "bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary font-semibold"
                       )}
                     >
                       <Link href={item.href}>
@@ -234,7 +234,7 @@ export function SupplierSidebar() {
                     className={cn(
                       "w-full justify-start gap-3 px-3 py-2.5",
                       isActive(item.href) &&
-                        "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-semibold"
+                        "bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary font-semibold"
                     )}
                   >
                     <Link href={item.href}>
@@ -261,7 +261,7 @@ export function SupplierSidebar() {
                     className={cn(
                       "w-full justify-start gap-3 px-3 py-2.5",
                       isActive(item.href) &&
-                        "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-semibold"
+                        "bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary font-semibold"
                     )}
                   >
                     <Link href={item.href}>
@@ -286,7 +286,7 @@ export function SupplierSidebar() {
                   className={cn(
                     "w-full justify-start gap-3 px-3 py-2.5",
                     isActive("/supplier/settings") &&
-                      "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-semibold"
+                      "bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary font-semibold"
                   )}
                 >
                   <Link href="/supplier/settings">
@@ -304,7 +304,7 @@ export function SupplierSidebar() {
         <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
           <p>Supplier Portal v1.0</p>
           <Link href="/help">
-            <span className="text-blue-600 hover:text-blue-700 cursor-pointer">
+            <span className="text-primary hover:text-primary/80 cursor-pointer">
               Need Help?
             </span>
           </Link>

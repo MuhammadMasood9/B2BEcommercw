@@ -109,7 +109,7 @@ export default function ConversationList({
   return (
     <div className="w-[400px] bg-white border-r border-gray-200 flex flex-col h-full shadow-lg">
       {/* Header */}
-      <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+      <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-primary to-orange-600">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-gray-900">
             {userRole === 'buyer' ? 'Support Chats' : 'Customer Chats'}
@@ -127,7 +127,7 @@ export default function ConversationList({
               <Button
                 onClick={onCreateConversation}
                 size="sm"
-                className="h-8 w-8 p-0 bg-blue-500 hover:bg-blue-600"
+                className="h-8 w-8 p-0 bg-primary hover:bg-primary"
               >
                 <Plus className="h-4 w-4" />
               </Button>
@@ -181,7 +181,7 @@ export default function ConversationList({
                 key={conversation.id}
                 className={`cursor-pointer transition-all duration-200 hover:shadow-lg border-0 ${
                   selectedConversationId === conversation.id
-                    ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-l-blue-500 shadow-md'
+                    ? 'bg-gradient-to-r from-primary to-orange-600 border-l-4 border-l-primary/100 shadow-md'
                     : 'hover:bg-gray-50'
                 }`}
                 onClick={() => onSelectConversation(conversation.id)}
@@ -190,7 +190,7 @@ export default function ConversationList({
                   <div className="flex items-start space-x-3">
                     {/* Avatar */}
                     <div className="flex-shrink-0">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-md">
+                      <div className="w-12 h-12 bg-gradient-to-br from-primary to-orange-600 rounded-full flex items-center justify-center shadow-md">
                         {userRole === 'buyer' ? (
                           <Shield className="h-6 w-6 text-white" />
                         ) : (

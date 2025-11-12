@@ -540,7 +540,7 @@ export default function AdminProductDetail() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold flex items-center gap-2">
-              <Eye className="h-5 w-5 text-blue-500" />
+              <Eye className="h-5 w-5 text-primary" />
               {product.views?.toLocaleString() || 0}
             </div>
           </CardContent>
@@ -606,7 +606,7 @@ export default function AdminProductDetail() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold flex items-center gap-2">
-              <Eye className="h-5 w-5 text-blue-500" />
+              <Eye className="h-5 w-5 text-primary" />
               {product.views?.toLocaleString() || 0}
             </div>
             {performanceMetrics?.viewsTrend && (
@@ -815,12 +815,12 @@ export default function AdminProductDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="p-4 bg-primary border border-primary rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
-                  <Package className="h-4 w-4 text-blue-600" />
-                  <p className="text-sm font-medium text-blue-900">Minimum Order Quantity</p>
+                  <Package className="h-4 w-4 text-primary" />
+                  <p className="text-sm font-medium text-primary">Minimum Order Quantity</p>
                 </div>
-                <p className="text-2xl font-bold text-blue-900">{product.minOrderQuantity?.toLocaleString() || 0} units</p>
+                <p className="text-2xl font-bold text-primary">{product.minOrderQuantity?.toLocaleString() || 0} units</p>
               </div>
               
               {priceRanges.length > 0 ? (
@@ -1063,9 +1063,9 @@ export default function AdminProductDetail() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="text-center p-3 bg-blue-50 rounded-lg">
-                  <div className="text-2xl font-bold text-blue-600">{product.views?.toLocaleString() || 0}</div>
-                  <div className="text-xs text-blue-600">Total Views</div>
+                <div className="text-center p-3 bg-primary rounded-lg">
+                  <div className="text-2xl font-bold text-primary">{product.views?.toLocaleString() || 0}</div>
+                  <div className="text-xs text-primary">Total Views</div>
                 </div>
                 <div className="text-center p-3 bg-green-50 rounded-lg">
                   <div className="text-2xl font-bold text-green-600">{product.inquiries || 0}</div>
@@ -1092,7 +1092,7 @@ export default function AdminProductDetail() {
                       <div className="text-xs text-muted-foreground">Avg. View Time (min)</div>
                     </div>
                     <div className="p-2 bg-muted rounded text-center">
-                      <div className="text-lg font-bold text-indigo-600">{analytics.bounceRate || '0'}%</div>
+                      <div className="text-lg font-bold text-orange-600">{analytics.bounceRate || '0'}%</div>
                       <div className="text-xs text-muted-foreground">Bounce Rate</div>
                     </div>
                     <div className="p-2 bg-muted rounded text-center">
@@ -1250,7 +1250,7 @@ export default function AdminProductDetail() {
           <CardContent>
             {inquiriesLoading ? (
               <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
                 <p className="text-muted-foreground">Loading inquiries...</p>
               </div>
             ) : inquiries.length > 0 ? (
@@ -1309,7 +1309,7 @@ export default function AdminProductDetail() {
           <CardContent>
             {quotationsLoading ? (
               <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
                 <p className="text-muted-foreground">Loading quotations...</p>
               </div>
             ) : quotations.length > 0 ? (
@@ -1375,7 +1375,7 @@ export default function AdminProductDetail() {
           <CardContent>
             {ordersLoading ? (
               <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
                 <p className="text-muted-foreground">Loading orders...</p>
               </div>
             ) : orders.length > 0 ? (
@@ -1442,7 +1442,7 @@ export default function AdminProductDetail() {
           <CardContent>
             {reviewsLoading ? (
               <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
                 <p className="text-muted-foreground">Loading reviews...</p>
               </div>
             ) : reviews.length > 0 ? (
@@ -1451,7 +1451,7 @@ export default function AdminProductDetail() {
                   <div key={review.id || index} className="p-4 border rounded-lg">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                        <div className="w-8 h-8 bg-gradient-to-br from-primary to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
                           {review.userName?.[0] || 'U'}
                         </div>
                         <div>
@@ -1631,9 +1631,9 @@ export default function AdminProductDetail() {
                     <div className="text-2xl font-bold text-yellow-600">{favoriteStats.unverified}</div>
                     <div className="text-xs text-yellow-600">Unverified</div>
                   </div>
-                  <div className="text-center p-3 bg-blue-50 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">{favoriteStats.recent}</div>
-                    <div className="text-xs text-blue-600">This Week</div>
+                  <div className="text-center p-3 bg-primary rounded-lg">
+                    <div className="text-2xl font-bold text-primary">{favoriteStats.recent}</div>
+                    <div className="text-xs text-primary">This Week</div>
                   </div>
                   <div className="text-center p-3 bg-purple-50 rounded-lg">
                     <div className="text-2xl font-bold text-purple-600">{favoriteStats.countries}</div>
@@ -1673,7 +1673,7 @@ export default function AdminProductDetail() {
                           .slice(0, 3)
                           .map((favorite: any) => (
                             <div key={favorite.id} className="flex items-center gap-2 text-sm">
-                              <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-semibold">
+                              <div className="w-6 h-6 bg-gradient-to-br from-primary to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-semibold">
                                 {favorite.user?.firstName?.[0] || 'U'}
                               </div>
                               <span className="text-muted-foreground">
@@ -1700,14 +1700,14 @@ export default function AdminProductDetail() {
                       placeholder="Search users by name, company, or email..."
                       value={favoriteSearchQuery}
                       onChange={(e) => setFavoriteSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-transparent"
                     />
                   </div>
                   <div className="flex gap-2">
                     <select
                       value={favoriteFilter}
                       onChange={(e) => setFavoriteFilter(e.target.value)}
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-transparent"
                     >
                       <option value="all">All Users</option>
                       <option value="verified">Verified Only</option>
@@ -1725,14 +1725,14 @@ export default function AdminProductDetail() {
                 <div className="space-y-3">
                   {favoritesLoading ? (
                     <div className="text-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
                       <p className="text-muted-foreground">Loading favorites...</p>
                     </div>
                   ) : filteredFavorites.length > 0 ? (
                     filteredFavorites.map((favorite: any) => (
                       <div key={favorite.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                         <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
+                          <div className="w-10 h-10 bg-gradient-to-br from-primary to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
                             {favorite.user?.firstName?.[0] || 'U'}{favorite.user?.lastName?.[0] || ''}
                           </div>
                           <div>
@@ -1848,7 +1848,7 @@ export default function AdminProductDetail() {
                                 </div>
                                 <div className="w-full bg-gray-200 rounded-full h-2">
                                   <div 
-                                    className="bg-blue-600 h-2 rounded-full" 
+                                    className="bg-primary h-2 rounded-full" 
                                     style={{ width: `${percentage}%` }}
                                   ></div>
                                 </div>

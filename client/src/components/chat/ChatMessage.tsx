@@ -47,7 +47,7 @@ export default function ChatMessage({ message, isOwn, onImageClick }: ChatMessag
   const getSenderColor = () => {
     switch (message.senderType) {
       case 'admin':
-        return 'bg-blue-500 text-white';
+        return 'bg-primary text-white';
       case 'assistant':
         return 'bg-purple-500 text-white';
       default:
@@ -132,11 +132,11 @@ export default function ChatMessage({ message, isOwn, onImageClick }: ChatMessag
         <div className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
           {/* Sender Name */}
           <div className="flex items-center space-x-2 mb-1">
-            <span className={`text-sm font-medium ${isOwn ? 'text-blue-600' : 'text-gray-700'}`}>
+            <span className={`text-sm font-medium ${isOwn ? 'text-primary' : 'text-gray-700'}`}>
               {message.senderType === 'admin' ? 'Admin' : (message.senderName || 'Customer')}
             </span>
             {message.senderType === 'admin' && (
-              <Badge variant="default" className="text-xs bg-blue-100 text-blue-800">
+              <Badge variant="default" className="text-xs bg-primary text-primary">
                 Admin
               </Badge>
             )}
@@ -156,7 +156,7 @@ export default function ChatMessage({ message, isOwn, onImageClick }: ChatMessag
           <div className={`relative max-w-md ${isOwn ? 'ml-12' : 'mr-12'}`}>
             <div className={`rounded-2xl px-4 py-3 shadow-sm ${
               isOwn 
-                ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white' 
+                ? 'bg-gradient-to-r from-primary to-orange-600 text-white' 
                 : 'bg-white border border-gray-200 text-gray-900'
             }`}>
               {/* Text Content */}
@@ -171,15 +171,15 @@ export default function ChatMessage({ message, isOwn, onImageClick }: ChatMessag
 
               {/* Timestamp and Status */}
               <div className={`flex items-center space-x-1 mt-2 ${isOwn ? 'justify-end' : 'justify-start'}`}>
-                <span className={`text-xs ${isOwn ? 'text-blue-100' : 'text-gray-500'}`}>
+                <span className={`text-xs ${isOwn ? 'text-primary' : 'text-gray-500'}`}>
                   {formatTime(message.createdAt)}
                 </span>
                 {isOwn && (
                   <div className="flex items-center space-x-1">
                     {message.isRead ? (
-                      <div className="w-2 h-2 bg-blue-300 rounded-full" />
+                      <div className="w-2 h-2 bg-primary rounded-full" />
                     ) : (
-                      <Clock className="h-3 w-3 text-blue-300" />
+                      <Clock className="h-3 w-3 text-primary" />
                     )}
                   </div>
                 )}

@@ -720,9 +720,9 @@ export default function AdminBulkUpload() {
 
                 {/* Show expected image filenames */}
                 {products.length > 0 && products.some(p => p.imageFilenames && p.imageFilenames.length > 0) && (
-                  <div className="p-3 bg-blue-50 rounded-lg">
-                    <h4 className="font-medium text-blue-900 mb-2">📁 Expected Image Files</h4>
-                    <div className="text-sm text-blue-800">
+                  <div className="p-3 bg-primary rounded-lg">
+                    <h4 className="font-medium text-primary mb-2">📁 Expected Image Files</h4>
+                    <div className="text-sm text-primary">
                       <p className="mb-2">The following image files are expected based on your Excel:</p>
                       <div className="flex flex-wrap gap-2">
                         {Array.from(new Set(products.flatMap(p => p.imageFilenames || []))).map((filename, index) => (

@@ -273,12 +273,12 @@ export default function BuyerRFQs() {
       <Header />
       
       {/* Hero Section with Gradient */}
-      <section className="relative py-16 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
+      <section className="relative py-16 bg-gradient-to-br from-secondary via-secondary/90 to-secondary/80 overflow-hidden">
         {/* Background Elements */}
         <div className="absolute inset-0">
-          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-600/10 to-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-primary/20 to-primary/15 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-primary/25 to-primary/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-primary/15 to-primary/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -290,7 +290,7 @@ export default function BuyerRFQs() {
             
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
               My
-              <span className="bg-gradient-to-r from-blue-200 via-white to-blue-200 bg-clip-text text-transparent block">
+              <span className="bg-gradient-to-r from-primary/80 via-white to-primary/80 bg-clip-text text-transparent block">
                 RFQs
               </span>
             </h1>
@@ -394,8 +394,8 @@ export default function BuyerRFQs() {
             
             <Card className="bg-white border-gray-100 shadow-lg">
               <CardContent className="p-6 text-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <DollarSign className="w-6 h-6 text-blue-600" />
+                <div className="w-12 h-12 bg-gradient-to-br from-primary/10 to-primary/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+                  <DollarSign className="w-6 h-6 text-primary" />
                 </div>
                 <div className="text-2xl font-bold text-gray-900">{formatPrice(stats.totalValue)}</div>
                 <div className="text-sm text-gray-600">Total Value</div>
@@ -439,7 +439,7 @@ export default function BuyerRFQs() {
                         <CardHeader>
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
-                              <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                              <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-primary transition-colors">
                                 {rfq.title}
                               </CardTitle>
                               <p className="text-sm text-gray-600 mt-1">RFQ #{rfq.id}</p>
@@ -537,7 +537,7 @@ export default function BuyerRFQs() {
                     {searchQuery ? 'Try adjusting your search criteria' : 'You haven\'t created any RFQs yet'}
                   </p>
                   <Link href="/rfq/create">
-                    <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                    <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
                       <Plus className="w-4 h-4 mr-2" />
                       Create New RFQ
                     </Button>
@@ -557,7 +557,7 @@ export default function BuyerRFQs() {
                       <CardHeader>
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                            <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-primary transition-colors">
                               {rfq.title}
                             </CardTitle>
                             <p className="text-sm text-gray-600 mt-1">RFQ #{rfq.id}</p>
@@ -630,7 +630,7 @@ export default function BuyerRFQs() {
                       <CardHeader>
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                            <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-primary transition-colors">
                               {rfq.title}
                             </CardTitle>
                             <p className="text-sm text-gray-600 mt-1">RFQ #{rfq.id}</p>
@@ -703,7 +703,7 @@ export default function BuyerRFQs() {
                       <CardHeader>
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                            <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-primary transition-colors">
                               {rfq.title}
                             </CardTitle>
                             <p className="text-sm text-gray-600 mt-1">RFQ #{rfq.id}</p>
@@ -775,7 +775,7 @@ export default function BuyerRFQs() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <ShoppingCart className="w-5 h-5 text-blue-600" />
+              <ShoppingCart className="w-5 h-5 text-primary" />
               Quotations for {selectedRFQ?.title || 'RFQ'}
             </DialogTitle>
             <DialogDescription>

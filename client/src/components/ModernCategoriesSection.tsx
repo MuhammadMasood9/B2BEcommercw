@@ -103,14 +103,14 @@ export default function ModernCategoriesSection() {
     <section className="py-20 bg-white relative overflow-hidden">
       {/* Background Elements */}
       <div className="absolute inset-0">
-        <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-50 to-purple-50 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-green-50 to-blue-50 rounded-full blur-3xl" />
+        <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-primary to-purple-50 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-green-50 to-orange-600 rounded-full blur-3xl" />
       </div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-800 rounded-full px-4 py-2 text-sm font-medium mb-6">
+          <div className="inline-flex items-center gap-2 bg-primary text-primary rounded-full px-4 py-2 text-sm font-medium mb-6">
             <Globe className="w-4 h-4" />
             <span>Global Categories</span>
           </div>
@@ -161,7 +161,7 @@ export default function ModernCategoriesSection() {
             
             return (
               <Link key={category.id} href={`/categories/${category.id}`}>
-                <Card className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 cursor-pointer bg-white border-gray-100 hover:border-blue-200">
+                <Card className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 cursor-pointer bg-white border-gray-100 hover:border-primary">
                   <CardContent className="p-6 text-center">
                     <div className="relative mb-4">
                       {/* Category Image */}
@@ -193,7 +193,7 @@ export default function ModernCategoriesSection() {
                       </div>
                     </div>
                     
-                    <h3 className="font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+                    <h3 className="font-semibold text-gray-900 mb-2 group-hover:text-primary transition-colors">
                       {category.name}
                     </h3>
                     
@@ -225,7 +225,7 @@ export default function ModernCategoriesSection() {
         </div>
 
         {/* Featured Categories */}
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-3xl p-8 mb-12">
+        <div className="bg-gradient-to-r from-primary to-purple-50 rounded-3xl p-8 mb-12">
           <div className="text-center mb-8">
             <h3 className="text-2xl font-bold text-gray-900 mb-2">
               Popular This Week
@@ -319,8 +319,8 @@ export default function ModernCategoriesSection() {
           </div>
           
           <div className="text-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Zap className="w-8 h-8 text-blue-600" />
+            <div className="w-16 h-16 bg-gradient-to-br from-primary to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Zap className="w-8 h-8 text-primary" />
             </div>
             <h3 className="font-semibold text-gray-900 mb-2">Fast Response</h3>
             <p className="text-gray-600 text-sm">
@@ -342,7 +342,7 @@ export default function ModernCategoriesSection() {
         {/* View All Button */}
         <div className="text-center">
           <Link href="/categories">
-            <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3">
+            <Button size="lg" className="bg-primary hover:bg-primary text-white px-8 py-3">
               View All Categories
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>

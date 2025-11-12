@@ -3,11 +3,118 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
-    <title>Global Trade Hub - Leading B2B Marketplace</title>
+    <title>Bago - Leading B2B Marketplace</title>
     <meta name="description" content="Connect with verified suppliers and manufacturers worldwide. Get competitive quotes, bulk wholesale pricing, and trade assurance on millions of products." />
+    
+    <!-- Enhanced Font Preloading for Base Neue Font Family -->
+    <!-- Critical font weights preloaded for optimal performance -->
+    <link rel="preload" href="/fonts/base-neue-regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/base-neue-medium.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/base-neue-semibold.woff2" as="font" type="font/woff2" crossorigin>
+    
+    <!-- Preload Base Neue Bold for headings -->
+    <link rel="preload" href="/fonts/base-neue-bold.woff2" as="font" type="font/woff2" crossorigin>
+    
+    <!-- Preload Base Neue Mono for code elements -->
+    <link rel="preload" href="/fonts/base-neue-mono-regular.woff2" as="font" type="font/woff2" crossorigin>
+    
+    <!-- Fallback Font Preconnections for enhanced performance -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- Optimized Fallback Font Loading with display=swap -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Load optimized Base Neue font CSS -->
+    <link rel="stylesheet" href="/fonts/optimized-fonts.css">
+    
+    <!-- Critical CSS Inline for Brand Colors (prevents FOUC) -->
+    <style>
+      /* Critical brand color CSS to prevent flash of unstyled content */
+      :root {
+        --primary: 39 100% 50%;
+        --primary-foreground: 0 0% 100%;
+        --foreground: 0 0% 10%;
+        --background: 0 0% 100%;
+        --font-sans: 'Base Neue', Inter, system-ui, sans-serif;
+      }
+      
+      body {
+        font-family: var(--font-sans);
+        color: hsl(var(--foreground));
+        background-color: hsl(var(--background));
+        font-display: swap;
+      }
+      
+      /* Prevent layout shift during font loading */
+      .font-loading {
+        font-display: swap;
+        font-variation-settings: normal;
+      }
+      
+      /* App initialization styles */
+      .app-initializing {
+        opacity: 0.98;
+        transition: opacity 0.1s ease-in-out;
+      }
+      
+      /* Theme transition styles */
+      .theme-transitioning * {
+        transition: none !important;
+      }
+      
+      .theme-switching {
+        transition: background-color 0.2s ease, color 0.2s ease;
+      }
+    </style>
+    
+    <!-- Theme Initialization Script (prevents FOUC) -->
+    <script>
+      (function() {
+        try {
+          // Get stored theme preference
+          const storageKey = 'b2b-marketplace-theme';
+          const stored = localStorage.getItem(storageKey);
+          const highContrastStored = localStorage.getItem(storageKey + '-high-contrast');
+          
+          // Determine initial theme
+          let theme = 'system';
+          if (stored && ['light', 'dark', 'system'].includes(stored)) {
+            theme = stored;
+          }
+          
+          // Resolve system theme if needed
+          let resolvedTheme = 'light';
+          if (theme === 'system') {
+            resolvedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          } else {
+            resolvedTheme = theme;
+          }
+          
+          // Check high contrast preference
+          const highContrast = highContrastStored === 'true' || 
+            (highContrastStored === null && window.matchMedia('(prefers-contrast: high)').matches);
+          
+          // Apply theme immediately to prevent FOUC
+          const root = document.documentElement;
+          root.classList.remove('light', 'dark', 'high-contrast');
+          root.classList.add(resolvedTheme);
+          
+          if (highContrast) {
+            root.classList.add('high-contrast');
+          }
+          
+          // Set color scheme for browser UI
+          root.style.colorScheme = resolvedTheme;
+          
+        } catch (error) {
+          // Fallback to light theme if anything fails
+          console.warn('Theme initialization failed, falling back to light theme:', error);
+          document.documentElement.classList.add('light');
+          document.documentElement.style.colorScheme = 'light';
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

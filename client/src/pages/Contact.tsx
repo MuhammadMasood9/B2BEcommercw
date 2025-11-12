@@ -60,12 +60,12 @@ export default function Contact() {
       <Header />
       
       {/* Hero Section with Gradient */}
-      <section className="relative py-16 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
+      <section className="relative py-16 bg-gradient-to-br from-secondary via-secondary/90 to-secondary/80 overflow-hidden">
         {/* Background Elements */}
         <div className="absolute inset-0">
-          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-600/10 to-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-primary/20 to-primary/15 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-primary/25 to-primary/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-primary/15 to-primary/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -77,7 +77,7 @@ export default function Contact() {
             
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
               Contact
-              <span className="bg-gradient-to-r from-blue-200 via-white to-blue-200 bg-clip-text text-transparent block">
+              <span className="bg-gradient-to-r from-primary/80 via-white to-primary/80 bg-clip-text text-transparent block">
                 Us
               </span>
             </h1>
@@ -111,14 +111,14 @@ export default function Contact() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
             <Card className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-white border-gray-100">
               <CardContent className="p-6 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                  <Mail className="w-8 h-8 text-blue-600" />
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/20 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                  <Mail className="w-8 h-8 text-primary" />
                 </div>
                 <h3 className="font-semibold text-lg mb-2 text-gray-900">Email Us</h3>
                 <p className="text-gray-600 text-sm mb-3">Send us an email anytime</p>
                 <a 
                   href="mailto:support@b2bmarketplace.com" 
-                  className="text-blue-600 hover:text-blue-700 font-medium hover:underline"
+                  className="text-primary hover:text-primary/80 font-medium hover:underline"
                 >
                   support@b2bmarketplace.com
                 </a>
@@ -134,7 +134,7 @@ export default function Contact() {
                 <p className="text-gray-600 text-sm mb-3">Mon-Fri from 8am to 6pm</p>
                 <a 
                   href="tel:+1234567890" 
-                  className="text-blue-600 hover:text-blue-700 font-medium hover:underline"
+                  className="text-primary hover:text-primary/80 font-medium hover:underline"
                 >
                   +1 (234) 567-890
                 </a>
@@ -148,7 +148,7 @@ export default function Contact() {
                 </div>
                 <h3 className="font-semibold text-lg mb-2 text-gray-900">Visit Us</h3>
                 <p className="text-gray-600 text-sm mb-3">Visit our office HQ</p>
-                <address className="text-blue-600 not-italic font-medium">
+                <address className="text-primary not-italic font-medium">
                   123 Business St, Suite 100<br />
                   New York, NY 10001
                 </address>
@@ -163,7 +163,7 @@ export default function Contact() {
               <Card className="bg-white border-gray-100 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-2xl">
-                    <MessageSquare className="w-6 h-6 text-blue-600" />
+                    <MessageSquare className="w-6 h-6 text-primary" />
                     Send us a Message
                   </CardTitle>
                   <p className="text-gray-600">
@@ -224,7 +224,7 @@ export default function Contact() {
 
                     <Button 
                       type="submit" 
-                      className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white"
+                      className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground"
                       disabled={submitContactMutation.isPending}
                     >
                       {submitContactMutation.isPending ? (
@@ -246,10 +246,10 @@ export default function Contact() {
 
             {/* Additional Info */}
             <div className="space-y-8">
-              <Card className="bg-gradient-to-br from-blue-50 to-purple-50 border-none">
+              <Card className="bg-gradient-to-br from-primary/5 to-secondary/5 border-none">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-blue-600" />
+                    <Clock className="w-5 h-5 text-primary" />
                     Business Hours
                   </CardTitle>
                 </CardHeader>
@@ -284,8 +284,8 @@ export default function Contact() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                      <CheckCircle className="w-5 h-5 text-blue-600" />
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <CheckCircle className="w-5 h-5 text-primary" />
                     </div>
                     <div>
                       <h4 className="font-semibold text-gray-900">Fast Response Time</h4>
@@ -325,7 +325,7 @@ export default function Contact() {
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-green-50 to-blue-50 border-none">
+              <Card className="bg-gradient-to-br from-green-50 to-primary/5 border-none">
                 <CardContent className="p-6">
                   <h3 className="font-semibold text-lg mb-2 text-gray-900">Need Immediate Help?</h3>
                   <p className="text-gray-600 mb-4">

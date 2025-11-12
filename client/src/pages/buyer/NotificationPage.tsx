@@ -134,11 +134,11 @@ export default function NotificationPage() {
 
   const getIcon = (type: Notification['type']) => {
     switch (type) {
-      case 'info': return <Info className="h-5 w-5 text-blue-500" />;
+      case 'info': return <Info className="h-5 w-5 text-primary" />;
       case 'success': return <CheckCircle className="h-5 w-5 text-green-500" />;
       case 'error': return <XCircle className="h-5 w-5 text-red-500" />;
-      case 'warning': return <AlertTriangle className="h-5 w-5 text-yellow-500" />;
-      default: return <Bell className="h-5 w-5 text-gray-500" />;
+      case 'warning': return <AlertTriangle className="h-5 w-5 text-brand-orange-500" />;
+      default: return <Bell className="h-5 w-5 text-brand-grey-500" />;
     }
   };
 
@@ -154,12 +154,12 @@ export default function NotificationPage() {
 
   const getRelatedIcon = (relatedType?: string) => {
     switch (relatedType) {
-      case 'inquiry': return <FileText className="h-4 w-4 text-blue-500" />;
+      case 'inquiry': return <FileText className="h-4 w-4 text-primary" />;
       case 'quotation': return <Package className="h-4 w-4 text-green-500" />;
       case 'order': return <Truck className="h-4 w-4 text-purple-500" />;
-      case 'chat': return <MessageSquare className="h-4 w-4 text-orange-500" />;
-      case 'rfq': return <User className="h-4 w-4 text-indigo-500" />;
-      default: return <Clock className="h-4 w-4 text-gray-500" />;
+      case 'chat': return <MessageSquare className="h-4 w-4 text-brand-orange-500" />;
+      case 'rfq': return <User className="h-4 w-4 text-brand-grey-600" />;
+      default: return <Clock className="h-4 w-4 text-brand-grey-500" />;
     }
   };
 
@@ -171,12 +171,12 @@ export default function NotificationPage() {
       <Header />
       
       {/* Hero Section with Gradient */}
-      <section className="relative py-16 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
+      <section className="relative py-16 bg-gradient-to-br from-secondary via-secondary/90 to-secondary/80 overflow-hidden">
         {/* Background Elements */}
         <div className="absolute inset-0">
-          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-600/10 to-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-primary/20 to-primary/15 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-primary/25 to-primary/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-primary/15 to-primary/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -188,7 +188,7 @@ export default function NotificationPage() {
             
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
               Stay
-              <span className="bg-gradient-to-r from-blue-200 via-white to-blue-200 bg-clip-text text-transparent block">
+              <span className="bg-gradient-to-r from-primary/80 via-white to-primary/80 bg-clip-text text-transparent block">
                 Updated
               </span>
             </h1>
@@ -222,7 +222,7 @@ export default function NotificationPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <Card className="bg-white  shadow-lg hover:shadow-xl transition-shadow">
               <CardContent className="p-4 text-center">
-                <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center mx-auto mb-3">
+                <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center mx-auto mb-3">
                   <Bell className="w-6 h-6 text-white" />
                 </div>
                 <div className="text-2xl font-bold text-gray-900">{allNotifications.length}</div>
@@ -323,12 +323,12 @@ export default function NotificationPage() {
                 <CardContent className="p-6">
                   {isLoading ? (
                     <div className="flex items-center justify-center py-16">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                     </div>
                   ) : notifications.length === 0 ? (
                     <div className="text-center py-16">
-                      <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <Bell className="h-12 w-12 text-blue-600" />
+                      <div className="w-24 h-24 bg-gradient-to-br from-primary to-orange-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Bell className="h-12 w-12 text-primary" />
                       </div>
                       <h2 className="text-3xl font-bold text-gray-900 mb-4">No notifications found</h2>
                       <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
@@ -358,12 +358,12 @@ export default function NotificationPage() {
                             className={`group relative overflow-hidden transition-all duration-300 ${
                               notification.read 
                                 ? 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-md' 
-                                : 'bg-white border-l-4 border-l-blue-500 shadow-lg hover:shadow-xl hover:border-l-blue-600'
+                                : 'bg-white border-l-4 border-l-primary/100 shadow-lg hover:shadow-xl hover:border-l-primary'
                             }`}
                           >
                             {/* Unread Indicator */}
                             {!notification.read && (
-                              <div className="absolute top-4 right-4 w-2 h-2 bg-blue-600 rounded-full animate-pulse" />
+                              <div className="absolute top-4 right-4 w-2 h-2 bg-primary rounded-full animate-pulse" />
                             )}
                             
                             <CardContent className="p-5">
@@ -371,7 +371,7 @@ export default function NotificationPage() {
                                 {/* Icon Section */}
                                 <div className={`flex-shrink-0 w-14 h-14 rounded-xl flex items-center justify-center transition-all ${
                                   notification.type === 'info' 
-                                    ? 'bg-blue-50 text-blue-600' 
+                                    ? 'bg-primary text-primary' 
                                     : notification.type === 'success'
                                     ? 'bg-green-50 text-green-600'
                                     : notification.type === 'error'
@@ -394,7 +394,7 @@ export default function NotificationPage() {
                                           {notification.title}
                                         </h3>
                                         {!notification.read && (
-                                          <Badge className="bg-blue-600 text-white text-xs px-2 py-0.5 font-medium">
+                                          <Badge className="bg-primary text-white text-xs px-2 py-0.5 font-medium">
                                             New
                                           </Badge>
                                         )}
@@ -440,7 +440,7 @@ export default function NotificationPage() {
                                         size="sm" 
                                         onClick={() => markAsRead(notification.id)}
                                         disabled={markAsReadMutation.isPending}
-                                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 h-8 px-3 text-xs font-medium"
+                                        className="text-primary hover:text-primary hover:bg-primary h-8 px-3 text-xs font-medium"
                                       >
                                         <CheckSquare className="w-3.5 h-3.5 mr-1.5" />
                                         Mark as Read

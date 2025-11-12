@@ -248,7 +248,7 @@ export default function AdminInquiries() {
     switch (status) {
       case 'replied': return 'bg-green-100 text-green-800 border-green-200';
       case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'negotiating': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'negotiating': return 'bg-primary text-primary border-primary';
       case 'closed': return 'bg-gray-100 text-gray-800 border-gray-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
@@ -433,15 +433,15 @@ export default function AdminInquiries() {
 
         {/* Key Metrics Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+          <Card className="bg-gradient-to-r from-primary to-orange-600 text-white">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-blue-100 text-sm font-medium">Total Inquiries</p>
+                  <p className="text-primary text-sm font-medium">Total Inquiries</p>
                   <p className="text-3xl font-bold">{stats.total}</p>
-                  <p className="text-blue-200 text-xs">+{stats.recentActivity} this week</p>
+                  <p className="text-primary text-xs">+{stats.recentActivity} this week</p>
                 </div>
-                <FileText className="h-8 w-8 text-blue-200" />
+                <FileText className="h-8 w-8 text-primary" />
               </div>
             </CardContent>
           </Card>
@@ -513,7 +513,7 @@ export default function AdminInquiries() {
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                    <div className="w-3 h-3 bg-primary rounded-full"></div>
                     <span className="text-sm">Negotiating</span>
                   </div>
                   <span className="font-semibold">{stats.negotiating}</span>
@@ -731,7 +731,7 @@ export default function AdminInquiries() {
                                   <div key={quotation.id} className="bg-gray-50 dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-700">
                                     <div className="flex justify-between items-start mb-2">
                                       <div>
-                                        <span className="font-medium text-blue-600">${quotation.pricePerUnit}/unit</span>
+                                        <span className="font-medium text-primary">${quotation.pricePerUnit}/unit</span>
                                         <span className="text-gray-600 ml-2 text-sm">(Total: ${quotation.totalPrice})</span>
                                         <Badge className="ml-2" variant={
                                           quotation.status === 'accepted' ? 'default' : 
@@ -970,7 +970,7 @@ export default function AdminInquiries() {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm">Negotiation Rate</span>
-                      <span className="font-semibold text-blue-600">{stats.negotiationRate}%</span>
+                      <span className="font-semibold text-primary">{stats.negotiationRate}%</span>
                     </div>
                   </div>
                 </CardContent>
@@ -1039,7 +1039,7 @@ export default function AdminInquiries() {
                 {negotiationHistory.length > 0 ? (
                   <div className="space-y-3">
                     {negotiationHistory.map((revision: any, index: number) => (
-                      <div key={index} className="border-l-4 border-blue-500 pl-4 py-2">
+                      <div key={index} className="border-l-4 border-primary pl-4 py-2">
                         <div className="flex justify-between items-start">
                           <div>
                             <p className="font-medium">Revision {revision.revisionNumber}</p>
@@ -1178,7 +1178,7 @@ export default function AdminInquiries() {
           {selectedInquiryForCompare && (
             <div className="space-y-6">
               {/* Inquiry Details */}
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+              <div className="bg-primary p-4 rounded-lg border border-primary">
                 <h4 className="font-semibold text-gray-900 mb-2">Inquiry Details</h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
@@ -1342,7 +1342,7 @@ export default function AdminInquiries() {
                 // Export comparison
                 toast.success('Comparison exported successfully!');
               }}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-primary hover:bg-primary text-white"
             >
               <Download className="w-4 h-4 mr-2" />
               Export Comparison

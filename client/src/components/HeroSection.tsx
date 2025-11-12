@@ -78,12 +78,12 @@ export default function HeroSection() {
   };
 
   return (
-    <div className="relative min-h-[700px] md:min-h-[800px] flex items-center overflow-hidden bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700">
+    <div className="relative min-h-[700px] md:min-h-[800px] flex items-center overflow-hidden bg-gradient-to-br from-brand-grey-900 via-brand-grey-800 to-brand-grey-700">
       {/* Enhanced Background Elements */}
       <div className="absolute inset-0">
-        <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-600/10 to-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+        <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-brand-orange-400/20 to-brand-orange-300/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-brand-orange-500/20 to-brand-orange-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-brand-orange-600/10 to-brand-orange-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
         
         {/* Floating Elements */}
         <div className="absolute top-32 left-1/4 w-4 h-4 bg-white/30 rounded-full animate-bounce" style={{ animationDelay: '0.5s' }} />
@@ -114,7 +114,7 @@ export default function HeroSection() {
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
                 <span className="text-white">Global B2B</span>
                 <br />
-                <span className="bg-gradient-to-r from-blue-200 via-white to-blue-200 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-brand-orange-200 via-white to-brand-orange-200 bg-clip-text text-transparent">
                   Marketplace
                 </span>
               </h1>
@@ -171,7 +171,7 @@ export default function HeroSection() {
                     <Button 
                       size="lg" 
                       onClick={() => performSearch(searchQuery, selectedCategory)}
-                      className="h-16 px-8 shadow-lg hover:shadow-xl transition-all duration-200 bg-blue-600 hover:bg-blue-700 relative z-10" 
+                      className="h-16 px-8 shadow-lg hover:shadow-xl transition-all duration-200 bg-primary hover:bg-primary/90 relative z-10" 
                       data-testid="button-hero-search"
                     >
                       <Search className="w-5 h-5 mr-2" />
@@ -187,18 +187,18 @@ export default function HeroSection() {
                           {isLoadingSuggestions ? (
                             <div className="flex items-center justify-center py-12">
                               <div className="flex flex-col items-center gap-3">
-                                <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
                                 <span className="text-gray-600 font-medium">Searching...</span>
                               </div>
                             </div>
                           ) : suggestions.length > 0 ? (
                             <div className="max-h-80 overflow-y-auto">
                               {/* Header */}
-                              <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-100">
+                              <div className="px-6 py-4 bg-gradient-to-r from-brand-orange-50 to-brand-orange-100 border-b border-gray-100">
                                 <div className="flex items-center gap-2">
-                                  <Search className="w-4 h-4 text-blue-600" />
+                                  <Search className="w-4 h-4 text-primary" />
                                   <span className="text-sm font-semibold text-gray-700">Search Suggestions</span>
-                                  <div className="ml-auto bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full">
+                                  <div className="ml-auto bg-brand-orange-100 text-brand-orange-700 text-xs px-2 py-1 rounded-full">
                                     {suggestions.length} found
                                   </div>
                                 </div>
@@ -209,13 +209,13 @@ export default function HeroSection() {
                                 {suggestions.map((suggestion: any, index: number) => (
                                   <div
                                     key={suggestion.id}
-                                    className="group flex items-center gap-4 p-4 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 cursor-pointer transition-all duration-200"
+                                    className="group flex items-center gap-4 p-4 hover:bg-gradient-to-r hover:from-brand-orange-50 hover:to-brand-orange-100 cursor-pointer transition-all duration-200"
                                     onClick={() => performSearch(suggestion.name)}
                                   >
                                     <div className="flex-shrink-0">
                                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                                         suggestion.type === 'product' 
-                                          ? 'bg-gradient-to-br from-blue-100 to-blue-200 text-blue-600' 
+                                          ? 'bg-gradient-to-br from-brand-orange-100 to-brand-orange-200 text-primary' 
                                           : 'bg-gradient-to-br from-green-100 to-green-200 text-green-600'
                                       }`}>
                                         {suggestion.type === 'product' ? (
@@ -227,12 +227,12 @@ export default function HeroSection() {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2 mb-1">
-                                        <span className="font-semibold text-gray-900 truncate group-hover:text-blue-700 transition-colors">
+                                        <span className="font-semibold text-gray-900 truncate group-hover:text-primary transition-colors">
                                           {suggestion.name}
                                         </span>
                                         <div className={`text-xs px-2 py-1 rounded-full ${
                                           suggestion.type === 'product' 
-                                            ? 'bg-blue-100 text-blue-700' 
+                                            ? 'bg-brand-orange-100 text-brand-orange-700' 
                                             : 'bg-green-100 text-green-700'
                                         }`}>
                                           {suggestion.type}
@@ -261,7 +261,7 @@ export default function HeroSection() {
                               <div className="px-6 py-3 bg-gray-50 border-t border-gray-100">
                                 <button
                                   onClick={() => performSearch(searchQuery)}
-                                  className="w-full text-center text-blue-600 hover:text-blue-700 font-medium text-sm py-2 hover:bg-blue-50 rounded-lg transition-colors"
+                                  className="w-full text-center text-primary hover:text-primary/80 font-medium text-sm py-2 hover:bg-brand-orange-50 rounded-lg transition-colors"
                                 >
                                   View all results for "{searchQuery}"
                                 </button>
@@ -283,7 +283,7 @@ export default function HeroSection() {
               </div>
               
               <div className="flex flex-wrap gap-4">
-                <Button size="lg" className="h-14 px-8 bg-white text-blue-600 hover:bg-white/90 shadow-lg hover:shadow-xl transition-all duration-200 group font-semibold" data-testid="button-start-sourcing">
+                <Button size="lg" className="h-14 px-8 bg-white text-primary hover:bg-white/90 shadow-lg hover:shadow-xl transition-all duration-200 group font-semibold" data-testid="button-start-sourcing">
                   Start Sourcing
                   <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                 </Button>
@@ -316,7 +316,7 @@ export default function HeroSection() {
               <Card className="bg-white/15 backdrop-blur-xl border-white/30 text-white hover:bg-white/25 transition-all duration-300 hover:scale-105 hover:shadow-2xl group">
                 <CardContent className="p-6">
                   <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-gradient-to-br from-blue-400/30 to-blue-500/30 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <div className="w-14 h-14 bg-gradient-to-br from-brand-orange-400/30 to-brand-orange-500/30 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
                       <Users className="w-7 h-7 text-white" />
                     </div>
                     <div>

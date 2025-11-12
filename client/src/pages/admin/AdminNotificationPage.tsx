@@ -139,7 +139,7 @@ export default function AdminNotificationPage() {
 
   const getIcon = (type: Notification['type']) => {
     switch (type) {
-      case 'info': return <Info className="h-5 w-5 text-blue-500" />;
+      case 'info': return <Info className="h-5 w-5 text-primary" />;
       case 'success': return <CheckCircle className="h-5 w-5 text-green-500" />;
       case 'error': return <XCircle className="h-5 w-5 text-red-500" />;
       case 'warning': return <AlertTriangle className="h-5 w-5 text-yellow-500" />;
@@ -159,11 +159,11 @@ export default function AdminNotificationPage() {
 
   const getRelatedIcon = (relatedType?: string) => {
     switch (relatedType) {
-      case 'inquiry': return <FileText className="h-4 w-4 text-blue-500" />;
+      case 'inquiry': return <FileText className="h-4 w-4 text-primary" />;
       case 'quotation': return <Package className="h-4 w-4 text-green-500" />;
       case 'order': return <Truck className="h-4 w-4 text-purple-500" />;
       case 'chat': return <MessageSquare className="h-4 w-4 text-orange-500" />;
-      case 'rfq': return <User className="h-4 w-4 text-indigo-500" />;
+      case 'rfq': return <User className="h-4 w-4 text-orange-600" />;
       default: return <Clock className="h-4 w-4 text-gray-500" />;
     }
   };
@@ -217,14 +217,14 @@ export default function AdminNotificationPage() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-          <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 shadow-lg">
+          <Card className="bg-gradient-to-r from-primary to-orange-600 text-white border-0 shadow-lg">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-blue-100 text-sm font-medium">Total Notifications</p>
+                  <p className="text-primary text-sm font-medium">Total Notifications</p>
                   <p className="text-3xl font-bold">{allNotifications.length}</p>
                 </div>
-                <Bell className="h-8 w-8 text-blue-200" />
+                <Bell className="h-8 w-8 text-primary" />
               </div>
             </CardContent>
           </Card>
@@ -350,12 +350,12 @@ export default function AdminNotificationPage() {
               <CardContent className="p-6">
           {isLoading ? (
             <div className="flex items-center justify-center py-16">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : notifications.length === 0 ? (
                   <div className="text-center py-16">
-                    <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center mx-auto mb-6">
-                      <Bell className="h-12 w-12 text-blue-600" />
+                    <div className="w-24 h-24 bg-gradient-to-br from-primary to-orange-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                      <Bell className="h-12 w-12 text-primary" />
               </div>
                     <h2 className="text-3xl font-bold text-gray-900 mb-4">No notifications found</h2>
               <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
@@ -385,12 +385,12 @@ export default function AdminNotificationPage() {
                     className={`group relative overflow-hidden transition-all duration-300 ${
                       notification.read 
                         ? 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-md' 
-                        : 'bg-white border-l-4 border-l-blue-500 shadow-lg hover:shadow-xl hover:border-l-blue-600'
+                        : 'bg-white border-l-4 border-l-primary/100 shadow-lg hover:shadow-xl hover:border-l-primary'
                     }`}
                   >
                     {/* Unread Indicator */}
                     {!notification.read && (
-                      <div className="absolute top-4 right-4 w-2 h-2 bg-blue-600 rounded-full animate-pulse" />
+                      <div className="absolute top-4 right-4 w-2 h-2 bg-primary rounded-full animate-pulse" />
                     )}
                     
                     <CardContent className="p-5">
@@ -398,7 +398,7 @@ export default function AdminNotificationPage() {
                         {/* Icon Section */}
                         <div className={`flex-shrink-0 w-14 h-14 rounded-xl flex items-center justify-center transition-all ${
                           notification.type === 'info' 
-                            ? 'bg-blue-50 text-blue-600' 
+                            ? 'bg-primary text-primary' 
                             : notification.type === 'success'
                             ? 'bg-green-50 text-green-600'
                             : notification.type === 'error'
@@ -421,7 +421,7 @@ export default function AdminNotificationPage() {
                                   {notification.title}
                                 </h3>
                                 {!notification.read && (
-                                  <Badge className="bg-blue-600 text-white text-xs px-2 py-0.5 font-medium">
+                                  <Badge className="bg-primary text-white text-xs px-2 py-0.5 font-medium">
                                     New
                                   </Badge>
                                 )}
@@ -467,7 +467,7 @@ export default function AdminNotificationPage() {
                                 size="sm" 
                                 onClick={() => markAsRead(notification.id)}
                                 disabled={markAsReadMutation.isPending}
-                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 h-8 px-3 text-xs font-medium"
+                                className="text-primary hover:text-primary hover:bg-primary h-8 px-3 text-xs font-medium"
                               >
                                 <CheckSquare className="w-3.5 h-3.5 mr-1.5" />
                                 Mark as Read

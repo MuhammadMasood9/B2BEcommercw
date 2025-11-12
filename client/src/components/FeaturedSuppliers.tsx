@@ -79,7 +79,7 @@ export default function FeaturedSuppliers() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-800 rounded-full px-4 py-2 text-sm font-medium mb-4">
+          <div className="inline-flex items-center gap-2 bg-primary text-primary rounded-full px-4 py-2 text-sm font-medium mb-4">
             <Star className="w-4 h-4 fill-current" />
             <span>Featured Suppliers</span>
           </div>

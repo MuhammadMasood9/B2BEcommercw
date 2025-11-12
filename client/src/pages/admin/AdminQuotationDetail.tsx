@@ -153,11 +153,11 @@ export default function AdminQuotationDetail() {
       case 'rejected':
         return 'bg-red-100 text-red-800 border-red-200';
       case 'negotiating':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-primary/10 text-primary border-primary/20';
       case 'counter_offered':
         return 'bg-purple-100 text-purple-800 border-purple-200';
       case 'revised':
-        return 'bg-indigo-100 text-indigo-800 border-indigo-200';
+        return 'bg-orange-600 text-orange-600 border-orange-600';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
@@ -621,7 +621,7 @@ export default function AdminQuotationDetail() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-blue-600" />
+              <TrendingUp className="w-5 h-5 text-primary" />
               Send Revised Quotation
             </DialogTitle>
             <DialogDescription>
@@ -700,7 +700,7 @@ export default function AdminQuotationDetail() {
             <Button 
               onClick={handleSendRevisedQuotation}
               disabled={!negotiationForm.newPrice || sendRevisedQuotationMutation.isPending}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-primary hover:bg-primary/90"
             >
               {sendRevisedQuotationMutation.isPending ? (
                 <>

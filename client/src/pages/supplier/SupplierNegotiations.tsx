@@ -105,7 +105,7 @@ export default function SupplierNegotiations() {
       case 'sent': return 'bg-yellow-100 text-yellow-800';
       case 'accepted': return 'bg-green-100 text-green-800';
       case 'rejected': return 'bg-red-100 text-red-800';
-      case 'negotiating': return 'bg-blue-100 text-blue-800';
+      case 'negotiating': return 'bg-brand-orange-100 text-brand-orange-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -171,7 +171,7 @@ export default function SupplierNegotiations() {
                 <TableCell>
                   {item.targetPrice ? (
                     <div>
-                      <p className="font-semibold text-blue-600">${parseFloat(item.targetPrice).toFixed(2)}</p>
+                      <p className="font-semibold text-brand-orange-600">${parseFloat(item.targetPrice).toFixed(2)}</p>
                       <p className="text-xs text-gray-500">per unit</p>
                     </div>
                   ) : (
@@ -254,7 +254,7 @@ export default function SupplierNegotiations() {
                 <p className="text-sm text-muted-foreground">Active Negotiations</p>
                 <p className="text-2xl font-bold">{pendingNegotiations.length}</p>
               </div>
-              <MessageSquare className="h-8 w-8 text-blue-600" />
+              <MessageSquare className="h-8 w-8 text-brand-orange-600" />
             </div>
           </CardContent>
         </Card>
@@ -388,9 +388,9 @@ export default function SupplierNegotiations() {
               <div className="border-t pt-4">
                 <p className="text-sm font-medium text-muted-foreground mb-3">Price Comparison</p>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-blue-50 rounded-lg">
+                  <div className="p-4 bg-brand-orange-50 rounded-lg">
                     <p className="text-sm text-muted-foreground">Buyer's Target Price</p>
-                    <p className="text-2xl font-bold text-blue-600">
+                    <p className="text-2xl font-bold text-brand-orange-600">
                       {selectedItem.targetPrice 
                         ? `$${parseFloat(selectedItem.targetPrice).toFixed(2)}`
                         : 'Not specified'}
@@ -512,9 +512,9 @@ export default function SupplierNegotiations() {
             }}>
               <div className="space-y-4">
                 {selectedItem.targetPrice && (
-                  <div className="p-4 bg-blue-50 rounded-lg">
+                  <div className="p-4 bg-brand-orange-50 rounded-lg">
                     <p className="text-sm font-medium">Buyer's Target Price</p>
-                    <p className="text-xl font-bold text-blue-600">
+                    <p className="text-xl font-bold text-brand-orange-600">
                       ${parseFloat(selectedItem.targetPrice).toFixed(2)} per unit
                     </p>
                   </div>

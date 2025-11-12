@@ -665,7 +665,7 @@ export default function AdminProductManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold flex items-center gap-2">
-              <Eye className="h-5 w-5 text-blue-500" />
+              <Eye className="h-5 w-5 text-primary" />
               {product.views?.toLocaleString() || 0}
             </div>
             {trends?.viewsTrend && (
@@ -947,7 +947,7 @@ export default function AdminProductManagement() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-blue-600">{product.stockQuantity || 0}</div>
+                    <div className="text-3xl font-bold text-primary">{product.stockQuantity || 0}</div>
                     <div className="text-sm text-muted-foreground">Current Stock</div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
@@ -1101,9 +1101,9 @@ export default function AdminProductManagement() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="text-center p-6 bg-blue-50 rounded-lg">
-                  <div className="text-3xl font-bold text-blue-600">{product.stockQuantity || 0}</div>
-                  <div className="text-sm text-blue-600">Current Stock</div>
+                <div className="text-center p-6 bg-primary rounded-lg">
+                  <div className="text-3xl font-bold text-primary">{product.stockQuantity || 0}</div>
+                  <div className="text-sm text-primary">Current Stock</div>
                 </div>
                 <div className="text-center p-6 bg-green-50 rounded-lg">
                   <div className="text-3xl font-bold text-green-600">{product.minOrderQuantity || 0}</div>
@@ -1179,9 +1179,9 @@ export default function AdminProductManagement() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <h4 className="font-semibold">Minimum Order Quantity</h4>
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-900">{product.minOrderQuantity || 0} units</div>
-                    <div className="text-sm text-blue-600">Required minimum order</div>
+                  <div className="p-4 bg-primary border border-primary rounded-lg">
+                    <div className="text-2xl font-bold text-primary">{product.minOrderQuantity || 0} units</div>
+                    <div className="text-sm text-primary">Required minimum order</div>
                   </div>
                 </div>
 
@@ -1327,9 +1327,9 @@ export default function AdminProductManagement() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center p-4 bg-blue-50 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">{product.views || 0}</div>
-                    <div className="text-xs text-blue-600">Total Views</div>
+                  <div className="text-center p-4 bg-primary rounded-lg">
+                    <div className="text-2xl font-bold text-primary">{product.views || 0}</div>
+                    <div className="text-xs text-primary">Total Views</div>
                     {performanceData?.viewsChange && (
                       <div className="text-xs text-green-600 mt-1">
                         +{performanceData.viewsChange}% vs last month
@@ -1368,18 +1368,18 @@ export default function AdminProductManagement() {
                       <div className="text-lg font-bold text-orange-600">{performanceData.avgViewTime || '0'}</div>
                       <div className="text-xs text-orange-600">Avg. View Time (min)</div>
                     </div>
-                    <div className="text-center p-3 bg-indigo-50 rounded-lg">
-                      <div className="text-lg font-bold text-indigo-600">{performanceData.bounceRate || '0'}%</div>
-                      <div className="text-xs text-indigo-600">Bounce Rate</div>
+                    <div className="text-center p-3 bg-orange-600 rounded-lg">
+                      <div className="text-lg font-bold text-orange-600">{performanceData.bounceRate || '0'}%</div>
+                      <div className="text-xs text-orange-600">Bounce Rate</div>
                     </div>
                   </div>
                 )}
 
                 {/* Real-time Data from API */}
                 <div className="grid grid-cols-2 gap-3 mt-4">
-                  <div className="text-center p-3 bg-blue-50 rounded-lg">
-                    <div className="text-lg font-bold text-blue-600">{orders.length}</div>
-                    <div className="text-xs text-blue-600">Total Orders</div>
+                  <div className="text-center p-3 bg-primary rounded-lg">
+                    <div className="text-lg font-bold text-primary">{orders.length}</div>
+                    <div className="text-xs text-primary">Total Orders</div>
                   </div>
                   <div className="text-center p-3 bg-green-50 rounded-lg">
                     <div className="text-lg font-bold text-green-600">{favorites.length}</div>
@@ -1400,7 +1400,7 @@ export default function AdminProductManagement() {
                 <div className="space-y-3">
                   <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
                     <div className="flex items-center gap-2">
-                      <Target className="h-4 w-4 text-blue-500" />
+                      <Target className="h-4 w-4 text-primary" />
                       <span className="text-sm">Featured Status</span>
                     </div>
                     <Badge variant={product.isFeatured ? "default" : "secondary"}>
@@ -1478,9 +1478,9 @@ export default function AdminProductManagement() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="text-center p-4 bg-blue-50 rounded-lg">
-                    <div className="text-lg font-bold text-blue-600">{trends.viewsTrend || '0'}%</div>
-                    <div className="text-xs text-blue-600">Views Growth (30d)</div>
+                  <div className="text-center p-4 bg-primary rounded-lg">
+                    <div className="text-lg font-bold text-primary">{trends.viewsTrend || '0'}%</div>
+                    <div className="text-xs text-primary">Views Growth (30d)</div>
                   </div>
                   <div className="text-center p-4 bg-green-50 rounded-lg">
                     <div className="text-lg font-bold text-green-600">{trends.inquiriesTrend || '0'}%</div>
@@ -1506,7 +1506,7 @@ export default function AdminProductManagement() {
               <div className="space-y-3">
                 <div className="flex justify-between items-center p-3 border rounded-lg">
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-blue-500" />
+                    <Calendar className="h-4 w-4 text-primary" />
                     <span className="font-medium">Created</span>
                   </div>
                   <span className="text-muted-foreground">
@@ -1542,7 +1542,7 @@ export default function AdminProductManagement() {
                 <div className="space-y-3">
                   <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
                     <span className="text-sm font-medium">Market Share</span>
-                    <span className="text-lg font-bold text-blue-600">
+                    <span className="text-lg font-bold text-primary">
                       {performanceData?.marketShare || '0'}%
                     </span>
                   </div>
@@ -1584,7 +1584,7 @@ export default function AdminProductManagement() {
               <CardContent className="space-y-4">
                 {trends ? (
                   <div className="space-y-3">
-                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                    <div className="flex justify-between items-center p-3 bg-primary rounded-lg">
                       <span className="text-sm font-medium">Demand Trend</span>
                       <div className="flex items-center gap-2">
                         <TrendingUp className="h-4 w-4 text-green-600" />
@@ -1633,7 +1633,7 @@ export default function AdminProductManagement() {
                   {competitors.slice(0, 5).map((competitor: any, index: number) => (
                     <div key={competitor.id || index} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-semibold">
+                        <div className="w-12 h-12 bg-gradient-to-br from-primary to-purple-600 rounded-lg flex items-center justify-center text-white font-semibold">
                           {competitor.name?.[0] || 'C'}
                         </div>
                         <div>
@@ -1705,9 +1705,9 @@ export default function AdminProductManagement() {
                   </div>
                 </div>
                 
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <h4 className="font-semibold text-blue-800 mb-2">Recommendations</h4>
-                  <div className="space-y-2 text-sm text-blue-700">
+                <div className="p-4 bg-primary border border-primary rounded-lg">
+                  <h4 className="font-semibold text-primary mb-2">Recommendations</h4>
+                  <div className="space-y-2 text-sm text-primary">
                     <p>• Consider adjusting pricing strategy based on market trends</p>
                     <p>• Focus on improving product visibility in search results</p>
                     <p>• Monitor competitor activities and adjust strategy accordingly</p>
@@ -1730,7 +1730,7 @@ export default function AdminProductManagement() {
             <CardContent>
               {inquiriesLoading ? (
                 <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
                   <p className="text-muted-foreground">Loading inquiries...</p>
                 </div>
               ) : inquiries.length > 0 ? (
@@ -1789,7 +1789,7 @@ export default function AdminProductManagement() {
             <CardContent>
               {quotationsLoading ? (
                 <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
                   <p className="text-muted-foreground">Loading quotations...</p>
                 </div>
               ) : quotations.length > 0 ? (
@@ -1855,7 +1855,7 @@ export default function AdminProductManagement() {
             <CardContent>
               {ordersLoading ? (
                 <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
                   <p className="text-muted-foreground">Loading orders...</p>
                 </div>
               ) : orders.length > 0 ? (
@@ -1927,8 +1927,8 @@ export default function AdminProductManagement() {
                     {orders.slice(0, 5).map((order: any, index: number) => (
                       <div key={order.id || index} className="flex items-center justify-between p-3 border rounded-lg">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                            <Package2 className="h-4 w-4 text-blue-600" />
+                          <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                            <Package2 className="h-4 w-4 text-primary" />
                           </div>
                           <div>
                             <p className="font-medium text-sm">Order #{order.orderNumber || order.id}</p>

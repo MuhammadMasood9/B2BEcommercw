@@ -294,7 +294,7 @@ export default function FloatingChat({
         {isMinimized ? (
           <div className="flex items-center justify-between p-4 h-full">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
                 <MessageCircle className="w-4 h-4 text-white" />
               </div>
               <div>
@@ -328,7 +328,7 @@ export default function FloatingChat({
         ) : (
           <div className="flex flex-col h-full">
             {/* Header */}
-            <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-t-2xl">
+            <div className="flex items-center justify-between p-5 border-b border-gray-200 bg-gradient-to-r from-primary to-orange-600 text-white rounded-t-2xl">
               <div className="flex items-center gap-3">
                 <Button
                   size="sm"
@@ -346,7 +346,7 @@ export default function FloatingChat({
                   <h3 className="font-semibold text-sm">
                     {chatType === 'product' ? `Product Chat - ${productName || 'Product'}` : 'Admin Support'}
                   </h3>
-                  <p className="text-xs text-blue-100">
+                  <p className="text-xs text-primary">
                     Local Time: {new Date().toLocaleTimeString()} • {filteredConversations.length} conversations
                   </p>
                 </div>
@@ -381,7 +381,7 @@ export default function FloatingChat({
                         placeholder="Search conversations..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 h-10 text-sm border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                        className="pl-10 h-10 text-sm border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary/20"
                       />
                     </div>
                   </div>
@@ -389,7 +389,7 @@ export default function FloatingChat({
                   <div className="flex-1 overflow-hidden">
                     {isLoading ? (
                       <div className="flex items-center justify-center py-8">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                       </div>
                     ) : filteredConversations.length === 0 ? (
                       <div className="p-6 text-center">
@@ -409,7 +409,7 @@ export default function FloatingChat({
                         <Button 
                           onClick={() => createConversationMutation.mutate()}
                           disabled={createConversationMutation.isPending}
-                          className="w-full bg-blue-600 hover:bg-blue-700"
+                          className="w-full bg-primary hover:bg-primary"
                         >
                           <Plus className="h-4 w-4 mr-2" />
                           Start New Conversation
@@ -429,7 +429,7 @@ export default function FloatingChat({
                               key={conversation.id}
                               className={`p-4 cursor-pointer rounded-xl transition-all duration-200 ${
                                 selectedConversation?.id === conversation.id 
-                                  ? 'bg-blue-50 border border-blue-200 shadow-sm' 
+                                  ? 'bg-primary border border-primary shadow-sm' 
                                   : 'hover:bg-gray-50 hover:shadow-sm'
                               }`}
                               onClick={() => setSelectedConversation(conversation)}
@@ -471,8 +471,8 @@ export default function FloatingChat({
                                   <div className="flex items-center gap-2 mt-1">
                                     {conversation.productName ? (
                                       <div className="flex items-center gap-1">
-                                        <Package className="h-4 w-4 text-blue-500" />
-                                        <span className="text-sm text-blue-600 truncate font-medium">
+                                        <Package className="h-4 w-4 text-primary" />
+                                        <span className="text-sm text-primary truncate font-medium">
                                           {conversation.productName}
                                         </span>
                                       </div>
@@ -563,7 +563,7 @@ export default function FloatingChat({
                               <div className={`max-w-[80%] ${isOwnMessage ? 'order-2' : 'order-1'}`}>
                                 {/* Reply Context */}
                                 {message.replyTo && (
-                                  <div className="mb-1 p-2 bg-gray-100 rounded-lg border-l-2 border-blue-500">
+                                  <div className="mb-1 p-2 bg-gray-100 rounded-lg border-l-2 border-primary">
                                     <p className="text-xs text-gray-600">Replying to:</p>
                                     <p className="text-xs text-gray-800 truncate">{message.replyTo.content}</p>
                                   </div>
@@ -571,7 +571,7 @@ export default function FloatingChat({
                                 
                                 <div className={`px-4 py-3 rounded-2xl shadow-sm group relative ${
                                   isOwnMessage 
-                                    ? 'bg-blue-500 text-white' 
+                                    ? 'bg-primary text-white' 
                                     : 'bg-gray-100 text-gray-900'
                                 }`}>
                                   <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content || message.message}</p>
@@ -652,10 +652,10 @@ export default function FloatingChat({
 
                     {/* Reply Context */}
                     {replyingTo && (
-                      <div className="p-2 bg-blue-50 border-l-4 border-blue-500">
+                      <div className="p-2 bg-primary border-l-4 border-primary">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-xs text-blue-600 font-medium">Replying to:</p>
+                            <p className="text-xs text-primary font-medium">Replying to:</p>
                             <p className="text-xs text-gray-800 truncate">{replyingTo.content}</p>
                           </div>
                           <Button
@@ -677,7 +677,7 @@ export default function FloatingChat({
                           {attachments.map((file, index) => (
                             <div key={index} className="flex items-center gap-1 bg-white rounded p-1 border">
                               {file.type.startsWith('image/') ? (
-                                <ImageIcon className="h-3 w-3 text-blue-500" />
+                                <ImageIcon className="h-3 w-3 text-primary" />
                               ) : file.type.startsWith('audio/') ? (
                                 <Volume2 className="h-3 w-3 text-green-500" />
                               ) : file.type.startsWith('video/') ? (
@@ -743,7 +743,7 @@ export default function FloatingChat({
                             value={newMessage}
                             onChange={(e) => setNewMessage(e.target.value)}
                             onKeyPress={handleKeyPress}
-                            className="min-h-[70px] max-h-[140px] resize-none text-sm border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl"
+                            className="min-h-[70px] max-h-[140px] resize-none text-sm border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl"
                             rows={3}
                           />
                         </div>
@@ -775,7 +775,7 @@ export default function FloatingChat({
                               onClick={handleSendMessage}
                               disabled={!newMessage.trim() || sendMessageMutation.isPending}
                               size="sm"
-                              className="bg-blue-500 hover:bg-blue-600 h-10 w-10 p-0 rounded-lg"
+                              className="bg-primary hover:bg-primary h-10 w-10 p-0 rounded-lg"
                             >
                               <Send className="h-5 w-5" />
                             </Button>
@@ -787,8 +787,8 @@ export default function FloatingChat({
                 ) : (
                   <div className="flex-1 flex items-center justify-center p-10">
                     <div className="text-center">
-                      <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center mx-auto mb-8">
-                        <MessageCircle className="h-12 w-12 text-blue-500" />
+                      <div className="w-24 h-24 bg-gradient-to-br from-primary to-orange-600 rounded-full flex items-center justify-center mx-auto mb-8">
+                        <MessageCircle className="h-12 w-12 text-primary" />
                       </div>
                       <h3 className="text-xl font-semibold text-gray-900 mb-4">
                         {chatType === 'product' ? `Start a conversation about ${productName || 'this product'}` : 'Start a conversation with our support team'}
@@ -802,7 +802,7 @@ export default function FloatingChat({
                       <div className="flex flex-col gap-2">
                         <Button
                           onClick={() => setShowConversations(true)}
-                          className="bg-blue-500 hover:bg-blue-600 px-8 py-3 rounded-xl text-sm font-medium"
+                          className="bg-primary hover:bg-primary px-8 py-3 rounded-xl text-sm font-medium"
                         >
                           <Plus className="h-4 w-4 mr-2" />
                           Start New Conversation

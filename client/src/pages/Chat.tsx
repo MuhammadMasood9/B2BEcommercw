@@ -109,13 +109,13 @@ export default function Chat() {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
+          <Card className="bg-gradient-to-br from-primary to-orange-600 text-white border-0 shadow-lg">
             <CardContent className="p-6">
               <div className="flex items-center space-x-3">
-                <MessageCircle className="h-8 w-8 text-blue-200" />
+                <MessageCircle className="h-8 w-8 text-primary" />
                 <div>
                   <h3 className="text-lg font-semibold text-white">Live Chat</h3>
-                  <p className="text-blue-100 text-sm">Get instant support</p>
+                  <p className="text-primary text-sm">Get instant support</p>
                 </div>
               </div>
             </CardContent>
@@ -157,8 +157,8 @@ export default function Chat() {
           </CardHeader>
           <CardContent>
             <div className="text-center py-8">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Shield className="h-8 w-8 text-blue-600" />
+              <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
+                <Shield className="h-8 w-8 text-primary" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
                 Chat with Support Team
@@ -168,7 +168,7 @@ export default function Chat() {
               </p>
               <Button
                 onClick={handleStartChat}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3"
+                className="bg-primary hover:bg-primary text-white px-8 py-3"
                 size="lg"
               >
                 <MessageCircle className="h-5 w-5 mr-2" />
@@ -185,7 +185,7 @@ export default function Chat() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="border-l-4 border-blue-500 pl-4">
+              <div className="border-l-4 border-primary pl-4">
                 <h4 className="font-medium text-gray-900">How do I place an order?</h4>
                 <p className="text-sm text-gray-600 mt-1">
                   Browse our products, add items to your cart, and proceed to checkout. Our team will contact you to finalize the order details.

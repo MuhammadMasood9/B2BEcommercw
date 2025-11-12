@@ -353,11 +353,11 @@ export default function Messages() {
       <Header />
       <main className="flex-1 overflow-hidden">
         {/* Hero Section with Gradient */}
-        <section className="relative py-12 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
+        <section className="relative py-12 bg-gradient-to-br from-primary via-primary to-orange-600 overflow-hidden">
           {/* Background Elements */}
           <div className="absolute inset-0">
-            <div className="absolute top-10 right-10 w-64 h-64 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
-            <div className="absolute bottom-10 left-10 w-48 h-48 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+            <div className="absolute top-10 right-10 w-64 h-64 bg-gradient-to-r from-primary/20 to-orange-600/20 rounded-full blur-3xl animate-pulse" />
+            <div className="absolute bottom-10 left-10 w-48 h-48 bg-gradient-to-r from-primary/20 to-orange-600/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
           </div>
 
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -436,7 +436,7 @@ export default function Messages() {
                 <div className="flex-1 overflow-y-auto min-h-0">
                   {isLoading ? (
                     <div className="flex items-center justify-center py-8">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                     </div>
                   ) : filteredConversations.length === 0 ? (
                     <div className="p-8 text-center">
@@ -448,7 +448,7 @@ export default function Messages() {
                         <div
                           key={conversation.id}
                           className={`p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
-                            selectedConversation?.id === conversation.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                            selectedConversation?.id === conversation.id ? 'bg-primary dark:bg-primary/20' : ''
                           }`}
                           onClick={() => setSelectedConversation(conversation)}
                         >
@@ -534,7 +534,7 @@ export default function Messages() {
                                 alt={selectedConversation.productName}
                                 className="w-6 h-6 rounded object-cover border"
                               />
-                              <span className="text-xs text-blue-600 truncate max-w-[220px]" title={selectedConversation.productName}>
+                              <span className="text-xs text-primary truncate max-w-[220px]" title={selectedConversation.productName}>
                                 {selectedConversation.productName}
                               </span>
                             </div>
@@ -598,7 +598,7 @@ export default function Messages() {
                                 <div className={`max-w-[72%] ${isOwnMessage ? 'order-2' : 'order-1'}`}>
                                   {/* Reply Context */}
                                   {message.replyTo && (
-                                    <div className="mb-2 p-2 bg-gray-100 rounded-lg border-l-4 border-blue-500">
+                                    <div className="mb-2 p-2 bg-gray-100 rounded-lg border-l-4 border-primary">
                                       <p className="text-xs text-gray-600">Replying to:</p>
                                       <p className="text-sm text-gray-800 truncate">{message.replyTo.content}</p>
                                     </div>
@@ -606,7 +606,7 @@ export default function Messages() {
                                   
                                   <div className={`px-3 py-2 rounded-2xl shadow-sm group relative ${
                                     isOwnMessage 
-                                      ? 'bg-blue-600 text-white' 
+                                      ? 'bg-primary text-white' 
                                       : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border'
                                   }`}>
                                     <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content || message.message}</p>
@@ -690,10 +690,10 @@ export default function Messages() {
 
                   {/* Reply Context */}
                   {replyingTo && (
-                    <div className="p-3 bg-blue-50 border-l-4 border-blue-500">
+                    <div className="p-3 bg-primary border-l-4 border-primary">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-xs text-blue-600 font-medium">Replying to:</p>
+                          <p className="text-xs text-primary font-medium">Replying to:</p>
                           <p className="text-sm text-gray-800 truncate">{replyingTo.content}</p>
                         </div>
                         <Button
@@ -715,7 +715,7 @@ export default function Messages() {
                         {attachments.map((file, index) => (
                           <div key={index} className="flex items-center gap-2 bg-white rounded-lg p-2 border">
                             {file.type.startsWith('image/') ? (
-                              <ImageIcon className="h-4 w-4 text-blue-500" />
+                              <ImageIcon className="h-4 w-4 text-primary" />
                             ) : file.type.startsWith('audio/') ? (
                               <Volume2 className="h-4 w-4 text-green-500" />
                             ) : file.type.startsWith('video/') ? (

@@ -1,0 +1,211 @@
+{
+  "timestamp": "2025-11-12T20:58:59.725Z",
+  "summary": {
+    "passed": 39,
+    "warnings": 1,
+    "errors": 0,
+    "passRate": 97.5
+  },
+  "details": [
+    {
+      "type": "passed",
+      "message": "Main CSS file exists: client/src/index.css",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "CSS Custom Properties: All required patterns found in client/src/index.css",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Theme Classes: All required patterns found in client/src/index.css",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Performance Optimizations: All required patterns found in client/src/index.css",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Theme Context exists: client/src/contexts/ThemeContext.tsx",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Theme Context: All required patterns found in client/src/contexts/ThemeContext.tsx",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Performance Monitor exists: client/src/utils/themePerformanceMonitor.ts",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Performance Monitor: All required patterns found in client/src/utils/themePerformanceMonitor.ts",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "CSS Optimizer exists: client/src/utils/cssOptimizer.ts",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "CSS Optimizer: All required patterns found in client/src/utils/cssOptimizer.ts",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Accessibility Auditor exists: client/src/utils/accessibilityAuditor.ts",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Accessibility Auditor: All required patterns found in client/src/utils/accessibilityAuditor.ts",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Theme Optimizer exists: client/src/utils/themeOptimizer.ts",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Theme Optimizer: All required patterns found in client/src/utils/themeOptimizer.ts",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Tailwind Config exists: tailwind.config.ts",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Tailwind Configuration: All required patterns found in tailwind.config.ts",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Performance Tests exists: tests/performance/theme-performance.test.ts",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Performance Tests: All required patterns found in tests/performance/theme-performance.test.ts",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Package.json exists: package.json",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Required dependency found: tailwindcss",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Required dependency found: tailwindcss-animate",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Required dependency found: @tailwindcss/typography",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Test script found",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Requirement defined: Theme Switch Duration (300ms) - Theme switching should complete within 300ms",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Requirement defined: CSS Update Duration (50ms) - CSS custom property updates should complete within 50ms",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Requirement defined: Font Load Duration (3000ms) - Font loading should complete within 3000ms",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Requirement defined: Bundle Size Limit (50KB) - Theme-related CSS should be under 50KB",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Accessibility requirement: WCAG 2.1 AA compliance for color contrast (4.5:1 minimum)",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Accessibility requirement: WCAG 2.1 AAA compliance for high contrast mode (7:1 minimum)",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Accessibility requirement: Keyboard navigation support for all interactive elements",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Accessibility requirement: Screen reader compatibility with proper ARIA labels",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Accessibility requirement: Focus indicators visible in all themes",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Accessibility requirement: Reduced motion support via prefers-reduced-motion",
+      "details": null
+    },
+    {
+      "type": "warnings",
+      "message": "Large file detected: client/src/index.css (104.23KB)",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "File size OK: client/src/contexts/ThemeContext.tsx (12.89KB)",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "File size OK: client/src/utils/themePerformanceMonitor.ts (14.02KB)",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "File size OK: client/src/utils/cssOptimizer.ts (15.76KB)",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "File size OK: client/src/utils/accessibilityAuditor.ts (20.05KB)",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "File size OK: client/src/utils/themeOptimizer.ts (13.64KB)",
+      "details": null
+    },
+    {
+      "type": "passed",
+      "message": "Total theme system size is acceptable: 180.59KB",
+      "details": null
+    }
+  ]
+}

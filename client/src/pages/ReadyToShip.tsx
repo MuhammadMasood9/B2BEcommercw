@@ -209,7 +209,7 @@ export default function ReadyToShip() {
       image: product.image,
       priceRange: priceRanges.length > 0 ? `$${minPrice.toFixed(2)}-$${maxPrice.toFixed(2)} /piece` : 'Contact for price',
       moq: product.moq || 1,
-      supplierName: product.supplierName || 'Global Trade Hub Supplier',
+      supplierName: product.supplierName || 'Bago Supplier',
       supplierCountry: product.supplierCountry || 'Global',
       verified: product.verified || true,
       tradeAssurance: product.tradeAssurance || false,
@@ -235,8 +235,8 @@ export default function ReadyToShip() {
       icon: Clock,
       title: "Quick Delivery",
       description: "Ships in 3-15 days",
-      color: "from-blue-500 to-blue-600",
-      bgColor: "bg-blue-50 dark:bg-blue-900/20"
+      color: "from-primary to-primary/80",
+      bgColor: "bg-primary/5 dark:bg-primary/10"
     },
     {
       icon: Package,
@@ -275,7 +275,7 @@ export default function ReadyToShip() {
       <Header />
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 text-white py-20 lg:py-32 overflow-hidden">
+        <section className="relative bg-gradient-to-br from-primary via-primary/90 to-secondary text-white py-20 lg:py-32 overflow-hidden">
           <div className="absolute inset-0 bg-black/10"></div>
           <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full -translate-y-48 translate-x-48"></div>
           <div className="absolute bottom-0 left-0 w-80 h-80 bg-white/5 rounded-full translate-y-40 -translate-x-40"></div>
@@ -285,10 +285,10 @@ export default function ReadyToShip() {
               <Sparkles className="w-4 h-4" />
               <span className="text-sm font-medium">Ready to Ship Products</span>
             </div>
-            <h1 className="text-4xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">
+            <h1 className="text-4xl lg:text-6xl font-bold mb-6 bg-gradient-to-r from-white to-primary-foreground/80 bg-clip-text text-transparent">
               Ready to Ship
             </h1>
-            <p className="text-xl lg:text-2xl text-blue-100 mb-8 max-w-3xl mx-auto">
+            <p className="text-xl lg:text-2xl text-primary-foreground/80 mb-8 max-w-3xl mx-auto">
               Fast delivery on in-stock products with lower MOQ. Get your orders shipped within 3-15 days.
             </p>
             
@@ -297,13 +297,13 @@ export default function ReadyToShip() {
               <div className="relative">
                 <div className="relative flex items-center bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl overflow-hidden hover:bg-white/15 transition-all duration-300">
                   <div className="flex items-center pl-4 pr-2">
-                    <Search className="w-5 h-5 text-blue-200" />
+                    <Search className="w-5 h-5 text-primary-foreground/60" />
                   </div>
                   <Input
                     placeholder="Search ready to ship products..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="flex-1 border-0 focus-visible:ring-0 h-14 bg-transparent text-white placeholder:text-blue-200 px-2 font-medium"
+                    className="flex-1 border-0 focus-visible:ring-0 h-14 bg-transparent text-white placeholder:text-primary-foreground/60 px-2 font-medium"
                   />
                   <div className="hidden md:block h-8 w-px bg-white/20 mx-3" />
                   <div className="hidden md:block">
@@ -321,7 +321,7 @@ export default function ReadyToShip() {
                     </Select>
                   </div>
                   <Button 
-                    className="h-14 px-8 rounded-none rounded-r-2xl m-0 shadow-none bg-white text-blue-600 hover:bg-blue-50 font-semibold" 
+                    className="h-14 px-8 rounded-none rounded-r-2xl m-0 shadow-none bg-white text-primary hover:bg-primary/5 font-semibold" 
                   >
                     <Search className="w-5 h-5 mr-2" />
                     Search
@@ -362,7 +362,7 @@ export default function ReadyToShip() {
                     placeholder="Search ready to ship products..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-12 h-12 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
+                    className="pl-12 h-12 border-gray-200 dark:border-gray-700 focus:border-primary focus:ring-primary"
                     data-testid="input-search"
                   />
                 </div>
@@ -422,7 +422,7 @@ export default function ReadyToShip() {
                   variant={selectedCategory === category.id ? "default" : "outline"}
                   className={`cursor-pointer transition-all duration-200 px-4 py-2 text-sm font-medium ${
                     selectedCategory === category.id
-                      ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+                      ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg"
                       : "hover:bg-gray-100 dark:hover:bg-gray-800 border-gray-300 dark:border-gray-600"
                   }`}
                   onClick={() => setSelectedCategory(category.id)}
@@ -439,7 +439,7 @@ export default function ReadyToShip() {
           <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                <span className="text-blue-600 dark:text-blue-400">{products.length.toLocaleString()}</span> products ready to ship
+                <span className="text-primary dark:text-primary">{products.length.toLocaleString()}</span> products ready to ship
               </p>
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 Showing results for {selectedCategory === "all" ? "all categories" : categories.find(c => c.id === selectedCategory)?.name}
@@ -490,7 +490,7 @@ export default function ReadyToShip() {
                     </Badge>
                     
                     {isInCartItem && (
-                      <Badge className="absolute top-3 right-3 z-10 bg-blue-600 text-white border-0 shadow-lg">
+                      <Badge className="absolute top-3 right-3 z-10 bg-primary text-primary-foreground border-0 shadow-lg">
                         In Cart ({cartItem?.quantity || 1})
                       </Badge>
                     )}
@@ -551,7 +551,7 @@ export default function ReadyToShip() {
           <div className="mt-16 text-center">
             <Button 
               size="lg" 
-              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+              className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
               data-testid="button-load-more"
             >
               Load More Products

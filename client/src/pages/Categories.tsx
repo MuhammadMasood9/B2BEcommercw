@@ -92,16 +92,16 @@ export default function Categories() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-white">
+    <div className="min-h-screen flex flex-col bg-background theme-transition">
       <Header />
       
       {/* Hero Section with Gradient */}
-      <section className="relative py-20 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
+      <section className="relative py-20 bg-gradient-to-br from-secondary via-secondary/90 to-secondary/80 overflow-hidden theme-transition">
         {/* Background Elements */}
         <div className="absolute inset-0">
-          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-600/10 to-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-primary/20 to-primary/15 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-primary/25 to-primary/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-primary/15 to-primary/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -113,7 +113,7 @@ export default function Categories() {
             
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
               Browse
-              <span className="bg-gradient-to-r from-blue-200 via-white to-blue-200 bg-clip-text text-transparent block">
+              <span className="bg-gradient-to-r from-primary/80 via-white to-primary/80 bg-clip-text text-transparent block">
                 Categories
               </span>
             </h1>
@@ -183,7 +183,7 @@ export default function Categories() {
                 
                 return (
                   <Link key={category.id} href={`/category/${category.slug}`}>
-                    <Card className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 cursor-pointer bg-white border-gray-100 hover:border-blue-200">
+                    <Card className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 cursor-pointer bg-card border-border hover:border-primary/20 theme-transition">
                       <CardContent className="p-6 text-center">
                         <div className="relative mb-4">
                           <div className="w-16 h-16 rounded-2xl overflow-hidden mx-auto group-hover:scale-110 transition-transform duration-300 bg-gray-100">
@@ -210,13 +210,13 @@ export default function Categories() {
                           </div>
                         </div>
                         
-                        <h3 className="font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+                        <h3 className="font-semibold text-card-foreground mb-2 group-hover:text-primary transition-colors theme-transition">
                           {category.name}
                         </h3>
                         
-                         <div className="space-y-1 text-sm text-gray-500">
+                         <div className="space-y-1 text-sm text-muted-foreground theme-transition">
                            <div className="flex items-center justify-center gap-1">
-                             <Package className="w-3 h-3 text-blue-500" />
+                             <Package className="w-3 h-3 text-primary" />
                              <span className="font-semibold">{productCount.toLocaleString()}+</span>
                              <span>products</span>
                            </div>
@@ -246,7 +246,7 @@ export default function Categories() {
           </div>
 
           {/* Featured Categories */}
-          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-3xl p-8 mb-12">
+          <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-3xl p-8 mb-12">
             <div className="text-center mb-8">
               <h3 className="text-2xl font-bold text-gray-900 mb-2">
                 Popular This Week
@@ -297,7 +297,7 @@ export default function Categories() {
                           <h4 className="font-semibold text-gray-900 mb-2">{category.name}</h4>
                           <div className="space-y-1 text-sm text-gray-500">
                             <div className="flex items-center gap-2">
-                              <Package className="w-4 h-4 text-blue-500" />
+                              <Package className="w-4 h-4 text-primary" />
                               <span className="font-semibold">{productCount.toLocaleString()}+</span>
                               <span>products</span>
                             </div>
@@ -339,8 +339,8 @@ export default function Categories() {
             </div>
             
             <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Zap className="w-8 h-8 text-blue-600" />
+              <div className="w-16 h-16 bg-gradient-to-br from-primary/10 to-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Zap className="w-8 h-8 text-primary" />
               </div>
               <h3 className="font-semibold text-gray-900 mb-2">Fast Response</h3>
               <p className="text-gray-600 text-sm">
@@ -361,7 +361,7 @@ export default function Categories() {
 
           {/* CTA Section */}
           <div className="text-center">
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-3xl p-8">
+            <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-3xl p-8">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">
                 Can't Find What You're Looking For?
               </h3>
@@ -370,13 +370,13 @@ export default function Categories() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link href="/rfq/create">
-                  <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3">
+                  <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3">
                     Create RFQ
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </Link>
                 <Link href="/products">
-                  <Button size="lg" variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50 px-8 py-3">
+                  <Button size="lg" variant="outline" className="border-primary text-primary hover:bg-primary/5 px-8 py-3">
                     Browse All Products
                   </Button>
                 </Link>

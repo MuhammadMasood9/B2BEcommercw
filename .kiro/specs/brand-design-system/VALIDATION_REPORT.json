@@ -1,0 +1,334 @@
+{
+  "timestamp": "2025-11-12T11:38:43.015Z",
+  "summary": {
+    "totalPages": 27,
+    "pagesWithIssues": 27,
+    "blueColorReferences": 0,
+    "accessibilityIssues": 2,
+    "overallStatus": "NEEDS_ATTENTION"
+  },
+  "details": {
+    "manualTesting": [
+      {
+        "page": "/login",
+        "component": "Login.tsx",
+        "category": "auth",
+        "issues": [
+          "Missing Base Neue font family reference",
+          "Missing brand color usage (orange/dark grey)"
+        ],
+        "status": "NEEDS_ATTENTION"
+      },
+      {
+        "page": "/signup",
+        "component": "Signup.tsx",
+        "category": "auth",
+        "issues": [
+          "Missing Base Neue font family reference",
+          "Missing brand color usage (orange/dark grey)"
+        ],
+        "status": "NEEDS_ATTENTION"
+      },
+      {
+        "page": "/admin/login",
+        "component": "admin/AdminLogin.tsx",
+        "category": "auth",
+        "issues": [
+          "Missing Base Neue font family reference"
+        ],
+        "status": "NEEDS_ATTENTION"
+      },
+      {
+        "page": "/supplier/login",
+        "component": "supplier/SupplierLogin.tsx",
+        "category": "auth",
+        "issues": [
+          "Missing Base Neue font family reference",
+          "Missing brand color usage (orange/dark grey)"
+        ],
+        "status": "NEEDS_ATTENTION"
+      },
+      {
+        "page": "/supplier/register",
+        "component": "supplier/SupplierRegister.tsx",
+        "category": "auth",
+        "issues": [
+          "Missing Base Neue font family reference",
+          "Missing brand color usage (orange/dark grey)"
+        ],
+        "status": "NEEDS_ATTENTION"
+      },
+      {
+        "page": "/buyer/dashboard",
+        "component": "buyer/BuyerDashboard.tsx",
+        "category": "buyer",
+        "issues": [
+          "Missing Base Neue font family reference"
+        ],
+        "status": "NEEDS_ATTENTION"
+      },
+      {
+        "page": "/buyer/quotations",
+        "component": "buyer/BuyerQuotations.tsx",
+        "category": "buyer",
+        "issues": [
+          "Missing Base Neue font family reference"
+        ],
+        "status": "NEEDS_ATTENTION"
+      },
+      {
+        "page": "/buyer/inquiries",
+        "component": "buyer/BuyerInquiries.tsx",
+        "category": "buyer",
+        "issues": [
+          "Missing Base Neue font family reference"
+        ],
+        "status": "NEEDS_ATTENTION"
+      },
+      {
+        "page": "/buyer/profile",
+        "component": "buyer/ProfilePage.tsx",
+        "category": "buyer",
+        "issues": [
+          "Missing Base Neue font family reference"
+        ],
+        "status": "NEEDS_ATTENTION"
+      },
+      {
+        "page": "/supplier/products",
+        "component": "supplier/SupplierProducts.tsx",
+        "category": "supplier",
+        "issues": [
+          "Missing Base Neue font family reference"
+        ],
+        "status": "NEEDS_ATTENTION"
+      },
+      {
+        "page": "/supplier/payments",
+        "component": "supplier/SupplierPayments.tsx",
+        "category": "supplier",
+        "issues": [
+          "Missing Base Neue font family reference"
+        ],
+        "status": "NEEDS_ATTENTION"
+      },
+      {
+        "page": "/admin/dashboard",
+        "component": "admin/AdminDashboard.tsx",
+        "category": "admin",
+        "issues": [
+          "Missing Base Neue font family reference"
+        ],
+        "status": "NEEDS_ATTENTION"
+      },
+      {
+        "page": "/admin/users",
+        "component": "admin/AdminUsers.tsx",
+        "category": "admin",
+        "issues": [
+          "Missing Base Neue font family reference"
+        ],
+        "status": "NEEDS_ATTENTION"
+      },
+      {
+        "page": "/admin/quotations",
+        "component": "admin/AdminQuotations.tsx",
+        "category": "admin",
+        "issues": [
+          "Missing Base Neue font family reference"
+        ],
+        "status": "NEEDS_ATTENTION"
+      },
+      {
+        "page": "/admin/rfqs",
+        "component": "admin/AdminRFQs.tsx",
+        "category": "admin",
+        "issues": [
+          "Missing Base Neue font family reference"
+        ],
+        "status": "NEEDS_ATTENTION"
+      },
+      {
+        "page": "/admin/reports",
+        "component": "admin/AdminReports.tsx",
+        "category": "admin",
+        "issues": [
+          "Missing Base Neue font family reference"
+        ],
+        "status": "NEEDS_ATTENTION"
+      },
+      {
+        "page": "/",
+        "component": "Home.tsx",
+        "category": "public",
+        "issues": [
+          "Missing Base Neue font family reference"
+        ],
+        "status": "NEEDS_ATTENTION"
+      },
+      {
+        "page": "/categories",
+        "component": "Categories.tsx",
+        "category": "public",
+        "issues": [
+          "Missing Base Neue font family reference"
+        ],
+        "status": "NEEDS_ATTENTION"
+      },
+      {
+        "page": "/supplier-directory",
+        "component": "SupplierDirectory.tsx",
+        "category": "public",
+        "issues": [
+          "Missing Base Neue font family reference"
+        ],
+        "status": "NEEDS_ATTENTION"
+      },
+      {
+        "page": "/help",
+        "component": "Help.tsx",
+        "category": "public",
+        "issues": [
+          "Missing Base Neue font family reference"
+        ],
+        "status": "NEEDS_ATTENTION"
+      },
+      {
+        "page": "/terms",
+        "component": "Terms.tsx",
+        "category": "public",
+        "issues": [
+          "Missing Base Neue font family reference"
+        ],
+        "status": "NEEDS_ATTENTION"
+      },
+      {
+        "page": "/product/:id",
+        "component": "ProductDetail.tsx",
+        "category": "product",
+        "issues": [
+          "Missing Base Neue font family reference"
+        ],
+        "status": "NEEDS_ATTENTION"
+      },
+      {
+        "page": "/subcategory/:id",
+        "component": "SubcategoryProducts.tsx",
+        "category": "product",
+        "issues": [
+          "Missing Base Neue font family reference"
+        ],
+        "status": "NEEDS_ATTENTION"
+      },
+      {
+        "page": "/comparison",
+        "component": "ProductComparison.tsx",
+        "category": "product",
+        "issues": [
+          "Missing Base Neue font family reference"
+        ],
+        "status": "NEEDS_ATTENTION"
+      },
+      {
+        "page": "/my-rfqs",
+        "component": "MyRFQs.tsx",
+        "category": "order",
+        "issues": [
+          "Missing Base Neue font family reference"
+        ],
+        "status": "NEEDS_ATTENTION"
+      },
+      {
+        "page": "/order-tracking",
+        "component": "OrderTracking.tsx",
+        "category": "order",
+        "issues": [
+          "Missing Base Neue font family reference"
+        ],
+        "status": "NEEDS_ATTENTION"
+      },
+      {
+        "page": "/send-quotation",
+        "component": "SendQuotation.tsx",
+        "category": "order",
+        "issues": [
+          "Missing Base Neue font family reference",
+          "Missing brand color usage (orange/dark grey)"
+        ],
+        "status": "NEEDS_ATTENTION"
+      }
+    ],
+    "blueColorReferences": [],
+    "accessibilityIssues": [
+      {
+        "combination": "Orange (#FF9900) on White (#FFFFFF)",
+        "ratio": 2.141001655940489,
+        "standard": "AA",
+        "compliant": false
+      },
+      {
+        "combination": "White (#FFFFFF) on Orange (#FF9900)",
+        "ratio": 2.141001655940489,
+        "standard": "AA",
+        "compliant": false
+      }
+    ]
+  },
+  "recommendations": [
+    {
+      "priority": "HIGH",
+      "category": "Accessibility",
+      "description": "Address accessibility compliance issues",
+      "action": "Fix contrast ratios and implement missing accessibility features",
+      "issues": [
+        {
+          "combination": "Orange (#FF9900) on White (#FFFFFF)",
+          "ratio": 2.141001655940489,
+          "standard": "AA",
+          "compliant": false
+        },
+        {
+          "combination": "White (#FFFFFF) on Orange (#FF9900)",
+          "ratio": 2.141001655940489,
+          "standard": "AA",
+          "compliant": false
+        }
+      ]
+    },
+    {
+      "priority": "MEDIUM",
+      "category": "Brand Consistency",
+      "description": "Improve brand consistency on specific pages",
+      "action": "Update pages to use proper brand colors and fonts",
+      "pages": [
+        "Login.tsx",
+        "Signup.tsx",
+        "admin/AdminLogin.tsx",
+        "supplier/SupplierLogin.tsx",
+        "supplier/SupplierRegister.tsx",
+        "buyer/BuyerDashboard.tsx",
+        "buyer/BuyerQuotations.tsx",
+        "buyer/BuyerInquiries.tsx",
+        "buyer/ProfilePage.tsx",
+        "supplier/SupplierProducts.tsx",
+        "supplier/SupplierPayments.tsx",
+        "admin/AdminDashboard.tsx",
+        "admin/AdminUsers.tsx",
+        "admin/AdminQuotations.tsx",
+        "admin/AdminRFQs.tsx",
+        "admin/AdminReports.tsx",
+        "Home.tsx",
+        "Categories.tsx",
+        "SupplierDirectory.tsx",
+        "Help.tsx",
+        "Terms.tsx",
+        "ProductDetail.tsx",
+        "SubcategoryProducts.tsx",
+        "ProductComparison.tsx",
+        "MyRFQs.tsx",
+        "OrderTracking.tsx",
+        "SendQuotation.tsx"
+      ]
+    }
+  ]
+}

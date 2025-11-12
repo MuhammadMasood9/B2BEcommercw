@@ -97,20 +97,20 @@ export function TagInput({
         <p className="text-xs text-gray-500 dark:text-gray-400">{description}</p>
       )}
       
-      <div className="min-h-[40px] p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 transition-colors">
+      <div className="min-h-[40px] p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus-within:ring-2 focus-within:ring-primary/100 focus-within:border-primary transition-colors">
         <div className="flex flex-wrap gap-2 mb-2">
           {value.map((tag, index) => (
             <Badge
               key={index}
               variant="secondary"
-              className="flex items-center gap-1 px-2 py-1 text-sm bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800"
+              className="flex items-center gap-1 px-2 py-1 text-sm bg-primary text-primary hover:bg-primary dark:bg-primary dark:text-primary dark:hover:bg-primary"
             >
               {tag}
               {!disabled && (
                 <button
                   type="button"
                   onClick={() => removeTag(tag)}
-                  className="ml-1 hover:bg-blue-300 dark:hover:bg-blue-700 rounded-full p-0.5 transition-colors"
+                  className="ml-1 hover:bg-primary dark:hover:bg-primary rounded-full p-0.5 transition-colors"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -136,7 +136,7 @@ export function TagInput({
                 size="sm"
                 variant="ghost"
                 onClick={() => addTag(inputValue)}
-                className="h-6 w-6 p-0 hover:bg-blue-100 dark:hover:bg-blue-900"
+                className="h-6 w-6 p-0 hover:bg-primary dark:hover:bg-primary"
               >
                 <Plus className="h-3 w-3" />
               </Button>

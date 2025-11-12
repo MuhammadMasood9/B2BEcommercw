@@ -222,7 +222,7 @@ export default function AdminRFQDetail() {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
           <p className="text-gray-600">Loading RFQ details...</p>
         </div>
       </div>
@@ -302,7 +302,7 @@ export default function AdminRFQDetail() {
               <CardContent className="space-y-6">
                 {/* Product Section */}
                 {product && (
-                  <div className="flex items-start gap-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200">
+                  <div className="flex items-start gap-4 p-4 bg-primary/5 dark:bg-primary/10 rounded-lg border border-primary/20">
                     {product.images && product.images.length > 0 && (
                       <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
                         <img 
@@ -317,7 +317,7 @@ export default function AdminRFQDetail() {
                     )}
                     <div className="flex-1">
                       <Link href={`/product/${product.id}`}>
-                        <h3 className="text-lg font-semibold text-blue-600 hover:text-blue-700 hover:underline">
+                        <h3 className="text-lg font-semibold text-primary hover:text-primary/80 hover:underline">
                           {product.name}
                         </h3>
                       </Link>
@@ -334,7 +334,7 @@ export default function AdminRFQDetail() {
                   </h3>
                   <div className="flex gap-2 mb-4">
                     {rfq.categoryId && (
-                      <Badge variant="outline" className="text-blue-600 border-blue-200">
+                      <Badge variant="outline" className="text-primary border-primary/20">
                         {getCategoryName(rfq.categoryId)}
                       </Badge>
                     )}
@@ -422,7 +422,7 @@ export default function AdminRFQDetail() {
                 {rfq.status === 'open' && (
                   <Button 
                     onClick={handleSendQuotation}
-                    className="bg-blue-600 hover:bg-blue-700"
+                    className="bg-primary hover:bg-primary/90"
                   >
                     <Send className="h-4 w-4 mr-2" />
                     Send Quotation
@@ -453,7 +453,7 @@ export default function AdminRFQDetail() {
                         <div className="flex items-start justify-between mb-3">
                           <div>
                             <div className="flex items-center gap-2 mb-2">
-                              <span className="text-lg font-semibold text-blue-600">
+                              <span className="text-lg font-semibold text-primary">
                                 {formatPrice(quotation.pricePerUnit)}/unit
                               </span>
                               <Badge variant={
@@ -534,7 +534,7 @@ export default function AdminRFQDetail() {
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 flex items-center gap-2">
                           <Mail className="h-3 w-3" /> Email
                         </p>
-                        <a href={`mailto:${buyer.email}`} className="text-blue-600 hover:underline">
+                        <a href={`mailto:${buyer.email}`} className="text-primary hover:underline">
                           {buyer.email}
                         </a>
                       </div>
@@ -615,7 +615,7 @@ export default function AdminRFQDetail() {
                 </CardHeader>
                 <CardContent>
                   <Button 
-                    className="w-full mb-2 bg-blue-600 hover:bg-blue-700"
+                    className="w-full mb-2 bg-primary hover:bg-primary/90"
                     onClick={handleSendQuotation}
                   >
                     <Send className="h-4 w-4 mr-2" />
@@ -714,7 +714,7 @@ export default function AdminRFQDetail() {
               <div className="p-4 bg-gray-50 rounded-lg">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">Total Quotation Value:</span>
-                  <span className="text-2xl font-bold text-blue-600">
+                  <span className="text-2xl font-bold text-primary">
                     {formatPrice(parseFloat(quoteForm.pricePerUnit) * parseInt(quoteForm.moq))}
                   </span>
                 </div>
@@ -728,7 +728,7 @@ export default function AdminRFQDetail() {
             <Button 
               onClick={submitQuotation}
               disabled={sendQuotationMutation.isPending}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-primary hover:bg-primary/90"
             >
               {sendQuotationMutation.isPending ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending...</>

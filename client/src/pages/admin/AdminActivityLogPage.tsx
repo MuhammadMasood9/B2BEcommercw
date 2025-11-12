@@ -45,11 +45,11 @@ export default function AdminActivityLogPage() {
 
   const getActionIcon = (entityType: string) => {
     switch (entityType) {
-      case 'inquiry': return <FileText className="h-4 w-4 text-blue-500" />;
+      case 'inquiry': return <FileText className="h-4 w-4 text-brand-orange-500" />;
       case 'quotation': return <Package className="h-4 w-4 text-green-500" />;
       case 'order': return <Truck className="h-4 w-4 text-purple-500" />;
       case 'product': return <Package className="h-4 w-4 text-orange-500" />;
-      case 'user': return <User className="h-4 w-4 text-indigo-500" />;
+      case 'user': return <User className="h-4 w-4 text-orange-600" />;
       case 'category': return <FileText className="h-4 w-4 text-pink-500" />;
       case 'chat': return <MessageSquare className="h-4 w-4 text-cyan-500" />;
       case 'system': return <Settings className="h-4 w-4 text-gray-500" />;
@@ -107,13 +107,13 @@ export default function AdminActivityLogPage() {
                 placeholder="Search activities..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="border-gray-200 focus:border-blue-500"
+                className="border-gray-200 focus:border-brand-orange-500"
               />
             </div>
             <div>
               <label className="text-sm font-medium text-gray-700 mb-2 block">Entity Type</label>
               <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="border-gray-200 focus:border-blue-500">
+                <SelectTrigger className="border-gray-200 focus:border-brand-orange-500">
                   <SelectValue placeholder="All Types" />
                 </SelectTrigger>
                 <SelectContent>
@@ -132,7 +132,7 @@ export default function AdminActivityLogPage() {
             <div>
               <label className="text-sm font-medium text-gray-700 mb-2 block">Admin</label>
               <Select value={filterAdmin} onValueChange={setFilterAdmin}>
-                <SelectTrigger className="border-gray-200 focus:border-blue-500">
+                <SelectTrigger className="border-gray-200 focus:border-brand-orange-500">
                   <SelectValue placeholder="All Admins" />
                 </SelectTrigger>
                 <SelectContent>
@@ -167,7 +167,7 @@ export default function AdminActivityLogPage() {
         <CardContent className="p-6">
           {isLoading ? (
             <div className="flex items-center justify-center py-16">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-orange-600"></div>
             </div>
           ) : activityLogs.length === 0 ? (
             <div className="text-center py-16 text-gray-500">

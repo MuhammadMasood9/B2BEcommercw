@@ -34,7 +34,7 @@ export default function Help() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const helpCategories = [
-    { icon: ShoppingCart, title: "Getting Started", count: 8, color: "from-blue-100 to-blue-200", iconColor: "text-blue-600" },
+    { icon: ShoppingCart, title: "Getting Started", count: 8, color: "from-primary/10 to-primary/20", iconColor: "text-primary" },
     { icon: Users, title: "Account & Profile", count: 12, color: "from-green-100 to-green-200", iconColor: "text-green-600" },
     { icon: CreditCard, title: "Payments & Orders", count: 15, color: "from-purple-100 to-purple-200", iconColor: "text-purple-600" },
     { icon: Truck, title: "Shipping & Delivery", count: 10, color: "from-yellow-100 to-yellow-200", iconColor: "text-yellow-600" },
@@ -123,16 +123,16 @@ export default function Help() {
   })).filter(category => category.questions.length > 0);
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-white">
+    <div className="min-h-screen flex flex-col bg-background theme-transition">
       <Header />
       
       {/* Hero Section with Gradient */}
-      <section className="relative py-16 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
+      <section className="relative py-16 bg-gradient-to-br from-secondary via-secondary/90 to-secondary/80 overflow-hidden theme-transition">
         {/* Background Elements */}
         <div className="absolute inset-0">
-          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-600/10 to-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-primary/20 to-primary/15 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-primary/25 to-primary/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-primary/15 to-primary/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -144,7 +144,7 @@ export default function Help() {
             
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
               How Can
-              <span className="bg-gradient-to-r from-blue-200 via-white to-blue-200 bg-clip-text text-transparent block">
+              <span className="bg-gradient-to-r from-primary/80 via-white to-primary/80 bg-clip-text text-transparent block">
                 We Help?
               </span>
             </h1>
@@ -164,7 +164,7 @@ export default function Help() {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="flex-1 border-0 focus-visible:ring-0 h-14 text-gray-900 placeholder:text-gray-500 text-lg"
                   />
-                  <Button size="lg" className="m-1 h-12 px-8 shadow-lg hover:shadow-xl transition-all duration-200 bg-blue-600 hover:bg-blue-700">
+                  <Button size="lg" className="m-1 h-12 px-8 shadow-lg hover:shadow-xl transition-all duration-200 bg-primary hover:bg-primary/90">
                     Search
                   </Button>
                 </div>
@@ -199,15 +199,15 @@ export default function Help() {
               {helpCategories.map((category, index) => {
                 const Icon = category.icon;
                 return (
-                  <Card key={index} className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-white border-gray-100 cursor-pointer">
+                  <Card key={index} className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-card border-border cursor-pointer theme-transition">
                     <CardContent className="p-6">
                       <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${category.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
                         <Icon className={`w-7 h-7 ${category.iconColor}`} />
                       </div>
-                      <h3 className="font-semibold text-lg mb-2 text-gray-900 group-hover:text-blue-600 transition-colors">
+                      <h3 className="font-semibold text-lg mb-2 text-card-foreground group-hover:text-primary transition-colors theme-transition">
                         {category.title}
                       </h3>
-                      <p className="text-gray-600 text-sm">
+                      <p className="text-muted-foreground text-sm theme-transition">
                         {category.count} articles
                       </p>
                     </CardContent>
@@ -231,7 +231,7 @@ export default function Help() {
                       <Accordion type="single" collapsible className="w-full">
                         {category.questions.map((faq, qIdx) => (
                           <AccordionItem key={qIdx} value={`item-${idx}-${qIdx}`}>
-                            <AccordionTrigger className="text-left hover:text-blue-600">
+                            <AccordionTrigger className="text-left hover:text-primary">
                               {faq.q}
                             </AccordionTrigger>
                             <AccordionContent className="text-gray-600">
@@ -261,10 +261,10 @@ export default function Help() {
           <div className="mb-12">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Additional Resources</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-gradient-to-br from-blue-50 to-blue-100 border-none">
+              <Card className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-gradient-to-br from-primary/5 to-primary/10 border-none">
                 <CardContent className="p-6">
                   <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                    <Video className="w-6 h-6 text-blue-600" />
+                    <Video className="w-6 h-6 text-primary" />
                   </div>
                   <h3 className="font-semibold text-lg mb-2 text-gray-900">Video Tutorials</h3>
                   <p className="text-gray-700 text-sm mb-4">
@@ -309,7 +309,7 @@ export default function Help() {
           </div>
 
           {/* Contact Support */}
-          <Card className="bg-gradient-to-r from-blue-600 to-purple-600 border-none text-white">
+          <Card className="bg-gradient-to-r from-primary to-secondary border-none text-white">
             <CardContent className="p-8 text-center">
               <HelpCircle className="w-16 h-16 mx-auto mb-4 opacity-90" />
               <h2 className="text-3xl font-bold mb-4">Still Need Help?</h2>
@@ -318,7 +318,7 @@ export default function Help() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link href="/contact">
-                  <Button size="lg" variant="secondary" className="bg-white text-blue-600 hover:bg-gray-100 px-8">
+                  <Button size="lg" variant="secondary" className="bg-white text-primary hover:bg-gray-100 px-8">
                     <Mail className="w-4 h-4 mr-2" />
                     Contact Support
                   </Button>

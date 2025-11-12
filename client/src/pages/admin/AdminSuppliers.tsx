@@ -286,7 +286,7 @@ export default function AdminSuppliers() {
     if (!isVerified) return <Badge variant="outline">Not Verified</Badge>;
     
     const colors: Record<string, string> = {
-      basic: "bg-blue-100 text-blue-800",
+      basic: "bg-primary/10 text-primary",
       business: "bg-purple-100 text-purple-800",
       premium: "bg-yellow-100 text-yellow-800",
     };
@@ -326,9 +326,9 @@ export default function AdminSuppliers() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
-        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0">
+        <Card className="bg-gradient-to-br from-primary to-primary/80 text-white border-0">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-blue-100">Total Suppliers</CardTitle>
+            <CardTitle className="text-sm font-medium text-primary-foreground/80">Total Suppliers</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{stats.total}</div>
@@ -653,9 +653,9 @@ export default function AdminSuppliers() {
                 </p>
               </div>
 
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm font-medium text-blue-900">Example Calculation</p>
-                <p className="text-sm text-blue-700 mt-1">
+              <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                <p className="text-sm font-medium text-foreground">Example Calculation</p>
+                <p className="text-sm text-muted-foreground mt-1">
                   Order Amount: $1,000 → Commission: ${((parseFloat(commissionRate) || 0) * 10).toFixed(2)} → 
                   Supplier Receives: ${(1000 - (parseFloat(commissionRate) || 0) * 10).toFixed(2)}
                 </p>

@@ -83,15 +83,15 @@ export default function SearchSuggestions() {
         <CardContent className="p-0">
           {isLoadingSuggestions ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
               <span className="ml-2 text-gray-600">Searching...</span>
             </div>
           ) : suggestions.length > 0 ? (
             <div className="max-h-96 overflow-y-auto">
               {/* Search Results Header */}
-              <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-100">
+              <div className="px-4 py-3 bg-gradient-to-r from-primary to-orange-600 border-b border-gray-100">
                 <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                  <Search className="w-4 h-4 text-blue-600" />
+                  <Search className="w-4 h-4 text-primary" />
                   <span>Search Results for "{searchQuery}"</span>
                   <Badge variant="secondary" className="ml-auto">
                     {suggestions.length} found
@@ -105,8 +105,8 @@ export default function SearchSuggestions() {
                   <div
                     key={`${suggestion.type}-${suggestion.id}`}
                     ref={el => itemRefs.current[index] = el}
-                    className={`px-4 py-3 cursor-pointer transition-all duration-200 hover:bg-blue-50 ${
-                      selectedIndex === index ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+                    className={`px-4 py-3 cursor-pointer transition-all duration-200 hover:bg-primary ${
+                      selectedIndex === index ? 'bg-primary border-l-4 border-primary' : ''
                     }`}
                     onClick={() => handleSuggestionClick(suggestion)}
                   >
@@ -178,7 +178,7 @@ export default function SearchSuggestions() {
               <div className="px-4 py-3 bg-gray-50 border-t border-gray-100">
                 <button
                   onClick={() => performSearch(searchQuery)}
-                  className="w-full text-center text-blue-600 hover:text-blue-700 font-medium text-sm py-2 hover:bg-blue-50 rounded-lg transition-colors"
+                  className="w-full text-center text-primary hover:text-primary font-medium text-sm py-2 hover:bg-primary rounded-lg transition-colors"
                 >
                   View all results for "{searchQuery}"
                 </button>
@@ -195,7 +195,7 @@ export default function SearchSuggestions() {
               </p>
               <button
                 onClick={() => performSearch(searchQuery)}
-                className="text-blue-600 hover:text-blue-700 font-medium text-sm"
+                className="text-primary hover:text-primary font-medium text-sm"
               >
                 Search anyway
               </button>

@@ -142,11 +142,11 @@ export default function InquiryCart() {
       <Header />
       
       {/* Hero Section with Gradient */}
-      <section className="relative py-16 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
+      <section className="relative py-16 bg-gradient-to-br from-secondary via-secondary/90 to-secondary/80 overflow-hidden">
         {/* Background Elements */}
         <div className="absolute inset-0">
-          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-primary/20 to-primary/15 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-primary/25 to-primary/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -158,7 +158,7 @@ export default function InquiryCart() {
             
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
               Inquiry
-              <span className="bg-gradient-to-r from-blue-200 via-white to-blue-200 bg-clip-text text-transparent block">
+              <span className="bg-gradient-to-r from-primary/80 via-white to-primary/80 bg-clip-text text-transparent block">
                 Cart
               </span>
             </h1>
@@ -176,8 +176,8 @@ export default function InquiryCart() {
           {cartItems.length === 0 ? (
             <Card className="bg-white border-gray-100 shadow-lg">
               <CardContent className="p-8 sm:p-12 text-center">
-                <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <ShoppingCart className="h-12 w-12 text-blue-600" />
+                <div className="w-24 h-24 bg-gradient-to-br from-primary/10 to-primary/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <ShoppingCart className="h-12 w-12 text-primary" />
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">
                   Your inquiry cart is empty
@@ -185,7 +185,7 @@ export default function InquiryCart() {
                 <p className="text-base text-gray-600 mb-6">
                   Start browsing products and add them to your inquiry cart
                 </p>
-                <Button onClick={() => navigate('/products')} data-testid="button-browse-products" className="bg-blue-600 hover:bg-blue-700 text-white px-8">
+                <Button onClick={() => navigate('/products')} data-testid="button-browse-products" className="bg-primary hover:bg-primary/90 text-primary-foreground px-8">
                   <Sparkles className="h-4 w-4 mr-2" />
                   Browse Products
                 </Button>
@@ -307,7 +307,7 @@ export default function InquiryCart() {
                 <Card className="sticky top-24 bg-gradient-to-br from-white to-gray-50 border-gray-100 shadow-xl">
                   <CardHeader className="px-4 sm:px-6">
                     <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-                      <MessageSquare className="w-5 h-5 text-blue-600" />
+                      <MessageSquare className="w-5 h-5 text-primary" />
                       Inquiry Summary
                     </CardTitle>
                   </CardHeader>
@@ -374,7 +374,7 @@ export default function InquiryCart() {
 
                     <div className="pt-3 sm:pt-4 border-t space-y-2">
                       <Button 
-                        className="w-full text-xs sm:text-sm bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg" 
+                        className="w-full text-xs sm:text-sm bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-primary-foreground shadow-lg" 
                         size="lg"
                         disabled={selectedItems.length === 0 || sendInquiriesMutation.isPending}
                         onClick={handleSendInquiries}

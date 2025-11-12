@@ -505,9 +505,9 @@ export default function AdminCategories() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         {/* Total Categories - Blue */}
-        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
+        <Card className="bg-gradient-to-br from-primary to-orange-600 text-white border-0 shadow-lg">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-blue-100">Total Categories</CardTitle>
+            <CardTitle className="text-sm font-medium text-primary">Total Categories</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-white">{stats.total}</div>

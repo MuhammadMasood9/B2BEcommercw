@@ -42,7 +42,7 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-muted via-background to-muted flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Back to Main Site */}
         <div className="mb-6">
@@ -55,13 +55,13 @@ export default function AdminLogin() {
         </div>
 
         {/* Admin Login Card */}
-        <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+        <Card className="shadow-xl border-0 bg-card backdrop-blur-sm">
           <CardHeader className="space-y-2 text-center pb-8">
-            <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-              <Shield className="w-8 h-8 text-blue-600" />
+            <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+              <Shield className="w-8 h-8 text-primary" />
             </div>
-            <CardTitle className="text-2xl font-bold text-gray-900">Admin Portal</CardTitle>
-            <CardDescription className="text-gray-600">
+            <CardTitle className="text-2xl font-bold text-foreground">Admin Portal</CardTitle>
+            <CardDescription className="text-muted-foreground">
               Sign in to access the admin dashboard
             </CardDescription>
           </CardHeader>
@@ -75,9 +75,9 @@ export default function AdminLogin() {
             )}
 
             {/* Admin Access Section */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="font-semibold text-blue-900 mb-2">Administrator Access</h3>
-              <p className="text-sm text-blue-700 mb-4">
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+              <h3 className="font-semibold text-primary mb-2">Administrator Access</h3>
+              <p className="text-sm text-muted-foreground mb-4">
                 Enter your admin credentials to continue
               </p>
             </div>
@@ -85,14 +85,14 @@ export default function AdminLogin() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Email Field */}
               <div className="space-y-2">
-                <Label htmlFor="admin-email" className="text-sm font-medium">Admin Email</Label>
+                <Label htmlFor="admin-email" className="text-sm font-medium text-foreground">Admin Email</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input
                     id="admin-email"
                     type="email"
                     placeholder="admin@b2bmarketplace.com"
-                    className="pl-10 h-12"
+                    className="pl-10 h-12 focus:ring-primary focus:border-primary"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -103,14 +103,14 @@ export default function AdminLogin() {
 
               {/* Password Field */}
               <div className="space-y-2">
-                <Label htmlFor="admin-password" className="text-sm font-medium">Password</Label>
+                <Label htmlFor="admin-password" className="text-sm font-medium text-foreground">Password</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input
                     id="admin-password"
                     type={showPassword ? "text" : "password"}
                     placeholder="Enter admin password"
-                    className="pl-10 pr-10 h-12"
+                    className="pl-10 pr-10 h-12 focus:ring-primary focus:border-primary"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -130,7 +130,7 @@ export default function AdminLogin() {
               {/* Submit Button */}
               <Button
                 type="submit"
-                className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                className="w-full h-12 font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"
                 disabled={isSubmitting}
                 data-testid="button-admin-login"
               >
@@ -159,9 +159,9 @@ export default function AdminLogin() {
             </div>
 
             {/* Demo Credentials Info */}
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-              <h4 className="text-xs font-semibold text-gray-700 mb-1">Demo Credentials:</h4>
-              <div className="text-xs text-gray-600 space-y-1">
+            <div className="bg-muted border border-border rounded-lg p-3">
+              <h4 className="text-xs font-semibold text-foreground mb-1">Demo Credentials:</h4>
+              <div className="text-xs text-muted-foreground space-y-1">
                 <div><strong>Email:</strong> admin@b2bmarketplace.com</div>
                 <div><strong>Password:</strong> admin123</div>
               </div>

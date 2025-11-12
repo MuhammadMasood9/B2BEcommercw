@@ -140,14 +140,14 @@ export default function FeaturedProductsCarousel() {
     <section className="py-20 bg-gradient-to-br from-gray-50 to-white relative overflow-hidden">
       {/* Background Elements */}
       <div className="absolute inset-0">
-        <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-100/30 to-purple-100/30 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-green-100/30 to-blue-100/30 rounded-full blur-3xl" />
+        <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-primary/30 to-purple-100/30 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-green-100/30 to-orange-600/30 rounded-full blur-3xl" />
       </div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-800 rounded-full px-4 py-2 text-sm font-medium mb-6">
+          <div className="inline-flex items-center gap-2 bg-primary text-primary rounded-full px-4 py-2 text-sm font-medium mb-6">
             <TrendingUp className="w-4 h-4" />
             <span>Trending Now</span>
           </div>
@@ -213,7 +213,7 @@ export default function FeaturedProductsCarousel() {
                 key={index}
                 className={`w-2 h-2 rounded-full transition-all ${
                   index === currentIndex
-                    ? 'bg-blue-600 w-8'
+                    ? 'bg-primary w-8'
                     : 'bg-gray-300 hover:bg-gray-400'
                 }`}
                 onClick={() => setCurrentIndex(index)}
@@ -225,7 +225,7 @@ export default function FeaturedProductsCarousel() {
         {/* View All Button */}
         <div className="text-center mt-12">
           <Link href="/products">
-            <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3">
+            <Button size="lg" className="bg-primary hover:bg-primary text-white px-8 py-3">
               View All Products
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>

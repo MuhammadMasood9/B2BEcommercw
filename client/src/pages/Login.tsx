@@ -52,14 +52,14 @@ export default function Login() {
   };
 
   const features = [
-    { icon: ShieldCheck, text: "Secure & Encrypted", color: "text-green-600" },
-    { icon: Users, text: "10M+ Active Users", color: "text-blue-600" },
-    { icon: TrendingUp, text: "Growing Network", color: "text-purple-600" },
-    { icon: Globe, text: "Global Reach", color: "text-orange-600" }
+    { icon: ShieldCheck, text: "Secure & Encrypted", color: "text-green-600", bgColor: "from-green-100 to-green-200" },
+    { icon: Users, text: "10M+ Active Users", color: "text-brand-orange-600", bgColor: "from-brand-orange-100 to-brand-orange-200" },
+    { icon: TrendingUp, text: "Growing Network", color: "text-brand-grey-600", bgColor: "from-brand-grey-100 to-brand-grey-200" },
+    { icon: Globe, text: "Global Reach", color: "text-brand-orange-600", bgColor: "from-brand-orange-100 to-brand-orange-200" }
   ];
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-white">
+    <div className="min-h-screen flex flex-col bg-background theme-transition">
       <Header />
       
       <main className="flex-1 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -67,17 +67,17 @@ export default function Login() {
           {/* Left Side - Branding & Features */}
           <div className="hidden lg:flex flex-col justify-center space-y-8">
             <div>
-              <div className="inline-flex items-center gap-2 bg-blue-100 rounded-full px-4 py-2 text-sm text-blue-700 font-medium mb-6">
+              <div className="inline-flex items-center gap-2 bg-brand-orange-100 rounded-full px-4 py-2 text-sm text-brand-orange-700 font-medium mb-6 theme-transition">
                 <ShieldCheck className="w-4 h-4" />
                 <span>Trusted by 10M+ Businesses</span>
               </div>
-              <h1 className="text-4xl xl:text-5xl font-bold text-gray-900 mb-4">
+              <h1 className="text-4xl xl:text-5xl font-bold text-foreground mb-4 theme-transition">
                 Welcome to
-                <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent block mt-2">
-                  Global Trade Hub
+                <span className="bg-gradient-to-r from-brand-orange-500 to-brand-orange-600 bg-clip-text text-transparent block mt-2">
+                  Bago
                 </span>
               </h1>
-              <p className="text-lg text-gray-600 mb-8">
+              <p className="text-lg text-muted-foreground mb-8 theme-transition">
                 Connect with verified admins and buyers worldwide. Start growing your business today.
               </p>
             </div>
@@ -87,33 +87,33 @@ export default function Login() {
               {features.map((feature, index) => {
                 const Icon = feature.icon;
                 return (
-                  <div key={index} className="bg-white rounded-xl p-4 shadow-lg border border-gray-100">
-                    <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${feature.color === 'text-green-600' ? 'from-green-100 to-green-200' : feature.color === 'text-blue-600' ? 'from-blue-100 to-blue-200' : feature.color === 'text-purple-600' ? 'from-purple-100 to-purple-200' : 'from-orange-100 to-orange-200'} flex items-center justify-center mb-3`}>
-                      <Icon className={`w-5 h-5 ${feature.color}`} />
+                  <div key={index} className="bg-card rounded-xl p-4 shadow-lg border border-border theme-transition hover:shadow-xl">
+                    <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${feature.bgColor} flex items-center justify-center mb-3 theme-transition`}>
+                      <Icon className={`w-5 h-5 ${feature.color} theme-transition`} />
                     </div>
-                    <p className="text-sm font-medium text-gray-900">{feature.text}</p>
+                    <p className="text-sm font-medium text-card-foreground theme-transition">{feature.text}</p>
                   </div>
                 );
               })}
             </div>
 
             {/* Testimonial */}
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6 border border-blue-100">
+            <div className="bg-gradient-to-r from-brand-orange-50 to-muted rounded-2xl p-6 border border-brand-orange-200 theme-transition">
               <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-brand-orange-500 to-brand-orange-600 flex items-center justify-center text-white font-bold theme-transition">
                   JD
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900">John Doe</p>
-                  <p className="text-sm text-gray-600">CEO, Tech Company</p>
+                  <p className="font-semibold text-foreground theme-transition">John Doe</p>
+                  <p className="text-sm text-muted-foreground theme-transition">CEO, Tech Company</p>
                 </div>
               </div>
-              <p className="text-gray-700 italic">
+              <p className="text-muted-foreground italic theme-transition">
                 "This platform has transformed how we connect with admins. The verification process ensures we only work with trusted partners."
               </p>
               <div className="flex items-center gap-1 mt-4">
                 {[...Array(5)].map((_, i) => (
-                  <CheckCircle key={i} className="w-4 h-4 text-yellow-500 fill-current" />
+                  <CheckCircle key={i} className="w-4 h-4 text-yellow-500 fill-current theme-transition" />
                 ))}
               </div>
             </div>
@@ -121,23 +121,23 @@ export default function Login() {
 
           {/* Right Side - Login Form */}
           <div className="flex items-center justify-center">
-            <Card className="w-full max-w-md bg-white shadow-2xl border-gray-100">
+            <Card className="w-full max-w-md bg-card border-border shadow-2xl theme-transition">
               <CardHeader className="space-y-2 text-center px-6">
-                <CardTitle className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                <CardTitle className="text-3xl font-bold bg-gradient-to-r from-brand-orange-500 to-brand-orange-600 bg-clip-text text-transparent">
                   Sign In
                 </CardTitle>
-                <CardDescription className="text-base">
+                <CardDescription className="text-base text-muted-foreground theme-transition">
                   Welcome back! Please enter your credentials
                 </CardDescription>
               </CardHeader>
               <CardContent className="px-6 pb-6">
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-sm font-medium">
+                    <Label htmlFor="email" className="text-sm font-medium text-foreground theme-transition">
                       Email Address
                     </Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5 theme-transition" />
                       <Input
                         id="email"
                         type="email"
@@ -145,17 +145,17 @@ export default function Login() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
-                        className="pl-10 h-12 text-base"
+                        className="input-brand pl-10 h-12 text-base theme-transition focus-brand"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="password" className="text-sm font-medium">
+                    <Label htmlFor="password" className="text-sm font-medium text-foreground theme-transition">
                       Password
                     </Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5 theme-transition" />
                       <Input
                         id="password"
                         type={showPassword ? "text" : "password"}
@@ -163,12 +163,12 @@ export default function Login() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
-                        className="pl-10 pr-10 h-12 text-base"
+                        className="input-brand pl-10 pr-10 h-12 text-base theme-transition focus-brand"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground theme-transition"
                       >
                         {showPassword ? (
                           <EyeOff className="w-5 h-5" />
@@ -185,13 +185,14 @@ export default function Login() {
                         id="remember" 
                         checked={rememberMe}
                         onCheckedChange={(checked) => setRememberMe(checked === true)}
+                        className="theme-transition focus-brand"
                       />
-                      <Label htmlFor="remember" className="text-sm text-gray-600 cursor-pointer">
+                      <Label htmlFor="remember" className="text-sm text-muted-foreground cursor-pointer theme-transition">
                         Remember me
                       </Label>
                     </div>
                     <Link href="/forgot-password">
-                      <span className="text-sm text-blue-600 hover:text-blue-700 font-medium cursor-pointer">
+                      <span className="text-brand-link hover:text-brand-link-hover text-sm font-medium cursor-pointer theme-transition">
                         Forgot password?
                       </span>
                     </Link>
@@ -200,7 +201,7 @@ export default function Login() {
                   <Button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold text-base shadow-lg"
+                    className="btn-brand-primary w-full h-12 font-semibold text-base shadow-lg theme-transition"
                   >
                     {isSubmitting ? (
                       <>
@@ -219,10 +220,10 @@ export default function Login() {
                 <div className="mt-6">
                   <div className="relative">
                     <div className="absolute inset-0 flex items-center">
-                      <Separator />
+                      <Separator className="theme-transition" />
                     </div>
                     <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-white px-2 text-gray-500">Or continue with</span>
+                      <span className="bg-card px-2 text-muted-foreground theme-transition">Or continue with</span>
                     </div>
                   </div>
 
@@ -230,41 +231,41 @@ export default function Login() {
                     <Button
                       type="button"
                       variant="outline"
-                      className="h-11 hover:bg-red-50 hover:border-red-300"
+                      className="h-11 hover:bg-red-50 hover:border-red-300 theme-transition focus-brand"
                     >
                       <SiGoogle className="h-5 w-5 text-red-500" />
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
-                      className="h-11 hover:bg-blue-50 hover:border-blue-300"
+                      className="h-11 hover:bg-muted hover:border-border theme-transition focus-brand"
                     >
-                      <SiFacebook className="h-5 w-5 text-blue-600" />
+                      <SiFacebook className="h-5 w-5 text-muted-foreground" />
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
-                      className="h-11 hover:bg-blue-50 hover:border-blue-300"
+                      className="h-11 hover:bg-muted hover:border-border theme-transition focus-brand"
                     >
-                      <SiLinkedin className="h-5 w-5 text-blue-700" />
+                      <SiLinkedin className="h-5 w-5 text-muted-foreground" />
                     </Button>
                   </div>
                 </div>
 
                 <div className="mt-6 text-center space-y-3">
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-muted-foreground theme-transition">
                     Don't have an account?{" "}
                     <Link href="/signup">
-                      <span className="text-blue-600 hover:text-blue-700 font-semibold cursor-pointer">
+                      <span className="text-brand-link hover:text-brand-link-hover font-semibold cursor-pointer theme-transition">
                         Sign up for free
                       </span>
                     </Link>
                   </p>
-                  <div className="pt-3 border-t border-gray-200">
-                    <p className="text-sm text-gray-600">
+                  <div className="pt-3 border-t border-border theme-transition">
+                    <p className="text-sm text-muted-foreground theme-transition">
                       Are you a supplier?{" "}
                       <Link href="/supplier/login">
-                        <span className="text-purple-600 hover:text-purple-700 font-semibold cursor-pointer">
+                        <span className="text-brand-link hover:text-brand-link-hover font-semibold cursor-pointer theme-transition">
                           Supplier Login
                         </span>
                       </Link>
@@ -273,14 +274,14 @@ export default function Login() {
                 </div>
 
                 {/* Mobile Features */}
-                <div className="lg:hidden mt-6 pt-6 border-t border-gray-200">
+                <div className="lg:hidden mt-6 pt-6 border-t border-border theme-transition">
                   <div className="grid grid-cols-2 gap-3">
                     {features.map((feature, index) => {
                       const Icon = feature.icon;
                       return (
                         <div key={index} className="flex items-center gap-2">
-                          <Icon className={`w-4 h-4 ${feature.color}`} />
-                          <span className="text-xs text-gray-600">{feature.text}</span>
+                          <Icon className={`w-4 h-4 ${feature.color} theme-transition`} />
+                          <span className="text-xs text-muted-foreground theme-transition">{feature.text}</span>
                         </div>
                       );
                     })}

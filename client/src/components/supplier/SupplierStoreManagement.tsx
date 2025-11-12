@@ -452,7 +452,7 @@ export default function SupplierStoreManagement() {
   const getVerificationColor = (level: string) => {
     switch (level) {
       case 'none': return 'bg-gray-100 text-gray-800';
-      case 'basic': return 'bg-blue-100 text-blue-800';
+      case 'basic': return 'bg-primary text-primary';
       case 'business': return 'bg-purple-100 text-purple-800';
       case 'premium': return 'bg-gold-100 text-gold-800';
       default: return 'bg-gray-100 text-gray-800';
@@ -490,8 +490,8 @@ export default function SupplierStoreManagement() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                <Store className="w-5 h-5 text-blue-600" />
+              <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
+                <Store className="w-5 h-5 text-primary" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Store Status</p>
@@ -1128,8 +1128,8 @@ export default function SupplierStoreManagement() {
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                    <Star className="w-5 h-5 text-blue-600" />
+                  <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
+                    <Star className="w-5 h-5 text-primary" />
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Store Rating</p>
@@ -1208,11 +1208,11 @@ export default function SupplierStoreManagement() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="text-center p-6 bg-blue-50 rounded-lg">
-                  <div className="text-3xl font-bold text-blue-600 mb-2">
+                <div className="text-center p-6 bg-primary rounded-lg">
+                  <div className="text-3xl font-bold text-primary mb-2">
                     {metricsData?.isVerified ? 'Verified' : 'Unverified'}
                   </div>
-                  <div className="text-sm text-blue-600 mb-1">Verification Status</div>
+                  <div className="text-sm text-primary mb-1">Verification Status</div>
                   <Badge className={getVerificationColor(metricsData?.verificationLevel || 'none')}>
                     {metricsData?.verificationLevel || 'None'}
                   </Badge>
@@ -1262,7 +1262,7 @@ export default function SupplierStoreManagement() {
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div 
-                    className="bg-blue-600 h-2 rounded-full" 
+                    className="bg-primary h-2 rounded-full" 
                     style={{ 
                       width: `${profile ? Math.round(
                         (Object.values(profile).filter(v => v !== null && v !== '' && v !== undefined).length / 

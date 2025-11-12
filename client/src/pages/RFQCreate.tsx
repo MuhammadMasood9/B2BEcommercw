@@ -250,15 +250,15 @@ export default function RFQCreate() {
       <Header />
       
       {/* Hero Section with Gradient */}
-      <section className="relative py-16 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
+      <section className="relative py-16 bg-gradient-to-br from-secondary via-secondary/90 to-secondary/80 overflow-hidden">
         {/* Background Elements */}
         <div className="absolute inset-0">
-          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-600/10 to-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-primary/20 to-primary/15 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-primary/25 to-primary/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-primary/15 to-primary/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
         </div>
 
-        <div className="relative  mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center text-white">
             <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/30 rounded-full px-6 py-3 text-sm text-white/95 shadow-lg mb-6">
               <FileText className="w-4 h-4" />
@@ -267,7 +267,7 @@ export default function RFQCreate() {
             
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
               Create
-              <span className="bg-gradient-to-r from-blue-200 via-white to-blue-200 bg-clip-text text-transparent block">
+              <span className="bg-gradient-to-r from-primary/80 via-white to-primary/80 bg-clip-text text-transparent block">
                 RFQ
               </span>
             </h1>
@@ -302,7 +302,7 @@ export default function RFQCreate() {
             <Card className="bg-white border-gray-100 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Package className="w-5 h-5 text-indigo-600" />
+                  <Package className="w-5 h-5 text-orange-600" />
                   Select Product (Optional)
                 </CardTitle>
                 <p className="text-sm text-gray-600 mt-2">
@@ -355,7 +355,7 @@ export default function RFQCreate() {
                     )}
                   </>
                 ) : (
-                  <div className="border border-blue-200 bg-blue-50 rounded-lg p-4">
+                  <div className="border border-primary/20 bg-primary/5 rounded-lg p-4">
                     <div className="flex items-start gap-4">
                       <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 border border-gray-200">
                         <img 
@@ -395,7 +395,7 @@ export default function RFQCreate() {
             <Card className="bg-white border-gray-100 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-blue-600" />
+                  <FileText className="w-5 h-5 text-primary" />
                   Basic Information
                 </CardTitle>
               </CardHeader>
@@ -517,7 +517,7 @@ export default function RFQCreate() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors">
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-primary transition-colors">
                   <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-gray-900">Upload files</p>
@@ -551,7 +551,7 @@ export default function RFQCreate() {
                 type="submit"
                 size="lg"
                 disabled={createRFQMutation.isPending}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-12 py-4 text-lg font-semibold"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground px-12 py-4 text-lg font-semibold"
               >
                 {createRFQMutation.isPending ? (
                   <>

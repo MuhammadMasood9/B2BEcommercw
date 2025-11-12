@@ -142,12 +142,12 @@ export default function Cart() {
         <Header />
         
         {/* Hero Section with Gradient */}
-        <section className="relative py-16 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
+        <section className="relative py-16 bg-gradient-to-br from-primary via-primary to-orange-600 overflow-hidden">
           {/* Background Elements */}
           <div className="absolute inset-0">
-            <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
-            <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-600/10 to-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+            <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-primary/20 to-orange-600/20 rounded-full blur-3xl animate-pulse" />
+            <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-primary/20 to-orange-600/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-primary/10 to-orange-600/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
           </div>
 
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -159,7 +159,7 @@ export default function Cart() {
               
               <h1 className="text-4xl md:text-6xl font-bold mb-6">
                 Your Cart is
-                <span className="bg-gradient-to-r from-blue-200 via-white to-blue-200 bg-clip-text text-transparent block">
+                <span className="bg-gradient-to-r from-primary via-white to-orange-600 bg-clip-text text-transparent block">
                   Empty
                 </span>
               </h1>
@@ -198,7 +198,7 @@ export default function Cart() {
                 Add some products to get started with your B2B purchase
               </p>
               <Link href="/products">
-                <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3">
+                <Button size="lg" className="bg-primary hover:bg-primary text-white px-8 py-3">
                   Browse Products
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
@@ -216,12 +216,12 @@ export default function Cart() {
       <Header />
       
       {/* Hero Section with Gradient */}
-      <section className="relative py-16 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
+      <section className="relative py-16 bg-gradient-to-br from-primary via-primary to-orange-600 overflow-hidden">
         {/* Background Elements */}
         <div className="absolute inset-0">
-          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-600/10 to-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-primary/20 to-orange-600/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-primary/20 to-orange-600/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-primary/10 to-orange-600/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -233,7 +233,7 @@ export default function Cart() {
             
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
               Shopping
-              <span className="bg-gradient-to-r from-blue-200 via-white to-blue-200 bg-clip-text text-transparent block">
+              <span className="bg-gradient-to-r from-primary via-white to-orange-600 bg-clip-text text-transparent block">
                 Cart
               </span>
             </h1>
@@ -281,14 +281,14 @@ export default function Cart() {
                       <div className="flex gap-6">
                         <Avatar className="h-24 w-24 rounded-xl">
                           <AvatarImage src={item.image} alt={item.name} />
-                          <AvatarFallback className="rounded-xl bg-gradient-to-br from-blue-100 to-blue-200 text-blue-600 font-bold text-lg">
+                          <AvatarFallback className="rounded-xl bg-gradient-to-br from-primary to-orange-600 text-primary font-bold text-lg">
                             {item.name.charAt(0)}
                           </AvatarFallback>
                         </Avatar>
                         
                         <div className="flex-1">
                           <div className="flex justify-between items-start mb-3">
-                            <h3 className="font-bold text-xl text-gray-900 group-hover:text-blue-600 transition-colors">{item.name}</h3>
+                            <h3 className="font-bold text-xl text-gray-900 group-hover:text-primary transition-colors">{item.name}</h3>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -311,7 +311,7 @@ export default function Cart() {
                               </Badge>
                             )}
                             {item.tradeAssurance && (
-                              <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs px-2 py-1">
+                              <Badge className="bg-primary text-primary border-primary text-xs px-2 py-1">
                                 Trade Assurance
                               </Badge>
                             )}
@@ -367,7 +367,7 @@ export default function Cart() {
               <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <MessageSquare className="w-5 h-5 text-blue-600" />
+                    <MessageSquare className="w-5 h-5 text-primary" />
                     Inquiry Summary
                   </CardTitle>
                 </CardHeader>
@@ -408,7 +408,7 @@ export default function Cart() {
                   
                   <div className="space-y-3">
                     <Button 
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg" 
+                      className="w-full bg-primary hover:bg-primary text-white shadow-lg" 
                       size="lg"
                       onClick={handleSendInquiries}
                       disabled={submitInquiriesMutation.isPending}
@@ -525,7 +525,7 @@ export default function Cart() {
               </Card>
 
               {/* Trust Signals */}
-              <Card className="bg-gradient-to-r from-green-50 to-blue-50 border-green-100 border-0 shadow-lg">
+              <Card className="bg-gradient-to-r from-green-50 to-orange-600 border-green-100 border-0 shadow-lg">
                 <CardHeader>
                   <CardTitle>Why Choose Us?</CardTitle>
                 </CardHeader>
@@ -541,7 +541,7 @@ export default function Cart() {
                   </div>
                   
                   <div className="flex items-start gap-3">
-                    <Truck className="w-5 h-5 text-blue-600 mt-0.5" />
+                    <Truck className="w-5 h-5 text-primary mt-0.5" />
                     <div>
                       <h4 className="font-medium">Fast Shipping</h4>
                       <p className="text-sm text-gray-600">

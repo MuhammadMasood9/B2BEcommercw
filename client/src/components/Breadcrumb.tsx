@@ -20,7 +20,7 @@ export function Breadcrumb({ items, className }: BreadcrumbProps) {
       className={cn("flex items-center space-x-2 text-sm", className)}
     >
       <Link href="/">
-        <a className="flex items-center text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
+        <a className="flex items-center text-muted-foreground hover:text-primary dark:text-gray-400 dark:hover:text-primary transition-colors">
           <Home className="w-4 h-4" />
         </a>
       </Link>
@@ -34,7 +34,7 @@ export function Breadcrumb({ items, className }: BreadcrumbProps) {
             <ChevronRight className="w-4 h-4 text-gray-400" />
             {item.href && !isLast ? (
               <Link href={item.href}>
-                <a className="flex items-center gap-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
+                <a className="flex items-center gap-1.5 text-muted-foreground hover:text-primary dark:text-gray-400 dark:hover:text-primary transition-colors">
                   {Icon && <Icon className="w-4 h-4" />}
                   <span>{item.label}</span>
                 </a>
@@ -44,8 +44,8 @@ export function Breadcrumb({ items, className }: BreadcrumbProps) {
                 className={cn(
                   "flex items-center gap-1.5",
                   isLast
-                    ? "text-gray-900 dark:text-white font-medium"
-                    : "text-gray-500 dark:text-gray-400"
+                    ? "text-foreground dark:text-white font-medium"
+                    : "text-muted-foreground dark:text-gray-400"
                 )}
               >
                 {Icon && <Icon className="w-4 h-4" />}

@@ -88,6 +88,8 @@ import AdminActivityLogPage from "@/pages/admin/AdminActivityLogPage";
 import AdminLogin from "@/pages/admin/AdminLogin";
 import AdminSuppliers from "@/pages/admin/AdminSuppliers";
 import AdminProductApproval from "@/pages/admin/AdminProductApproval";
+import AdminPaymentVerification from "@/pages/admin/AdminPaymentVerification";
+import AdminCreditManagement from "@/pages/admin/AdminCreditManagement";
 import FloatingActionButtons from "@/components/FloatingActionButtons";
 import NotificationPage from "@/pages/buyer/NotificationPage";
 import ProfilePage from "@/pages/buyer/ProfilePage";
@@ -114,7 +116,10 @@ import SupplierOrders from "@/pages/supplier/SupplierOrders";
 import SupplierAnalytics from "@/pages/supplier/SupplierAnalytics";
 import SupplierStoreManagement from "@/pages/supplier/SupplierStore";
 import SupplierProfile from "@/pages/supplier/SupplierProfile";
+import SupplierPayments from "@/pages/supplier/SupplierPayments";
 import NotFound from "@/pages/not-found";
+import { ThemeProvider } from "@/contexts/ThemeContext";
+import ThemeToggleDemo from "@/components/ThemeToggleDemo";
 
 function AdminRouter() {
   return (
@@ -257,6 +262,16 @@ function AdminRouter() {
           <AdminActivityLogPage />
         </ProtectedRoute>
       </Route>
+      <Route path="/admin/payment-verification">
+        <ProtectedRoute requiredRole="admin">
+          <AdminPaymentVerification />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/credit-management">
+        <ProtectedRoute requiredRole="admin">
+          <AdminCreditManagement />
+        </ProtectedRoute>
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
@@ -342,6 +357,11 @@ function SupplierRouter() {
       <Route path="/supplier/profile">
         <ProtectedRoute requiredRole="supplier">
           <SupplierProfile />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/supplier/payments">
+        <ProtectedRoute requiredRole="supplier">
+          <SupplierPayments />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />
@@ -481,6 +501,7 @@ function PublicRouter() {
           <ProfilePage />
         </ProtectedRoute>
       </Route>
+      <Route path="/theme-demo" component={ThemeToggleDemo} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -589,28 +610,55 @@ function AppContent() {
 }
 
 function App() {
+  // Initialize theme early to prevent FOUC
+  React.useEffect(() => {
+    // This effect runs on the client side only
+    // The ThemeProvider will handle the actual theme application
+    // but this ensures the root element is ready for theme classes
+    if (typeof document !== 'undefined') {
+      const root = document.documentElement;
+      
+      // Add a class to indicate the app is initializing
+      root.classList.add('app-initializing');
+      
+      // Remove the initializing class after a short delay
+      const timer = setTimeout(() => {
+        root.classList.remove('app-initializing');
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
-      <LoadingProvider>
-        <AuthProvider>
-          <WebSocketProvider>
-            <SearchProvider>
-              <FavoriteProvider>
-                <CartProvider>
-                  <ProductProvider>
-                    <UnseenCountsProvider>
-                      <TooltipProvider>
-                        <Toaster />
-                        <AppContent />
-                      </TooltipProvider>
-                    </UnseenCountsProvider>
-                  </ProductProvider>
-                </CartProvider>
-              </FavoriteProvider>
-            </SearchProvider>
-          </WebSocketProvider>
-        </AuthProvider>
-      </LoadingProvider>
+      <ThemeProvider
+        defaultTheme="system"
+        storageKey="b2b-marketplace-theme"
+        enableSystem={true}
+        disableTransitionOnChange={false}
+      >
+        <LoadingProvider>
+          <AuthProvider>
+            <WebSocketProvider>
+              <SearchProvider>
+                <FavoriteProvider>
+                  <CartProvider>
+                    <ProductProvider>
+                      <UnseenCountsProvider>
+                        <TooltipProvider>
+                          <Toaster />
+                          <AppContent />
+                        </TooltipProvider>
+                      </UnseenCountsProvider>
+                    </ProductProvider>
+                  </CartProvider>
+                </FavoriteProvider>
+              </SearchProvider>
+            </WebSocketProvider>
+          </AuthProvider>
+        </LoadingProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

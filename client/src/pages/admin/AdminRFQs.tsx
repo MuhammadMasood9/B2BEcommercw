@@ -287,54 +287,54 @@ export default function AdminRFQs() {
 
         {/* Key Metrics Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+          <Card className="bg-gradient-to-r from-primary to-primary/80 text-white">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-blue-100 text-sm font-medium">Total RFQs</p>
+                  <p className="text-primary-foreground/80 text-sm font-medium">Total RFQs</p>
                   <p className="text-3xl font-bold">{stats.total}</p>
-                  <p className="text-blue-200 text-xs">+{stats.recentActivity} this week</p>
+                  <p className="text-primary-foreground/70 text-xs">+{stats.recentActivity} this week</p>
                 </div>
-                <FileText className="h-8 w-8 text-blue-200" />
+                <FileText className="h-8 w-8 text-primary-foreground/70" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+          <Card className="bg-gradient-to-r from-secondary to-secondary/80 text-white">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-green-100 text-sm font-medium">Response Rate</p>
+                  <p className="text-secondary-foreground/80 text-sm font-medium">Response Rate</p>
                   <p className="text-3xl font-bold">{stats.responseRate}%</p>
-                  <p className="text-green-200 text-xs">RFQs with Quotations</p>
+                  <p className="text-secondary-foreground/70 text-xs">RFQs with Quotations</p>
                 </div>
-                <TrendingUp className="h-8 w-8 text-green-200" />
+                <TrendingUp className="h-8 w-8 text-secondary-foreground/70" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+          <Card className="bg-gradient-to-r from-accent to-accent/80 text-white">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-purple-100 text-sm font-medium">Open RFQs</p>
+                  <p className="text-accent-foreground/80 text-sm font-medium">Open RFQs</p>
                   <p className="text-3xl font-bold">{stats.open}</p>
-                  <p className="text-purple-200 text-xs">Active Opportunities</p>
+                  <p className="text-accent-foreground/70 text-xs">Active Opportunities</p>
                 </div>
-                <MessageSquare className="h-8 w-8 text-purple-200" />
+                <MessageSquare className="h-8 w-8 text-accent-foreground/70" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+          <Card className="bg-gradient-to-r from-brand-grey-800 to-brand-grey-900 text-white">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-orange-100 text-sm font-medium">Total Value</p>
+                  <p className="text-white/80 text-sm font-medium">Total Value</p>
                   <p className="text-3xl font-bold">${stats.totalValue.toLocaleString()}</p>
-                  <p className="text-orange-200 text-xs">RFQ Value</p>
+                  <p className="text-white/70 text-xs">RFQ Value</p>
                 </div>
-                <DollarSign className="h-8 w-8 text-orange-200" />
+                <DollarSign className="h-8 w-8 text-white/70" />
               </div>
             </CardContent>
           </Card>
@@ -367,7 +367,7 @@ export default function AdminRFQs() {
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                    <div className="w-3 h-3 bg-primary rounded-full"></div>
                     <span className="text-sm">With Quotations</span>
                   </div>
                   <span className="font-semibold">{rfqs.filter((r: any) => (r.quotationsCount || 0) > 0).length}</span>
@@ -401,8 +401,8 @@ export default function AdminRFQs() {
                   <span className="font-semibold">{stats.recentActivity} RFQs</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Response Rate</span>
-                  <span className="font-semibold text-green-600">{stats.responseRate}%</span>
+                  <span className="text-sm text-muted-foreground">Response Rate</span>
+                  <span className="font-semibold text-primary">{stats.responseRate}%</span>
                 </div>
               </div>
             </CardContent>
@@ -532,7 +532,7 @@ export default function AdminRFQs() {
             <div className="space-y-4">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
               <span className="ml-3 text-gray-600">Loading RFQs...</span>
             </div>
           ) : filteredRFQs.length === 0 ? (
@@ -617,8 +617,8 @@ export default function AdminRFQs() {
                                 <FileText className="h-4 w-4" />
                                 Quotations Sent ({quotationCount})
                               </h4>
-                              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 rounded-lg">
-                                <p className="text-sm text-blue-800 dark:text-blue-200 font-medium">
+                              <div className="p-3 bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-lg">
+                                <p className="text-sm text-primary font-medium">
                                   ✓ You have sent {quotationCount} quotation{quotationCount > 1 ? 's' : ''} for this RFQ
                                 </p>
                               </div>
@@ -635,7 +635,7 @@ export default function AdminRFQs() {
                         </Link>
                         <Button 
                           size="sm" 
-                          className="bg-blue-600 hover:bg-blue-700"
+                          className="bg-primary hover:bg-primary/90"
                           onClick={() => handleSendQuotation(rfq)}
                         >
                           <Send className="h-4 w-4 mr-2" />
@@ -669,7 +669,7 @@ export default function AdminRFQs() {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm">Open RFQs</span>
-                      <span className="font-semibold text-blue-600">{stats.open}</span>
+                      <span className="font-semibold text-primary">{stats.open}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -787,7 +787,7 @@ export default function AdminRFQs() {
               <div className="p-4 bg-gray-50 rounded-lg">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">Total Quotation Value:</span>
-                  <span className="text-2xl font-bold text-blue-600">
+                  <span className="text-2xl font-bold text-primary">
                     {formatPrice(parseFloat(quoteForm.pricePerUnit) * parseInt(quoteForm.moq))}
                   </span>
                 </div>
@@ -801,7 +801,7 @@ export default function AdminRFQs() {
             <Button 
               onClick={submitQuotation}
               disabled={sendQuotationMutation.isPending}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-primary hover:bg-primary/90"
             >
               {sendQuotationMutation.isPending ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending...</>

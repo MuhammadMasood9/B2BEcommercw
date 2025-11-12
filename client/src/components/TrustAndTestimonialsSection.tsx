@@ -27,8 +27,8 @@ export default function TrustAndTestimonialsSection() {
       icon: Award,
       title: "Quality Guarantee",
       description: "Get refunds if products don't meet the quality standards described",
-      color: "from-blue-100 to-blue-200",
-      iconColor: "text-blue-600"
+      color: "from-primary to-orange-600",
+      iconColor: "text-primary"
     },
     {
       icon: Clock,
@@ -55,7 +55,7 @@ export default function TrustAndTestimonialsSection() {
       role: "Procurement Manager",
       country: "United States",
       rating: 5,
-      text: "Global Trade Hub has revolutionized our sourcing process. We've found reliable suppliers and reduced our procurement costs by 30%.",
+      text: "Bago has revolutionized our sourcing process. We've found reliable suppliers and reduced our procurement costs by 30%.",
       avatar: "SJ"
     },
     {
@@ -89,8 +89,8 @@ export default function TrustAndTestimonialsSection() {
     <section className="py-20 bg-gradient-to-br from-gray-50 to-white relative overflow-hidden">
       {/* Background Elements */}
       <div className="absolute inset-0">
-        <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-100/30 to-purple-100/30 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-green-100/30 to-blue-100/30 rounded-full blur-3xl" />
+        <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-primary/30 to-purple-100/30 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-green-100/30 to-orange-600/30 rounded-full blur-3xl" />
       </div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -127,12 +127,12 @@ export default function TrustAndTestimonialsSection() {
         </div>
 
         {/* Stats Section */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl p-8 mb-20 text-white">
+        <div className="bg-gradient-to-r from-primary to-purple-600 rounded-3xl p-8 mb-20 text-white">
           <div className="text-center mb-12">
             <h3 className="text-3xl font-bold mb-4">
               Trusted by Millions Worldwide
             </h3>
-            <p className="text-blue-100 text-lg">
+            <p className="text-primary text-lg">
               Join the world's largest B2B marketplace
             </p>
           </div>
@@ -144,7 +144,7 @@ export default function TrustAndTestimonialsSection() {
                   <stat.icon className="w-8 h-8 text-white" />
                 </div>
                 <div className="text-3xl font-bold mb-2">{stat.number}</div>
-                <div className="text-blue-100 text-sm">{stat.label}</div>
+                <div className="text-primary text-sm">{stat.label}</div>
               </div>
             ))}
           </div>
@@ -193,8 +193,8 @@ export default function TrustAndTestimonialsSection() {
             <Card key={index} className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-white border-gray-100">
               <CardContent className="p-8">
                 <div className="flex items-center gap-4 mb-6">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center">
-                    <span className="text-blue-600 font-semibold">
+                  <div className="w-12 h-12 bg-gradient-to-br from-primary to-orange-600 rounded-full flex items-center justify-center">
+                    <span className="text-primary font-semibold">
                       {testimonial.avatar}
                     </span>
                   </div>
@@ -218,7 +218,7 @@ export default function TrustAndTestimonialsSection() {
                 </div>
                 
                 <div className="relative">
-                  <Quote className="w-8 h-8 text-blue-200 absolute -top-2 -left-2" />
+                  <Quote className="w-8 h-8 text-primary absolute -top-2 -left-2" />
                   <p className="text-gray-700 leading-relaxed pl-6">
                     {testimonial.text}
                   </p>
@@ -230,7 +230,7 @@ export default function TrustAndTestimonialsSection() {
 
         {/* CTA Section */}
         <div className="text-center mt-16">
-          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-3xl p-8">
+          <div className="bg-gradient-to-r from-primary to-purple-50 rounded-3xl p-8">
             <h3 className="text-2xl font-bold text-gray-900 mb-4">
               Ready to Start Trading?
             </h3>
@@ -238,10 +238,10 @@ export default function TrustAndTestimonialsSection() {
               Join millions of buyers and suppliers in the world's largest B2B marketplace
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3">
+              <Button size="lg" className="bg-primary hover:bg-primary text-white px-8 py-3">
                 Start Sourcing Now
               </Button>
-              <Button size="lg" variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50 px-8 py-3">
+              <Button size="lg" variant="outline" className="border-primary text-primary hover:bg-primary px-8 py-3">
                 Contact Admin
               </Button>
             </div>

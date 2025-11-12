@@ -135,12 +135,12 @@ export default function RFQBrowse() {
       <Header />
       
       {/* Hero Section with Gradient */}
-      <section className="relative py-16 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
+      <section className="relative py-16 bg-gradient-to-br from-secondary via-secondary/90 to-secondary/80 overflow-hidden">
         {/* Background Elements */}
         <div className="absolute inset-0">
-          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-600/10 to-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-primary/20 to-primary/15 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-primary/25 to-primary/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-primary/15 to-primary/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -152,7 +152,7 @@ export default function RFQBrowse() {
             
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
               Browse
-              <span className="bg-gradient-to-r from-blue-200 via-white to-blue-200 bg-clip-text text-transparent block">
+              <span className="bg-gradient-to-r from-primary/80 via-white to-primary/80 bg-clip-text text-transparent block">
                 RFQs
               </span>
             </h1>
@@ -189,7 +189,7 @@ export default function RFQBrowse() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button size="lg" className="h-14 px-8 shadow-lg hover:shadow-xl transition-all duration-200 bg-blue-600 hover:bg-blue-700">
+                  <Button size="lg" className="h-14 px-8 shadow-lg hover:shadow-xl transition-all duration-200 bg-primary hover:bg-primary/90">
                     <Search className="w-5 h-5 mr-2" />
                     Search
                   </Button>
@@ -327,7 +327,7 @@ export default function RFQBrowse() {
 
           {/* CTA Section */}
           <div className="text-center mt-12">
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-3xl p-8">
+            <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-3xl p-8">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">
                 Want to Create Your Own RFQ?
               </h3>
@@ -335,7 +335,7 @@ export default function RFQBrowse() {
                 Post your requirements and get competitive quotes from verified admins
               </p>
               <Link href="/rfq/create">
-                <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3">
+                <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3">
                   Create RFQ
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>

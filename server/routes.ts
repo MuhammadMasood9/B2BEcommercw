@@ -9,6 +9,7 @@ import categoryRoutes from "./categoryRoutes";
 import uploadRoutes from "./uploadRoutes";
 import chatRoutes from "./chatRoutes";
 import commissionRoutes from "./commissionRoutes";
+import paymentRoutes from "./paymentRoutes";
 import { calculateCommission, markCommissionPaid } from "./commissionRoutes";
 import { upload, uploadUnrestricted } from "./upload";
 import {
@@ -1186,6 +1187,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ==================== COMMISSION ROUTES ====================
 
   app.use('/api/commissions', commissionRoutes);
+
+  // ==================== PAYMENT ROUTES ====================
+
+  app.use('/api', paymentRoutes);
 
   // ==================== LEGACY AUTHENTICATION (TO BE REMOVED) ====================
 

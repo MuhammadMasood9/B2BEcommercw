@@ -150,7 +150,7 @@ export default function ProductCard({
 
   const getSupplierTypeColor = (type?: string) => {
     switch (type) {
-      case 'manufacturer': return 'bg-blue-100 text-blue-800';
+      case 'manufacturer': return 'bg-primary text-primary';
       case 'trading-company': return 'bg-green-100 text-green-800';
       case 'wholesaler': return 'bg-purple-100 text-purple-800';
       case 'distributor': return 'bg-orange-100 text-orange-800';
@@ -335,7 +335,7 @@ export default function ProductCard({
               showLabel={false}
             />
             {tradeAssurance && (
-              <Badge className="bg-blue-600 text-white border-0 text-xs px-2 py-1">
+              <Badge className="bg-primary text-white border-0 text-xs px-2 py-1">
                 <Award className="w-3 h-3 mr-1" />
                 Trade Assurance
               </Badge>

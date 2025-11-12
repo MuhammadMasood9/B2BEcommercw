@@ -328,7 +328,7 @@ export default function AdminChat() {
                 key={conversation.id}
                 className={`p-3 rounded-lg cursor-pointer transition-colors ${
                   selectedConversation === conversation.id
-                    ? 'bg-blue-50 border border-blue-200'
+                    ? 'bg-brand-orange-50 border border-brand-orange-200'
                     : 'hover:bg-gray-50'
                 }`}
                 onClick={() => setSelectedConversation(conversation.id)}
@@ -452,7 +452,7 @@ export default function AdminChat() {
                         <div
                           className={`px-4 py-2 rounded-lg ${
                             message.senderType === 'admin'
-                              ? 'bg-blue-500 text-white'
+                              ? 'bg-brand-orange-500 text-white'
                               : 'bg-gray-100 text-gray-900'
                           }`}
                         >
@@ -461,7 +461,7 @@ export default function AdminChat() {
                         
                         {message.senderType === 'admin' && (
                           <Avatar className="h-6 w-6">
-                            <AvatarFallback className="text-xs bg-blue-500 text-white">
+                            <AvatarFallback className="text-xs bg-brand-orange-500 text-white">
                               A
                             </AvatarFallback>
                           </Avatar>
@@ -473,7 +473,7 @@ export default function AdminChat() {
                       }`}>
                         {formatTime(message.timestamp)}
                         {!message.isRead && message.senderType === 'user' && (
-                          <span className="ml-2 text-blue-500">• Unread</span>
+                          <span className="ml-2 text-brand-orange-500">• Unread</span>
                         )}
                       </div>
                     </div>

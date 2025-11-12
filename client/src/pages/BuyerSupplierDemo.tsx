@@ -129,11 +129,11 @@ export default function BuyerSupplierDemo() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-primary via-white to-purple-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
             Supplier Store Experience
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
@@ -157,7 +157,7 @@ export default function BuyerSupplierDemo() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
           <Card className="text-center hover:shadow-lg transition-shadow">
             <CardContent className="p-6">
-              <Store className="w-12 h-12 text-blue-500 mx-auto mb-4" />
+              <Store className="w-12 h-12 text-primary mx-auto mb-4" />
               <h3 className="font-semibold mb-2">Detailed Store Pages</h3>
               <p className="text-sm text-muted-foreground">
                 Comprehensive supplier profiles with company info, certifications, and metrics
@@ -205,7 +205,7 @@ export default function BuyerSupplierDemo() {
                 Click on any supplier card to explore their detailed store page
               </p>
             </div>
-            <Badge className="bg-gradient-to-r from-blue-500 to-purple-500 text-white">
+            <Badge className="bg-gradient-to-r from-primary to-purple-500 text-white">
               Interactive Demo
             </Badge>
           </div>
@@ -229,7 +229,7 @@ export default function BuyerSupplierDemo() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               <div>
                 <h4 className="font-semibold mb-3 flex items-center gap-2">
-                  <Building2 className="w-5 h-5 text-blue-500" />
+                  <Building2 className="w-5 h-5 text-primary" />
                   Company Profile
                 </h4>
                 <ul className="space-y-2 text-sm text-muted-foreground">
@@ -313,8 +313,8 @@ export default function BuyerSupplierDemo() {
           <CardContent>
             <div className="flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="text-center">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-3">
-                  <Search className="w-8 h-8 text-blue-600" />
+                <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mb-3">
+                  <Search className="w-8 h-8 text-primary" />
                 </div>
                 <h4 className="font-semibold mb-2">1. Discover</h4>
                 <p className="text-sm text-muted-foreground">

@@ -101,11 +101,11 @@ export default function OrderTracking() {
       case 'pending':
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
       case 'confirmed':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+        return 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary';
       case 'processing':
         return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
       case 'shipped':
-        return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300';
+        return 'bg-orange-600 text-orange-600 dark:bg-orange-600 dark:text-orange-600';
       case 'delivered':
         return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
       case 'cancelled':
@@ -178,12 +178,12 @@ export default function OrderTracking() {
       <Header />
       
       {/* Hero Section with Gradient */}
-      <section className="relative py-16 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
+      <section className="relative py-16 bg-gradient-to-br from-gray-900 via-gray-800 to-secondary overflow-hidden">
         {/* Background Elements */}
         <div className="absolute inset-0">
-          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-600/10 to-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-primary/20 to-orange-300/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-primary/20 to-orange-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-primary/10 to-orange-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -195,7 +195,7 @@ export default function OrderTracking() {
             
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
               Track Your
-              <span className="bg-gradient-to-r from-blue-200 via-white to-blue-200 bg-clip-text text-transparent block">
+              <span className="bg-gradient-to-r from-orange-200 via-white to-orange-200 bg-clip-text text-transparent block">
                 Order
               </span>
             </h1>
@@ -269,8 +269,8 @@ export default function OrderTracking() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
                 <Card className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-white border-gray-100">
                   <CardContent className="p-8 text-center">
-                    <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
-                      <FileText className="w-8 h-8 text-blue-600" />
+                    <div className="w-16 h-16 bg-gradient-to-br from-primary/10 to-primary/20 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
+                      <FileText className="w-8 h-8 text-primary" />
                     </div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">Order Number</h3>
                     <p className="text-sm text-gray-600">Found in your order confirmation email</p>
@@ -314,7 +314,7 @@ export default function OrderTracking() {
                     Try Another Number
                   </Button>
                   <Link href="/my-orders">
-                    <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3">
+                    <Button size="lg" className="bg-primary hover:bg-primary/90 text-white px-8 py-3">
                       <Package className="h-4 w-4 mr-2" />
                       View My Orders
                     </Button>
@@ -421,7 +421,7 @@ export default function OrderTracking() {
                               step.completed 
                                 ? 'bg-green-500 border-green-500 text-white' 
                                 : step.current
-                                ? 'bg-blue-500 border-blue-500 text-white animate-pulse'
+                                ? 'bg-primary border-primary text-white animate-pulse'
                                 : 'bg-white dark:bg-gray-800 border-gray-300 text-gray-400'
                             }`}>
                               {step.completed ? (
@@ -435,13 +435,13 @@ export default function OrderTracking() {
                             <div className="flex-1 min-w-0 pb-6">
                               <div className="flex items-center justify-between mb-1">
                                 <h4 className={`font-semibold ${
-                                  step.current ? 'text-blue-600' : 
+                                  step.current ? 'text-primary' : 
                                   step.completed ? 'text-gray-900' : 'text-gray-500'
                                 }`}>
                                   {step.label}
                                 </h4>
                                 {step.current && (
-                                  <Badge variant="outline" className="text-blue-600 border-blue-600">
+                                  <Badge variant="outline" className="text-primary border-primary">
                                     <ArrowRight className="h-3 w-3 mr-1" />
                                     In Progress
                                   </Badge>
@@ -458,7 +458,7 @@ export default function OrderTracking() {
                                 {step.description}
                               </p>
                               {step.current && (
-                                <div className="mt-2 p-2 bg-blue-50 rounded text-xs text-blue-700 flex items-start gap-1">
+                                <div className="mt-2 p-2 bg-primary rounded text-xs text-primary flex items-start gap-1">
                                   <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
                                   <span>This is the current status of your order. We'll update you when it moves to the next stage.</span>
                                 </div>
@@ -548,11 +548,11 @@ export default function OrderTracking() {
               </Card>
 
               {/* Help Section */}
-              <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 border-0 shadow-lg">
+              <Card className="bg-gradient-to-r from-primary to-orange-600 border-primary border-0 shadow-lg">
                 <CardContent className="p-6">
                   <div className="flex items-start gap-4">
-                    <div className="p-3 bg-blue-100 rounded-full">
-                      <Info className="h-6 w-6 text-blue-600" />
+                    <div className="p-3 bg-primary rounded-full">
+                      <Info className="h-6 w-6 text-primary" />
                     </div>
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900 mb-2">Need Help?</h3>

@@ -202,7 +202,7 @@ export default function OrderManagement({ userRole }: OrderManagementProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'confirmed': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'confirmed': return 'bg-primary text-primary border-primary';
       case 'processing': return 'bg-purple-100 text-purple-800 border-purple-200';
       case 'shipped': return 'bg-orange-100 text-orange-800 border-orange-200';
       case 'delivered': return 'bg-green-100 text-green-800 border-green-200';
@@ -276,7 +276,7 @@ export default function OrderManagement({ userRole }: OrderManagementProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -314,8 +314,8 @@ export default function OrderManagement({ userRole }: OrderManagementProps) {
                 <p className="text-sm font-medium text-gray-600">Total Orders</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
               </div>
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Package className="w-6 h-6 text-blue-600" />
+              <div className="p-2 bg-primary rounded-lg">
+                <Package className="w-6 h-6 text-primary" />
               </div>
             </div>
           </CardContent>
@@ -457,11 +457,11 @@ export default function OrderManagement({ userRole }: OrderManagementProps) {
               </div>
 
               {order.trackingNumber && (
-                <div className="bg-blue-50 p-3 rounded-lg">
+                <div className="bg-primary p-3 rounded-lg">
                   <div className="flex items-center gap-2">
-                    <Truck className="w-4 h-4 text-blue-600" />
-                    <span className="text-sm font-medium text-blue-800">Tracking:</span>
-                    <span className="text-sm text-blue-700">{order.trackingNumber}</span>
+                    <Truck className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-medium text-primary">Tracking:</span>
+                    <span className="text-sm text-primary">{order.trackingNumber}</span>
                   </div>
                 </div>
               )}
@@ -483,7 +483,7 @@ export default function OrderManagement({ userRole }: OrderManagementProps) {
                   <Button 
                     size="sm" 
                     onClick={() => handleUpdateStatus(order)}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700"
+                    className="flex-1 bg-primary hover:bg-primary"
                   >
                     <Edit className="w-4 h-4 mr-2" />
                     Update
@@ -511,7 +511,7 @@ export default function OrderManagement({ userRole }: OrderManagementProps) {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Package className="w-5 h-5 text-blue-600" />
+              <Package className="w-5 h-5 text-primary" />
               Order Details
             </DialogTitle>
             <DialogDescription>
@@ -640,9 +640,9 @@ export default function OrderManagement({ userRole }: OrderManagementProps) {
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center gap-2">
-                      <Truck className="w-5 h-5 text-blue-600" />
+                      <Truck className="w-5 h-5 text-primary" />
                       <span className="font-medium">Tracking Number:</span>
-                      <span className="text-blue-600">{selectedOrder.trackingNumber}</span>
+                      <span className="text-primary">{selectedOrder.trackingNumber}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -664,7 +664,7 @@ export default function OrderManagement({ userRole }: OrderManagementProps) {
                     </div>
                     {selectedOrder.updatedAt && selectedOrder.updatedAt !== selectedOrder.createdAt && (
                       <div className="flex items-center gap-3">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        <div className="w-2 h-2 bg-primary rounded-full"></div>
                         <div>
                           <p className="font-medium">Last Updated</p>
                           <p className="text-sm text-gray-600">{format(new Date(selectedOrder.updatedAt), 'MMM dd, yyyy HH:mm')}</p>
@@ -690,7 +690,7 @@ export default function OrderManagement({ userRole }: OrderManagementProps) {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Edit className="w-5 h-5 text-blue-600" />
+              <Edit className="w-5 h-5 text-primary" />
               Update Order Status
             </DialogTitle>
             <DialogDescription>
@@ -746,7 +746,7 @@ export default function OrderManagement({ userRole }: OrderManagementProps) {
             <Button 
               onClick={handleStatusUpdateSubmit}
               disabled={updateStatusMutation.isPending || !statusUpdate.status}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-primary hover:bg-primary"
             >
               {updateStatusMutation.isPending ? (
                 <>

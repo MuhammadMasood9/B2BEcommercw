@@ -502,7 +502,7 @@ export default function AdminSettings() {
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
                       className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                        activeTab === tab.id ? "bg-blue-50 text-blue-600 border-r-2 border-blue-600" : ""
+                        activeTab === tab.id ? "bg-primary/5 text-primary border-r-2 border-primary" : ""
                       }`}
                     >
                       <Icon className="w-4 h-4" />

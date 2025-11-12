@@ -78,11 +78,11 @@ export default function OrderConfirmation() {
       case 'pending':
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
       case 'confirmed':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+        return 'bg-primary text-primary dark:bg-primary dark:text-primary';
       case 'processing':
         return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
       case 'shipped':
-        return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300';
+        return 'bg-orange-600 text-orange-600 dark:bg-orange-600 dark:text-orange-600';
       case 'delivered':
         return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
       default:
@@ -96,7 +96,7 @@ export default function OrderConfirmation() {
         <Header />
         <main className="flex-1 bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
             <p className="text-gray-600">Loading order details...</p>
           </div>
         </main>
@@ -176,7 +176,7 @@ export default function OrderConfirmation() {
               <Card className="bg-white border-gray-100 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Package className="h-5 w-5 text-blue-600" />
+                    <Package className="h-5 w-5 text-primary" />
                     Order Status
                   </CardTitle>
                 </CardHeader>
@@ -261,15 +261,15 @@ export default function OrderConfirmation() {
               )}
 
               {/* Next Steps */}
-              <Card className="bg-gradient-to-br from-blue-50 to-purple-50 border-blue-100 shadow-lg">
+              <Card className="bg-gradient-to-br from-primary to-purple-50 border-primary shadow-lg">
                 <CardHeader>
                   <CardTitle>What's Next?</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     <div className="flex items-start gap-3">
-                      <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-full">
-                        <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <div className="p-2 bg-primary dark:bg-primary rounded-full">
+                        <Clock className="h-4 w-4 text-primary dark:text-primary" />
                       </div>
                       <div>
                         <p className="font-medium">Order Processing</p>
@@ -337,7 +337,7 @@ export default function OrderConfirmation() {
               </Card>
 
               {/* Support Information */}
-              <Card className="bg-gradient-to-br from-green-50 to-blue-50 border-green-100 shadow-lg">
+              <Card className="bg-gradient-to-br from-green-50 to-orange-600 border-green-100 shadow-lg">
                 <CardHeader>
                   <CardTitle>Need Help?</CardTitle>
                 </CardHeader>
@@ -363,7 +363,7 @@ export default function OrderConfirmation() {
               <Card className="bg-white border-gray-100 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-blue-600" />
+                    <FileText className="w-5 h-5 text-primary" />
                     Order Summary
                   </CardTitle>
                 </CardHeader>
@@ -395,7 +395,7 @@ export default function OrderConfirmation() {
           {/* Bottom Actions */}
           <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/my-orders">
-              <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white">
+              <Button size="lg" className="bg-primary hover:bg-primary text-white">
                 <Package className="h-5 w-5 mr-2" />
                 View My Orders
               </Button>

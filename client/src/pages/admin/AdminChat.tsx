@@ -380,7 +380,7 @@ export default function AdminChat() {
                   <div className="flex-1 overflow-y-auto min-h-0">
                     {conversationsLoading ? (
                       <div className="flex items-center justify-center py-8">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                       </div>
                     ) : (chatType === 'general' ? generalConversations : productConversations).length === 0 ? (
                       <div className="p-8 text-center">
@@ -392,7 +392,7 @@ export default function AdminChat() {
                           <div
                             key={conversation.id}
                             className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors ${
-                              selectedConversation?.id === conversation.id ? 'bg-blue-50 border-r-4 border-blue-500' : ''
+                              selectedConversation?.id === conversation.id ? 'bg-primary border-r-4 border-primary' : ''
                             }`}
                             onClick={() => handleSelectConversation(conversation)}
                           >
@@ -469,7 +469,7 @@ export default function AdminChat() {
                                   alt={selectedConversation.productName}
                                   className="w-6 h-6 rounded object-cover border"
                                 />
-                                <span className="text-xs text-blue-600 truncate max-w-[220px]" title={selectedConversation.productName}>
+                                <span className="text-xs text-primary truncate max-w-[220px]" title={selectedConversation.productName}>
                                   {selectedConversation.productName}
                                 </span>
                               </div>
@@ -508,7 +508,7 @@ export default function AdminChat() {
                                 <div className={`max-w-[72%] ${isOwnMessage ? 'order-2' : 'order-1'}`}>
                                   {/* Reply Context */}
                                   {message.replyTo && (
-                                    <div className="mb-2 p-2 bg-gray-100 rounded-lg border-l-4 border-blue-500">
+                                    <div className="mb-2 p-2 bg-gray-100 rounded-lg border-l-4 border-primary">
                                       <p className="text-xs text-gray-600">Replying to:</p>
                                       <p className="text-sm text-gray-800 truncate">{message.replyTo.content}</p>
                                     </div>
@@ -516,7 +516,7 @@ export default function AdminChat() {
                                   
                                   <div className={`px-3 py-2 rounded-2xl shadow-sm group relative ${
                                     isOwnMessage 
-                                      ? 'bg-blue-600 text-white' 
+                                      ? 'bg-primary text-white' 
                                       : 'bg-white text-gray-900 border'
                                   }`}>
                                     <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content || message.message}</p>
@@ -600,10 +600,10 @@ export default function AdminChat() {
 
                     {/* Reply Context */}
                     {replyingTo && (
-                      <div className="p-3 bg-blue-50 border-l-4 border-blue-500">
+                      <div className="p-3 bg-primary border-l-4 border-primary">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-xs text-blue-600 font-medium">Replying to:</p>
+                            <p className="text-xs text-primary font-medium">Replying to:</p>
                             <p className="text-sm text-gray-800 truncate">{replyingTo.content}</p>
                           </div>
                           <Button
@@ -625,7 +625,7 @@ export default function AdminChat() {
                           {attachments.map((file, index) => (
                             <div key={index} className="flex items-center gap-2 bg-white rounded-lg p-2 border">
                               {file.type.startsWith('image/') ? (
-                                <ImageIcon className="h-4 w-4 text-blue-500" />
+                                <ImageIcon className="h-4 w-4 text-primary" />
                               ) : file.type.startsWith('audio/') ? (
                                 <Volume2 className="h-4 w-4 text-green-500" />
                               ) : file.type.startsWith('video/') ? (
@@ -795,14 +795,14 @@ export default function AdminChat() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
+          <Card className="bg-gradient-to-br from-primary to-orange-600 text-white border-0 shadow-lg">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-blue-100">Total Conversations</p>
+                  <p className="text-sm font-medium text-primary">Total Conversations</p>
                   <p className="text-3xl font-bold text-white">{conversations.length}</p>
                 </div>
-                <MessageCircle className="h-8 w-8 text-blue-200" />
+                <MessageCircle className="h-8 w-8 text-primary" />
               </div>
             </CardContent>
           </Card>
@@ -867,7 +867,7 @@ export default function AdminChat() {
                          <select
                            value={statusFilter}
                            onChange={(e) => setStatusFilter(e.target.value)}
-                           className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20"
                          >
                            <option value="all">All Status</option>
                            <option value="active">Active</option>
@@ -878,7 +878,7 @@ export default function AdminChat() {
                          <select
                            value={productFilter}
                            onChange={(e) => setProductFilter(e.target.value)}
-                           className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20"
                          >
                            <option value="all">All Products</option>
                            {uniqueProducts.map((product: any) => (
@@ -932,7 +932,7 @@ export default function AdminChat() {
           <CardContent>
             {conversationsLoading ? (
               <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
             ) : filteredConversations.length === 0 ? (
               <div className="text-center py-8">
@@ -953,7 +953,7 @@ export default function AdminChat() {
                 {Object.values(conversationsByProduct).map((productGroup: any) => (
                   <div key={productGroup.productId || 'no-product'} className="border rounded-lg p-4">
                     <div className="flex items-center space-x-3 mb-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+                      <div className="w-12 h-12 bg-gradient-to-br from-primary to-orange-600 rounded-lg flex items-center justify-center">
                         <Package className="h-6 w-6 text-white" />
                       </div>
                       <div>
@@ -1065,7 +1065,7 @@ export default function AdminChat() {
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                         <Video className="h-4 w-4" />
                       </Button>
-                      <Button size="sm" className="bg-blue-500 hover:bg-blue-600">
+                      <Button size="sm" className="bg-primary hover:bg-primary">
                         <MessageCircle className="h-4 w-4 mr-1" />
                         Open
                       </Button>

@@ -92,10 +92,10 @@ export default function SupplierDirectory() {
       <Header />
       
       {/* Hero Section */}
-      <section className="relative py-16 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
+      <section className="relative py-16 bg-gradient-to-br from-secondary via-secondary/90 to-secondary/80 overflow-hidden">
         <div className="absolute inset-0">
-          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-primary/20 to-primary/15 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-primary/25 to-primary/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -107,7 +107,7 @@ export default function SupplierDirectory() {
             
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
               Find Trusted
-              <span className="bg-gradient-to-r from-blue-200 via-white to-blue-200 bg-clip-text text-transparent block">
+              <span className="bg-gradient-to-r from-primary/80 via-white to-primary/80 bg-clip-text text-transparent block">
                 Suppliers Worldwide
               </span>
             </h1>
@@ -133,7 +133,7 @@ export default function SupplierDirectory() {
                   </div>
                   <Button 
                     size="lg" 
-                    className="h-12 px-8 shadow-lg hover:shadow-xl transition-all duration-200 bg-blue-600 hover:bg-blue-700"
+                    className="h-12 px-8 shadow-lg hover:shadow-xl transition-all duration-200 bg-primary hover:bg-primary/90"
                   >
                     <Search className="w-5 h-5 mr-2" />
                     Search
@@ -212,10 +212,10 @@ export default function SupplierDirectory() {
               {/* Results Header */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">
+                  <h2 className="text-2xl font-bold text-foreground">
                     {suppliers.length} Suppliers Found
                   </h2>
-                  <p className="text-gray-600">
+                  <p className="text-muted-foreground">
                     {searchQuery ? `Results for "${searchQuery}"` : 'All verified suppliers'}
                   </p>
                 </div>
@@ -257,7 +257,7 @@ export default function SupplierDirectory() {
                 <Card className="p-12 text-center">
                   <Building2 className="w-16 h-16 mx-auto text-gray-400 mb-4" />
                   <h3 className="text-xl font-semibold mb-2">No Suppliers Found</h3>
-                  <p className="text-gray-600 mb-4">
+                  <p className="text-muted-foreground mb-4">
                     Try adjusting your filters or search terms
                   </p>
                   <Button onClick={() => {

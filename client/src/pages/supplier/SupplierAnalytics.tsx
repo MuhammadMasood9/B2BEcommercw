@@ -78,7 +78,7 @@ interface TopBuyer {
   totalRevenue: number;
 }
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+const COLORS = ['#FF9900', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 export default function SupplierAnalytics() {
   const [dateRange, setDateRange] = useState<string>("30");
@@ -259,7 +259,7 @@ export default function SupplierAnalytics() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-            <ShoppingCart className="h-5 w-5 text-blue-600" />
+            <ShoppingCart className="h-5 w-5 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">

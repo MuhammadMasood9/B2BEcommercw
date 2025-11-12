@@ -159,7 +159,7 @@ export default function FloatingChatWidget({
       {!isOpen && (
         <Button
           onClick={handleToggle}
-          className="h-14 w-14 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 text-white"
+          className="h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary text-white"
           size="icon"
         >
           <MessageCircle className="h-6 w-6" />
@@ -174,7 +174,7 @@ export default function FloatingChatWidget({
       {isOpen && (
         <Card className={`w-96 shadow-2xl transition-all duration-300 ${isMinimized ? 'h-14' : 'h-[600px]'} flex flex-col`}>
           {/* Header */}
-          <CardHeader className="p-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
+          <CardHeader className="p-4 bg-gradient-to-r from-primary to-orange-600 text-white rounded-t-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
@@ -189,7 +189,7 @@ export default function FloatingChatWidget({
                     {supplierName || 'Supplier'}
                   </CardTitle>
                   {productName && (
-                    <p className="text-xs text-blue-100 truncate max-w-[200px]">
+                    <p className="text-xs text-primary truncate max-w-[200px]">
                       {productName}
                     </p>
                   )}
@@ -222,7 +222,7 @@ export default function FloatingChatWidget({
               <CardContent className="flex-1 p-0 overflow-hidden">
                 {isLoadingConversation || isLoadingMessages ? (
                   <div className="flex items-center justify-center h-full">
-                    <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   </div>
                 ) : (
                   <ScrollArea className="h-full p-4" ref={scrollRef}>

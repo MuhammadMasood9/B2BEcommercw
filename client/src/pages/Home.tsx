@@ -97,7 +97,7 @@ export default function Home() {
   });
 
   useEffect(() => {
-    setLoading(categoriesLoading || productsLoading, "Loading Global Trade Hub...");
+    setLoading(categoriesLoading || productsLoading, "Loading Bago...");
   }, [categoriesLoading, productsLoading, setLoading]);
 
   // Auto-select first parent category and first subcategory
@@ -175,14 +175,14 @@ export default function Home() {
         <section className="py-20 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16">
-              <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-800 rounded-full px-4 py-2 text-sm font-medium mb-6">
+              <div className="inline-flex items-center gap-2 bg-primary/10 text-primary rounded-full px-4 py-2 text-sm font-medium mb-6">
                 <Star className="w-4 h-4" />
                 <span>Featured Products</span>
               </div>
-              <h2 className="text-4xl md:text-5xl font-bold mb-4 text-gray-900">
+              <h2 className="text-4xl md:text-5xl font-bold mb-4 text-foreground">
                 Discover Trending Products
               </h2>
-              <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
                 From verified suppliers worldwide with competitive pricing and fast delivery
               </p>
             </div>
@@ -211,7 +211,7 @@ export default function Home() {
             
             <div className="text-center">
               <Link href="/products">
-                <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3">
+                <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3">
                   View All Products
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
@@ -233,17 +233,17 @@ export default function Home() {
         <StatsSection />
         
         {/* Ready to Ship Section */}
-        <section className="py-20 bg-gradient-to-br from-blue-50 to-purple-50">
+        <section className="py-20 bg-gradient-to-br from-primary/5 to-secondary/5">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16">
-              <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-800 rounded-full px-4 py-2 text-sm font-medium mb-6">
+              <div className="inline-flex items-center gap-2 bg-primary/10 text-primary rounded-full px-4 py-2 text-sm font-medium mb-6">
                 <Clock className="w-4 h-4" />
                 <span>Fast Delivery</span>
               </div>
-              <h2 className="text-4xl md:text-5xl font-bold mb-4 text-gray-900">
+              <h2 className="text-4xl md:text-5xl font-bold mb-4 text-foreground">
                 Ready to Ship
               </h2>
-              <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
                 Get products delivered quickly with our ready-to-ship inventory
               </p>
             </div>
@@ -254,10 +254,10 @@ export default function Home() {
                   <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-green-200 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
                     <Clock className="w-8 h-8 text-green-600" />
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                  <h3 className="text-xl font-semibold text-foreground mb-3">
                     Same Day Shipping
                   </h3>
-                  <p className="text-gray-600 leading-relaxed">
+                  <p className="text-muted-foreground leading-relaxed">
                     Orders placed before 2 PM ship the same day
                   </p>
                 </CardContent>
@@ -265,13 +265,13 @@ export default function Home() {
               
               <Card className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-white border-gray-100">
                 <CardContent className="p-8 text-center">
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-                    <Globe className="w-8 h-8 text-blue-600" />
+                  <div className="w-16 h-16 bg-gradient-to-br from-primary/10 to-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                    <Globe className="w-8 h-8 text-primary" />
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                  <h3 className="text-xl font-semibold text-foreground mb-3">
                     Global Shipping
                   </h3>
-                  <p className="text-gray-600 leading-relaxed">
+                  <p className="text-muted-foreground leading-relaxed">
                     Ship to 190+ countries with tracking and insurance
                   </p>
                 </CardContent>
@@ -282,10 +282,10 @@ export default function Home() {
                   <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-purple-200 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
                     <ShieldCheck className="w-8 h-8 text-purple-600" />
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                  <h3 className="text-xl font-semibold text-foreground mb-3">
                     Secure Delivery
                   </h3>
-                  <p className="text-gray-600 leading-relaxed">
+                  <p className="text-muted-foreground leading-relaxed">
                     Protected delivery with signature confirmation
                   </p>
                 </CardContent>
@@ -294,7 +294,7 @@ export default function Home() {
             
             <div className="text-center mt-12">
               <Link href="/ready-to-ship">
-                <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3">
+                <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3">
                   Browse Ready to Ship Products
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
@@ -304,16 +304,16 @@ export default function Home() {
         </section>
         
         {/* Final CTA Section */}
-        <section className="py-20 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+        <section className="py-20 bg-gradient-to-r from-primary to-secondary text-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h2 className="text-4xl md:text-5xl font-bold mb-6">
               Ready to Transform Your Business?
             </h2>
-            <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
+            <p className="text-xl text-primary-foreground/80 mb-8 max-w-2xl mx-auto">
               Join millions of buyers and suppliers in the world's largest B2B marketplace
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" className="bg-white text-blue-600 hover:bg-blue-50 px-8 py-3 font-semibold">
+              <Button size="lg" className="bg-white text-primary hover:bg-white/90 px-8 py-3 font-semibold">
                 Start Sourcing Now
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>

@@ -197,9 +197,9 @@ export default function ChatInput({
       <div className="p-4">
         {/* Upload Progress */}
         {isUploading && (
-          <div className="flex items-center space-x-2 mb-3 p-2 bg-blue-50 rounded-lg">
-            <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-            <span className="text-sm text-blue-700">Uploading...</span>
+          <div className="flex items-center space-x-2 mb-3 p-2 bg-primary rounded-lg">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <span className="text-sm text-primary">Uploading...</span>
           </div>
         )}
 
@@ -222,8 +222,8 @@ export default function ChatInput({
                   </>
                 ) : (
                   <>
-                    <div className="w-12 h-12 bg-blue-100 rounded flex items-center justify-center">
-                      <FileText className="h-6 w-6 text-blue-600" />
+                    <div className="w-12 h-12 bg-primary rounded flex items-center justify-center">
+                      <FileText className="h-6 w-6 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{attachment.name}</p>
@@ -278,7 +278,7 @@ export default function ChatInput({
               onKeyPress={handleKeyPress}
               placeholder={placeholder}
               disabled={disabled || isUploading}
-              className="min-h-[40px] max-h-[120px] resize-none border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+              className="min-h-[40px] max-h-[120px] resize-none border-gray-300 focus:border-primary focus:ring-primary/20"
               rows={1}
             />
           </div>
@@ -288,7 +288,7 @@ export default function ChatInput({
             onClick={handleSend}
             disabled={(!message.trim() && attachments.length === 0) || disabled || isUploading}
             size="sm"
-            className="h-8 w-8 p-0 bg-blue-500 hover:bg-blue-600"
+            className="h-8 w-8 p-0 bg-primary hover:bg-primary"
             title="Send message"
           >
             <Send className="h-4 w-4" />

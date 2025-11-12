@@ -81,7 +81,7 @@ export default function ProductComparison() {
         <Header />
         <main className="flex-1 flex items-center justify-center py-20">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
             <p className="text-gray-600">Loading products for comparison...</p>
           </div>
         </main>
@@ -118,7 +118,7 @@ export default function ProductComparison() {
       
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-12">
+        <section className="bg-gradient-to-r from-primary to-orange-600 text-white py-12">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <Button
               variant="outline"
@@ -133,7 +133,7 @@ export default function ProductComparison() {
             </Button>
             
             <h1 className="text-4xl font-bold mb-2">Product Comparison</h1>
-            <p className="text-blue-100">Compare {products.length} products side by side</p>
+            <p className="text-orange-100">Compare {products.length} products side by side</p>
           </div>
         </section>
 
@@ -170,7 +170,7 @@ export default function ProductComparison() {
                       {/* Price */}
                       <div>
                         <div className="text-sm text-gray-600 mb-1">Price Range</div>
-                        <div className="text-2xl font-bold text-blue-600">{getPrice(product)}</div>
+                        <div className="text-2xl font-bold text-primary">{getPrice(product)}</div>
                       </div>
 
                       {/* MOQ */}

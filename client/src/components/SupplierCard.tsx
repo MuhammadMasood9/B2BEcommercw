@@ -42,7 +42,7 @@ interface SupplierCardProps {
 export default function SupplierCard({ supplier }: SupplierCardProps) {
   const getBusinessTypeColor = (type: string) => {
     switch (type) {
-      case 'manufacturer': return 'bg-blue-100 text-blue-800';
+      case 'manufacturer': return 'bg-primary text-primary';
       case 'trading_company': return 'bg-green-100 text-green-800';
       case 'wholesaler': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';

@@ -115,30 +115,30 @@ export function KeyValueInputDemo() {
               <h4 className="font-semibold mb-3">User Experience</h4>
               <ul className="space-y-2 text-sm">
                 <li className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                  <span className="w-2 h-2 bg-primary rounded-full"></span>
                   <span>Visual key and value icons</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                  <span className="w-2 h-2 bg-primary rounded-full"></span>
                   <span>Prevent duplicate keys</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                  <span className="w-2 h-2 bg-primary rounded-full"></span>
                   <span>Easy removal with X button</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                  <span className="w-2 h-2 bg-primary rounded-full"></span>
                   <span>Maximum pairs limit</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                  <span className="w-2 h-2 bg-primary rounded-full"></span>
                   <span>Responsive design</span>
                 </li>
               </ul>
             </div>
           </div>
           
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+          <div className="mt-6 p-4 bg-primary rounded-lg">
             <h4 className="font-semibold mb-2">Sample Data Formats</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div>

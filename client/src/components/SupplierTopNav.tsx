@@ -101,7 +101,7 @@ export function SupplierTopNav({
             <Button variant="ghost" className="flex items-center gap-2 px-2">
               <Avatar className="h-8 w-8">
                 <AvatarImage src={undefined} alt={user?.firstName} />
-                <AvatarFallback className="bg-blue-600 text-white text-xs">
+                <AvatarFallback className="bg-primary text-white text-xs">
                   {getInitials()}
                 </AvatarFallback>
               </Avatar>

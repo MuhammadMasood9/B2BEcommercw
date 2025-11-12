@@ -183,18 +183,18 @@ export default function ProductDetail() {
 
   if (isProductLoading) {
     return (
-      <div className="min-h-screen flex flex-col bg-white">
+      <div className="min-h-screen flex flex-col bg-background theme-transition">
         <Header />
         <main className="flex-1 flex items-center justify-center py-20">
           <div className="text-center">
             <div className="relative">
-              <Loader2 className="h-16 w-16 animate-spin text-blue-600 mx-auto mb-6" />
-              <div className="absolute inset-0 rounded-full border-4 border-blue-200"></div>
+              <Loader2 className="h-16 w-16 animate-spin text-primary mx-auto mb-6" />
+              <div className="absolute inset-0 rounded-full border-4 border-primary/20"></div>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Loading Product Details</h2>
-            <p className="text-gray-600">Please wait while we fetch the product information...</p>
-            <div className="mt-4 w-64 bg-gray-200 rounded-full h-2 mx-auto">
-              <div className="bg-blue-600 h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+            <h2 className="text-2xl font-bold text-foreground mb-2 theme-transition">Loading Product Details</h2>
+            <p className="text-muted-foreground theme-transition">Please wait while we fetch the product information...</p>
+            <div className="mt-4 w-64 bg-muted rounded-full h-2 mx-auto theme-transition">
+              <div className="bg-primary h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
             </div>
           </div>
         </main>
@@ -205,17 +205,17 @@ export default function ProductDetail() {
 
   if (!product) {
     return (
-      <div className="min-h-screen flex flex-col bg-white">
+      <div className="min-h-screen flex flex-col bg-background theme-transition">
         <Header />
         <main className="flex-1 flex items-center justify-center py-20">
           <div className="text-center">
             <div className="w-20 h-20 bg-gradient-to-br from-red-100 to-red-200 rounded-full flex items-center justify-center mx-auto mb-6">
               <Package className="h-10 w-10 text-red-600" />
             </div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-3">Product Not Found</h2>
-            <p className="text-gray-600 mb-8 max-w-md mx-auto">The product you're looking for doesn't exist or has been removed from our marketplace.</p>
+            <h2 className="text-3xl font-bold text-foreground mb-3">Product Not Found</h2>
+            <p className="text-muted-foreground mb-8 max-w-md mx-auto">The product you're looking for doesn't exist or has been removed from our marketplace.</p>
             <div className="flex gap-4 justify-center">
-              <Button asChild className="bg-blue-600 hover:bg-blue-700 px-8 py-3">
+              <Button asChild className="bg-primary hover:bg-primary/90 px-8 py-3">
                 <Link href="/products">
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Browse All Products
@@ -388,7 +388,7 @@ export default function ProductDetail() {
       image: product.images?.[0] || '/placeholder-product.jpg',
       priceRange: priceRanges.length > 0 ? `$${minPrice.toFixed(2)}-$${maxPrice.toFixed(2)} /piece` : 'Contact for price',
       moq: product.minOrderQuantity || 1,
-      supplierName: 'Global Trade Hub Supplier',
+      supplierName: 'Bago Supplier',
       supplierCountry: 'Global',
       verified: true,
       tradeAssurance: product.hasTradeAssurance || false,
@@ -443,15 +443,15 @@ export default function ProductDetail() {
   });
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex flex-col bg-background theme-transition">
       <Header />
 
       <main className="flex-1">
         {/* Enhanced Hero Section */}
-        <section className="relative bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 text-white py-12 overflow-hidden">
+        <section className="relative bg-gradient-to-r from-primary via-primary/90 to-secondary text-white py-12 overflow-hidden">
           {/* Background Pattern */}
           <div className="absolute inset-0 opacity-20">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-indigo-600/10"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-secondary/10"></div>
           </div>
 
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -495,7 +495,7 @@ export default function ProductDetail() {
                     Verified Admin
                   </Badge>
                   {product.hasTradeAssurance && (
-                    <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+                    <Badge className="bg-primary/10 text-primary border-primary/20">
                       <Shield className="w-3 h-3 mr-1" />
                       Trade Assurance
                     </Badge>
@@ -507,7 +507,7 @@ export default function ProductDetail() {
                 </div>
 
                 <h1 className="text-4xl font-bold mb-4 leading-tight">{product.name}</h1>
-                <p className="text-blue-100 text-lg mb-6 leading-relaxed whitespace-pre-wrap">
+                <p className="text-primary-foreground/80 text-lg mb-6 leading-relaxed whitespace-pre-wrap">
                   {product.shortDescription?.replace(/\\n/g, '\n').replace(/@/g, '') || 'High-quality product from verified admin with trade assurance and premium quality guarantee.'}
                 </p>
 
@@ -532,8 +532,8 @@ export default function ProductDetail() {
                   <div className="text-5xl font-bold mb-2">
                     {getPriceForQuantity(quantity)}
                   </div>
-                  <div className="text-blue-100 text-lg mb-4">per piece</div>
-                  <div className="text-sm text-blue-200">
+                  <div className="text-primary-foreground/80 text-lg mb-4">per piece</div>
+                  <div className="text-sm text-primary-foreground/60">
                     For {quantity.toLocaleString()} pieces
                   </div>
                 </div>
@@ -576,7 +576,7 @@ export default function ProductDetail() {
                               key={idx}
                               onClick={() => setSelectedImage(idx)}
                               className={`aspect-square rounded-lg overflow-hidden border-2 transition-all duration-200 ${selectedImage === idx
-                                  ? 'border-blue-500 ring-2 ring-blue-200 shadow-lg'
+                                  ? 'border-primary ring-2 ring-primary/20 shadow-lg'
                                   : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
                                 }`}
                             >
@@ -598,8 +598,8 @@ export default function ProductDetail() {
                       </div>
 
                       <div className="space-y-6">
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4">
-                          <div className="text-2xl font-bold text-blue-600 mb-2">
+                        <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg p-4">
+                          <div className="text-2xl font-bold text-primary mb-2">
                             {getPriceForQuantity(quantity)} <span className="text-sm text-gray-500">/piece</span>
                           </div>
                           {safePriceRanges.length > 0 && (
@@ -608,7 +608,7 @@ export default function ProductDetail() {
                               {safePriceRanges.map((range: any, idx: number) => (
                                 <div key={idx} className="flex justify-between items-center py-2 px-3 bg-white rounded-lg">
                                   <span className="text-gray-700">{range.minQty}{range.maxQty ? `-${range.maxQty}` : '+'} pieces:</span>
-                                  <span className="font-semibold text-blue-600">${Number(range.pricePerUnit).toFixed(2)}</span>
+                                  <span className="font-semibold text-primary">${Number(range.pricePerUnit).toFixed(2)}</span>
                                 </div>
                               ))}
                             </div>
@@ -664,7 +664,7 @@ export default function ProductDetail() {
                           </Button>
                           <Button
                             onClick={handleSendInquiry}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded text-sm"
+                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-2 rounded text-sm"
                           >
                             <MessageSquare className="w-4 h-4 mr-2" />
                             Send an Inquiry to Admin
@@ -734,7 +734,7 @@ export default function ProductDetail() {
 
                     <TabsContent value="description" className="mt-8">
                       <div className="prose max-w-none">
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6">
+                        <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-2xl p-6">
                           <h3 className="text-xl font-semibold text-gray-900 mb-4">Product Description</h3>
                           <p className="text-gray-700 leading-relaxed text-lg whitespace-pre-wrap">
                             {product.description?.replace(/\\n/g, '\n').replace(/@/g, '') || 'This is a high-quality product designed to meet your business needs. Our verified admin ensures premium quality and reliable delivery.'}
@@ -790,9 +790,9 @@ export default function ProductDetail() {
                         <h3 className="text-xl font-semibold text-gray-900 mb-6">Shipping & Payment Information</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                           <div className="space-y-6">
-                            <div className="bg-blue-50 rounded-2xl p-6 border border-blue-200">
+                            <div className="bg-primary/5 rounded-2xl p-6 border border-primary/20">
                               <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                                <Truck className="w-5 h-5 text-blue-600" />
+                                <Truck className="w-5 h-5 text-primary" />
                                 Shipping Information
                               </h4>
                               <div className="space-y-3">
@@ -900,9 +900,9 @@ export default function ProductDetail() {
                     </div>
 
                     {product.hasTradeAssurance && (
-                      <div className="flex items-center gap-4 p-4 bg-blue-50 rounded-xl border border-blue-200">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                          <Shield className="w-5 h-5 text-blue-600" />
+                      <div className="flex items-center gap-4 p-4 bg-primary/5 rounded-xl border border-primary/20">
+                        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                          <Shield className="w-5 h-5 text-primary" />
                         </div>
                         <div>
                           <p className="font-semibold text-gray-900">Trade Assurance</p>
@@ -928,7 +928,7 @@ export default function ProductDetail() {
               <Card className="bg-white border-gray-100 shadow-xl">
                 <CardHeader className="pb-4">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <MessageSquare className="w-5 h-5 text-blue-600" />
+                    <MessageSquare className="w-5 h-5 text-primary" />
                     Send Inquiry to Admin
                   </CardTitle>
                   <p className="text-sm text-gray-600">Get more information about this product from our admin team</p>
@@ -936,7 +936,7 @@ export default function ProductDetail() {
                 <CardContent>
                   <Button
                     onClick={handleSendInquiry}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
                     size="lg"
                   >
                     <MessageSquare className="w-5 h-5 mr-2" />
@@ -962,7 +962,7 @@ export default function ProductDetail() {
 
                     <Button
                       asChild
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
                       size="lg"
                     >
                       <Link href={`/rfq/create?productId=${productId}&productName=${encodeURIComponent(product.name)}`}>
@@ -1004,7 +1004,7 @@ export default function ProductDetail() {
               <div className="text-center mb-12">
                 <h2 className="text-3xl font-bold text-gray-900 mb-4">Related Products</h2>
                 <p className="text-gray-600 text-lg">Discover more products from our verified admins</p>
-                <div className="w-24 h-1 bg-gradient-to-r from-blue-600 to-indigo-600 mx-auto mt-4 rounded-full"></div>
+                <div className="w-24 h-1 bg-gradient-to-r from-primary to-secondary mx-auto mt-4 rounded-full"></div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -1117,7 +1117,7 @@ export default function ProductDetail() {
             name: product.name,
             priceRange: product.priceRanges ? (Array.isArray(product.priceRanges) && product.priceRanges.length > 0 ? `$${product.priceRanges[0].pricePerUnit}` : "Contact for price") : "Contact for price",
             moq: 1,
-            supplierName: "Global Trade Hub Admin",
+            supplierName: "Bago Admin",
             supplierCountry: "USA",
             leadTime: product.leadTime || undefined,
             paymentTerms: product.paymentTerms || undefined,
@@ -1176,7 +1176,7 @@ export default function ProductDetail() {
                     productReviews.slice(0, 6).map((r: any) => (
                       <div key={r.id} className="border border-gray-100 rounded-2xl p-4 bg-white/60">
                         <div className="flex items-start gap-3">
-                          <div className="h-9 w-9 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-semibold">
+                          <div className="h-9 w-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">
                             {(r.buyerName?.[0] || String(r.buyerId || '?').slice(0, 1)).toUpperCase()}
                           </div>
                           <div className="flex-1 min-w-0">
@@ -1203,7 +1203,7 @@ export default function ProductDetail() {
                 </div>
 
                 {/* Add review */}
-                <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-5">
+                <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
                   <h4 className="font-semibold text-gray-900 mb-3">Write a review</h4>
                   <div className="flex items-center gap-2 mb-3">
                     {Array.from({ length: 5 }).map((_, i) => (
@@ -1219,7 +1219,7 @@ export default function ProductDetail() {
                     className="min-h-[90px] bg-white"
                   />
                   <div className="mt-3">
-                    <Button onClick={submitReview} className="bg-blue-600 hover:bg-blue-700 text-white">Submit Review</Button>
+                    <Button onClick={submitReview} className="bg-primary hover:bg-primary/90 text-primary-foreground">Submit Review</Button>
                   </div>
                   <p className="text-xs text-gray-500 mt-2">Only buyers with shipped or delivered orders can submit a review. We’ll verify your order automatically.</p>
                 </div>

@@ -166,66 +166,66 @@ export default function AdminReports() {
 
       {/* Key Metrics */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {/* Total Revenue - Green */}
-        <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-lg">
+        {/* Total Revenue - Primary Orange */}
+        <Card className="bg-gradient-to-br from-primary to-primary/80 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-green-100">Total Revenue</CardTitle>
-            <DollarSign className="h-6 w-6 text-green-200" />
+            <CardTitle className="text-sm font-medium text-primary-foreground/80">Total Revenue</CardTitle>
+            <DollarSign className="h-6 w-6 text-primary-foreground/70" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-white">${reports.overview.totalRevenue.toLocaleString()}</div>
             <div className="flex items-center mt-2">
-              <TrendingUp className="h-4 w-4 text-green-200 mr-1" />
-              <span className="text-sm text-green-200">+{reports.overview.revenueGrowth}%</span>
-              <span className="text-sm text-green-100 ml-2">from last period</span>
+              <TrendingUp className="h-4 w-4 text-primary-foreground/70 mr-1" />
+              <span className="text-sm text-primary-foreground/70">+{reports.overview.revenueGrowth}%</span>
+              <span className="text-sm text-primary-foreground/80 ml-2">from last period</span>
             </div>
           </CardContent>
         </Card>
 
-        {/* Total Orders - Blue */}
-        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
+        {/* Total Orders - Secondary Dark Grey */}
+        <Card className="bg-gradient-to-br from-secondary to-secondary/80 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-blue-100">Total Orders</CardTitle>
-            <ShoppingCart className="h-6 w-6 text-blue-200" />
+            <CardTitle className="text-sm font-medium text-secondary-foreground/80">Total Orders</CardTitle>
+            <ShoppingCart className="h-6 w-6 text-secondary-foreground/70" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-white">{reports.overview.totalOrders}</div>
             <div className="flex items-center mt-2">
-              <TrendingUp className="h-4 w-4 text-blue-200 mr-1" />
-              <span className="text-sm text-blue-200">+{reports.overview.ordersGrowth}%</span>
-              <span className="text-sm text-blue-100 ml-2">from last period</span>
+              <TrendingUp className="h-4 w-4 text-secondary-foreground/70 mr-1" />
+              <span className="text-sm text-secondary-foreground/70">+{reports.overview.ordersGrowth}%</span>
+              <span className="text-sm text-secondary-foreground/80 ml-2">from last period</span>
             </div>
           </CardContent>
         </Card>
 
-        {/* Total Users - Purple */}
-        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-lg">
+        {/* Total Users - Orange Accent */}
+        <Card className="bg-gradient-to-br from-accent to-accent/80 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-purple-100">Total Users</CardTitle>
-            <Users className="h-6 w-6 text-purple-200" />
+            <CardTitle className="text-sm font-medium text-accent-foreground/80">Total Users</CardTitle>
+            <Users className="h-6 w-6 text-accent-foreground/70" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-white">{reports.overview.totalUsers}</div>
             <div className="flex items-center mt-2">
-              <TrendingUp className="h-4 w-4 text-purple-200 mr-1" />
-              <span className="text-sm text-purple-200">+{reports.overview.usersGrowth}%</span>
-              <span className="text-sm text-purple-100 ml-2">from last period</span>
+              <TrendingUp className="h-4 w-4 text-accent-foreground/70 mr-1" />
+              <span className="text-sm text-accent-foreground/70">+{reports.overview.usersGrowth}%</span>
+              <span className="text-sm text-accent-foreground/80 ml-2">from last period</span>
             </div>
           </CardContent>
         </Card>
 
-        {/* Total Products - Orange */}
-        <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 shadow-lg">
+        {/* Total Products - Dark Grey */}
+        <Card className="bg-gradient-to-br from-brand-grey-800 to-brand-grey-900 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-orange-100">Total Products</CardTitle>
-            <Package className="h-6 w-6 text-orange-200" />
+            <CardTitle className="text-sm font-medium text-white/80">Total Products</CardTitle>
+            <Package className="h-6 w-6 text-white/70" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-white">{reports.overview.totalProducts}</div>
             <div className="flex items-center mt-2">
-              <TrendingUp className="h-4 w-4 text-orange-200 mr-1" />
-              <span className="text-sm text-orange-200">+{reports.overview.productsGrowth}%</span>
-              <span className="text-sm text-orange-100 ml-2">from last period</span>
+              <TrendingUp className="h-4 w-4 text-white/70 mr-1" />
+              <span className="text-sm text-white/70">+{reports.overview.productsGrowth}%</span>
+              <span className="text-sm text-white/80 ml-2">from last period</span>
             </div>
           </CardContent>
         </Card>
@@ -240,7 +240,7 @@ export default function AdminReports() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
+          <div className="h-64 flex items-center justify-center bg-muted rounded-lg">
             <div className="text-center">
               <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
               <p className="text-muted-foreground">Sales chart would be displayed here</p>
@@ -263,8 +263,8 @@ export default function AdminReports() {
             {reports.topProducts.map((product, index) => (
               <div key={product.name} className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="flex items-center gap-4">
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                    <span className="text-sm font-bold text-blue-600">#{index + 1}</span>
+                  <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                    <span className="text-sm font-bold text-primary">#{index + 1}</span>
                   </div>
                   <div>
                     <p className="font-medium">{product.name}</p>
@@ -303,8 +303,8 @@ export default function AdminReports() {
             {reports.topSuppliers.map((supplier, index) => (
               <div key={supplier.name} className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="flex items-center gap-4">
-                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                    <span className="text-sm font-bold text-green-600">#{index + 1}</span>
+                  <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                    <span className="text-sm font-bold text-primary">#{index + 1}</span>
                   </div>
                   <div>
                     <p className="font-medium">{supplier.name}</p>
@@ -369,26 +369,26 @@ export default function AdminReports() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+              <div className="flex justify-between items-center p-3 bg-primary/5 rounded-lg">
                 <div>
                   <p className="font-medium">New Users</p>
                   <p className="text-sm text-muted-foreground">This period</p>
                 </div>
-                <span className="text-2xl font-bold text-blue-600">{reports.userStats.newUsers}</span>
+                <span className="text-2xl font-bold text-primary">{reports.userStats.newUsers}</span>
               </div>
-              <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+              <div className="flex justify-between items-center p-3 bg-secondary/10 rounded-lg">
                 <div>
                   <p className="font-medium">Active Users</p>
                   <p className="text-sm text-muted-foreground">Currently online</p>
                 </div>
-                <span className="text-2xl font-bold text-green-600">{reports.userStats.activeUsers}</span>
+                <span className="text-2xl font-bold text-secondary">{reports.userStats.activeUsers}</span>
               </div>
-              <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
+              <div className="flex justify-between items-center p-3 bg-accent/10 rounded-lg">
                 <div>
                   <p className="font-medium">User Retention</p>
                   <p className="text-sm text-muted-foreground">30-day retention rate</p>
                 </div>
-                <span className="text-2xl font-bold text-purple-600">{reports.userStats.userRetention}%</span>
+                <span className="text-2xl font-bold text-accent">{reports.userStats.userRetention}%</span>
               </div>
             </div>
           </CardContent>

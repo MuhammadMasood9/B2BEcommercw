@@ -90,8 +90,8 @@ export default function Dashboard() {
       label: "Active RFQs", 
       value: dashboardStats?.activeRFQs?.toString() || "5", 
       icon: FileText, 
-      color: "text-blue-600",
-      bgColor: "from-blue-100 to-blue-200"
+      color: "text-primary",
+      bgColor: "from-primary to-orange-600"
     },
     { 
       label: "Pending Inquiries", 
@@ -121,12 +121,12 @@ export default function Dashboard() {
       <Header />
       
       {/* Hero Section with Gradient */}
-      <section className="relative py-16 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
+      <section className="relative py-16 bg-gradient-to-br from-primary via-primary to-orange-600 overflow-hidden">
         {/* Background Elements */}
         <div className="absolute inset-0">
-          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-600/10 to-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-primary/20 to-orange-600/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-primary/20 to-orange-600/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-primary/10 to-orange-600/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -138,7 +138,7 @@ export default function Dashboard() {
             
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
               Buyer
-              <span className="bg-gradient-to-r from-blue-200 via-white to-blue-200 bg-clip-text text-transparent block">
+              <span className="bg-gradient-to-r from-primary via-white to-orange-600 bg-clip-text text-transparent block">
                 Dashboard
               </span>
             </h1>
@@ -206,11 +206,11 @@ export default function Dashboard() {
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
                       <span className="flex items-center gap-2">
-                        <FileText className="w-5 h-5 text-blue-600" />
+                        <FileText className="w-5 h-5 text-primary" />
                         Recent RFQs
                       </span>
                       <Link href="/my-rfqs">
-                        <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700">
+                        <Button variant="ghost" size="sm" className="text-primary hover:text-primary">
                           View All
                           <ArrowRight className="w-4 h-4 ml-1" />
                         </Button>
@@ -276,7 +276,7 @@ export default function Dashboard() {
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">Manage Your RFQs</h3>
                     <p className="text-gray-600 mb-4">Create and track your Request for Quotations</p>
                     <Link href="/rfq/create">
-                      <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                      <Button className="bg-primary hover:bg-primary text-white">
                         Create New RFQ
                         <ArrowRight className="w-4 h-4 ml-2" />
                       </Button>

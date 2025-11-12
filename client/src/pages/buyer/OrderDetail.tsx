@@ -229,7 +229,7 @@ export default function OrderDetail() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'confirmed': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'confirmed': return 'bg-primary/10 text-primary border-primary/20';
       case 'processing': return 'bg-purple-100 text-purple-800 border-purple-200';
       case 'shipped': return 'bg-orange-100 text-orange-800 border-orange-200';
       case 'delivered': return 'bg-green-100 text-green-800 border-green-200';
@@ -282,7 +282,7 @@ export default function OrderDetail() {
         <Header />
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
             <p className="text-gray-600">Loading order details...</p>
           </div>
         </main>
@@ -317,7 +317,7 @@ export default function OrderDetail() {
       
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-16">
+        <section className="bg-gradient-to-r from-primary to-secondary text-white py-16">
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex items-center gap-4 mb-6">
               <Button
@@ -337,14 +337,14 @@ export default function OrderDetail() {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold mb-2">Order #{order.orderNumber}</h1>
-                <p className="text-blue-100 text-lg">{order.items?.[0]?.productName || 'Order Items'}</p>
+                <p className="text-primary-foreground/80 text-lg">{order.items?.[0]?.productName || 'Order Items'}</p>
               </div>
               <div className="text-right">
                 <Badge className={`${getStatusColor(order.status)} mb-2`}>
                   {getStatusIcon(order.status)}
                   <span className="ml-2 capitalize">{order.status}</span>
                 </Badge>
-                <p className="text-blue-100 text-sm">
+                <p className="text-primary-foreground/80 text-sm">
                   Ordered {format(new Date(order.createdAt), 'MMM dd, yyyy')}
                 </p>
               </div>
@@ -360,7 +360,7 @@ export default function OrderDetail() {
               <Card className="bg-white border-gray-100 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Package className="w-5 h-5 text-blue-600" />
+                    <Package className="w-5 h-5 text-primary" />
                     Order Status
                   </CardTitle>
                 </CardHeader>
@@ -378,8 +378,8 @@ export default function OrderDetail() {
                     </div>
                   </div>
                   
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <p className="text-blue-800 font-medium">{getStatusDescription(order.status)}</p>
+                  <div className="bg-primary/5 p-4 rounded-lg">
+                    <p className="text-primary font-medium">{getStatusDescription(order.status)}</p>
                   </div>
 
                   {/* Progress Bar */}
@@ -390,7 +390,7 @@ export default function OrderDetail() {
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div 
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        className="bg-primary h-2 rounded-full transition-all duration-300"
                         style={{ width: `${Math.min(100, Math.max(0, (['pending', 'confirmed', 'processing', 'shipped', 'delivered'].indexOf(order.status) + 1) * 20))}%` }}
                       ></div>
                     </div>
@@ -483,7 +483,7 @@ export default function OrderDetail() {
               <Card className="bg-white border-gray-100 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-indigo-600" />
+                    <Clock className="w-5 h-5 text-orange-600" />
                     Order Timeline
                   </CardTitle>
                 </CardHeader>
@@ -499,7 +499,7 @@ export default function OrderDetail() {
                     
                     {order.status !== 'pending' && (
                       <div className="flex items-center gap-3">
-                        <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                        <div className="w-3 h-3 bg-primary rounded-full"></div>
                         <div>
                           <p className="font-medium">Order Confirmed</p>
                           <p className="text-sm text-gray-600">{format(new Date(order.updatedAt || order.createdAt), 'MMM dd, yyyy HH:mm')}</p>
@@ -726,7 +726,7 @@ export default function OrderDetail() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-blue-600" />
+              <MessageSquare className="w-5 h-5 text-primary" />
               Contact Supplier
             </DialogTitle>
             <DialogDescription>
@@ -755,7 +755,7 @@ export default function OrderDetail() {
             <Button 
               onClick={handleContactSupplier}
               disabled={contactSupplierMutation.isPending || !contactMessage.trim()}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-primary hover:bg-primary/90"
             >
               {contactSupplierMutation.isPending ? (
                 <>

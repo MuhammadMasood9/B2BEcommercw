@@ -9,8 +9,8 @@ export default function Terms() {
       icon: AlertCircle,
       title: "1. Acceptance of Terms",
       content: "By accessing and using this B2B marketplace platform, you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.",
-      color: "from-blue-100 to-blue-200",
-      iconColor: "text-blue-600"
+      color: "from-primary/10 to-primary/20",
+      iconColor: "text-primary"
     },
     {
       icon: Scale,
@@ -100,15 +100,15 @@ export default function Terms() {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-white">
+    <div className="min-h-screen flex flex-col bg-background theme-transition">
       <Header />
       
       {/* Hero Section */}
-      <section className="relative py-16 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
+      <section className="relative py-16 bg-gradient-to-br from-secondary via-secondary/90 to-secondary/80 overflow-hidden theme-transition">
         {/* Background Elements */}
         <div className="absolute inset-0">
-          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-primary/20 to-primary/15 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-primary/25 to-primary/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
         </div>
 
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -130,24 +130,24 @@ export default function Terms() {
             {sections.map((section, index) => {
               const Icon = section.icon;
               return (
-                <Card key={index} className="bg-white border-gray-100 shadow-lg hover:shadow-xl transition-all">
+                <Card key={index} className="bg-card border-border shadow-lg hover:shadow-xl transition-all theme-transition">
                   <CardHeader>
                     <CardTitle className="flex items-start gap-4">
-                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${section.color} flex items-center justify-center flex-shrink-0`}>
+                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${section.color} flex items-center justify-center flex-shrink-0 theme-transition`}>
                         <Icon className={`w-6 h-6 ${section.iconColor}`} />
                       </div>
                       <div>
-                        <h2 className="text-xl font-bold text-gray-900">{section.title}</h2>
+                        <h2 className="text-xl font-bold text-card-foreground theme-transition">{section.title}</h2>
                       </div>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-gray-700 mb-4">{section.content}</p>
+                    <p className="text-muted-foreground mb-4 theme-transition">{section.content}</p>
                     {section.points && (
                       <ul className="space-y-2 ml-4">
                         {section.points.map((point, idx) => (
-                          <li key={idx} className="flex items-start gap-2 text-gray-700">
-                            <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                          <li key={idx} className="flex items-start gap-2 text-muted-foreground theme-transition">
+                            <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0 theme-transition" />
                             <span>{point}</span>
                           </li>
                         ))}
@@ -183,7 +183,7 @@ export default function Terms() {
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-2">Important Notice</h3>
                   <p className="text-gray-700 text-sm">
-                    These terms constitute a legally binding agreement between you and Global Trade Hub. 
+                    These terms constitute a legally binding agreement between you and Bago. 
                     By using our platform, you acknowledge that you have read, understood, and agree to be bound by these terms. 
                     If you do not agree with any part of these terms, you must not use our service.
                   </p>
@@ -194,18 +194,18 @@ export default function Terms() {
 
           {/* Contact Section */}
           <div className="mt-8 text-center">
-            <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-100">
+            <Card className="bg-gradient-to-r from-primary/5 to-secondary/5 border-primary/20">
               <CardContent className="p-8">
                 <h3 className="text-xl font-bold text-gray-900 mb-4">Have Questions?</h3>
                 <p className="text-gray-700 mb-6">
                   Our legal team is here to help clarify any questions you may have about our Terms of Service.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <a href="mailto:legal@globaltradehub.com" className="text-blue-600 hover:text-blue-700 font-medium">
+                  <a href="mailto:legal@globaltradehub.com" className="text-primary hover:text-primary/80 font-medium">
                     legal@globaltradehub.com
                   </a>
                   <span className="hidden sm:inline text-gray-400">|</span>
-                  <a href="tel:+15551234567" className="text-blue-600 hover:text-blue-700 font-medium">
+                  <a href="tel:+15551234567" className="text-primary hover:text-primary/80 font-medium">
                     +1 (555) 123-4567
                   </a>
                 </div>

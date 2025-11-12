@@ -125,7 +125,7 @@ export default function SupplierInquiries() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'replied': return 'bg-blue-100 text-blue-800';
+      case 'replied': return 'bg-brand-orange-100 text-brand-orange-800';
       case 'quoted': return 'bg-purple-100 text-purple-800';
       case 'negotiating': return 'bg-orange-100 text-orange-800';
       case 'closed': return 'bg-gray-100 text-gray-800';
@@ -278,7 +278,7 @@ export default function SupplierInquiries() {
                 <p className="text-sm text-muted-foreground">Total Inquiries</p>
                 <p className="text-2xl font-bold">{stats.total}</p>
               </div>
-              <MessageSquare className="w-8 h-8 text-blue-500" />
+              <MessageSquare className="w-8 h-8 text-brand-orange-500" />
             </div>
           </CardContent>
         </Card>
@@ -300,7 +300,7 @@ export default function SupplierInquiries() {
                 <p className="text-sm text-muted-foreground">Replied</p>
                 <p className="text-2xl font-bold">{stats.replied}</p>
               </div>
-              <MessageSquare className="w-8 h-8 text-blue-500" />
+              <MessageSquare className="w-8 h-8 text-brand-orange-500" />
             </div>
           </CardContent>
         </Card>
@@ -618,7 +618,7 @@ export default function SupplierInquiries() {
           {selectedInquiry && (
             <div className="space-y-4">
               {/* Inquiry Summary */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="bg-brand-orange-50 border border-brand-orange-200 rounded-lg p-4">
                 <p className="font-medium">{selectedInquiry.productName}</p>
                 <p className="text-sm text-muted-foreground">
                   For: {selectedInquiry.buyerName} {selectedInquiry.buyerLastName || ''} • 

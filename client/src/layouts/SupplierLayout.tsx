@@ -58,7 +58,7 @@ export default function SupplierLayout({ children }: SupplierLayoutProps) {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
+                      <div className="w-8 h-8 bg-brand-orange-600 rounded-full flex items-center justify-center text-white font-semibold">
                         {user.firstName?.[0]}{user.lastName?.[0]}
                       </div>
                       <div className="text-left hidden md:block">

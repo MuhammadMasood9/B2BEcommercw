@@ -158,7 +158,7 @@ export default function UserChatInterface({ userId }: UserChatInterfaceProps) {
       {showConversationList && (
         <div className="w-[400px] bg-white border-r border-gray-200 flex flex-col h-full shadow-lg">
           {/* Header */}
-          <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+          <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-primary to-orange-600">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-gray-900">Support Chats</h2>
               <div className="flex items-center space-x-2">
@@ -177,7 +177,7 @@ export default function UserChatInterface({ userId }: UserChatInterfaceProps) {
                   placeholder="Search conversations..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </div>
             </div>
@@ -185,7 +185,7 @@ export default function UserChatInterface({ userId }: UserChatInterfaceProps) {
             {/* Create New Chat Button */}
             <Button
               onClick={handleCreateConversation}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+              className="w-full bg-primary hover:bg-primary text-white"
             >
               <MessageCircle className="h-4 w-4 mr-2" />
               Start New Chat
@@ -211,7 +211,7 @@ export default function UserChatInterface({ userId }: UserChatInterfaceProps) {
                     key={conversation.id}
                     className={`cursor-pointer transition-all duration-200 hover:shadow-lg border-0 ${
                       selectedConversationId === conversation.id
-                        ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-l-blue-500 shadow-md'
+                        ? 'bg-gradient-to-r from-primary to-orange-600 border-l-4 border-l-primary/100 shadow-md'
                         : 'hover:bg-gray-50'
                     }`}
                     onClick={() => setSelectedConversationId(conversation.id)}
@@ -220,7 +220,7 @@ export default function UserChatInterface({ userId }: UserChatInterfaceProps) {
                       <div className="flex items-start space-x-3">
                         {/* Avatar */}
                         <div className="flex-shrink-0">
-                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-md">
+                          <div className="w-12 h-12 bg-gradient-to-br from-primary to-orange-600 rounded-full flex items-center justify-center shadow-md">
                             <Shield className="h-6 w-6 text-white" />
                           </div>
                         </div>
@@ -282,7 +282,7 @@ export default function UserChatInterface({ userId }: UserChatInterfaceProps) {
                   </Button>
                   
                   <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
+                    <div className="w-12 h-12 bg-gradient-to-br from-primary to-orange-600 rounded-full flex items-center justify-center shadow-lg">
                       <Shield className="h-6 w-6 text-white" />
                     </div>
                     <div>
@@ -298,7 +298,7 @@ export default function UserChatInterface({ userId }: UserChatInterfaceProps) {
 
                 <div className="flex items-center space-x-3">
                   {selectedConversation?.productId && (
-                    <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                    <Badge variant="outline" className="text-xs bg-primary text-primary border-primary">
                       Product Inquiry
                     </Badge>
                   )}
@@ -307,10 +307,10 @@ export default function UserChatInterface({ userId }: UserChatInterfaceProps) {
                   </Badge>
                   
                   <div className="flex items-center space-x-2">
-                    <Button variant="ghost" size="sm" className="h-10 w-10 p-0 hover:bg-blue-50 rounded-full">
+                    <Button variant="ghost" size="sm" className="h-10 w-10 p-0 hover:bg-primary rounded-full">
                       <Phone className="h-5 w-5 text-gray-600" />
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-10 w-10 p-0 hover:bg-blue-50 rounded-full">
+                    <Button variant="ghost" size="sm" className="h-10 w-10 p-0 hover:bg-primary rounded-full">
                       <Video className="h-5 w-5 text-gray-600" />
                     </Button>
                     <Button variant="ghost" size="sm" className="h-10 w-10 p-0 hover:bg-gray-50 rounded-full">

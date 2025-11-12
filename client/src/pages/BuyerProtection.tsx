@@ -46,8 +46,8 @@ export default function BuyerProtection() {
         "Verified payment gateways",
         "Fraud protection systems",
       ],
-      color: "from-blue-100 to-blue-200",
-      iconColor: "text-blue-600"
+      color: "from-primary/10 to-primary/20",
+      iconColor: "text-primary"
     },
     {
       icon: FileText,
@@ -100,7 +100,7 @@ export default function BuyerProtection() {
   ];
 
   const stats = [
-    { icon: Users, value: "10M+", label: "Protected Buyers", color: "text-blue-600" },
+    { icon: Users, value: "10M+", label: "Protected Buyers", color: "text-primary" },
     { icon: Shield, value: "$50B+", label: "Transaction Value", color: "text-green-600" },
     { icon: Star, value: "4.9/5", label: "Satisfaction Rate", color: "text-yellow-600" },
     { icon: Clock, value: "24/7", label: "Support Available", color: "text-purple-600" },
@@ -138,12 +138,12 @@ export default function BuyerProtection() {
       <Header />
       
       {/* Hero Section with Gradient */}
-      <section className="relative py-20 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
+      <section className="relative py-20 bg-gradient-to-br from-secondary via-secondary/90 to-secondary/80 overflow-hidden">
         {/* Background Elements */}
         <div className="absolute inset-0">
-          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-600/10 to-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-primary/20 to-primary/15 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-primary/25 to-primary/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-primary/15 to-primary/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -155,7 +155,7 @@ export default function BuyerProtection() {
             
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
               Buyer
-              <span className="bg-gradient-to-r from-blue-200 via-white to-blue-200 bg-clip-text text-transparent block">
+              <span className="bg-gradient-to-r from-primary/80 via-white to-primary/80 bg-clip-text text-transparent block">
                 Protection
               </span>
             </h1>
@@ -192,7 +192,7 @@ export default function BuyerProtection() {
               return (
                 <Card key={index} className="bg-white border-gray-100 shadow-lg">
                   <CardContent className="p-6 text-center">
-                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color === 'text-blue-600' ? 'from-blue-100 to-blue-200' : stat.color === 'text-green-600' ? 'from-green-100 to-green-200' : stat.color === 'text-yellow-600' ? 'from-yellow-100 to-yellow-200' : 'from-purple-100 to-purple-200'} flex items-center justify-center mx-auto mb-4`}>
+                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color === 'text-primary' ? 'from-primary/10 to-primary/20' : stat.color === 'text-green-600' ? 'from-green-100 to-green-200' : stat.color === 'text-yellow-600' ? 'from-yellow-100 to-yellow-200' : 'from-purple-100 to-purple-200'} flex items-center justify-center mx-auto mb-4`}>
                       <Icon className={`w-6 h-6 ${stat.color}`} />
                     </div>
                     <div className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</div>
@@ -223,7 +223,7 @@ export default function BuyerProtection() {
                       <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${feature.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
                         <Icon className={`w-8 h-8 ${feature.iconColor}`} />
                       </div>
-                      <CardTitle className="text-xl group-hover:text-blue-600 transition-colors">
+                      <CardTitle className="text-xl group-hover:text-primary transition-colors">
                         {feature.title}
                       </CardTitle>
                     </CardHeader>
@@ -261,15 +261,15 @@ export default function BuyerProtection() {
                 return (
                   <div key={index} className="relative">
                     {index < howItWorks.length - 1 && (
-                      <div className="hidden lg:block absolute top-8 left-1/2 w-full h-0.5 bg-gradient-to-r from-blue-600 to-blue-400 -ml-2" />
+                      <div className="hidden lg:block absolute top-8 left-1/2 w-full h-0.5 bg-gradient-to-r from-primary to-primary/60 -ml-2" />
                     )}
                     <Card className="relative z-10 bg-white border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300">
                       <CardContent className="p-6 text-center">
-                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center mx-auto mb-4 text-white font-bold text-xl">
+                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center mx-auto mb-4 text-white font-bold text-xl">
                           {step.step}
                         </div>
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center mx-auto mb-4">
-                          <Icon className="w-6 h-6 text-blue-600" />
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/10 to-primary/20 flex items-center justify-center mx-auto mb-4">
+                          <Icon className="w-6 h-6 text-primary" />
                         </div>
                         <h3 className="font-semibold text-lg mb-2 text-gray-900">{step.title}</h3>
                         <p className="text-sm text-gray-600">{step.description}</p>
@@ -317,7 +317,7 @@ export default function BuyerProtection() {
 
           {/* CTA Sections */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
-            <Card className="bg-gradient-to-br from-blue-600 to-blue-700 border-none text-white">
+            <Card className="bg-gradient-to-br from-primary to-primary/80 border-none text-white">
               <CardContent className="p-8">
                 <Shield className="w-12 h-12 mb-4 opacity-90" />
                 <h3 className="text-2xl font-bold mb-4">Ready to Start Trading?</h3>
@@ -325,7 +325,7 @@ export default function BuyerProtection() {
                   Browse thousands of products from verified admins with full buyer protection
                 </p>
                 <Link href="/products">
-                  <Button size="lg" variant="secondary" className="bg-white text-blue-600 hover:bg-gray-100">
+                  <Button size="lg" variant="secondary" className="bg-white text-primary hover:bg-gray-100">
                     Browse Products
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>

@@ -382,7 +382,7 @@ export default function SupplierProducts() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Products</h1>
+          <h1 className="text-3xl font-bold text-foreground">Products</h1>
           <p className="text-muted-foreground">Manage your product catalog</p>
         </div>
         <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
@@ -421,7 +421,7 @@ export default function SupplierProducts() {
                 <p className="text-sm text-muted-foreground">Total Products</p>
                 <p className="text-2xl font-bold">{stats.total}</p>
               </div>
-              <Package className="w-8 h-8 text-blue-500" />
+              <Package className="w-8 h-8 text-primary" />
             </div>
           </CardContent>
         </Card>
@@ -432,7 +432,7 @@ export default function SupplierProducts() {
                 <p className="text-sm text-muted-foreground">Published</p>
                 <p className="text-2xl font-bold">{stats.published}</p>
               </div>
-              <Eye className="w-8 h-8 text-green-500" />
+              <Eye className="w-8 h-8 text-primary" />
             </div>
           </CardContent>
         </Card>
@@ -443,7 +443,7 @@ export default function SupplierProducts() {
                 <p className="text-sm text-muted-foreground">Pending</p>
                 <p className="text-2xl font-bold">{stats.pending}</p>
               </div>
-              <Clock className="w-8 h-8 text-yellow-500" />
+              <Clock className="w-8 h-8 text-accent" />
             </div>
           </CardContent>
         </Card>
@@ -454,7 +454,7 @@ export default function SupplierProducts() {
                 <p className="text-sm text-muted-foreground">Approved</p>
                 <p className="text-2xl font-bold">{stats.approved}</p>
               </div>
-              <CheckCircle className="w-8 h-8 text-green-500" />
+              <CheckCircle className="w-8 h-8 text-primary" />
             </div>
           </CardContent>
         </Card>
@@ -465,7 +465,7 @@ export default function SupplierProducts() {
                 <p className="text-sm text-muted-foreground">Rejected</p>
                 <p className="text-2xl font-bold">{stats.rejected}</p>
               </div>
-              <XCircle className="w-8 h-8 text-red-500" />
+              <XCircle className="w-8 h-8 text-destructive" />
             </div>
           </CardContent>
         </Card>
@@ -526,7 +526,7 @@ export default function SupplierProducts() {
 
           {/* Bulk Actions */}
           {selectedProducts.size > 0 && (
-            <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
+            <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg">
               <span className="text-sm font-medium">
                 {selectedProducts.size} product(s) selected
               </span>
@@ -656,7 +656,7 @@ export default function SupplierProducts() {
                         </TableCell>
                         <TableCell>
                           {product.isPublished ? (
-                            <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                            <Badge variant="outline" className="bg-brand-orange-50 text-brand-orange-700">
                               Published
                             </Badge>
                           ) : (

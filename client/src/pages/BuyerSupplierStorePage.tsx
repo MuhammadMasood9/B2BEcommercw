@@ -145,7 +145,7 @@ export default function BuyerSupplierStorePage() {
       try {
         await navigator.share({
           title: supplier.storeName,
-          text: `Check out ${supplier.storeName} on Global Trade Hub`,
+          text: `Check out ${supplier.storeName} on Bago`,
           url: window.location.href,
         });
       } catch (error) {
@@ -287,7 +287,7 @@ export default function BuyerSupplierStorePage() {
       <Header />
 
       {/* Hero Section with Store Banner */}
-      <div className="relative h-80 bg-gradient-to-r from-blue-900 to-blue-700 overflow-hidden">
+      <div className="relative h-80 bg-gradient-to-r from-primary to-orange-600 overflow-hidden">
         <img
           src={bannerImage}
           alt={supplier.storeName}
@@ -343,7 +343,7 @@ export default function BuyerSupplierStorePage() {
           {/* Quick Actions Bar */}
           <div className="flex flex-wrap items-center justify-between gap-4 mb-8 p-4 bg-white rounded-lg shadow-sm border">
             <div className="flex items-center gap-3">
-              <Badge className="bg-blue-100 text-blue-800">
+              <Badge className="bg-primary text-primary">
                 {getBusinessTypeLabel(supplier.businessType)}
               </Badge>
               <VerificationBadge
@@ -383,7 +383,7 @@ export default function BuyerSupplierStorePage() {
               <div className="text-xs text-muted-foreground">{supplier.totalReviews || 0} reviews</div>
             </Card>
             <Card className="text-center p-4">
-              <Package className="w-8 h-8 text-blue-500 mx-auto mb-2" />
+              <Package className="w-8 h-8 text-primary mx-auto mb-2" />
               <div className="font-bold text-lg">{supplier.metrics?.totalProducts || 0}</div>
               <div className="text-xs text-muted-foreground">Products</div>
             </Card>
@@ -393,7 +393,7 @@ export default function BuyerSupplierStorePage() {
               <div className="text-xs text-muted-foreground">Orders</div>
             </Card>
             <Card className="text-center p-4">
-              <Clock className="w-8 h-8 text-blue-500 mx-auto mb-2" />
+              <Clock className="w-8 h-8 text-primary mx-auto mb-2" />
               <div className="font-bold text-lg">{supplier.responseTime || '< 24h'}</div>
               <div className="text-xs text-muted-foreground">Response time</div>
             </Card>

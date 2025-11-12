@@ -264,7 +264,7 @@ export default function SupplierMessages() {
         <CardContent className="flex-1 p-0 overflow-hidden">
           {isLoadingConversations ? (
             <div className="flex items-center justify-center h-full">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <Loader2 className="h-8 w-8 animate-spin text-brand-orange-600" />
             </div>
           ) : filteredConversations.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full p-6 text-center">
@@ -297,15 +297,15 @@ export default function SupplierMessages() {
                     onClick={() => handleSelectConversation(conv.id)}
                     className={`w-full text-left p-3 rounded-lg transition-colors ${
                       selectedConversation === conv.id
-                        ? 'bg-blue-50 border border-blue-200'
+                        ? 'bg-brand-orange-50 border border-brand-orange-200'
                         : 'hover:bg-gray-50 border border-transparent'
                     }`}
                   >
                     <div className="flex items-start justify-between mb-1">
                       <div className="flex items-center gap-2 flex-1 min-w-0">
                         <div className="relative flex-shrink-0">
-                          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                            <User className="h-5 w-5 text-blue-600" />
+                          <div className="w-10 h-10 rounded-full bg-brand-orange-100 flex items-center justify-center">
+                            <User className="h-5 w-5 text-brand-orange-600" />
                           </div>
                           {conv.unreadCountSupplier > 0 && (
                             <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
@@ -346,7 +346,7 @@ export default function SupplierMessages() {
                       </span>
                       <div className="flex items-center gap-1">
                         {conv.unreadCountSupplier === 0 && (
-                          <CheckCheck className="h-3 w-3 text-blue-500" />
+                          <CheckCheck className="h-3 w-3 text-brand-orange-500" />
                         )}
                       </div>
                     </div>
@@ -365,8 +365,8 @@ export default function SupplierMessages() {
             <CardHeader className="pb-3 border-b">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                    <User className="h-5 w-5 text-blue-600" />
+                  <div className="w-10 h-10 rounded-full bg-brand-orange-100 flex items-center justify-center">
+                    <User className="h-5 w-5 text-brand-orange-600" />
                   </div>
                   <div>
                     <CardTitle className="text-lg">
@@ -394,7 +394,7 @@ export default function SupplierMessages() {
               <ScrollArea className="flex-1 p-4">
                 {isLoadingMessages ? (
                   <div className="flex items-center justify-center h-full">
-                    <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                    <Loader2 className="h-8 w-8 animate-spin text-brand-orange-600" />
                   </div>
                 ) : messages.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-center">

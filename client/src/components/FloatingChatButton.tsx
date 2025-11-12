@@ -168,7 +168,7 @@ export default function FloatingChatButton({ supplierName, supplierId, productId
       {!isOpen && (
         <Button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 h-14 w-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all z-[9998] no-default-hover-elevate"
+          className="fixed bottom-6 right-6 h-14 w-14 rounded-full bg-primary hover:bg-primary text-white shadow-lg hover:shadow-xl transition-all z-[9998] no-default-hover-elevate"
           size="icon"
           data-testid="button-open-chat"
         >
@@ -178,7 +178,7 @@ export default function FloatingChatButton({ supplierName, supplierId, productId
 
       {isOpen && (
         <Card className="fixed bottom-6 right-6 w-96 h-[500px] flex flex-col shadow-2xl z-[9998] glass-card">
-          <div className="bg-blue-600 text-white p-4 rounded-t-lg flex items-center justify-between">
+          <div className="bg-primary text-white p-4 rounded-t-lg flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 bg-white/20 rounded-full flex items-center justify-center">
                 <MessageCircle className="h-5 w-5" />
@@ -204,7 +204,7 @@ export default function FloatingChatButton({ supplierName, supplierId, productId
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900">
             {conversationLoading ? (
               <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
                 <p className="text-gray-500 text-sm">Setting up conversation...</p>
               </div>
             ) : messages.length === 0 ? (
@@ -226,7 +226,7 @@ export default function FloatingChatButton({ supplierName, supplierId, productId
                   <div
                     className={`max-w-[80%] rounded-lg p-3 ${
                       msg.senderId === user.id
-                        ? "bg-blue-600 text-white"
+                        ? "bg-primary text-white"
                         : "bg-white dark:bg-gray-800 border"
                     }`}
                   >
@@ -262,7 +262,7 @@ export default function FloatingChatButton({ supplierName, supplierId, productId
               <Button
                 onClick={handleSendMessage}
                 disabled={sendMessageMutation.isPending || !message.trim() || conversationLoading}
-                className="bg-blue-600 hover:bg-blue-700 text-white no-default-hover-elevate"
+                className="bg-primary hover:bg-primary text-white no-default-hover-elevate"
                 size="icon"
                 data-testid="button-send-message"
               >

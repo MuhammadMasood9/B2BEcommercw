@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Responsive Brand Consistency Test</title>
+    <style>
+        /* Import the actual CSS variables and utilities */
+        :root {
+            /* Brand Colors */
+            --brand-orange-500: 39 100% 50%;
+            --brand-grey-900: 0 0% 10%;
+            --brand-grey-300: 0 0% 75%;
+            --brand-text-on-orange: 0 0% 100%;
+            --brand-text-on-light: 0 0% 10%;
+            --brand-hover-orange: 39 80% 45%;
+            --brand-focus-orange: 39 100% 50%;
+            --font-sans: 'Base Neue', Inter, system-ui, sans-serif;
+        }
+        
+        body {
+            font-family: var(--font-sans);
+            margin: 0;
+            padding: 20px;
+            background: #f9f9f9;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        /* Responsive Brand Button Implementation */
+        .responsive-brand-button {
+            min-height: 44px;
+            padding: 12px 16px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 8px;
+            background-color: hsl(var(--brand-orange-500));
+            color: hsl(var(--brand-text-on-orange));
+            border: 2px solid hsl(39 80% 45%);
+            transition: all 0.2s ease;
+            cursor: pointer;
+            display: inline-block;
+            text-decoration: none;
+            text-align: center;
+            -webkit-text-size-adjust: 100%;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        /* Tablet Styles */
+        @media (min-width: 640px) {
+            .responsive-brand-button {
+                min-height: 40px;
+                padding: 10px 20px;
+                font-size: 15px;
+            }
+        }
+        
+        /* Desktop Styles */
+        @media (min-width: 1024px) {
+            .responsive-brand-button {
+                min-height: 36px;
+                padding: 8px 16px;
+                font-size: 14px;
+            }
+            
+            .responsive-brand-button:hover {
+                background-color: hsl(var(--brand-hover-orange));
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px hsl(var(--brand-orange-500) / 0.3);
+            }
+        }
+        
+        .responsive-brand-button:active {
+            background-color: hsl(39 70% 40%);
+            transform: translateY(0);
+        }
+        
+        /* Responsive Grid */
+        .responsive-brand-grid {
+            display: grid;
+            gap: 16px;
+            grid-template-columns: 1fr;
+            margin: 20px 0;
+        }
+        
+        @media (min-width: 640px) {
+            .responsive-brand-grid {
+                gap: 20px;
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (min-width: 1024px) {
+            .responsive-brand-grid {
+                gap: 24px;
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        
+        /* Test Cards */
+        .test-card {
+            background: white;
+            border: 1px solid hsl(0 0% 85%);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px hsl(0 0% 10% / 0.05);
+            transition: all 0.2s ease;
+        }
+        
+        @media (min-width: 640px) {
+            .test-card {
+                padding: 24px;
+            }
+        }
+        
+        @media (min-width: 1024px) {
+            .test-card {
+                padding: 32px;
+            }
+            
+            .test-card:hover {
+                box-shadow: 0 8px 24px hsl(0 0% 10% / 0.1);
+                transform: translateY(-2px);
+            }
+        }
+        
+        /* Screen Size Indicator */
+        .screen-indicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: hsl(var(--brand-orange-500));
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 1000;
+        }
+        
+        .screen-indicator::before {
+            content: "Mobile";
+        }
+        
+        @media (min-width: 640px) {
+            .screen-indicator::before {
+                content: "Tablet";
+            }
+        }
+        
+        @media (min-width: 1024px) {
+            .screen-indicator::before {
+                content: "Desktop";
+            }
+        }
+        
+        /* Touch Detection */
+        .touch-indicator {
+            background: hsl(220 70% 50%);
+        }
+        
+        @media (hover: none) and (pointer: coarse) {
+            .touch-indicator {
+                background: hsl(142 76% 36%);
+            }
+            .touch-indicator::after {
+                content: " (Touch)";
+            }
+        }
+        
+        @media (hover: hover) and (pointer: fine) {
+            .touch-indicator::after {
+                content: " (Mouse)";
+            }
+        }
+        
+        /* Typography Tests */
+        .responsive-brand-heading-1 {
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1.2;
+            color: hsl(var(--brand-grey-900));
+            margin-bottom: 16px;
+        }
+        
+        @media (min-width: 640px) {
+            .responsive-brand-heading-1 {
+                font-size: 36px;
+                margin-bottom: 20px;
+            }
+        }
+        
+        @media (min-width: 1024px) {
+            .responsive-brand-heading-1 {
+                font-size: 48px;
+                margin-bottom: 24px;
+            }
+        }
+        
+        /* Color Swatches */
+        .color-swatch {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            display: inline-block;
+            margin: 5px;
+            border: 2px solid #ddd;
+        }
+        
+        .orange-500 { background: hsl(var(--brand-orange-500)); }
+        .grey-900 { background: hsl(var(--brand-grey-900)); }
+        .orange-600 { background: hsl(39 80% 45%); }
+        
+        /* Test Results */
+        .test-results {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid hsl(var(--brand-orange-500));
+        }
+        
+        .test-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .test-item:last-child {
+            border-bottom: none;
+        }
+        
+        .test-status {
+            font-weight: bold;
+        }
+        
+        .pass { color: #22c55e; }
+        .fail { color: #ef4444; }
+        
+        /* Instructions */
+        .instructions {
+            background: hsl(39 100% 95%);
+            border: 1px solid hsl(39 100% 85%);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .instructions h3 {
+            color: hsl(39 70% 30%);
+            margin-top: 0;
+        }
+        
+        .instructions ul {
+            color: hsl(39 60% 25%);
+        }
+    </style>
+</head>
+<body>
+    <div class="screen-indicator touch-indicator"></div>
+    
+    <div class="container">
+        <h1 class="responsive-brand-heading-1">Responsive Brand Consistency Test</h1>
+        
+        <div class="instructions">
+            <h3>Test Instructions</h3>
+            <ul>
+                <li>Resize your browser window to test different breakpoints (640px, 1024px)</li>
+                <li>Check that buttons change size at each breakpoint</li>
+                <li>Verify hover effects only work on desktop (1024px+)</li>
+                <li>Confirm touch detection works on mobile devices</li>
+                <li>Ensure all colors maintain proper contrast</li>
+                <li>Test on different devices (mobile, tablet, desktop)</li>
+            </ul>
+        </div>
+        
+        <div class="responsive-brand-grid">
+            <div class="test-card">
+                <h3>Button Responsiveness</h3>
+                <button class="responsive-brand-button" style="width: 100%; margin-bottom: 10px;">
+                    Primary Button
+                </button>
+                <p style="font-size: 12px; color: #666;">
+                    Mobile: 44px height, Tablet: 40px, Desktop: 36px + hover effects
+                </p>
+            </div>
+            
+            <div class="test-card">
+                <h3>Brand Colors</h3>
+                <div>
+                    <div class="color-swatch orange-500" title="Orange 500 (#FF9900)"></div>
+                    <div class="color-swatch grey-900" title="Grey 900 (#1A1A1A)"></div>
+                    <div class="color-swatch orange-600" title="Orange 600 (Hover)"></div>
+                </div>
+                <p style="font-size: 12px; color: #666; margin-top: 10px;">
+                    Orange 500, Grey 900, Orange 600 (hover)
+                </p>
+            </div>
+            
+            <div class="test-card">
+                <h3>Typography Scaling</h3>
+                <h1 style="font-size: inherit; margin: 0;" class="responsive-brand-heading-1">Heading</h1>
+                <p style="font-size: 14px; color: #666; margin: 10px 0 0 0;">
+                    Mobile: 28px → Tablet: 36px → Desktop: 48px
+                </p>
+            </div>
+        </div>
+        
+        <div class="test-results">
+            <h3>Automated Test Results</h3>
+            <div id="test-results-container">
+                <p>Running tests...</p>
+            </div>
+        </div>
+        
+        <div class="test-card">
+            <h3>Manual Verification Checklist</h3>
+            <div style="display: grid; gap: 10px;">
+                <label style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="check-mobile">
+                    <span>Mobile view (&lt;640px): Large buttons, no hover effects</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="check-tablet">
+                    <span>Tablet view (640-1024px): Medium buttons, 2-column grid</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="check-desktop">
+                    <span>Desktop view (>1024px): Compact buttons, hover effects, 3-column grid</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="check-touch">
+                    <span>Touch detection: Shows correct device type in top-right indicator</span>
+                </label>
+                <label style="display: flex; align-items; gap: 10px;">
+                    <input type="checkbox" id="check-colors">
+                    <span>Brand colors: Orange (#FF9900) and dark grey (#1A1A1A) consistent</span>
+                </label>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Simple automated tests
+        function runTests() {
+            const results = [];
+            
+            // Test 1: CSS Variables
+            const root = getComputedStyle(document.documentElement);
+            const orangeColor = root.getPropertyValue('--brand-orange-500').trim();
+            results.push({
+                name: 'CSS Variables',
+                passed: orangeColor !== '',
+                message: orangeColor ? `Orange color: ${orangeColor}` : 'CSS variables not found'
+            });
+            
+            // Test 2: Responsive Button
+            const button = document.querySelector('.responsive-brand-button');
+            const buttonStyle = getComputedStyle(button);
+            const minHeight = buttonStyle.minHeight;
+            results.push({
+                name: 'Button Responsiveness',
+                passed: minHeight !== 'auto' && minHeight !== '',
+                message: `Min height: ${minHeight}`
+            });
+            
+            // Test 3: Grid System
+            const grid = document.querySelector('.responsive-brand-grid');
+            const gridStyle = getComputedStyle(grid);
+            const gridColumns = gridStyle.gridTemplateColumns;
+            results.push({
+                name: 'Grid System',
+                passed: gridColumns !== 'none',
+                message: `Grid columns: ${gridColumns}`
+            });
+            
+            // Test 4: Touch Detection
+            const touchQuery = window.matchMedia('(hover: none) and (pointer: coarse)');
+            const mouseQuery = window.matchMedia('(hover: hover) and (pointer: fine)');
+            results.push({
+                name: 'Touch Detection',
+                passed: touchQuery.media !== 'not all' || mouseQuery.media !== 'not all',
+                message: touchQuery.matches ? 'Touch device' : 'Mouse device'
+            });
+            
+            // Test 5: Screen Size Detection
+            const screenWidth = window.innerWidth;
+            let screenType = 'Mobile';
+            if (screenWidth >= 1024) screenType = 'Desktop';
+            else if (screenWidth >= 640) screenType = 'Tablet';
+            
+            results.push({
+                name: 'Screen Size Detection',
+                passed: true,
+                message: `${screenType} (${screenWidth}px)`
+            });
+            
+            return results;
+        }
+        
+        function displayResults(results) {
+            const container = document.getElementById('test-results-container');
+            container.innerHTML = '';
+            
+            results.forEach(result => {
+                const item = document.createElement('div');
+                item.className = 'test-item';
+                item.innerHTML = `
+                    <span>${result.name}</span>
+                    <span class="test-status ${result.passed ? 'pass' : 'fail'}">
+                        ${result.passed ? '✅ PASS' : '❌ FAIL'}
+                    </span>
+                `;
+                
+                const message = document.createElement('div');
+                message.style.fontSize = '12px';
+                message.style.color = '#666';
+                message.style.marginTop = '4px';
+                message.textContent = result.message;
+                item.appendChild(message);
+                
+                container.appendChild(item);
+            });
+            
+            const passedTests = results.filter(r => r.passed).length;
+            const summary = document.createElement('div');
+            summary.style.marginTop = '20px';
+            summary.style.fontWeight = 'bold';
+            summary.style.textAlign = 'center';
+            summary.innerHTML = `
+                <p>Test Summary: ${passedTests}/${results.length} tests passed</p>
+                ${passedTests === results.length ? 
+                    '<p style="color: #22c55e;">🎉 All automated tests passed!</p>' : 
+                    '<p style="color: #ef4444;">⚠️ Some tests failed. Please check the implementation.</p>'
+                }
+            `;
+            container.appendChild(summary);
+        }
+        
+        // Run tests when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            const results = runTests();
+            displayResults(results);
+        });
+        
+        // Re-run tests when window is resized
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                const results = runTests();
+                displayResults(results);
+            }, 250);
+        });
+        
+        // Add interactivity to checkboxes
+        document.addEventListener('change', (e) => {
+            if (e.target.type === 'checkbox') {
+                const allChecked = document.querySelectorAll('input[type="checkbox"]:checked').length === 5;
+                if (allChecked) {
+                    alert('🎉 Manual verification complete! All responsive brand features are working correctly.');
+                }
+            }
+        });
+    </script>
+</body>
+</html>

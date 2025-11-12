@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brand Colors Test</title>
+    <link rel="stylesheet" href="client/src/index.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="p-8 bg-background text-foreground">
+    <h1 class="text-3xl font-bold mb-8">Brand Colors Test</h1>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- Light Mode Test -->
+        <div class="space-y-4">
+            <h2 class="text-2xl font-semibold">Light Mode</h2>
+            
+            <!-- Orange Colors -->
+            <div class="space-y-2">
+                <h3 class="text-lg font-medium">Orange Scale (#F2A30F base)</h3>
+                <div class="flex flex-wrap gap-2">
+                    <div class="bg-brand-orange-500 text-white p-2 rounded">Orange 500 (Base)</div>
+                    <div class="bg-brand-orange-600 text-white p-2 rounded">Orange 600 (Hover)</div>
+                    <div class="bg-brand-orange-700 text-white p-2 rounded">Orange 700 (Active)</div>
+                </div>
+            </div>
+            
+            <!-- Grey Colors -->
+            <div class="space-y-2">
+                <h3 class="text-lg font-medium">Grey Scale (#212121 base)</h3>
+                <div class="flex flex-wrap gap-2">
+                    <div class="bg-brand-grey-50 text-brand-grey-900 p-2 rounded border">Grey 50 (#EEEEEE)</div>
+                    <div class="bg-brand-grey-900 text-white p-2 rounded">Grey 900 (#212121)</div>
+                </div>
+            </div>
+            
+            <!-- Button Examples -->
+            <div class="space-y-2">
+                <h3 class="text-lg font-medium">Button Examples</h3>
+                <div class="flex flex-wrap gap-2">
+                    <button class="brand-button-primary px-4 py-2 rounded">Primary Button</button>
+                    <button class="brand-button-secondary px-4 py-2 rounded">Secondary Button</button>
+                    <button class="brand-button-outline px-4 py-2 rounded">Outline Button</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Dark Mode Test -->
+        <div class="dark space-y-4 bg-background p-4 rounded">
+            <h2 class="text-2xl font-semibold text-foreground">Dark Mode</h2>
+            
+            <!-- Orange Colors in Dark Mode -->
+            <div class="space-y-2">
+                <h3 class="text-lg font-medium text-foreground">Orange Scale (Dark Mode)</h3>
+                <div class="flex flex-wrap gap-2">
+                    <div class="bg-brand-orange-500 text-brand-text-on-orange p-2 rounded">Orange 500 (Brighter)</div>
+                    <div class="bg-brand-orange-600 text-brand-text-on-orange p-2 rounded">Orange 600 (Hover)</div>
+                    <div class="bg-brand-orange-700 text-brand-text-on-orange p-2 rounded">Orange 700 (Active)</div>
+                </div>
+            </div>
+            
+            <!-- Grey Colors in Dark Mode -->
+            <div class="space-y-2">
+                <h3 class="text-lg font-medium text-foreground">Grey Scale (Dark Mode)</h3>
+                <div class="flex flex-wrap gap-2">
+                    <div class="bg-brand-grey-50 text-brand-grey-900 p-2 rounded">Grey 50 (Dark)</div>
+                    <div class="bg-brand-grey-900 text-brand-grey-50 p-2 rounded">Grey 900 (Light)</div>
+                </div>
+            </div>
+            
+            <!-- Button Examples in Dark Mode -->
+            <div class="space-y-2">
+                <h3 class="text-lg font-medium text-foreground">Button Examples (Dark)</h3>
+                <div class="flex flex-wrap gap-2">
+                    <button class="brand-button-primary px-4 py-2 rounded">Primary Button</button>
+                    <button class="brand-button-secondary px-4 py-2 rounded">Secondary Button</button>
+                    <button class="brand-button-outline px-4 py-2 rounded">Outline Button</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Color Values Display -->
+    <div class="mt-8 p-4 bg-card rounded border">
+        <h3 class="text-lg font-medium mb-4">Expected Color Values</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div>
+                <strong>Orange (#F2A30F):</strong><br>
+                HSL: 39° 95% 51%
+            </div>
+            <div>
+                <strong>Dark Grey (#212121):</strong><br>
+                HSL: 0° 0% 13%
+            </div>
+            <div>
+                <strong>Light Grey (#EEEEEE):</strong><br>
+                HSL: 0° 0% 93%
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,8 +1,8 @@
-# Global Trade Hub - B2B Marketplace Platform
+# Bago - B2B Marketplace Platform
 
 ## Overview
 
-Global Trade Hub is a comprehensive B2B (Business-to-Business) marketplace platform that connects suppliers and manufacturers with business buyers for bulk wholesale orders. Inspired by Alibaba.com's proven UX patterns, the platform focuses on professional trustworthiness, information density, and efficient transaction flows.
+Bago is a comprehensive B2B (Business-to-Business) marketplace platform that connects suppliers and manufacturers with business buyers for bulk wholesale orders. Inspired by Alibaba.com's proven UX patterns, the platform focuses on professional trustworthiness, information density, and efficient transaction flows.
 
 The application enables:
 - Product browsing and search with B2B-specific filters

@@ -179,7 +179,7 @@ export default function RFQDetail() {
       <div className="min-h-screen flex flex-col">
         <Header />
         <main className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <Loader2 className="h-8 w-8 animate-spin text-brand-orange-600" />
         </main>
         <Footer />
       </div>
@@ -199,12 +199,12 @@ export default function RFQDetail() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 via-white to-blue-50">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 via-white to-brand-orange-50">
       <Header />
       
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 text-white py-12 lg:py-16 overflow-hidden">
+        <section className="relative bg-gradient-to-br from-brand-orange-600 via-brand-orange-700 to-brand-orange-800 text-white py-12 lg:py-16 overflow-hidden">
           <div className="absolute inset-0 bg-black/10"></div>
           <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full -translate-y-48 translate-x-48"></div>
           <div className="absolute bottom-0 left-0 w-80 h-80 bg-white/5 rounded-full translate-y-40 -translate-x-40"></div>
@@ -216,7 +216,7 @@ export default function RFQDetail() {
                 <span className="text-sm font-medium">Request for Quotation</span>
               </div>
               
-              <h1 className="text-4xl lg:text-5xl font-bold mb-4 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">
+              <h1 className="text-4xl lg:text-5xl font-bold mb-4 bg-gradient-to-r from-white to-brand-orange-100 bg-clip-text text-transparent">
                 {rfq.title}
               </h1>
               
@@ -247,21 +247,21 @@ export default function RFQDetail() {
               <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
                 <CardHeader className="pb-4">
                   <CardTitle className="flex items-center gap-3 text-xl">
-                    <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                      <FileText className="w-5 h-5 text-blue-600" />
+                    <div className="w-10 h-10 bg-brand-orange-100 rounded-xl flex items-center justify-center">
+                      <FileText className="w-5 h-5 text-brand-orange-600" />
                     </div>
                     RFQ Details
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid grid-cols-2 gap-6">
-                    <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl">
-                      <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+                    <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-brand-orange-50 to-brand-orange-100 rounded-xl">
+                      <div className="w-10 h-10 bg-brand-orange-500 rounded-lg flex items-center justify-center">
                         <Package className="w-5 h-5 text-white" />
                       </div>
                       <div>
-                        <p className="text-sm text-blue-600 font-medium">Quantity</p>
-                        <p className="text-lg font-bold text-blue-900">{rfq.quantity?.toLocaleString()} units</p>
+                        <p className="text-sm text-brand-orange-600 font-medium">Quantity</p>
+                        <p className="text-lg font-bold text-brand-orange-900">{rfq.quantity?.toLocaleString()} units</p>
                       </div>
                     </div>
                     
@@ -316,8 +316,8 @@ export default function RFQDetail() {
                         {rfq.attachments.map((attachment: string, index: number) => (
                           <div key={index} className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200 hover:shadow-md transition-all duration-200">
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                <FileText className="w-5 h-5 text-blue-600" />
+                              <div className="w-10 h-10 bg-brand-orange-100 rounded-lg flex items-center justify-center">
+                                <FileText className="w-5 h-5 text-brand-orange-600" />
                               </div>
                               <div>
                                 <p className="font-medium text-gray-900">Document {index + 1}</p>
@@ -328,7 +328,7 @@ export default function RFQDetail() {
                               href={attachment} 
                               target="_blank" 
                               rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                              className="text-brand-orange-600 hover:text-brand-orange-700 text-sm font-medium"
                             >
                               View Document
                             </a>
@@ -350,7 +350,7 @@ export default function RFQDetail() {
                 <TabsContent value="quotations" className="mt-6">
                   {quotationsLoading ? (
                     <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                      <Loader2 className="h-8 w-8 animate-spin text-brand-orange-600" />
                     </div>
                   ) : quotations.length === 0 ? (
                     <Card>
@@ -424,7 +424,7 @@ export default function RFQDetail() {
                               </div>
 
                                 {quote.message && (
-                                  <p className="text-muted-foreground mb-4 p-3 bg-blue-50 rounded-lg">{quote.message}</p>
+                                  <p className="text-muted-foreground mb-4 p-3 bg-brand-orange-50 rounded-lg">{quote.message}</p>
                                 )}
 
                                 {quote.status === 'pending' && user?.role === 'buyer' && (

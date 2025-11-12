@@ -304,7 +304,7 @@ export default function SupplierRFQs() {
                 <p className="text-sm text-muted-foreground">Total RFQs</p>
                 <p className="text-2xl font-bold">{rfqs.length}</p>
               </div>
-              <FileText className="h-8 w-8 text-blue-600" />
+              <FileText className="h-8 w-8 text-brand-orange-600" />
             </div>
           </CardContent>
         </Card>
@@ -503,7 +503,7 @@ export default function SupplierRFQs() {
                   <div className="p-4 border rounded-lg">
                     <p className="font-medium">{selectedRFQ.productName}</p>
                     <Link href={`/products/${selectedRFQ.productSlug}`}>
-                      <Button variant="ghost" size="sm" className="p-0 h-auto text-blue-600 hover:text-blue-800">
+                      <Button variant="ghost" size="sm" className="p-0 h-auto text-brand-orange-600 hover:text-brand-orange-800">
                         View Product Details
                       </Button>
                     </Link>
@@ -533,11 +533,11 @@ export default function SupplierRFQs() {
               )}
 
               {/* Response Status */}
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="p-4 bg-brand-orange-50 border border-brand-orange-200 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-blue-900">Quotations Submitted</p>
-                    <p className="text-xs text-blue-700 mt-1">
+                    <p className="text-sm font-medium text-brand-orange-900">Quotations Submitted</p>
+                    <p className="text-xs text-brand-orange-700 mt-1">
                       {selectedRFQ.quotationsCount || 0} supplier(s) have responded to this RFQ
                     </p>
                   </div>
@@ -624,14 +624,14 @@ export default function SupplierRFQs() {
 
               {/* Calculated Total */}
               {quotationForm.pricePerUnit && quotationForm.moq && (
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="p-3 bg-brand-orange-50 border border-brand-orange-200 rounded-lg">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-blue-900">Estimated Total Price:</span>
-                    <span className="text-lg font-bold text-blue-900">
+                    <span className="text-sm font-medium text-brand-orange-900">Estimated Total Price:</span>
+                    <span className="text-lg font-bold text-brand-orange-900">
                       ${(parseFloat(quotationForm.pricePerUnit) * (selectedRFQ.quantity || parseInt(quotationForm.moq))).toFixed(2)}
                     </span>
                   </div>
-                  <p className="text-xs text-blue-700 mt-1">
+                  <p className="text-xs text-brand-orange-700 mt-1">
                     Based on {selectedRFQ.quantity || quotationForm.moq} units
                   </p>
                 </div>

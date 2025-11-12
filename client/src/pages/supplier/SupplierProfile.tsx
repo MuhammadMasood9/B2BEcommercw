@@ -101,7 +101,7 @@ export default function SupplierProfile() {
   const getVerificationColor = (level: string) => {
     switch (level) {
       case 'premium': return 'bg-purple-100 text-purple-700 border-purple-300';
-      case 'business': return 'bg-blue-100 text-blue-700 border-blue-300';
+      case 'business': return 'bg-brand-orange-100 text-brand-orange-700 border-brand-orange-300';
       case 'basic': return 'bg-green-100 text-green-700 border-green-300';
       default: return 'bg-gray-100 text-gray-700 border-gray-300';
     }
@@ -136,7 +136,7 @@ export default function SupplierProfile() {
         <CardContent className="p-0">
           <div className="relative">
             {/* Banner */}
-            <div className="h-48 bg-gradient-to-r from-blue-500 to-purple-600 rounded-t-lg overflow-hidden">
+            <div className="h-48 bg-gradient-to-r from-brand-orange-500 to-brand-orange-600 rounded-t-lg overflow-hidden">
               {profile.storeBanner && (
                 <img 
                   src={profile.storeBanner} 
@@ -222,8 +222,8 @@ export default function SupplierProfile() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <Clock className="h-6 w-6 text-blue-600" />
+              <div className="p-3 bg-brand-orange-100 rounded-lg">
+                <Clock className="h-6 w-6 text-brand-orange-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{profile.responseTime || 'N/A'}</p>
@@ -346,7 +346,7 @@ export default function SupplierProfile() {
               {profile.website && (
                 <div className="flex items-center gap-3">
                   <Globe className="h-4 w-4 text-muted-foreground" />
-                  <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">
+                  <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-sm text-brand-orange-600 hover:underline">
                     {profile.website}
                   </a>
                 </div>
@@ -426,8 +426,8 @@ export default function SupplierProfile() {
               )}
 
               {parseFloat(profile.rating) >= 4.5 && (
-                <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
-                  <Award className="h-5 w-5 text-blue-600" />
+                <div className="flex items-center gap-2 p-3 bg-brand-orange-50 rounded-lg">
+                  <Award className="h-5 w-5 text-brand-orange-600" />
                   <span className="text-sm font-medium">Top Rated</span>
                 </div>
               )}
@@ -460,7 +460,7 @@ export default function SupplierProfile() {
                   href={`/suppliers/${profile.storeSlug}`} 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-sm text-blue-600 hover:underline break-all"
+                  className="text-sm text-brand-orange-600 hover:underline break-all"
                 >
                   /suppliers/{profile.storeSlug}
                 </a>

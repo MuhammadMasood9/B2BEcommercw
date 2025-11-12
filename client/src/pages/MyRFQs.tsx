@@ -80,7 +80,7 @@ export default function MyRFQs() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Active": return "bg-green-100 text-green-800 border-green-200";
-      case "Under Review": return "bg-blue-100 text-blue-800 border-blue-200";
+      case "Under Review": return "bg-primary/10 text-primary border-primary/20";
       case "Closed": return "bg-gray-100 text-gray-800 border-gray-200";
       case "Expired": return "bg-red-100 text-red-800 border-red-200";
       default: return "bg-gray-100 text-gray-800 border-gray-200";
@@ -126,16 +126,16 @@ export default function MyRFQs() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
             <div className="flex-1">
-              <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+              <h1 className="text-3xl lg:text-4xl font-bold text-foreground mb-4">
                 My RFQs
               </h1>
-              <p className="text-lg text-gray-600 mb-8">
+              <p className="text-lg text-muted-foreground mb-8">
                 Manage your Request for Quotations and compare supplier responses
               </p>
             </div>
             <div className="lg:ml-8">
               <Link href="/rfq/create">
-                <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300">
+                <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300">
                   <Plus className="w-5 h-5 mr-2" />
                   Create New RFQ
                 </Button>
@@ -158,7 +158,7 @@ export default function MyRFQs() {
                     placeholder="Search by title or category..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 h-12 border-gray-200 focus:border-blue-500 focus:ring-blue-500 rounded-lg"
+                    className="pl-10 h-12 border-gray-200 focus:border-primary focus:ring-primary rounded-lg"
                   />
                 </div>
               </div>
@@ -167,7 +167,7 @@ export default function MyRFQs() {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="px-4 py-3 border border-gray-200 rounded-lg focus:border-blue-500 focus:ring-blue-500 bg-white h-12"
+                  className="px-4 py-3 border border-gray-200 rounded-lg focus:border-primary focus:ring-primary bg-white h-12"
                 >
                   <option value="all">All Status</option>
                   <option value="active">Active</option>
@@ -185,14 +185,14 @@ export default function MyRFQs() {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-blue-50 to-blue-100">
+            <Card className="group hover:shadow-xl transition-all duration-300 border-0 bg-gradient-to-br from-primary/5 to-primary/10">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-blue-600 mb-1">Total RFQs</p>
-                    <p className="text-3xl font-bold text-blue-900">{stats.total}</p>
+                    <p className="text-sm font-medium text-primary mb-1">Total RFQs</p>
+                    <p className="text-3xl font-bold text-foreground">{stats.total}</p>
                   </div>
-                  <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                  <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                     <FileText className="w-6 h-6 text-white" />
                   </div>
                 </div>
@@ -204,7 +204,7 @@ export default function MyRFQs() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-green-600 mb-1">Open</p>
-                    <p className="text-3xl font-bold text-green-900">{stats.active}</p>
+                    <p className="text-3xl font-bold text-foreground">{stats.active}</p>
                   </div>
                   <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                     <TrendingUp className="w-6 h-6 text-white" />
@@ -217,8 +217,8 @@ export default function MyRFQs() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600 mb-1">Closed</p>
-                    <p className="text-3xl font-bold text-gray-900">{stats.closed}</p>
+                    <p className="text-sm font-medium text-muted-foreground mb-1">Closed</p>
+                    <p className="text-3xl font-bold text-foreground">{stats.closed}</p>
                   </div>
                   <div className="w-12 h-12 bg-gray-500 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                     <CheckCircle className="w-6 h-6 text-white" />
@@ -232,7 +232,7 @@ export default function MyRFQs() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-purple-600 mb-1">Total Budget</p>
-                    <p className="text-3xl font-bold text-purple-900">${stats.totalBudget.toFixed(2)}</p>
+                    <p className="text-3xl font-bold text-foreground">${stats.totalBudget.toFixed(2)}</p>
                   </div>
                   <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                     <DollarSign className="w-6 h-6 text-white" />
@@ -264,10 +264,10 @@ export default function MyRFQs() {
                   <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <FileText className="w-8 h-8 text-gray-400" />
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No RFQs Found</h3>
-                  <p className="text-gray-600 mb-6">Create your first RFQ to start getting quotes from suppliers.</p>
+                  <h3 className="text-xl font-semibold text-foreground mb-2">No RFQs Found</h3>
+                  <p className="text-muted-foreground mb-6">Create your first RFQ to start getting quotes from suppliers.</p>
                   <Link href="/rfq/create">
-                    <Button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl">
+                    <Button className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-xl">
                       <Plus className="w-4 h-4 mr-2" />
                       Create New RFQ
                     </Button>
@@ -281,7 +281,7 @@ export default function MyRFQs() {
                     <CardContent className="p-6">
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
-                          <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+                          <h3 className="text-lg font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
                             {rfq.title}
                           </h3>
                           <div className="flex items-center gap-2 mb-2">
@@ -299,14 +299,14 @@ export default function MyRFQs() {
                         </Button>
                       </div>
                       
-                      <p className="text-gray-600 text-sm mb-4 line-clamp-2">{rfq.description}</p>
+                      <p className="text-muted-foreground text-sm mb-4 line-clamp-2">{rfq.description}</p>
                       
                       {rfq.attachments && rfq.attachments.length > 0 && (
                         <div className="mb-4">
                           <p className="text-sm text-gray-500 mb-2">Attachments:</p>
                           <div className="flex gap-2">
                             {rfq.attachments.map((attachment: string, index: number) => (
-                              <Link key={index} href="#" className="text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1">
+                              <Link key={index} href="#" className="text-primary hover:text-primary/80 text-sm flex items-center gap-1">
                                 <FileText className="w-3 h-3" />
                                 {attachment}
                               </Link>
@@ -316,26 +316,26 @@ export default function MyRFQs() {
                       )}
                       
                       <div className="grid grid-cols-2 gap-4 mb-4">
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Package className="w-4 h-4 text-gray-400" />
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Package className="w-4 h-4 text-muted-foreground" />
                           <span>Quantity: {rfq.quantity} units</span>
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <DollarSign className="w-4 h-4 text-gray-400" />
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <DollarSign className="w-4 h-4 text-muted-foreground" />
                           <span>Target Price: ${rfq.targetPrice}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Calendar className="w-4 h-4 text-gray-400" />
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="w-4 h-4 text-muted-foreground" />
                           <span>Expected: {new Date(rfq.expiryDate).toLocaleDateString()}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <MapPin className="w-4 h-4 text-gray-400" />
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <MapPin className="w-4 h-4 text-muted-foreground" />
                           <span>Location: {rfq.location}</span>
                         </div>
                       </div>
                       
                       <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                        <div className="flex items-center gap-4 text-sm text-gray-500">
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
                           <span>Created: {new Date(rfq.createdDate).toLocaleDateString()}</span>
                           <div className="flex items-center gap-1">
                             <Users className="w-4 h-4" />
@@ -343,7 +343,7 @@ export default function MyRFQs() {
                           </div>
                         </div>
                         <Link href={`/rfq/${rfq.id}`}>
-                          <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
+                          <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg">
                             View Details
                             <ArrowRight className="w-4 h-4 ml-1" />
                           </Button>
@@ -367,15 +367,15 @@ export default function MyRFQs() {
 
           {/* CTA Section */}
           <div className="text-center mt-12">
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-3xl p-8">
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">
+            <div className="bg-gradient-to-r from-primary/5 to-secondary/5 rounded-3xl p-8">
+              <h3 className="text-2xl font-bold text-foreground mb-4">
                 Need to Create an RFQ?
               </h3>
-              <p className="text-gray-600 mb-6">
+              <p className="text-muted-foreground mb-6">
                 Get competitive quotes from verified suppliers worldwide
               </p>
               <Link href="/rfq/create">
-                <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3">
+                <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3">
                   <Plus className="w-4 h-4 mr-2" />
                   Create New RFQ
                   <ArrowRight className="w-4 h-4 ml-2" />

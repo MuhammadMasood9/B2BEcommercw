@@ -397,17 +397,10 @@ export const commissions = pgTable("commissions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   orderId: varchar("order_id").notNull(),
   supplierId: varchar("supplier_id").notNull(),
-  orderAmount: decimal("order_amount").notNull(),
-  commissionRate: decimal("commission_rate").notNull(),
-  commissionAmount: decimal("commission_amount").notNull(),
-  supplierAmount: decimal("supplier_amount").notNull(),
-  status: text("status").default("unpaid"), // 'unpaid', 'payment_submitted', 'paid', 'disputed'
-  paymentProofUrl: text("payment_proof_url"),
-  paymentTransactionId: text("payment_transaction_id"),
-  paymentDate: timestamp("payment_date"),
-  paymentSubmittedAt: timestamp("payment_submitted_at"),
-  paymentVerifiedBy: varchar("payment_verified_by"),
-  paymentVerifiedAt: timestamp("payment_verified_at"),
+  amount: decimal("amount").notNull(),
+  status: text("status").default("pending"), // 'pending', 'paid', 'overdue'
+  dueDate: timestamp("due_date").notNull(),
+  paidAt: timestamp("paid_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -418,6 +411,31 @@ export const insertCommissionSchema = createInsertSchema(commissions).omit({
 
 export type InsertCommission = z.infer<typeof insertCommissionSchema>;
 export type Commission = typeof commissions.$inferSelect;
+
+// ==================== PAYMENT SUBMISSIONS ====================
+
+export const paymentSubmissions = pgTable("payment_submissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  supplierId: varchar("supplier_id").notNull(),
+  amount: decimal("amount").notNull(),
+  commissionIds: json("commission_ids").notNull(), // Array of commission IDs
+  paymentMethod: text("payment_method").default("bank_transfer"),
+  status: text("status").default("pending"), // 'pending', 'approved', 'rejected'
+  submittedAt: timestamp("submitted_at").defaultNow(),
+  verifiedAt: timestamp("verified_at"),
+  verifiedBy: varchar("verified_by"),
+  rejectionReason: text("rejection_reason"),
+  proofOfPayment: text("proof_of_payment"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPaymentSubmissionSchema = createInsertSchema(paymentSubmissions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPaymentSubmission = z.infer<typeof insertPaymentSubmissionSchema>;
+export type PaymentSubmission = typeof paymentSubmissions.$inferSelect;
 
 // ==================== PAYOUTS ====================
 

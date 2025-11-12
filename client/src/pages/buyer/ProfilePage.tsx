@@ -172,12 +172,12 @@ export default function ProfilePage() {
       <Header />
       
       {/* Hero Section with Gradient */}
-      <section className="relative py-16 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
+      <section className="relative py-16 bg-gradient-to-br from-secondary via-secondary/90 to-secondary/80 overflow-hidden">
         {/* Background Elements */}
         <div className="absolute inset-0">
-          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-600/10 to-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-primary/20 to-primary/15 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-primary/25 to-primary/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-primary/15 to-primary/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -189,7 +189,7 @@ export default function ProfilePage() {
             
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
               Manage Your
-              <span className="bg-gradient-to-r from-blue-200 via-white to-blue-200 bg-clip-text text-transparent block">
+              <span className="bg-gradient-to-r from-primary/80 via-white to-primary/80 bg-clip-text text-transparent block">
                 Profile
               </span>
             </h1>
@@ -222,8 +222,8 @@ export default function ProfilePage() {
           <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <User className="h-6 w-6 text-blue-600" />
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <User className="h-6 w-6 text-primary" />
                 </div>
                 <div>
                   <CardTitle className="text-2xl font-bold">Profile Information</CardTitle>
@@ -231,12 +231,12 @@ export default function ProfilePage() {
                 </div>
               </div>
               {!isEditing ? (
-                <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} className="border-blue-200 hover:bg-blue-50">
+                <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} className="border-primary/20 hover:bg-primary/5">
                   <Edit className="h-4 w-4 mr-2" /> Edit Profile
                 </Button>
               ) : (
                 <div className="flex gap-2">
-                  <Button size="sm" onClick={handleSave} className="bg-blue-600 hover:bg-blue-700">
+                  <Button size="sm" onClick={handleSave} className="bg-primary hover:bg-primary/90">
                     <Save className="h-4 w-4 mr-2" /> Save Changes
                   </Button>
                   <Button variant="outline" size="sm" onClick={handleCancel} className="border-gray-200 hover:bg-gray-50">
@@ -249,14 +249,14 @@ export default function ProfilePage() {
               {/* Avatar Section */}
               <div className="flex flex-col items-center mb-8">
                 <div className="relative">
-                  <Avatar className="h-32 w-32 mb-4 border-4 border-blue-500 shadow-lg">
+                  <Avatar className="h-32 w-32 mb-4 border-4 border-primary shadow-lg">
                     <AvatarImage src={profile.avatarUrl} alt={profile.name} />
                     <AvatarFallback className="text-2xl font-bold">{profile.name.charAt(0)}</AvatarFallback>
                   </Avatar>
                   {isEditing && (
                     <Button
                       size="sm"
-                      className="absolute bottom-2 right-2 h-8 w-8 rounded-full bg-blue-500 hover:bg-blue-600"
+                      className="absolute bottom-2 right-2 h-8 w-8 rounded-full bg-primary hover:bg-primary/90"
                       onClick={handleAvatarChange}
                     >
                       <Camera className="h-4 w-4" />
@@ -282,7 +282,7 @@ export default function ProfilePage() {
                     value={editedProfile.name}
                     onChange={handleInputChange}
                     readOnly={!isEditing}
-                    className={isEditing ? 'border-blue-300 focus:border-blue-500' : 'bg-gray-50 border-gray-200'}
+                    className={isEditing ? 'border-primary/30 focus:border-primary' : 'bg-gray-50 border-gray-200'}
                   />
                 </div>
                 
@@ -297,7 +297,7 @@ export default function ProfilePage() {
                     value={editedProfile.email}
                     onChange={handleInputChange}
                     readOnly={!isEditing}
-                    className={isEditing ? 'border-blue-300 focus:border-blue-500' : 'bg-gray-50 border-gray-200'}
+                    className={isEditing ? 'border-primary/30 focus:border-primary' : 'bg-gray-50 border-gray-200'}
                   />
                 </div>
                 
@@ -312,7 +312,7 @@ export default function ProfilePage() {
                     value={editedProfile.phone}
                     onChange={handleInputChange}
                     readOnly={!isEditing}
-                    className={isEditing ? 'border-blue-300 focus:border-blue-500' : 'bg-gray-50 border-gray-200'}
+                    className={isEditing ? 'border-primary/30 focus:border-primary' : 'bg-gray-50 border-gray-200'}
                   />
                 </div>
                 
@@ -326,7 +326,7 @@ export default function ProfilePage() {
                     value={editedProfile.company}
                     onChange={handleInputChange}
                     readOnly={!isEditing}
-                    className={isEditing ? 'border-blue-300 focus:border-blue-500' : 'bg-gray-50 border-gray-200'}
+                    className={isEditing ? 'border-primary/30 focus:border-primary' : 'bg-gray-50 border-gray-200'}
                   />
                 </div>
                 
@@ -340,7 +340,7 @@ export default function ProfilePage() {
                     value={editedProfile.address}
                     onChange={handleInputChange}
                     readOnly={!isEditing}
-                    className={isEditing ? 'border-blue-300 focus:border-blue-500' : 'bg-gray-50 border-gray-200'}
+                    className={isEditing ? 'border-primary/30 focus:border-primary' : 'bg-gray-50 border-gray-200'}
                   />
                 </div>
               </div>

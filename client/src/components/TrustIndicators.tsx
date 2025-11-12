@@ -50,7 +50,7 @@ export default function TrustIndicators({ supplier, variant = 'compact', classNa
         {/* Response Time */}
         {supplier.responseTime && (
           <div className="flex items-center gap-1 text-sm text-muted-foreground">
-            <Clock className="w-4 h-4 text-blue-500" />
+            <Clock className="w-4 h-4 text-primary" />
             <span>{supplier.responseTime}</span>
           </div>
         )}
@@ -110,7 +110,7 @@ export default function TrustIndicators({ supplier, variant = 'compact', classNa
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Response Time</span>
               <div className="flex items-center gap-2">
-                <Clock className="w-5 h-5 text-blue-500" />
+                <Clock className="w-5 h-5 text-primary" />
                 <span className="font-semibold">{supplier.responseTime}</span>
               </div>
             </div>
@@ -145,7 +145,7 @@ export default function TrustIndicators({ supplier, variant = 'compact', classNa
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div 
-              className="bg-gradient-to-r from-green-500 to-blue-500 h-2 rounded-full transition-all duration-300"
+              className="bg-gradient-to-r from-green-500 to-orange-600 h-2 rounded-full transition-all duration-300"
               style={{ width: `${calculateTrustScore(supplier)}%` }}
             />
           </div>

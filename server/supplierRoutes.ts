@@ -11,6 +11,7 @@ import { checkSupplierRestriction, warnCreditLimit } from './restrictionMiddlewa
 import { uploadMultiple, uploadSingle, uploadSingleFile } from './upload';
 import { z } from 'zod';
 import { calculateCommission } from './commissionRoutes';
+import { checkSupplierRestriction, requireUnrestrictedSupplier } from './middleware/restrictionMiddleware';
 
 const router = Router();
 
@@ -1645,7 +1646,7 @@ router.patch('/orders/:id/status', authMiddleware, async (req, res) => {
 });
 
 // Confirm order (supplier accepts the order)
-router.post('/orders/:id/confirm', authMiddleware, async (req, res) => {
+router.post('/orders/:id/confirm', authMiddleware, requireUnrestrictedSupplier, async (req, res) => {
     try {
         if (req.user?.role !== 'supplier') {
             return res.status(403).json({ error: 'Access denied. Supplier role required.' });

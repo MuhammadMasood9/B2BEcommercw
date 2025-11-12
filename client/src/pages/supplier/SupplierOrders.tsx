@@ -158,9 +158,9 @@ export default function SupplierOrders() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'confirmed': return 'bg-blue-100 text-blue-800';
+      case 'confirmed': return 'bg-brand-orange-100 text-brand-orange-800';
       case 'processing': return 'bg-purple-100 text-purple-800';
-      case 'shipped': return 'bg-indigo-100 text-indigo-800';
+      case 'shipped': return 'bg-orange-600 text-orange-600';
       case 'delivered': return 'bg-green-100 text-green-800';
       case 'completed': return 'bg-green-100 text-green-800';
       case 'cancelled': return 'bg-red-100 text-red-800';
@@ -305,7 +305,7 @@ export default function SupplierOrders() {
                 <p className="text-sm text-muted-foreground">Total Orders</p>
                 <p className="text-2xl font-bold">{stats.total}</p>
               </div>
-              <Package className="w-8 h-8 text-blue-500" />
+              <Package className="w-8 h-8 text-brand-orange-500" />
             </div>
           </CardContent>
         </Card>
@@ -338,7 +338,7 @@ export default function SupplierOrders() {
                 <p className="text-sm text-muted-foreground">Shipped</p>
                 <p className="text-2xl font-bold">{stats.shipped}</p>
               </div>
-              <Truck className="w-8 h-8 text-indigo-500" />
+              <Truck className="w-8 h-8 text-orange-600" />
             </div>
           </CardContent>
         </Card>
@@ -822,7 +822,7 @@ export default function SupplierOrders() {
 
               {/* Tracking Info */}
               {selectedOrder.trackingNumber && (
-                <div className="border rounded-lg p-4 bg-blue-50">
+                <div className="border rounded-lg p-4 bg-brand-orange-50">
                   <h3 className="font-semibold mb-2 flex items-center gap-2">
                     <Truck className="w-5 h-5" />
                     Tracking Information

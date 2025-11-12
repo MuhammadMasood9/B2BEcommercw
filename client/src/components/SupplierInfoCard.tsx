@@ -70,7 +70,7 @@ export default function SupplierInfoCard({
 
   const getSupplierTypeColor = (type: string) => {
     switch (type) {
-      case 'manufacturer': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'manufacturer': return 'bg-primary text-primary border-primary';
       case 'trading_company': return 'bg-green-100 text-green-800 border-green-200';
       case 'wholesaler': return 'bg-purple-100 text-purple-800 border-purple-200';
       case 'distributor': return 'bg-orange-100 text-orange-800 border-orange-200';
@@ -86,13 +86,13 @@ export default function SupplierInfoCard({
     .slice(0, 2);
 
   return (
-    <Card className="bg-gradient-to-br from-white to-blue-50/30 border-blue-100 shadow-lg hover:shadow-xl transition-all duration-300">
+    <Card className="bg-gradient-to-br from-white to-orange-600/30 border-primary shadow-lg hover:shadow-xl transition-all duration-300">
       <CardHeader className="pb-4">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16 border-2 border-blue-200">
+            <Avatar className="h-16 w-16 border-2 border-primary">
               <AvatarImage src={supplierLogo} alt={supplierName} />
-              <AvatarFallback className="bg-blue-100 text-blue-700 text-lg font-semibold">
+              <AvatarFallback className="bg-primary text-primary text-lg font-semibold">
                 {supplierInitials}
               </AvatarFallback>
             </Avatar>
@@ -140,7 +140,7 @@ export default function SupplierInfoCard({
 
           <div className="bg-white rounded-lg p-4 border border-gray-100">
             <div className="flex items-center gap-2 mb-2">
-              <Clock className="w-4 h-4 text-blue-500" />
+              <Clock className="w-4 h-4 text-primary" />
               <span className="text-sm text-muted-foreground">Response Time</span>
             </div>
             <div className="flex items-baseline gap-2">
@@ -164,7 +164,7 @@ export default function SupplierInfoCard({
           {supplierTotalProducts > 0 && (
             <div className="text-center p-3 bg-white rounded-lg border border-gray-100">
               <div className="flex items-center justify-center gap-1 mb-1">
-                <Package className="w-3 h-3 text-blue-500" />
+                <Package className="w-3 h-3 text-primary" />
                 <span className="text-xs text-muted-foreground">Products</span>
               </div>
               <div className="text-lg font-semibold text-gray-900">{supplierTotalProducts}</div>
@@ -186,7 +186,7 @@ export default function SupplierInfoCard({
         <div className="space-y-3 pt-4 border-t border-gray-200">
           <Button 
             onClick={onContact}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+            className="w-full bg-primary hover:bg-primary text-white"
             size="lg"
           >
             <MessageSquare className="w-4 h-4 mr-2" />
@@ -197,7 +197,7 @@ export default function SupplierInfoCard({
             <Button 
               asChild
               variant="outline"
-              className="w-full border-blue-200 hover:bg-blue-50"
+              className="w-full border-primary hover:bg-primary"
               size="lg"
             >
               <Link href={`/store/${supplierSlug}`}>
@@ -210,7 +210,7 @@ export default function SupplierInfoCard({
             <Button 
               onClick={onVisitStore}
               variant="outline"
-              className="w-full border-blue-200 hover:bg-blue-50"
+              className="w-full border-primary hover:bg-primary"
               size="lg"
             >
               <Building2 className="w-4 h-4 mr-2" />

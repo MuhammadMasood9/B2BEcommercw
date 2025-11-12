@@ -120,8 +120,8 @@ export default function SupplierRegister() {
       icon: Store,
       title: "Your Own Store",
       description: "Customizable storefront",
-      color: "from-blue-100 to-blue-200",
-      iconColor: "text-blue-600"
+      color: "from-brand-orange-100 to-brand-orange-200",
+      iconColor: "text-brand-orange-600"
     },
     {
       icon: Package,
@@ -134,8 +134,8 @@ export default function SupplierRegister() {
       icon: Globe,
       title: "Global Reach",
       description: "Access worldwide buyers",
-      color: "from-purple-100 to-purple-200",
-      iconColor: "text-purple-600"
+      color: "from-brand-grey-100 to-brand-grey-200",
+      iconColor: "text-brand-grey-600"
     },
     {
       icon: Award,
@@ -159,13 +159,13 @@ export default function SupplierRegister() {
                 <CheckCircle className="w-4 h-4" />
                 <span>Start Selling Today</span>
               </div>
-              <h1 className="text-4xl xl:text-5xl font-bold text-gray-900 mb-4">
+              <h1 className="text-4xl xl:text-5xl font-bold brand-text-on-light mb-4">
                 Become a
-                <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent block mt-2">
+                <span className="text-gradient-brand block mt-2">
                   Verified Supplier
                 </span>
               </h1>
-              <p className="text-lg text-gray-600 mb-8">
+              <p className="text-lg text-brand-grey-600 mb-8">
                 Join thousands of suppliers reaching millions of buyers worldwide on our B2B marketplace.
               </p>
             </div>
@@ -175,37 +175,37 @@ export default function SupplierRegister() {
               {benefits.map((benefit, index) => {
                 const Icon = benefit.icon;
                 return (
-                  <div key={index} className="bg-white rounded-xl p-4 shadow-lg border border-gray-100 hover:shadow-xl transition-all">
+                  <div key={index} className="brand-card rounded-xl p-4 shadow-lg hover:shadow-xl transition-all">
                     <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${benefit.color} flex items-center justify-center mb-3`}>
                       <Icon className={`w-5 h-5 ${benefit.iconColor}`} />
                     </div>
-                    <h3 className="text-sm font-semibold text-gray-900 mb-1">{benefit.title}</h3>
-                    <p className="text-xs text-gray-600">{benefit.description}</p>
+                    <h3 className="text-sm font-semibold brand-text-on-light mb-1">{benefit.title}</h3>
+                    <p className="text-xs text-brand-grey-600">{benefit.description}</p>
                   </div>
                 );
               })}
             </div>
 
             {/* Stats */}
-            <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-2xl p-6 border border-purple-100">
-              <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-purple-600" />
+            <div className="bg-gradient-to-r from-brand-orange-50 to-brand-grey-50 rounded-2xl p-6 border border-brand-orange-100">
+              <h3 className="font-semibold brand-text-on-light mb-4 flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-brand-orange-600" />
                 Platform Success
               </h3>
               <ul className="space-y-3">
-                <li className="flex items-center gap-3 text-gray-700">
+                <li className="flex items-center gap-3 text-brand-grey-700">
                   <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
                   <span className="text-sm">10,000+ active suppliers</span>
                 </li>
-                <li className="flex items-center gap-3 text-gray-700">
+                <li className="flex items-center gap-3 text-brand-grey-700">
                   <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
                   <span className="text-sm">1M+ monthly buyers</span>
                 </li>
-                <li className="flex items-center gap-3 text-gray-700">
+                <li className="flex items-center gap-3 text-brand-grey-700">
                   <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
                   <span className="text-sm">$5M+ monthly transactions</span>
                 </li>
-                <li className="flex items-center gap-3 text-gray-700">
+                <li className="flex items-center gap-3 text-brand-grey-700">
                   <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
                   <span className="text-sm">95% supplier satisfaction</span>
                 </li>
@@ -215,12 +215,12 @@ export default function SupplierRegister() {
 
           {/* Right Side - Registration Form */}
           <div className="flex items-center justify-center">
-            <Card className="w-full max-w-md bg-white shadow-2xl border-gray-100">
+            <Card className="w-full max-w-md brand-card shadow-2xl">
               <CardHeader className="space-y-2 text-center px-6">
-                <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <div className="w-16 h-16 gradient-brand-orange rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                   <Store className="w-8 h-8 text-white" />
                 </div>
-                <CardTitle className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                <CardTitle className="text-3xl font-bold text-gradient-brand">
                   Supplier Registration
                 </CardTitle>
                 <CardDescription className="text-base">
@@ -231,46 +231,46 @@ export default function SupplierRegister() {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="firstName" className="text-sm font-medium">
+                      <Label htmlFor="firstName" className="text-sm font-medium brand-text-on-light">
                         First Name
                       </Label>
                       <div className="relative">
-                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-brand-grey-400 w-4 h-4" />
                         <Input
                           id="firstName"
                           placeholder="John"
                           value={formData.firstName}
                           onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                           required
-                          className="pl-10 h-11"
+                          className="brand-input pl-10 h-11"
                         />
                       </div>
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="lastName" className="text-sm font-medium">
+                      <Label htmlFor="lastName" className="text-sm font-medium brand-text-on-light">
                         Last Name
                       </Label>
                       <div className="relative">
-                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-brand-grey-400 w-4 h-4" />
                         <Input
                           id="lastName"
                           placeholder="Doe"
                           value={formData.lastName}
                           onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                           required
-                          className="pl-10 h-11"
+                          className="brand-input pl-10 h-11"
                         />
                       </div>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-sm font-medium">
+                    <Label htmlFor="email" className="text-sm font-medium brand-text-on-light">
                       Email Address
                     </Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-brand-grey-400 w-4 h-4" />
                       <Input
                         id="email"
                         type="email"
@@ -278,30 +278,30 @@ export default function SupplierRegister() {
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         required
-                        className="pl-10 h-11"
+                        className="brand-input pl-10 h-11"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="businessName" className="text-sm font-medium">
+                    <Label htmlFor="businessName" className="text-sm font-medium brand-text-on-light">
                       Business Name
                     </Label>
                     <div className="relative">
-                      <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-brand-grey-400 w-4 h-4" />
                       <Input
                         id="businessName"
                         placeholder="Your Company Ltd."
                         value={formData.businessName}
                         onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
                         required
-                        className="pl-10 h-11"
+                        className="brand-input pl-10 h-11"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="businessType" className="text-sm font-medium">
+                    <Label htmlFor="businessType" className="text-sm font-medium brand-text-on-light">
                       Business Type
                     </Label>
                     <Select
@@ -311,7 +311,7 @@ export default function SupplierRegister() {
                     >
                       <SelectTrigger className="h-11">
                         <div className="flex items-center">
-                          <Building2 className="mr-2 h-4 w-4 text-gray-400" />
+                          <Building2 className="mr-2 h-4 w-4 text-brand-grey-400" />
                           <SelectValue placeholder="Select business type" />
                         </div>
                       </SelectTrigger>
@@ -324,45 +324,45 @@ export default function SupplierRegister() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="storeName" className="text-sm font-medium">
+                    <Label htmlFor="storeName" className="text-sm font-medium brand-text-on-light">
                       Store Name
                     </Label>
                     <div className="relative">
-                      <Store className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Store className="absolute left-3 top-1/2 transform -translate-y-1/2 text-brand-grey-400 w-4 h-4" />
                       <Input
                         id="storeName"
                         placeholder="My Store"
                         value={formData.storeName}
                         onChange={(e) => setFormData({ ...formData, storeName: e.target.value })}
                         required
-                        className="pl-10 h-11"
+                        className="brand-input pl-10 h-11"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="contactPerson" className="text-sm font-medium">
+                    <Label htmlFor="contactPerson" className="text-sm font-medium brand-text-on-light">
                       Contact Person
                     </Label>
                     <div className="relative">
-                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-brand-grey-400 w-4 h-4" />
                       <Input
                         id="contactPerson"
                         placeholder="Contact person name"
                         value={formData.contactPerson}
                         onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
                         required
-                        className="pl-10 h-11"
+                        className="brand-input pl-10 h-11"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="phone" className="text-sm font-medium">
+                    <Label htmlFor="phone" className="text-sm font-medium brand-text-on-light">
                       Phone Number
                     </Label>
                     <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-brand-grey-400 w-4 h-4" />
                       <Input
                         id="phone"
                         type="tel"
@@ -370,70 +370,70 @@ export default function SupplierRegister() {
                         value={formData.phone}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                         required
-                        className="pl-10 h-11"
+                        className="brand-input pl-10 h-11"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="address" className="text-sm font-medium">
+                    <Label htmlFor="address" className="text-sm font-medium brand-text-on-light">
                       Business Address
                     </Label>
                     <div className="relative">
-                      <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-brand-grey-400 w-4 h-4" />
                       <Input
                         id="address"
                         placeholder="123 Business Street"
                         value={formData.address}
                         onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                         required
-                        className="pl-10 h-11"
+                        className="brand-input pl-10 h-11"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="city" className="text-sm font-medium">
+                      <Label htmlFor="city" className="text-sm font-medium brand-text-on-light">
                         City
                       </Label>
                       <div className="relative">
-                        <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 text-brand-grey-400 w-4 h-4" />
                         <Input
                           id="city"
                           placeholder="New York"
                           value={formData.city}
                           onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                           required
-                          className="pl-10 h-11"
+                          className="brand-input pl-10 h-11"
                         />
                       </div>
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="country" className="text-sm font-medium">
+                      <Label htmlFor="country" className="text-sm font-medium brand-text-on-light">
                         Country
                       </Label>
                       <div className="relative">
-                        <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 text-brand-grey-400 w-4 h-4" />
                         <Input
                           id="country"
                           placeholder="United States"
                           value={formData.country}
                           onChange={(e) => setFormData({ ...formData, country: e.target.value })}
                           required
-                          className="pl-10 h-11"
+                          className="brand-input pl-10 h-11"
                         />
                       </div>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="password" className="text-sm font-medium">
+                    <Label htmlFor="password" className="text-sm font-medium brand-text-on-light">
                       Password
                     </Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-brand-grey-400 w-4 h-4" />
                       <Input
                         id="password"
                         type={showPassword ? "text" : "password"}
@@ -441,12 +441,12 @@ export default function SupplierRegister() {
                         value={formData.password}
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                         required
-                        className="pl-10 pr-10 h-11"
+                        className="brand-input pl-10 pr-10 h-11"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-brand-grey-400 hover:text-brand-grey-600"
                       >
                         {showPassword ? (
                           <EyeOff className="w-4 h-4" />
@@ -464,16 +464,16 @@ export default function SupplierRegister() {
                       onCheckedChange={(checked) => setFormData({ ...formData, terms: checked === true })}
                       required
                     />
-                    <Label htmlFor="terms" className="text-xs text-gray-600 cursor-pointer leading-relaxed">
+                    <Label htmlFor="terms" className="text-xs text-brand-grey-600 cursor-pointer leading-relaxed">
                       I agree to the{" "}
                       <Link href="/terms">
-                        <span className="text-purple-600 hover:text-purple-700 font-medium">
+                        <span className="brand-link font-medium">
                           Terms of Service
                         </span>
                       </Link>
                       {" "}and{" "}
                       <Link href="/privacy">
-                        <span className="text-purple-600 hover:text-purple-700 font-medium">
+                        <span className="brand-link font-medium">
                           Privacy Policy
                         </span>
                       </Link>
@@ -483,7 +483,7 @@ export default function SupplierRegister() {
                   <Button
                     type="submit"
                     disabled={isSubmitting || !formData.terms}
-                    className="w-full h-11 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold shadow-lg"
+                    className="brand-button-primary w-full h-11 font-semibold shadow-lg"
                   >
                     {isSubmitting ? (
                       <>
@@ -500,19 +500,19 @@ export default function SupplierRegister() {
                 </form>
 
                 <div className="mt-6 text-center space-y-3">
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-brand-grey-600">
                     Already have an account?{" "}
                     <Link href="/supplier/login">
-                      <span className="text-purple-600 hover:text-purple-700 font-semibold cursor-pointer">
+                      <span className="brand-link font-semibold cursor-pointer">
                         Sign in
                       </span>
                     </Link>
                   </p>
-                  <div className="pt-3 border-t border-gray-200">
-                    <p className="text-sm text-gray-600">
+                  <div className="pt-3 border-t border-brand-grey-200">
+                    <p className="text-sm text-brand-grey-600">
                       Looking to buy?{" "}
                       <Link href="/signup">
-                        <span className="text-blue-600 hover:text-blue-700 font-semibold cursor-pointer">
+                        <span className="brand-link font-semibold cursor-pointer">
                           Buyer Registration
                         </span>
                       </Link>

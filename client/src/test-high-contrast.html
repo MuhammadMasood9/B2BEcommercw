@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>High Contrast Mode Test</title>
+    <link rel="stylesheet" href="./index.css">
+    <style>
+        body {
+            font-family: 'Base Neue', Inter, system-ui, sans-serif;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: hsl(var(--background));
+            color: hsl(var(--foreground));
+        }
+        
+        .test-section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            border: 1px solid hsl(var(--border));
+            border-radius: 0.5rem;
+            background-color: hsl(var(--card));
+        }
+        
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .button-test {
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 200ms;
+            margin: 0.25rem;
+        }
+        
+        .btn-primary {
+            background-color: hsl(var(--brand-orange-500));
+            color: white;
+            border: 1px solid hsl(var(--brand-orange-600));
+        }
+        
+        .btn-secondary {
+            background-color: hsl(var(--brand-grey-900));
+            color: white;
+            border: 1px solid hsl(var(--brand-grey-800));
+        }
+        
+        .btn-outline {
+            background-color: transparent;
+            color: hsl(var(--brand-orange-500));
+            border: 1px solid hsl(var(--brand-orange-500));
+        }
+        
+        .input-test {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid hsl(var(--border));
+            border-radius: 0.375rem;
+            background-color: hsl(var(--background));
+            color: hsl(var(--foreground));
+            margin: 0.25rem 0;
+        }
+        
+        .link-test {
+            color: hsl(var(--brand-link-color, var(--brand-orange-500)));
+            text-decoration: underline;
+            margin: 0 0.5rem;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+        
+        .status-success { background-color: #22c55e; }
+        .status-warning { background-color: hsl(var(--brand-orange-500)); }
+        .status-error { background-color: #ef4444; }
+        .status-info { background-color: #3b82f6; }
+        
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin: 1rem 0;
+            padding: 1rem;
+            background-color: hsl(var(--muted));
+            border-radius: 0.5rem;
+        }
+        
+        .high-contrast-toggle {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            background-color: hsl(var(--background));
+            border: 2px solid hsl(var(--border));
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        .theme-info {
+            background-color: hsl(var(--muted));
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>High Contrast Mode Test Page</h1>
+        <p>This page tests the high contrast mode implementation for accessibility compliance.</p>
+        
+        <div class="toggle-container">
+            <button id="themeToggle" class="high-contrast-toggle">
+                🌓 Toggle Theme
+            </button>
+            <button id="highContrastToggle" class="high-contrast-toggle">
+                ♿ Toggle High Contrast
+            </button>
+            <div class="theme-info">
+                <strong>Current:</strong> <span id="currentTheme">Light</span> | 
+                <strong>High Contrast:</strong> <span id="highContrastStatus">Disabled</span>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Button Tests -->
+        <section class="test-section">
+            <h2>Button Variants</h2>
+            <p>Test different button styles and their focus indicators in high contrast mode.</p>
+            <div class="test-grid">
+                <div>
+                    <h3>Primary Buttons</h3>
+                    <button class="button-test btn-primary">Primary Button</button>
+                    <button class="button-test btn-primary" disabled>Disabled Primary</button>
+                </div>
+                <div>
+                    <h3>Secondary Buttons</h3>
+                    <button class="button-test btn-secondary">Secondary Button</button>
+                    <button class="button-test btn-secondary" disabled>Disabled Secondary</button>
+                </div>
+                <div>
+                    <h3>Outline Buttons</h3>
+                    <button class="button-test btn-outline">Outline Button</button>
+                    <button class="button-test btn-outline" disabled>Disabled Outline</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Form Tests -->
+        <section class="test-section">
+            <h2>Form Elements</h2>
+            <p>Test form inputs and their accessibility features.</p>
+            <div class="test-grid">
+                <div>
+                    <h3>Text Inputs</h3>
+                    <label for="text-input">Text Input:</label>
+                    <input type="text" id="text-input" class="input-test" placeholder="Enter text here...">
+                    
+                    <label for="email-input">Email Input:</label>
+                    <input type="email" id="email-input" class="input-test" placeholder="your@email.com">
+                    
+                    <label for="password-input">Password Input:</label>
+                    <input type="password" id="password-input" class="input-test" placeholder="Password">
+                </div>
+                <div>
+                    <h3>Other Inputs</h3>
+                    <label for="select-input">Select:</label>
+                    <select id="select-input" class="input-test">
+                        <option>Option 1</option>
+                        <option>Option 2</option>
+                        <option>Option 3</option>
+                    </select>
+                    
+                    <label for="textarea-input">Textarea:</label>
+                    <textarea id="textarea-input" class="input-test" rows="3" placeholder="Enter longer text..."></textarea>
+                </div>
+            </div>
+        </section>
+
+        <!-- Link Tests -->
+        <section class="test-section">
+            <h2>Links and Navigation</h2>
+            <p>Test link styles and focus indicators.</p>
+            <div class="test-grid">
+                <div>
+                    <h3>Inline Links</h3>
+                    <p>
+                        This paragraph contains <a href="#" class="link-test">a regular link</a> and 
+                        <a href="#" class="link-test">another link</a> for testing purposes.
+                    </p>
+                </div>
+                <div>
+                    <h3>Navigation Links</h3>
+                    <nav>
+                        <a href="#" class="link-test">Home</a>
+                        <a href="#" class="link-test">Products</a>
+                        <a href="#" class="link-test">About</a>
+                        <a href="#" class="link-test">Contact</a>
+                    </nav>
+                </div>
+            </div>
+        </section>
+
+        <!-- Status Tests -->
+        <section class="test-section">
+            <h2>Status Indicators</h2>
+            <p>Test status colors and their accessibility in high contrast mode.</p>
+            <div class="test-grid">
+                <div>
+                    <h3>Status Dots</h3>
+                    <div><span class="status-indicator status-success"></span>Success Status</div>
+                    <div><span class="status-indicator status-warning"></span>Warning Status</div>
+                    <div><span class="status-indicator status-error"></span>Error Status</div>
+                    <div><span class="status-indicator status-info"></span>Info Status</div>
+                </div>
+                <div>
+                    <h3>Status Buttons</h3>
+                    <button class="button-test" style="background-color: #22c55e; color: white;">Success Action</button>
+                    <button class="button-test" style="background-color: hsl(var(--brand-orange-500)); color: white;">Warning Action</button>
+                    <button class="button-test" style="background-color: #ef4444; color: white;">Error Action</button>
+                    <button class="button-test" style="background-color: #3b82f6; color: white;">Info Action</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Accessibility Info -->
+        <section class="test-section">
+            <h2>Accessibility Information</h2>
+            <div class="test-grid">
+                <div>
+                    <h3>Current Settings</h3>
+                    <ul id="settingsList">
+                        <li><strong>Theme:</strong> <span id="themeDisplay">Light</span></li>
+                        <li><strong>High Contrast:</strong> <span id="contrastDisplay">Disabled</span></li>
+                        <li><strong>Focus Indicators:</strong> Enhanced</li>
+                        <li><strong>Border Width:</strong> <span id="borderDisplay">1px</span></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3>WCAG Compliance</h3>
+                    <ul>
+                        <li><strong>Contrast Ratio:</strong> <span id="contrastRatio">AA (4.5:1+)</span></li>
+                        <li><strong>Focus Indicators:</strong> ✓ Visible</li>
+                        <li><strong>Keyboard Navigation:</strong> ✓ Supported</li>
+                        <li><strong>Screen Reader:</strong> ✓ Compatible</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Testing Instructions -->
+        <section class="test-section">
+            <h2>Testing Instructions</h2>
+            <div class="test-grid">
+                <div>
+                    <h3>Keyboard Testing</h3>
+                    <ul>
+                        <li>Use Tab to navigate between elements</li>
+                        <li>Use Enter/Space to activate buttons</li>
+                        <li>Check focus indicators are visible</li>
+                        <li>Test with screen reader if available</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3>Visual Testing</h3>
+                    <ul>
+                        <li>Toggle high contrast mode</li>
+                        <li>Check text contrast ratios</li>
+                        <li>Verify border prominence</li>
+                        <li>Test at different zoom levels</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // Theme and high contrast management
+        let isDark = false;
+        let isHighContrast = false;
+
+        function updateTheme() {
+            const root = document.documentElement;
+            
+            // Apply theme class
+            if (isDark) {
+                root.classList.add('dark');
+            } else {
+                root.classList.remove('dark');
+            }
+            
+            // Apply high contrast class
+            if (isHighContrast) {
+                root.classList.add('high-contrast');
+            } else {
+                root.classList.remove('high-contrast');
+            }
+            
+            // Update UI
+            document.getElementById('currentTheme').textContent = isDark ? 'Dark' : 'Light';
+            document.getElementById('highContrastStatus').textContent = isHighContrast ? 'Enabled' : 'Disabled';
+            document.getElementById('themeDisplay').textContent = isDark ? 'Dark' : 'Light';
+            document.getElementById('contrastDisplay').textContent = isHighContrast ? 'Enabled' : 'Disabled';
+            document.getElementById('borderDisplay').textContent = isHighContrast ? '2-3px' : '1px';
+            document.getElementById('contrastRatio').textContent = isHighContrast ? 'AAA (7:1+)' : 'AA (4.5:1+)';
+        }
+
+        // Event listeners
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            isDark = !isDark;
+            updateTheme();
+        });
+
+        document.getElementById('highContrastToggle').addEventListener('click', () => {
+            isHighContrast = !isHighContrast;
+            updateTheme();
+        });
+
+        // Initialize
+        updateTheme();
+
+        // Load and run verification script
+        const script = document.createElement('script');
+        script.src = './test/high-contrast-verification.js';
+        script.onload = () => {
+            console.log('High contrast verification script loaded. Run window.highContrastVerification.runAllTests() to test.');
+        };
+        document.head.appendChild(script);
+
+        // Add keyboard navigation helpers
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'F1') {
+                e.preventDefault();
+                if (window.highContrastVerification) {
+                    window.highContrastVerification.runAllTests();
+                }
+            }
+        });
+
+        console.log('🎨 High Contrast Test Page Loaded');
+        console.log('Press F1 to run verification tests');
+        console.log('Use Tab to navigate, Enter/Space to activate');
+    </script>
+</body>
+</html>

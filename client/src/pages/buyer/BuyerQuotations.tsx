@@ -354,9 +354,9 @@ export default function BuyerQuotations() {
       case "accepted": return "bg-green-100 text-green-800 border-green-200";
       case "rejected": return "bg-red-100 text-red-800 border-red-200";
       case "expired": return "bg-gray-100 text-gray-800 border-gray-200";
-      case "negotiating": return "bg-blue-100 text-blue-800 border-blue-200";
+      case "negotiating": return "bg-primary/10 text-primary border-primary/20";
       case "counter_offered": return "bg-purple-100 text-purple-800 border-purple-200";
-      case "revised": return "bg-indigo-100 text-indigo-800 border-indigo-200";
+      case "revised": return "bg-orange-600 text-orange-600 border-orange-600";
       case "under_review": return "bg-orange-100 text-orange-800 border-orange-200";
       case "awaiting_response": return "bg-cyan-100 text-cyan-800 border-cyan-200";
       case "final_offer": return "bg-pink-100 text-pink-800 border-pink-200";
@@ -487,12 +487,12 @@ export default function BuyerQuotations() {
       <Header />
       
       {/* Hero Section with Gradient */}
-      <section className="relative py-16 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
+      <section className="relative py-16 bg-gradient-to-br from-secondary via-secondary/90 to-secondary/80 overflow-hidden">
         {/* Background Elements */}
         <div className="absolute inset-0">
-          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-600/10 to-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-primary/20 to-primary/15 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-primary/25 to-primary/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-primary/15 to-primary/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -504,7 +504,7 @@ export default function BuyerQuotations() {
             
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
               My
-              <span className="bg-gradient-to-r from-blue-200 via-white to-blue-200 bg-clip-text text-transparent block">
+              <span className="bg-gradient-to-r from-primary/80 via-white to-primary/80 bg-clip-text text-transparent block">
                 Quotations
               </span>
             </h1>
@@ -624,20 +624,20 @@ export default function BuyerQuotations() {
                 <div className="w-10 h-10 bg-gradient-to-br from-yellow-100 to-yellow-200 rounded-xl flex items-center justify-center mx-auto mb-3">
                   <Clock className="w-5 h-5 text-yellow-600" />
                 </div>
-                <div className="text-xl font-bold text-gray-900">{pendingQuotations.length}</div>
-                <div className="text-xs text-gray-600">Pending</div>
+                <div className="text-xl font-bold text-foreground">{pendingQuotations.length}</div>
+                <div className="text-xs text-muted-foreground">Pending</div>
                 <div className="text-xs text-yellow-600 mt-1">{getStatusDescription('pending')}</div>
               </CardContent>
             </Card>
             
             <Card className="bg-white border-gray-100 shadow-lg hover:shadow-xl transition-shadow">
               <CardContent className="p-4 text-center">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center mx-auto mb-3">
-                  <MessageSquare className="w-5 h-5 text-blue-600" />
+                <div className="w-10 h-10 bg-gradient-to-br from-primary/10 to-primary/20 rounded-xl flex items-center justify-center mx-auto mb-3">
+                  <MessageSquare className="w-5 h-5 text-primary" />
                 </div>
-                <div className="text-xl font-bold text-gray-900">{negotiatingQuotations.length}</div>
-                <div className="text-xs text-gray-600">Negotiating</div>
-                <div className="text-xs text-blue-600 mt-1">Active discussions</div>
+                <div className="text-xl font-bold text-foreground">{negotiatingQuotations.length}</div>
+                <div className="text-xs text-muted-foreground">Negotiating</div>
+                <div className="text-xs text-primary mt-1">Active discussions</div>
               </CardContent>
             </Card>
             
@@ -646,8 +646,8 @@ export default function BuyerQuotations() {
                 <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl flex items-center justify-center mx-auto mb-3">
                   <Target className="w-5 h-5 text-purple-600" />
                 </div>
-                <div className="text-xl font-bold text-gray-900">{finalOfferQuotations.length}</div>
-                <div className="text-xs text-gray-600">Final Offers</div>
+                <div className="text-xl font-bold text-foreground">{finalOfferQuotations.length}</div>
+                <div className="text-xs text-muted-foreground">Final Offers</div>
                 <div className="text-xs text-purple-600 mt-1">Last chance</div>
               </CardContent>
             </Card>
@@ -657,7 +657,7 @@ export default function BuyerQuotations() {
                 <div className="w-10 h-10 bg-gradient-to-br from-green-100 to-green-200 rounded-xl flex items-center justify-center mx-auto mb-3">
                   <CheckCircle className="w-5 h-5 text-green-600" />
                 </div>
-                <div className="text-xl font-bold text-gray-900">{acceptedQuotations.length}</div>
+                <div className="text-xl font-bold text-foreground">{acceptedQuotations.length}</div>
                 <div className="text-xs text-gray-600">Accepted</div>
                 <div className="text-xs text-green-600 mt-1">Orders created</div>
               </CardContent>
@@ -719,7 +719,7 @@ export default function BuyerQuotations() {
                       <CardHeader>
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                            <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-primary transition-colors">
                               {quotation.type === 'rfq' ? (quotation.rfqTitle || 'RFQ Quotation') : (quotation.productName || 'Product Quotation')}
                             </CardTitle>
                             <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -727,7 +727,7 @@ export default function BuyerQuotations() {
                                 variant={quotation.type === 'rfq' ? 'default' : 'secondary'} 
                                 className={quotation.type === 'rfq' 
                                   ? 'bg-purple-100 text-purple-800 border-purple-300 font-semibold text-xs px-2 py-1' 
-                                  : 'bg-blue-100 text-blue-800 border-blue-300 font-semibold text-xs px-2 py-1'}
+                                  : 'bg-primary/10 text-primary border-primary/30 font-semibold text-xs px-2 py-1'}
                               >
                                 {quotation.type === 'rfq' ? '📋 RFQ (quotations)' : '💬 Inquiry (inquiry_quotations)'}
                               </Badge>
@@ -790,7 +790,7 @@ export default function BuyerQuotations() {
                             )}
                           </div>
                           {quotation.attachments && Array.isArray(quotation.attachments) && quotation.attachments.length > 0 && (
-                            <div className="flex items-center gap-1 text-xs text-blue-600 mt-2">
+                            <div className="flex items-center gap-1 text-xs text-primary mt-2">
                               <FileText className="h-3 w-3" />
                               <span>{quotation.attachments.length} attachment(s)</span>
                             </div>
@@ -847,7 +847,7 @@ export default function BuyerQuotations() {
                                 setSelectedQuotation(quotation);
                                 setIsCounterOfferDialogOpen(true);
                               }}
-                              className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                              className="bg-primary/5 border-primary/20 text-primary hover:bg-primary/10"
                             >
                               <TrendingUp className="w-4 h-4 mr-1" />
                               Negotiate
@@ -908,7 +908,7 @@ export default function BuyerQuotations() {
                     {searchQuery ? 'Try adjusting your search criteria' : 'You haven\'t received any quotations yet'}
                   </p>
                   <Link href="/inquiries">
-                    <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                    <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
                       <Plus className="w-4 h-4 mr-2" />
                       Make Inquiry
                     </Button>
@@ -925,7 +925,7 @@ export default function BuyerQuotations() {
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                          <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-primary transition-colors">
                             {quotation.productName}
                           </CardTitle>
                           <p className="text-sm text-gray-600 mt-1">Quotation #{quotation.id}</p>
@@ -1022,7 +1022,7 @@ export default function BuyerQuotations() {
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                          <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-primary transition-colors">
                             {quotation.productName}
                           </CardTitle>
                           <p className="text-sm text-gray-600 mt-1">Quotation #{quotation.id}</p>
@@ -1087,7 +1087,7 @@ export default function BuyerQuotations() {
 
           {/* CTA Section */}
           <div className="text-center mt-12">
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-3xl p-8">
+            <div className="bg-gradient-to-r from-primary/5 to-purple-50 rounded-3xl p-8">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">
                 Need to Make an Inquiry?
               </h3>
@@ -1095,7 +1095,7 @@ export default function BuyerQuotations() {
                 Browse our products and send inquiries to verified admins
               </p>
               <Link href="/products">
-                <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3">
+                <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3">
                   Browse Products
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
@@ -1230,7 +1230,7 @@ export default function BuyerQuotations() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-blue-600" />
+              <TrendingUp className="w-5 h-5 text-primary" />
               Send Counter Offer
             </DialogTitle>
             <DialogDescription>
@@ -1240,9 +1240,9 @@ export default function BuyerQuotations() {
           {selectedQuotation && (
             <div className="space-y-6">
               {/* Current Quotation Details */}
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-xl border border-blue-200">
+              <div className="bg-gradient-to-r from-primary/5 to-purple-50 p-6 rounded-xl border border-primary/20">
                 <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-blue-600" />
+                  <FileText className="w-4 h-4 text-primary" />
                   Current Quotation Details
                 </h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -1394,7 +1394,7 @@ export default function BuyerQuotations() {
             <Button 
               onClick={handleCounterOffer}
               disabled={!counterOffer.quantity || !counterOffer.targetPrice || counterOfferMutation.isPending}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               {counterOfferMutation.isPending ? (
                 <>
@@ -1432,8 +1432,8 @@ export default function BuyerQuotations() {
                   <div key={revision.id} className="border border-gray-200 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <GitCommit className="w-4 h-4 text-blue-600" />
+                        <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                          <GitCommit className="w-4 h-4 text-primary" />
                         </div>
                         <div>
                           <h4 className="font-medium text-gray-900">Revision #{revision.revisionNumber}</h4>
@@ -1493,8 +1493,8 @@ export default function BuyerQuotations() {
                     )}
                     
                     {revision.requirements && (
-                      <div className="bg-blue-50 p-3 rounded-lg mt-2">
-                        <p className="text-sm text-blue-700">
+                      <div className="bg-primary/5 p-3 rounded-lg mt-2">
+                        <p className="text-sm text-primary/80">
                           <strong>Requirements:</strong> {revision.requirements}
                         </p>
                       </div>
@@ -1556,13 +1556,13 @@ export default function BuyerQuotations() {
                         key={quotation.id}
                         className={`p-3 border rounded-lg transition-all ${
                           isSelected 
-                            ? 'border-blue-500 bg-blue-50' 
+                            ? 'border-primary bg-primary/5' 
                             : 'border-gray-200 bg-white'
                         }`}
                       >
                         <div className="flex items-center gap-2 mb-2">
                           {isSelected ? (
-                            <CheckSquare className="w-4 h-4 text-blue-600" />
+                            <CheckSquare className="w-4 h-4 text-primary" />
                           ) : (
                             <Square className="w-4 h-4 text-gray-400" />
                           )}
@@ -1729,7 +1729,7 @@ export default function BuyerQuotations() {
                   // Export comparison
                   toast.success('Comparison exported successfully!');
                 }}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
               >
                 <Download className="w-4 h-4 mr-2" />
                 Export Comparison

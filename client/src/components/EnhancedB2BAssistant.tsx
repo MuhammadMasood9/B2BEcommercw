@@ -868,7 +868,7 @@ What would you like to know? Just ask me anything! 😊`,
       {!isOpen && (
         <Button
           onClick={() => setIsOpen(true)}
-          className="h-16 w-16 rounded-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-2xl hover:shadow-3xl transition-all hover:scale-110"
+          className="h-16 w-16 rounded-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 text-white shadow-2xl hover:shadow-3xl transition-all hover:scale-110"
           size="icon"
           style={{ 
             position: 'fixed', 
@@ -927,14 +927,14 @@ What would you like to know? Just ask me anything! 😊`,
                 <div
                   className={`max-w-[85%] rounded-lg ${
                     chat.from === "user"
-                      ? "bg-blue-600 text-white p-3.5"
+                      ? "bg-primary text-white p-3.5"
                       : "bg-white border border-gray-200 shadow-sm p-4"
                   }`}
                 >
                   {chat.from === "bot" && (
                     <div className="flex items-center gap-2 mb-3">
-                      <Bot className="h-4 w-4 text-blue-600" />
-                      <span className="text-xs font-medium text-blue-600">B2B Assistant</span>
+                      <Bot className="h-4 w-4 text-primary" />
+                      <span className="text-xs font-medium text-primary">B2B Assistant</span>
                     </div>
                   )}
                   <div className={`text-sm ${chat.from === "bot" ? "text-gray-800" : "text-white"} leading-relaxed ${chat.from === "bot" ? "mb-2" : ""}`}>
@@ -943,25 +943,25 @@ What would you like to know? Just ask me anything! 😊`,
                   
                   {/* Loading State for Product Search */}
                   {chat.from === "bot" && chat.message.includes("Searching for products") && isLoadingProducts && (
-                    <div className="mt-5 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border border-blue-200 rounded-xl p-5 shadow-sm">
+                    <div className="mt-5 bg-gradient-to-br from-brand-orange-50 via-brand-orange-100 to-brand-orange-50 border border-brand-orange-200 rounded-xl p-5 shadow-sm">
                       <div className="flex items-center gap-4 mb-4">
                         <div className="relative flex-shrink-0">
-                          <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600"></div>
+                          <div className="animate-spin rounded-full h-12 w-12 border-4 border-brand-orange-200 border-t-primary"></div>
                           <div className="absolute inset-0 flex items-center justify-center">
-                            <Search className="h-5 w-5 text-blue-600" />
+                            <Search className="h-5 w-5 text-primary" />
                           </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-blue-900 mb-1">Searching products...</p>
-                          <p className="text-xs text-blue-700">Finding the best matches for you</p>
+                          <p className="text-sm font-semibold text-brand-grey-900 mb-1">Searching products...</p>
+                          <p className="text-xs text-brand-grey-700">Finding the best matches for you</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 mt-3">
-                        <div className="h-2.5 bg-blue-300 rounded-full flex-1 opacity-60 animate-pulse" style={{ animationDelay: '0s' }}></div>
-                        <div className="h-2.5 bg-blue-400 rounded-full flex-1 opacity-80 animate-pulse" style={{ animationDelay: '0.15s' }}></div>
-                        <div className="h-2.5 bg-blue-500 rounded-full flex-1 opacity-100 animate-pulse" style={{ animationDelay: '0.3s' }}></div>
-                        <div className="h-2.5 bg-blue-400 rounded-full flex-1 opacity-80 animate-pulse" style={{ animationDelay: '0.45s' }}></div>
-                        <div className="h-2.5 bg-blue-300 rounded-full flex-1 opacity-60 animate-pulse" style={{ animationDelay: '0.6s' }}></div>
+                        <div className="h-2.5 bg-brand-orange-300 rounded-full flex-1 opacity-60 animate-pulse" style={{ animationDelay: '0s' }}></div>
+                        <div className="h-2.5 bg-brand-orange-400 rounded-full flex-1 opacity-80 animate-pulse" style={{ animationDelay: '0.15s' }}></div>
+                        <div className="h-2.5 bg-primary rounded-full flex-1 opacity-100 animate-pulse" style={{ animationDelay: '0.3s' }}></div>
+                        <div className="h-2.5 bg-brand-orange-400 rounded-full flex-1 opacity-80 animate-pulse" style={{ animationDelay: '0.45s' }}></div>
+                        <div className="h-2.5 bg-brand-orange-300 rounded-full flex-1 opacity-60 animate-pulse" style={{ animationDelay: '0.6s' }}></div>
                       </div>
                     </div>
                   )}
@@ -971,7 +971,7 @@ What would you like to know? Just ask me anything! 😊`,
                     <div className="mt-5 space-y-4 max-h-80 overflow-y-auto pr-1">
                       {chat.products.map((product, productIndex) => (
                         <Link key={product.id} href={`/product/${product.id}`}>
-                          <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border border-blue-200/60 rounded-xl p-4 hover:shadow-lg hover:border-blue-300 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group">
+                          <div className="bg-gradient-to-br from-brand-orange-50 via-brand-orange-100 to-brand-orange-50 border border-brand-orange-200/60 rounded-xl p-4 hover:shadow-lg hover:border-brand-orange-300 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group">
                             <div className="flex items-start gap-4">
                               {product.images && product.images.length > 0 ? (
                                 <div className="flex-shrink-0">
@@ -985,16 +985,16 @@ What would you like to know? Just ask me anything! 😊`,
                                   />
                                 </div>
                               ) : (
-                                <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-lg flex items-center justify-center border border-blue-200 shadow-sm flex-shrink-0">
-                                  <Package className="h-9 w-9 text-blue-600" />
+                                <div className="w-20 h-20 bg-gradient-to-br from-brand-orange-100 to-brand-orange-200 rounded-lg flex items-center justify-center border border-brand-orange-200 shadow-sm flex-shrink-0">
+                                  <Package className="h-9 w-9 text-primary" />
                                 </div>
                               )}
                               <div className="flex-1 min-w-0 flex flex-col gap-2">
                                 <div className="flex items-start justify-between gap-3">
-                                  <h4 className="font-semibold text-base text-gray-900 group-hover:text-blue-700 line-clamp-2 leading-tight transition-colors">
+                                  <h4 className="font-semibold text-base text-gray-900 group-hover:text-primary line-clamp-2 leading-tight transition-colors">
                                     {product.name}
                                   </h4>
-                                  <ExternalLink className="h-4 w-4 text-blue-600 flex-shrink-0 mt-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                  <ExternalLink className="h-4 w-4 text-primary flex-shrink-0 mt-1 opacity-0 group-hover:opacity-100 transition-opacity" />
                                 </div>
                                 {product.description && (
                                   <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
@@ -1003,12 +1003,12 @@ What would you like to know? Just ask me anything! 😊`,
                                 )}
                                 <div className="flex items-center flex-wrap gap-2 mt-1">
                                   {product.priceRange && (
-                                    <Badge variant="outline" className="text-xs bg-white border-blue-300 text-blue-700 font-medium px-2.5 py-0.5">
+                                    <Badge variant="outline" className="text-xs bg-white border-brand-orange-300 text-brand-orange-700 font-medium px-2.5 py-0.5">
                                       💰 {product.priceRange}
                                     </Badge>
                                   )}
                                   {product.moq && (
-                                    <Badge variant="outline" className="text-xs bg-white border-indigo-300 text-indigo-700 font-medium px-2.5 py-0.5">
+                                    <Badge variant="outline" className="text-xs bg-white border-orange-600 text-orange-600 font-medium px-2.5 py-0.5">
                                       📦 MOQ: {product.moq}
                                     </Badge>
                                   )}
@@ -1023,7 +1023,7 @@ What would you like to know? Just ask me anything! 😊`,
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            className="w-full text-xs bg-white hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 border-blue-300 hover:border-blue-400 transition-all duration-200 py-2.5"
+                            className="w-full text-xs bg-white hover:bg-gradient-to-r hover:from-brand-orange-50 hover:to-brand-orange-100 border-brand-orange-300 hover:border-brand-orange-400 transition-all duration-200 py-2.5"
                           >
                             <Search className="h-3.5 w-3.5 mr-2" />
                             View All Results on Products Page
@@ -1033,7 +1033,7 @@ What would you like to know? Just ask me anything! 😊`,
                     </div>
                   )}
                   
-                  <p className={`text-xs mt-3 ${chat.from === "user" ? "text-blue-100" : "text-gray-500"}`}>
+                  <p className={`text-xs mt-3 ${chat.from === "user" ? "text-white/80" : "text-gray-500"}`}>
                     {chat.time}
                   </p>
                   
@@ -1050,7 +1050,7 @@ What would you like to know? Just ask me anything! 😊`,
                             variant="outline"
                             size="sm"
                             onClick={() => handleSuggestionClick(suggestion)}
-                            className="text-xs h-auto py-2.5 px-3.5 text-left justify-start hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-all duration-200 rounded-md border-gray-200 bg-gray-50/50"
+                            className="text-xs h-auto py-2.5 px-3.5 text-left justify-start hover:bg-brand-orange-50 hover:border-brand-orange-300 hover:text-primary transition-all duration-200 rounded-md border-gray-200 bg-gray-50/50"
                           >
                             <ArrowRight className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
                             <span className="text-xs leading-relaxed">{suggestion}</span>
@@ -1072,7 +1072,7 @@ What would you like to know? Just ask me anything! 😊`,
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Ask me anything..."
-                className="flex-1 text-sm py-2.5 px-4 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-lg"
+                className="flex-1 text-sm py-2.5 px-4 border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-lg"
                 onKeyPress={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();

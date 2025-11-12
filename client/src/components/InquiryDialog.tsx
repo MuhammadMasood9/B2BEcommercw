@@ -224,7 +224,7 @@ export default function InquiryDialog({ isOpen, onClose, product }: InquiryDialo
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-blue-600" />
+            <MessageSquare className="w-5 h-5 text-primary" />
             Send Inquiry
           </DialogTitle>
           <DialogDescription>
@@ -234,7 +234,7 @@ export default function InquiryDialog({ isOpen, onClose, product }: InquiryDialo
 
         <div className="space-y-6">
           {/* Product Information */}
-          <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+          <Card className="bg-gradient-to-r from-primary to-purple-50 border-primary">
             <CardContent className="p-4">
               <div className="flex items-start gap-4">
                 {product.image && (
@@ -253,7 +253,7 @@ export default function InquiryDialog({ isOpen, onClose, product }: InquiryDialo
                       <span className="font-medium">{product.priceRange || 'Contact for price'}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Package className="w-4 h-4 text-blue-600" />
+                      <Package className="w-4 h-4 text-primary" />
                       <span className="text-gray-600">MOQ:</span>
                       <span className="font-medium">{product.moq || 'N/A'}</span>
                     </div>
@@ -277,7 +277,7 @@ export default function InquiryDialog({ isOpen, onClose, product }: InquiryDialo
             {/* Basic Requirements */}
             <div className="space-y-4">
               <h4 className="font-semibold text-gray-900 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-blue-600" />
+                <FileText className="w-4 h-4 text-primary" />
                 Basic Requirements
               </h4>
               
@@ -478,7 +478,7 @@ export default function InquiryDialog({ isOpen, onClose, product }: InquiryDialo
             type="submit"
             form="inquiry-form"
             disabled={!formData.quantity || !formData.targetPrice || sendInquiryMutation.isPending}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
+            className="bg-primary hover:bg-primary text-white"
           >
             {sendInquiryMutation.isPending ? (
               <>

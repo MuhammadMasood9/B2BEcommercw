@@ -29,6 +29,7 @@ import {
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function Header() {
   const [location, setLocation] = useLocation();
@@ -77,15 +78,15 @@ export default function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-lg shadow-black/5">
+    <header className="sticky top-0 z-50 bg-card dark:bg-card border-b border-card-border dark:border-card-border shadow-lg shadow-black/5">
       {/* Top Utility Bar */}
-      <div className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 border-b border-gray-200 dark:border-gray-700 hidden md:block">
+      <div className="bg-gradient-to-r from-muted to-muted/80 dark:from-muted dark:to-muted/80 border-b border-card-border dark:border-card-border hidden md:block">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-11">
             <div className="flex items-center gap-8 text-sm">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all duration-200 hover:bg-white/50 dark:hover:bg-gray-800/50 px-4 py-2 rounded-lg text-sm font-medium" data-testid="button-language">
+                  <button className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-all duration-200 hover:bg-card/50 dark:hover:bg-card/50 px-4 py-2 rounded-lg text-sm font-medium" data-testid="button-language">
                     <Globe className="w-4 h-4" />
                     <span>English - USD</span>
                     <ChevronDown className="w-3 h-3 ml-1" />
@@ -102,7 +103,7 @@ export default function Header() {
             <div className="flex items-center gap-8 text-sm">
               {/* <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 hover:bg-white/50 dark:hover:bg-gray-800/50 px-4 py-2 rounded-lg font-medium" data-testid="button-buyer-center">
+                  <button className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-all duration-200 hover:bg-white/50 dark:hover:bg-gray-800/50 px-4 py-2 rounded-lg font-medium" data-testid="button-buyer-center">
                     <span>Buyer Center</span>
                     <ChevronDown className="w-3 h-3 ml-1" />
                   </button>
@@ -133,7 +134,7 @@ export default function Header() {
               </DropdownMenu> */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 hover:bg-white/50 dark:hover:bg-gray-800/50 px-4 py-2 rounded-lg text-sm font-medium" data-testid="button-sell-on-platform">
+                  <button className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-all duration-200 hover:bg-card/50 dark:hover:bg-card/50 px-4 py-2 rounded-lg text-sm font-medium" data-testid="button-sell-on-platform">
                     <span>Sell on Platform</span>
                     <ChevronDown className="w-3 h-3 ml-1" />
                   </button>
@@ -151,13 +152,13 @@ export default function Header() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Link href="/help" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 hover:bg-white/50 dark:hover:bg-gray-800/50 px-4 py-2 rounded-lg font-medium" data-testid="link-help">
+              <Link href="/help" className="text-muted-foreground hover:text-primary transition-all duration-200 hover:bg-card/50 dark:hover:bg-card/50 px-4 py-2 rounded-lg font-medium" data-testid="link-help">
                 Help
               </Link>
-              <Link href="/login" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 hover:bg-white/50 dark:hover:bg-gray-800/50 px-4 py-2 rounded-lg font-medium" data-testid="link-signin">
+              <Link href="/login" className="text-muted-foreground hover:text-primary transition-all duration-200 hover:bg-card/50 dark:hover:bg-card/50 px-4 py-2 rounded-lg font-medium" data-testid="link-signin">
                 Sign In
               </Link>
-              <Button size="sm" className="h-8 px-4 text-sm font-semibold bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-200" data-testid="link-join" asChild>
+              <Button size="sm" className="h-8 px-4 text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-200" data-testid="link-join" asChild>
                 <Link href="/signup">Join Free</Link>
               </Button>
             </div>
@@ -170,21 +171,21 @@ export default function Header() {
         <div className="flex items-center justify-between h-20 lg:h-24 gap-8">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-4 flex-shrink-0 group" data-testid="link-home">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 rounded-2xl flex items-center justify-center shadow-xl group-hover:shadow-2xl transition-all duration-300 group-hover:scale-105">
-              <span className="text-white font-bold text-2xl">G</span>
+            <div className="w-12 h-12 bg-gradient-to-br from-primary via-primary to-primary/80 rounded-2xl flex items-center justify-center shadow-xl group-hover:shadow-2xl transition-all duration-300 group-hover:scale-105">
+              <span className="text-primary-foreground font-bold text-2xl font-sans">G</span>
             </div>
             <div className="hidden sm:block">
-              <div className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-800 dark:from-white dark:via-blue-200 dark:to-indigo-200 bg-clip-text text-transparent">Global Trade Hub</div>
-              <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">B2B Marketplace</div>
+              <div className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-foreground via-primary to-primary/80 bg-clip-text text-transparent font-sans">Bago</div>
+              <div className="text-sm text-muted-foreground font-medium font-sans">B2B Marketplace</div>
             </div>
           </Link>
 
           {/* Enhanced Search Bar (visible on large screens and above) */}
           <div className="flex-1 max-w-4xl mx-6 hidden lg:block">
             <div className={`relative transition-all duration-300 ${isSearchFocused ? 'scale-[1.02]' : ''}`} ref={searchRef}>
-              <div className="relative flex items-center bg-white dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700 rounded-full overflow-hidden hover:border-blue-300/80 dark:hover:border-blue-500/60 transition-all duration-300 shadow-sm hover:shadow-md">
-                <div className="flex items-center pl-4 pr-2 text-gray-500">
-                  <Search className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+              <div className="relative flex items-center bg-card border border-card-border rounded-full overflow-hidden hover:border-primary/30 transition-all duration-300 shadow-sm hover:shadow-md">
+                <div className="flex items-center pl-4 pr-2 text-muted-foreground">
+                  <Search className="w-5 h-5 text-muted-foreground" />
                 </div>
                 <Input
                   placeholder="Search products, suppliers, categories..."
@@ -193,7 +194,7 @@ export default function Header() {
                     setSearchQuery(e.target.value);
                     setShowSuggestions(e.target.value.length >= 2);
                   }}
-                  className="flex-1 border-0 focus-visible:ring-0 h-12 bg-transparent text-[15px] placeholder:text-gray-500 dark:placeholder:text-gray-400 px-2 font-medium"
+                  className="flex-1 border-0 focus-visible:ring-0 h-12 bg-transparent text-[15px] placeholder:text-muted-foreground px-2 font-medium font-sans"
                   data-testid="input-search"
                   onFocus={() => {
                     setIsSearchFocused(true);
@@ -208,10 +209,10 @@ export default function Header() {
                     }
                   }}
                 />
-                <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-2" />
+                <div className="h-6 w-px bg-card-border mx-2" />
                 <div className="hidden md:block pl-1">
                   <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                    <SelectTrigger className="w-35 lg:w-40 border-0 rounded-full focus:ring-0 bg-transparent hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors h-12 text-sm font-medium px-3" data-testid="select-category">
+                    <SelectTrigger className="w-35 lg:w-40 border-0 rounded-full focus:ring-0 bg-transparent hover:bg-muted/50 transition-colors h-12 text-sm font-medium px-3 font-sans" data-testid="select-category">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -226,7 +227,7 @@ export default function Header() {
                 </div>
                 <Button 
                   onClick={() => performSearch(searchQuery, selectedCategory)}
-                  className="h-12 px-6 rounded-full m-1 ml-2 shadow-none bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold" 
+                  className="h-12 px-6 rounded-full m-1 ml-2 shadow-none bg-primary hover:bg-primary/90 text-primary-foreground font-semibold font-sans" 
                   data-testid="button-search"
                 >
                   <Search className="w-5 h-5 mr-2" />
@@ -241,19 +242,24 @@ export default function Header() {
 
           {/* User Actions */}
           <div className="flex items-center gap-3 flex-shrink-0">
+            {/* Theme & Accessibility Toggle */}
+            <div className="hidden sm:block">
+              <ThemeToggle variant="enhanced-dropdown" size="md" showHighContrast={true} className="h-11" />
+            </div>
+            
             {/* Mobile Search Button */}
             <Sheet open={isMobileSearchOpen} onOpenChange={setIsMobileSearchOpen}>
               <SheetTrigger asChild>
                 {/* Show search trigger on < lg screens (small + medium) */}
-                <Button variant="ghost" size="icon" className="lg:hidden h-11 w-11 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800">
+                <Button variant="ghost" size="icon" className="lg:hidden h-11 w-11 rounded-xl hover:bg-muted">
                   <Search className="w-5 h-5" />
                 </Button>
               </SheetTrigger>
               <SheetContent side="top" className="w-full max-w-full mx-0 px-4 sm:px-6">
                 <div ref={searchRef} className="mt-6">
-                  <div className="relative flex items-center bg-white dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700 rounded-full overflow-hidden hover:border-blue-300/80 dark:hover:border-blue-500/60 transition-all duration-300 shadow-sm">
+                  <div className="relative flex items-center bg-card border border-card-border rounded-full overflow-hidden hover:border-primary/30 transition-all duration-300 shadow-sm">
                     <div className="flex items-center pl-3 pr-2">
-                      <Search className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                      <Search className="w-5 h-5 text-muted-foreground" />
                     </div>
                     <Input
                       placeholder="Search products, suppliers, categories..."
@@ -262,7 +268,7 @@ export default function Header() {
                         setSearchQuery(e.target.value);
                         setShowSuggestions(e.target.value.length >= 2);
                       }}
-                      className="flex-1 border-0 focus-visible:ring-0 h-11 bg-transparent text-[15px] placeholder:text-gray-500 dark:placeholder:text-gray-400 px-2 font-medium"
+                      className="flex-1 border-0 focus-visible:ring-0 h-11 bg-transparent text-[15px] placeholder:text-muted-foreground px-2 font-medium font-sans"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           performSearch(searchQuery, selectedCategory);
@@ -270,9 +276,9 @@ export default function Header() {
                         }
                       }}
                     />
-                    <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-2" />
+                    <div className="h-6 w-px bg-card-border mx-2" />
                     <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                      <SelectTrigger className="w-40 border-0 rounded-full focus:ring-0 bg-transparent hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors h-11 text-sm font-medium px-3">
+                      <SelectTrigger className="w-40 border-0 rounded-full focus:ring-0 bg-transparent hover:bg-muted/50 transition-colors h-11 text-sm font-medium px-3 font-sans">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -286,7 +292,7 @@ export default function Header() {
                     </Select>
                     <Button 
                       onClick={() => { performSearch(searchQuery, selectedCategory); setIsMobileSearchOpen(false); }}
-                      className="h-11 px-6 rounded-full m-1 ml-2 shadow-none bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold"
+                      className="h-11 px-6 rounded-full m-1 ml-2 shadow-none bg-primary hover:bg-primary/90 text-primary-foreground font-semibold font-sans"
                     >
                       <Search className="w-5 h-5 mr-2" />
                       Search
@@ -302,10 +308,10 @@ export default function Header() {
             
             {/* Favorites */}
             <Link href="/favorites" data-testid="link-favorites">
-              <Button variant="ghost" size="icon" className="relative h-11 w-11 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200">
+              <Button variant="ghost" size="icon" className="relative h-11 w-11 rounded-xl hover:bg-muted transition-all duration-200">
                 <Heart className="w-5 h-5" />
                 {favoriteCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold shadow-lg" data-testid="text-favorites-count">
+                  <span className="absolute -top-1 -right-1 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold shadow-lg font-sans" data-testid="text-favorites-count">
                     {favoriteCount}
                   </span>
                 )}
@@ -324,59 +330,67 @@ export default function Header() {
               </SheetTrigger>
               <SheetContent side="right" className="w-80 h-full overflow-y-auto">
                 <div className="flex flex-col space-y-4 mt-8 pb-8">
+                  {/* Theme Toggle for Mobile */}
+                  <div className="px-1 pb-4 border-b border-card-border">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-muted-foreground">Theme & Accessibility</span>
+                      <ThemeToggle variant="enhanced-dropdown" size="sm" showHighContrast={true} />
+                    </div>
+                  </div>
+                  
                   {isAuthenticated ? (
                     <>
                       <div className="px-1">
-                        <div className="text-base font-semibold">{user?.firstName} {user?.lastName}</div>
-                        <div className="text-xs text-muted-foreground">{user?.email}</div>
+                        <div className="text-base font-semibold font-sans">{user?.firstName} {user?.lastName}</div>
+                        <div className="text-xs text-muted-foreground font-sans">{user?.email}</div>
                       </div>
                       <div className="border-t pt-4">
                         {user?.role === 'admin' && (
-                          <Link href="/admin" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Admin Panel</Link>
+                          <Link href="/admin" className="block py-3 text-lg font-medium hover:text-primary transition-colors font-sans">Admin Panel</Link>
                         )}
                         {user?.role === 'buyer' && (
                           <>
-                            <Link href="/buyer/dashboard" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Buyer Dashboard</Link>
-                            <Link href="/my-orders" className="block py-3 text-lg font-medium hover:text-primary transition-colors">My Orders</Link>
-                            <Link href="/buyer/inquiries" className="block py-3 text-lg font-medium hover:text-primary transition-colors">My Inquiries</Link>
-                            <Link href="/buyer/quotations" className="block py-3 text-lg font-medium hover:text-primary transition-colors">My Quotations</Link>
-                            <Link href="/track-order" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Track Order</Link>
-                            <Link href="/buyer/rfqs" className="block py-3 text-lg font-medium hover:text-primary transition-colors">My RFQs</Link>
-                            <Link href="/rfq/create" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Create RFQ</Link>
+                            <Link href="/buyer/dashboard" className="block py-3 text-lg font-medium hover:text-primary transition-colors font-sans">Buyer Dashboard</Link>
+                            <Link href="/my-orders" className="block py-3 text-lg font-medium hover:text-primary transition-colors font-sans">My Orders</Link>
+                            <Link href="/buyer/inquiries" className="block py-3 text-lg font-medium hover:text-primary transition-colors font-sans">My Inquiries</Link>
+                            <Link href="/buyer/quotations" className="block py-3 text-lg font-medium hover:text-primary transition-colors font-sans">My Quotations</Link>
+                            <Link href="/track-order" className="block py-3 text-lg font-medium hover:text-primary transition-colors font-sans">Track Order</Link>
+                            <Link href="/buyer/rfqs" className="block py-3 text-lg font-medium hover:text-primary transition-colors font-sans">My RFQs</Link>
+                            <Link href="/rfq/create" className="block py-3 text-lg font-medium hover:text-primary transition-colors font-sans">Create RFQ</Link>
                           </>
                         )}
                         {user?.role === 'supplier' && (
                           <>
-                            <Link href="/supplier/dashboard" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Supplier Dashboard</Link>
-                            <Link href="/supplier/products" className="block py-3 text-lg font-medium hover:text-primary transition-colors">My Products</Link>
-                            <Link href="/supplier/inquiries" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Inquiries</Link>
-                            <Link href="/supplier/orders" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Orders</Link>
-                            <Link href="/supplier/store" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Store Settings</Link>
+                            <Link href="/supplier/dashboard" className="block py-3 text-lg font-medium hover:text-primary transition-colors font-sans">Supplier Dashboard</Link>
+                            <Link href="/supplier/products" className="block py-3 text-lg font-medium hover:text-primary transition-colors font-sans">My Products</Link>
+                            <Link href="/supplier/inquiries" className="block py-3 text-lg font-medium hover:text-primary transition-colors font-sans">Inquiries</Link>
+                            <Link href="/supplier/orders" className="block py-3 text-lg font-medium hover:text-primary transition-colors font-sans">Orders</Link>
+                            <Link href="/supplier/store" className="block py-3 text-lg font-medium hover:text-primary transition-colors font-sans">Store Settings</Link>
                           </>
                         )}
-                        <Link href="/favorites" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Favorites</Link>
-                        <Link href="/messages" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Messages</Link>
-                        <button onClick={() => logout()} className="text-left w-full py-3 text-lg font-medium text-red-600">Sign Out</button>
+                        <Link href="/favorites" className="block py-3 text-lg font-medium hover:text-primary transition-colors font-sans">Favorites</Link>
+                        <Link href="/messages" className="block py-3 text-lg font-medium hover:text-primary transition-colors font-sans">Messages</Link>
+                        <button onClick={() => logout()} className="text-left w-full py-3 text-lg font-medium text-red-600 font-sans">Sign Out</button>
                       </div>
                     </>
                   ) : (
                     <>
-                      <Link href="/login" className="text-lg font-medium hover:text-primary transition-colors">Sign In</Link>
-                      <Link href="/signup" className="text-lg font-medium hover:text-primary transition-colors">Join Free</Link>
-                      <div className="border-t pt-4 mt-4">
-                        <div className="text-sm font-semibold text-gray-500 mb-2">For Suppliers</div>
-                        <Link href="/supplier/register" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Become a Supplier</Link>
-                        <Link href="/supplier/login" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Supplier Login</Link>
+                      <Link href="/login" className="text-lg font-medium hover:text-primary transition-colors font-sans">Sign In</Link>
+                      <Link href="/signup" className="text-lg font-medium hover:text-primary transition-colors font-sans">Join Free</Link>
+                      <div className="border-t border-card-border pt-4 mt-4">
+                        <div className="text-sm font-semibold text-muted-foreground mb-2 font-sans">For Suppliers</div>
+                        <Link href="/supplier/register" className="block py-3 text-lg font-medium hover:text-primary transition-colors font-sans">Become a Supplier</Link>
+                        <Link href="/supplier/login" className="block py-3 text-lg font-medium hover:text-primary transition-colors font-sans">Supplier Login</Link>
                       </div>
                     </>
                   )}
-                  <div className="border-t pt-4">
-                    <Link href="/categories" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Categories</Link>
-                    <Link href="/products" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Products</Link>
-                    <Link href="/suppliers" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Suppliers</Link>
-                    {/* <Link href="/ready-to-ship" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Ready to Ship</Link> */}
-                    <Link href="/buyer-protection" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Buyer Protection</Link>
-                    <Link href="/chat" className="block py-3 text-lg font-medium hover:text-primary transition-colors">Chat Support</Link>
+                  <div className="border-t border-card-border pt-4">
+                    <Link href="/categories" className="block py-3 text-lg font-medium hover:text-primary transition-colors font-sans">Categories</Link>
+                    <Link href="/products" className="block py-3 text-lg font-medium hover:text-primary transition-colors font-sans">Products</Link>
+                    <Link href="/suppliers" className="block py-3 text-lg font-medium hover:text-primary transition-colors font-sans">Suppliers</Link>
+                    {/* <Link href="/ready-to-ship" className="block py-3 text-lg font-medium hover:text-primary transition-colors font-sans">Ready to Ship</Link> */}
+                    <Link href="/buyer-protection" className="block py-3 text-lg font-medium hover:text-primary transition-colors font-sans">Buyer Protection</Link>
+                    <Link href="/chat" className="block py-3 text-lg font-medium hover:text-primary transition-colors font-sans">Chat Support</Link>
                   </div>
                 </div>
               </SheetContent>
@@ -386,21 +400,21 @@ export default function Header() {
             {isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="hidden sm:flex h-10 px-3" data-testid="button-user-menu">
+                  <Button variant="ghost" className="hidden sm:flex h-10 px-3 font-sans" data-testid="button-user-menu">
                     <Avatar className="h-8 w-8 mr-2">
                       <AvatarImage src="" alt={user?.firstName} />
-                      <AvatarFallback>
+                      <AvatarFallback className="font-sans">
                         {user?.firstName?.[0]}{user?.lastName?.[0]}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="hidden md:block">{user?.firstName}</span>
+                    <span className="hidden md:block font-medium">{user?.firstName}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <div className="px-2 py-1.5 text-sm font-medium">
+                  <div className="px-2 py-1.5 text-sm font-medium font-sans">
                     {user?.firstName} {user?.lastName}
                   </div>
-                  <div className="px-2 py-1 text-xs text-muted-foreground">
+                  <div className="px-2 py-1 text-xs text-muted-foreground font-sans">
                     {user?.email}
                   </div>
                   <DropdownMenuSeparator />
@@ -525,17 +539,17 @@ export default function Header() {
             ) : (
               <div className="flex items-center gap-2">
                 <Link href="/login">
-                  <Button variant="ghost" size="sm">
+                  <Button variant="ghost" size="sm" className="font-sans">
                     Sign In
                   </Button>
                 </Link>
                 <Link href="/signup">
-                  <Button size="sm">
+                  <Button size="sm" className="font-sans">
                     Join Free
                   </Button>
                 </Link>
                 <Link href="/admin/login">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" className="font-sans">
                     Admin
                   </Button>
                 </Link>
@@ -546,15 +560,15 @@ export default function Header() {
       </div>
 
       {/* Navigation Bar */}
-      <div className="bg-gradient-to-r from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 border-t border-gray-200 dark:border-gray-700">
+      <div className="bg-gradient-to-r from-muted/30 to-card border-t border-card-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="hidden lg:flex items-center gap-2 h-14">
             <Link 
               href="/categories" 
-              className={`text-sm font-semibold transition-all duration-200 hover:text-blue-600 dark:hover:text-blue-400 relative py-4 px-6 rounded-xl ${
+              className={`text-sm font-semibold transition-all duration-200 hover:text-primary relative py-4 px-6 rounded-xl font-sans ${
                 isActivePath("/categories") 
-                  ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20" 
-                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50"
+                  ? "text-primary bg-primary/10" 
+                  : "text-foreground hover:bg-muted/50"
               }`}
               data-testid="link-categories"
             >
@@ -562,10 +576,10 @@ export default function Header() {
             </Link>
             <Link 
               href="/products" 
-              className={`text-sm font-semibold transition-all duration-200 hover:text-blue-600 dark:hover:text-blue-400 relative py-4 px-6 rounded-xl ${
+              className={`text-sm font-semibold transition-all duration-200 hover:text-primary relative py-4 px-6 rounded-xl font-sans ${
                 isActivePath("/products") 
-                  ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20" 
-                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50"
+                  ? "text-primary bg-primary/10" 
+                  : "text-foreground hover:bg-muted/50"
               }`}
               data-testid="link-products"
             >
@@ -573,10 +587,10 @@ export default function Header() {
             </Link>
             <Link 
               href="/suppliers" 
-              className={`text-sm font-semibold transition-all duration-200 hover:text-blue-600 dark:hover:text-blue-400 relative py-4 px-6 rounded-xl ${
+              className={`text-sm font-semibold transition-all duration-200 hover:text-primary relative py-4 px-6 rounded-xl font-sans ${
                 isActivePath("/suppliers") 
-                  ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20" 
-                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50"
+                  ? "text-primary bg-primary/10" 
+                  : "text-foreground hover:bg-muted/50"
               }`}
               data-testid="link-suppliers"
             >
@@ -584,10 +598,10 @@ export default function Header() {
             </Link>
             {/* <Link 
               href="/ready-to-ship" 
-              className={`text-sm font-semibold transition-all duration-200 hover:text-blue-600 dark:hover:text-blue-400 relative py-4 px-6 rounded-xl ${
+              className={`text-sm font-semibold transition-all duration-200 hover:text-primary dark:hover:text-primary relative py-4 px-6 rounded-xl ${
                 isActivePath("/ready-to-ship") 
-                  ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20" 
-                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50"
+                  ? "text-primary dark:text-primary bg-primary/10 dark:bg-primary/20" 
+                  : "text-foreground dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50"
               }`}
               data-testid="link-ready-ship"
             >
@@ -595,10 +609,10 @@ export default function Header() {
             </Link> */}
             <Link 
               href="/buyer-protection" 
-              className={`text-sm font-semibold transition-all duration-200 hover:text-blue-600 dark:hover:text-blue-400 relative py-4 px-6 rounded-xl ${
+              className={`text-sm font-semibold transition-all duration-200 hover:text-primary relative py-4 px-6 rounded-xl font-sans ${
                 isActivePath("/buyer-protection") 
-                  ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20" 
-                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800/50"
+                  ? "text-primary bg-primary/10" 
+                  : "text-foreground hover:bg-muted/50"
               }`}
               data-testid="link-buyer-protection"
             >

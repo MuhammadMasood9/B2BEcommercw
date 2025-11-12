@@ -165,9 +165,9 @@ export default function QuotationDetail() {
       case 'accepted': return 'bg-green-100 text-green-800';
       case 'rejected': return 'bg-red-100 text-red-800';
       case 'expired': return 'bg-gray-100 text-gray-800';
-      case 'negotiating': return 'bg-blue-100 text-blue-800';
+      case 'negotiating': return 'bg-primary/10 text-primary';
       case 'counter_offered': return 'bg-purple-100 text-purple-800';
-      case 'revised': return 'bg-indigo-100 text-indigo-800';
+      case 'revised': return 'bg-orange-600 text-orange-600';
       case 'under_review': return 'bg-orange-100 text-orange-800';
       case 'awaiting_response': return 'bg-cyan-100 text-cyan-800';
       case 'final_offer': return 'bg-pink-100 text-pink-800';
@@ -198,7 +198,7 @@ export default function QuotationDetail() {
         <Header />
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
             <p className="text-gray-600">Loading quotation details...</p>
           </div>
         </main>
@@ -233,7 +233,7 @@ export default function QuotationDetail() {
       
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-16">
+        <section className="bg-gradient-to-r from-primary to-secondary text-white py-16">
           <div className="max-w-7xl mx-auto px-4">
             <div className="flex items-center gap-4 mb-6">
               <Button
@@ -253,14 +253,14 @@ export default function QuotationDetail() {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold mb-2">Quotation #{quotation.id.slice(0, 8)}</h1>
-                <p className="text-blue-100 text-lg">{quotation.productName}</p>
+                <p className="text-primary-foreground/80 text-lg">{quotation.productName}</p>
               </div>
               <div className="text-right">
                 <Badge className={`${getStatusColor(quotation.status)} mb-2`}>
                   {getStatusIcon(quotation.status)}
                   <span className="ml-2 capitalize">{quotation.status}</span>
                 </Badge>
-                <p className="text-blue-100 text-sm">
+                <p className="text-primary-foreground/80 text-sm">
                   Created {format(new Date(quotation.createdAt), 'MMM dd, yyyy')}
                 </p>
               </div>
@@ -276,7 +276,7 @@ export default function QuotationDetail() {
               <Card className="bg-white border-gray-100 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-blue-600" />
+                    <FileText className="w-5 h-5 text-primary" />
                     Quotation Overview
                   </CardTitle>
                 </CardHeader>
@@ -594,8 +594,8 @@ export default function QuotationDetail() {
                   <div key={revision.id} className="border border-gray-200 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <GitCommit className="w-4 h-4 text-blue-600" />
+                        <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                          <GitCommit className="w-4 h-4 text-primary" />
                         </div>
                         <div>
                           <h4 className="font-medium text-gray-900">Revision #{revision.revisionNumber || index + 1}</h4>
@@ -638,8 +638,8 @@ export default function QuotationDetail() {
                     )}
                     
                     {revision.requirements && (
-                      <div className="bg-blue-50 p-3 rounded-lg mt-2">
-                        <p className="text-sm text-blue-700">
+                      <div className="bg-primary/5 p-3 rounded-lg mt-2">
+                        <p className="text-sm text-primary/80">
                           <strong>Requirements:</strong> {revision.requirements}
                         </p>
                       </div>

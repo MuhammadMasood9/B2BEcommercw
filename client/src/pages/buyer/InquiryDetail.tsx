@@ -295,7 +295,7 @@ export default function InquiryDetail() {
         <Header />
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+            <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
             <p className="text-gray-600">Loading inquiry details...</p>
           </div>
         </main>
@@ -314,7 +314,7 @@ export default function InquiryDetail() {
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Inquiry Not Found</h2>
             <p className="text-gray-600 mb-6">The inquiry you're looking for doesn't exist or has been removed.</p>
             <Link href="/buyer/inquiries">
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+              <Button className="bg-primary hover:bg-primary text-white">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Inquiries
               </Button>
@@ -331,12 +331,12 @@ export default function InquiryDetail() {
       <Header />
       
       {/* Hero Section with Gradient */}
-      <section className="relative py-16 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
+      <section className="relative py-16 bg-gradient-to-br from-primary via-primary to-orange-600 overflow-hidden">
         {/* Background Elements */}
         <div className="absolute inset-0">
-          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-blue-300/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-blue-600/10 to-blue-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+          <div className="absolute top-20 right-20 w-96 h-96 bg-gradient-to-r from-primary/20 to-orange-600/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 left-20 w-80 h-80 bg-gradient-to-r from-primary/20 to-orange-600/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-primary/10 to-orange-600/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -352,7 +352,7 @@ export default function InquiryDetail() {
                currentInquiry?.title || 
                currentInquiry?.name || 
                'Inquiry'}
-              <span className="bg-gradient-to-r from-blue-200 via-white to-blue-200 bg-clip-text text-transparent block">
+              <span className="bg-gradient-to-r from-primary via-white to-orange-600 bg-clip-text text-transparent block">
                 Inquiry
               </span>
             </h1>
@@ -384,7 +384,7 @@ export default function InquiryDetail() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Breadcrumb */}
           <div className="flex items-center gap-2 text-sm text-gray-600 mb-6">
-            <Link href="/buyer/inquiries" className="hover:text-blue-600">
+            <Link href="/buyer/inquiries" className="hover:text-primary">
               My Inquiries
             </Link>
             <ArrowRight className="h-4 w-4" />
@@ -509,9 +509,9 @@ export default function InquiryDetail() {
                   </div>
 
                   {/* Your Inquiry Details */}
-                  <div className="bg-blue-50 p-6 rounded-xl border border-blue-200">
+                  <div className="bg-primary p-6 rounded-xl border border-primary">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <FileText className="h-5 w-5 text-blue-600" />
+                      <FileText className="h-5 w-5 text-primary" />
                       Your Inquiry Details
                     </h3>
                     <div className="space-y-3">
@@ -593,7 +593,7 @@ export default function InquiryDetail() {
                       {/* Pricing Comparison */}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                         <div className="text-center p-4 bg-white rounded-lg border">
-                          <div className="text-lg font-bold text-blue-600 mb-1">
+                          <div className="text-lg font-bold text-primary mb-1">
                             {formatPrice(currentInquiry.quotation.unitPrice || currentInquiry.quotation.pricePerUnit || 0)}
                           </div>
                           <div className="text-sm text-gray-600">Admin's Quote</div>
@@ -734,7 +734,7 @@ export default function InquiryDetail() {
               <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5 text-blue-600" />
+                    <Users className="h-5 w-5 text-primary" />
                     Supplier Information
                   </CardTitle>
                 </CardHeader>
@@ -766,7 +766,7 @@ export default function InquiryDetail() {
                           </Badge>
                         )}
                         {currentInquiry.adminInfo?.tradeAssurance && (
-                          <Badge className="bg-blue-100 text-blue-700 border-blue-200">
+                          <Badge className="bg-primary text-primary border-primary">
                             Trade Assurance
                           </Badge>
                         )}
@@ -787,7 +787,7 @@ export default function InquiryDetail() {
                         </div>
                         <div className="flex items-center gap-2">
                           <ExternalLink className="h-4 w-4 text-gray-400" />
-                          <a href={`https://${currentInquiry.adminInfo?.website}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                          <a href={`https://${currentInquiry.adminInfo?.website}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                             {currentInquiry.adminInfo?.website}
                           </a>
                         </div>
@@ -810,8 +810,8 @@ export default function InquiryDetail() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <FileText className="h-4 w-4 text-blue-600" />
+                    <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                      <FileText className="h-4 w-4 text-primary" />
                     </div>
                     <div>
                       <div className="font-medium text-gray-900">Inquiry Sent</div>

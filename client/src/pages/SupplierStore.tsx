@@ -129,7 +129,7 @@ export default function SupplierStore() {
       try {
         await navigator.share({
           title: supplier.storeName,
-          text: `Check out ${supplier.storeName} on Global Trade Hub`,
+          text: `Check out ${supplier.storeName} on Bago`,
           url: window.location.href,
         });
       } catch (error) {
@@ -251,7 +251,7 @@ export default function SupplierStore() {
           <Card className="p-12 text-center max-w-md">
             <Building2 className="w-16 h-16 mx-auto text-gray-400 mb-4" />
             <h3 className="text-xl font-semibold mb-2">Supplier Not Found</h3>
-            <p className="text-gray-600 mb-4">
+            <p className="text-muted-foreground mb-4">
               The supplier store you're looking for doesn't exist or is no longer available.
             </p>
             <Button onClick={() => setLocation("/suppliers")}>
@@ -272,7 +272,7 @@ export default function SupplierStore() {
       <Header />
 
       {/* Banner */}
-      <div className="relative h-64 bg-gradient-to-r from-blue-900 to-blue-700 overflow-hidden">
+      <div className="relative h-64 bg-gradient-to-r from-secondary to-secondary/80 overflow-hidden">
         <img
           src={bannerImage}
           alt={supplier.storeName}
@@ -316,7 +316,7 @@ export default function SupplierStore() {
                       <h1 className="text-3xl font-bold mb-2">{supplier.storeName}</h1>
                       <p className="text-lg text-muted-foreground mb-3">{supplier.businessName}</p>
                       <div className="flex flex-wrap gap-2 mb-3">
-                        <Badge className="bg-blue-100 text-blue-800">
+                        <Badge className="bg-primary/10 text-primary">
                           {getBusinessTypeLabel(supplier.businessType)}
                         </Badge>
                         <VerificationBadge
@@ -375,7 +375,7 @@ export default function SupplierStore() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Package className="w-5 h-5 text-blue-500" />
+                      <Package className="w-5 h-5 text-primary" />
                       <div>
                         <div className="font-semibold">{supplier.metrics?.totalProducts || 0}</div>
                         <div className="text-xs text-muted-foreground">Products</div>
@@ -389,7 +389,7 @@ export default function SupplierStore() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Clock className="w-5 h-5 text-blue-500" />
+                      <Clock className="w-5 h-5 text-primary" />
                       <div>
                         <div className="font-semibold">{supplier.responseTime || '< 24h'}</div>
                         <div className="text-xs text-muted-foreground">Response time</div>
@@ -544,7 +544,7 @@ export default function SupplierStore() {
                   <div className="flex items-center justify-between p-3 bg-muted rounded-lg text-sm">
                     <div className="flex items-center gap-6">
                       <div className="flex items-center gap-2">
-                        <Package className="w-4 h-4 text-blue-500" />
+                        <Package className="w-4 h-4 text-primary" />
                         <span><strong>{filteredProducts.length}</strong> products shown</span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -599,7 +599,7 @@ export default function SupplierStore() {
                       : "No Products Yet"
                     }
                   </h3>
-                  <p className="text-gray-600 mb-4">
+                  <p className="text-muted-foreground mb-4">
                     {searchQuery || selectedCategory !== "all" || showFeaturedOnly || showInStockOnly
                       ? "Try adjusting your search criteria or filters."
                       : "This supplier hasn't added any products yet."
@@ -971,7 +971,7 @@ export default function SupplierStore() {
                       </div>
 
                       <div className="text-center p-4 bg-muted rounded-lg">
-                        <Zap className="w-8 h-8 text-blue-500 mx-auto mb-2" />
+                        <Zap className="w-8 h-8 text-primary mx-auto mb-2" />
                         <div className="font-semibold">{parseFloat(supplier.responseRate || '100').toFixed(0)}%</div>
                         <div className="text-sm text-muted-foreground">
                           Response rate ({supplier.responseTime || '< 24h'})

@@ -82,7 +82,7 @@ export default function SupplierDashboard() {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
       case 'approved': case 'accepted': case 'confirmed': case 'delivered': return 'bg-green-100 text-green-800';
       case 'rejected': case 'cancelled': case 'failed': return 'bg-red-100 text-red-800';
-      case 'processing': case 'shipped': return 'bg-blue-100 text-blue-800';
+      case 'processing': case 'shipped': return 'bg-brand-orange-100 text-brand-orange-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -101,7 +101,7 @@ export default function SupplierDashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Supplier Dashboard</h1>
+          <h1 className="text-3xl font-bold text-foreground">Supplier Dashboard</h1>
           <p className="text-muted-foreground mt-1">Manage your products, orders, and customer relationships</p>
         </div>
         <div className="flex gap-2">
@@ -116,61 +116,61 @@ export default function SupplierDashboard() {
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
+        <Card className="bg-gradient-to-br from-primary to-primary/80 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-blue-100">Total Products</CardTitle>
-            <Package className="h-6 w-6 text-blue-200" />
+            <CardTitle className="text-sm font-medium text-primary-foreground/80">Total Products</CardTitle>
+            <Package className="h-6 w-6 text-primary-foreground/70" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-white">
               {statsLoading ? "..." : statsData.totalProducts}
             </div>
-            <p className="text-sm text-blue-100 mt-1">
+            <p className="text-sm text-primary-foreground/80 mt-1">
               <span className="text-green-300">+{statsData.newProductsThisMonth || 0}</span> this month
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-lg">
+        <Card className="bg-gradient-to-br from-secondary to-secondary/80 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-green-100">Product Views</CardTitle>
-            <Eye className="h-6 w-6 text-green-200" />
+            <CardTitle className="text-sm font-medium text-secondary-foreground/80">Product Views</CardTitle>
+            <Eye className="h-6 w-6 text-secondary-foreground/70" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-white">
               {statsLoading ? "..." : statsData.productViews.toLocaleString()}
             </div>
-            <p className="text-sm text-green-100 mt-1">
+            <p className="text-sm text-secondary-foreground/80 mt-1">
               <span className="text-green-300">+15%</span> from last month
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-lg">
+        <Card className="bg-gradient-to-br from-accent to-accent/80 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-purple-100">Inquiries</CardTitle>
-            <MessageSquare className="h-6 w-6 text-purple-200" />
+            <CardTitle className="text-sm font-medium text-accent-foreground/80">Inquiries</CardTitle>
+            <MessageSquare className="h-6 w-6 text-accent-foreground/70" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-white">
               {statsLoading ? "..." : statsData.inquiriesReceived}
             </div>
-            <p className="text-sm text-purple-100 mt-1">
+            <p className="text-sm text-accent-foreground/80 mt-1">
               {statsData.pendingInquiries || 0} pending
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 shadow-lg">
+        <Card className="bg-gradient-to-br from-primary/90 to-primary text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-orange-100">Total Revenue</CardTitle>
-            <DollarSign className="h-6 w-6 text-orange-200" />
+            <CardTitle className="text-sm font-medium text-primary-foreground/80">Total Revenue</CardTitle>
+            <DollarSign className="h-6 w-6 text-primary-foreground/70" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-white">
               ${statsLoading ? "..." : statsData.totalRevenue.toLocaleString()}
             </div>
-            <p className="text-sm text-orange-100 mt-1">
+            <p className="text-sm text-primary-foreground/80 mt-1">
               {statsData.ordersReceived || 0} orders
             </p>
           </CardContent>

@@ -177,7 +177,7 @@ export default function BuyerDashboard() {
       case 'waiting': return 'bg-yellow-100 text-yellow-800';
       case 'negotiating':
       case 'in_progress':
-      case 'processing': return 'bg-blue-100 text-blue-800';
+      case 'processing': return 'bg-primary/10 text-primary';
       case 'rejected':
       case 'cancelled':
       case 'closed': return 'bg-red-100 text-red-800';
@@ -239,7 +239,7 @@ export default function BuyerDashboard() {
   const hasError = dashboardError;
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen flex flex-col bg-background theme-transition">
       <Header />
       <main className="flex-1">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -247,10 +247,10 @@ export default function BuyerDashboard() {
           <div className="mb-8">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                <h1 className="text-3xl font-bold text-foreground mb-2 theme-transition">
                   Welcome back, {user?.email || 'Buyer'}
                 </h1>
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="text-muted-foreground theme-transition">
                   Here's your complete business overview and activity summary
                 </p>
               </div>
@@ -260,13 +260,13 @@ export default function BuyerDashboard() {
                   size="sm"
                   onClick={() => refreshMutation.mutate()}
                   disabled={refreshMutation.isPending}
-                  className="border-blue-200 text-blue-600 hover:bg-blue-50"
+                  className="border-primary/20 text-primary hover:bg-primary/5"
                 >
                   <RefreshCw className={`h-4 w-4 mr-2 ${refreshMutation.isPending ? 'animate-spin' : ''}`} />
                   Refresh
                 </Button>
                 <Link href="/products">
-                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
+                  <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
                     <Plus className="h-4 w-4 mr-2" />
                     New Inquiry
                   </Button>
@@ -298,11 +298,11 @@ export default function BuyerDashboard() {
                       <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.activeRfqs}</p>
                     )}
                   </div>
-                  <FileText className="h-8 w-8 text-blue-600" />
+                  <FileText className="h-8 w-8 text-primary" />
                 </div>
                 <div className="mt-4">
                   <Link href="/buyer/rfqs">
-                    <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700">
+                    <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">
                       View All <ArrowRight className="h-3 w-3 ml-1" />
                     </Button>
                   </Link>
@@ -416,11 +416,11 @@ export default function BuyerDashboard() {
                       <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(stats.totalSpent)}</p>
                     )}
                   </div>
-                  <TrendingUp className="h-8 w-8 text-blue-600" />
+                  <TrendingUp className="h-8 w-8 text-primary" />
                 </div>
                 <div className="mt-4">
                   <Link href="/buyer/orders">
-                    <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700">
+                    <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">
                       View Orders <ArrowRight className="h-3 w-3 ml-1" />
                     </Button>
                   </Link>
@@ -473,7 +473,7 @@ export default function BuyerDashboard() {
                       <Activity className="h-5 w-5" />
                       Recent Activity
                     </CardTitle>
-                    <Button variant="outline" size="sm" className="border-blue-200 text-blue-600 hover:bg-blue-50">
+                    <Button variant="outline" size="sm" className="border-primary/20 text-primary hover:bg-primary/5">
                       <Filter className="h-4 w-4 mr-2" />
                       Filter
                     </Button>
@@ -524,7 +524,7 @@ export default function BuyerDashboard() {
                         <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                         <p className="text-gray-500 dark:text-gray-400 mb-4">No recent activity</p>
                         <Link href="/products">
-                          <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
+                          <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
                             <Plus className="h-4 w-4 mr-2" />
                             Start Your First Inquiry
                           </Button>
@@ -545,25 +545,25 @@ export default function BuyerDashboard() {
                   <CardContent>
                     <div className="grid grid-cols-1 gap-4">
                       <Link href="/rfq/create">
-                        <Button className="w-full h-16 flex flex-col gap-2 bg-blue-600 hover:bg-blue-700 text-white">
+                        <Button className="w-full h-16 flex flex-col gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
                           <FileText className="h-6 w-6" />
                           Create New RFQ
                         </Button>
                       </Link>
                       <Link href="/products">
-                        <Button variant="outline" className="w-full h-16 flex flex-col gap-2 border-blue-200 text-blue-600 hover:bg-blue-50">
+                        <Button variant="outline" className="w-full h-16 flex flex-col gap-2 border-primary/20 text-primary hover:bg-primary/5">
                           <Eye className="h-6 w-6" />
                           Browse Products
                         </Button>
                       </Link>
                       <Link href="/messages">
-                        <Button variant="outline" className="w-full h-16 flex flex-col gap-2 border-blue-200 text-blue-600 hover:bg-blue-50">
+                        <Button variant="outline" className="w-full h-16 flex flex-col gap-2 border-primary/20 text-primary hover:bg-primary/5">
                           <MessageSquare className="h-6 w-6" />
                           View Messages
                         </Button>
                       </Link>
                       <Link href="/buyer/quotations">
-                        <Button variant="outline" className="w-full h-16 flex flex-col gap-2 border-blue-200 text-blue-600 hover:bg-blue-50">
+                        <Button variant="outline" className="w-full h-16 flex flex-col gap-2 border-primary/20 text-primary hover:bg-primary/5">
                           <DollarSign className="h-6 w-6" />
                           View Quotations
                         </Button>
@@ -580,12 +580,12 @@ export default function BuyerDashboard() {
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>My Inquiries</CardTitle>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="border-blue-200 text-blue-600 hover:bg-blue-50">
+                    <Button variant="outline" size="sm" className="border-primary/20 text-primary hover:bg-primary/5">
                       <Filter className="h-4 w-4 mr-2" />
                       Filter
                     </Button>
                     <Link href="/products">
-                      <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
+                      <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
                         <Plus className="h-4 w-4 mr-2" />
                         New Inquiry
                       </Button>
@@ -646,7 +646,7 @@ export default function BuyerDashboard() {
                         <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                         <p className="text-gray-500 dark:text-gray-400 mb-4">No inquiries yet</p>
                         <Link href="/products">
-                          <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
                             <Plus className="h-4 w-4 mr-2" />
                             Create Your First Inquiry
                           </Button>
@@ -664,7 +664,7 @@ export default function BuyerDashboard() {
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>My RFQs</CardTitle>
                   <Link href="/rfq/create">
-                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
+                    <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
                       <Plus className="h-4 w-4 mr-2" />
                       Create RFQ
                     </Button>
@@ -721,7 +721,7 @@ export default function BuyerDashboard() {
                         <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                         <p className="text-gray-500 dark:text-gray-400 mb-4">No RFQs yet</p>
                         <Link href="/rfq/create">
-                          <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
                             <Plus className="h-4 w-4 mr-2" />
                             Create Your First RFQ
                           </Button>
@@ -739,7 +739,7 @@ export default function BuyerDashboard() {
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>My Quotations</CardTitle>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="border-blue-200 text-blue-600 hover:bg-blue-50">
+                    <Button variant="outline" size="sm" className="border-primary/20 text-primary hover:bg-primary/5">
                       <Filter className="h-4 w-4 mr-2" />
                       Filter
                     </Button>
@@ -812,7 +812,7 @@ export default function BuyerDashboard() {
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>My Orders</CardTitle>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="border-blue-200 text-blue-600 hover:bg-blue-50">
+                    <Button variant="outline" size="sm" className="border-primary/20 text-primary hover:bg-primary/5">
                       <Filter className="h-4 w-4 mr-2" />
                       Filter
                     </Button>

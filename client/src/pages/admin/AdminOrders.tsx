@@ -164,11 +164,11 @@ export default function AdminOrders() {
       case 'pending':
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
       case 'confirmed':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+        return 'bg-primary text-primary dark:bg-primary dark:text-primary';
       case 'processing':
         return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
       case 'shipped':
-        return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300';
+        return 'bg-orange-600 text-orange-600 dark:bg-orange-600 dark:text-orange-600';
       case 'delivered':
         return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
       case 'cancelled':
@@ -297,15 +297,15 @@ export default function AdminOrders() {
 
       {/* Key Metrics Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+        <Card className="bg-gradient-to-r from-primary to-orange-600 text-white">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-100 text-sm font-medium">Total Revenue</p>
+                <p className="text-primary text-sm font-medium">Total Revenue</p>
                 <p className="text-3xl font-bold">{formatPrice(stats.orders.totalValue)}</p>
-                <p className="text-blue-100 text-sm">From {stats.orders.total} orders</p>
+                <p className="text-primary text-sm">From {stats.orders.total} orders</p>
               </div>
-              <DollarSign className="h-12 w-12 text-blue-200" />
+              <DollarSign className="h-12 w-12 text-primary" />
             </div>
           </CardContent>
         </Card>
@@ -375,7 +375,7 @@ export default function AdminOrders() {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Shipped</span>
-                <Badge variant="outline" className="bg-indigo-100 text-indigo-800">
+                <Badge variant="outline" className="bg-orange-600 text-orange-600">
                   {stats.orders.shipped}
                 </Badge>
               </div>
@@ -483,8 +483,8 @@ export default function AdminOrders() {
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-full">
-                      <MessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <div className="p-2 bg-primary dark:bg-primary rounded-full">
+                      <MessageSquare className="h-4 w-4 text-primary dark:text-primary" />
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-medium">New inquiry received</p>
@@ -563,8 +563,8 @@ export default function AdminOrders() {
                 {inquiries.slice(0, 5).map((inquiry: any) => (
                   <div key={inquiry.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center gap-4">
-                      <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-full">
-                        <MessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <div className="p-2 bg-primary dark:bg-primary rounded-full">
+                        <MessageSquare className="h-4 w-4 text-primary dark:text-primary" />
                       </div>
                       <div>
                         <p className="font-medium">{inquiry.productName || 'Product Inquiry'}</p>

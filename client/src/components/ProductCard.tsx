@@ -109,6 +109,17 @@ export default function ProductCard({
   supplierSlug,
   supplierRating = 0
 }: ProductCardProps) {
+  const normalizedSupplierRating = (() => {
+    if (typeof supplierRating === 'number') {
+      return Number.isFinite(supplierRating) ? supplierRating : 0;
+    }
+    const parsed = Number.parseFloat(String(supplierRating ?? ''));
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+    return typeof rating === 'number' && Number.isFinite(rating) ? rating : 0;
+  })();
+
   const { isFavorite, toggleFavorite } = useFavorites();
   const { toast } = useToast();
   const [isFav, setIsFav] = useState(isFavorited);
@@ -148,14 +159,8 @@ export default function ProductCard({
     onAddToCart?.();
   };
 
-  const getSupplierTypeColor = (type?: string) => {
-    switch (type) {
-      case 'manufacturer': return 'bg-primary text-primary';
-      case 'trading-company': return 'bg-green-100 text-green-800';
-      case 'wholesaler': return 'bg-purple-100 text-purple-800';
-      case 'distributor': return 'bg-orange-100 text-orange-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+  const getSupplierTypeColor = () => {
+    return "border border-brand-orange-500/20 bg-brand-orange-500/10 text-brand-orange-700";
   };
 
   const getSupplierTypeLabel = (type?: string) => {
@@ -200,7 +205,7 @@ export default function ProductCard({
                   </h3>
                 </Link>
                 <div className="flex items-center gap-2 mt-1">
-                  <Badge className={getSupplierTypeColor(supplierType)}>
+                  <Badge className={getSupplierTypeColor()}>
                     {getSupplierTypeLabel(supplierType)}
                   </Badge>
                   {tradeAssurance && (
@@ -258,16 +263,16 @@ export default function ProductCard({
             
             <div className="grid grid-cols-2 gap-6 mb-5">
               <div className="space-y-1">
-                <p className="text-2xl font-bold text-primary" data-testid={`text-price-${id}`}>{priceRange}</p>
-                <p className="text-sm text-muted-foreground font-medium" data-testid={`text-moq-${id}`}>MOQ: {typeof moq === 'number' ? moq : moq}</p>
+                <p className="text-xl font-semibold text-brand-orange-600" data-testid={`text-price-${id}`}>{priceRange}</p>
+                <p className="text-xs uppercase tracking-[0.08em] text-brand-grey-500" data-testid={`text-moq-${id}`}>MOQ {typeof moq === 'number' ? moq : moq}</p>
               </div>
               <div className="text-right space-y-1">
-                <div className="flex items-center justify-end gap-1">
-                  <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                  <span className="font-semibold text-sm">{rating}</span>
-                  <span className="text-xs text-muted-foreground">({reviews})</span>
+                <div className="flex items-center justify-end gap-1 text-brand-orange-500">
+                  <Star className="h-4 w-4 fill-current" />
+                  <span className="font-semibold text-sm text-brand-grey-900">{rating}</span>
+                  <span className="text-xs text-brand-grey-500">({reviews})</span>
                 </div>
-                <p className="text-xs text-muted-foreground">{views} views • {inquiries} inquiries</p>
+                <p className="text-xs text-brand-grey-500">{views} views • {inquiries} inquiries</p>
               </div>
             </div>
             
@@ -327,7 +332,7 @@ export default function ProductCard({
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           
           {/* Badges */}
-          <div className="absolute top-2 right-2 flex flex-col gap-1">
+          <div className="absolute top-2 right-2 flex flex-col gap-1 text-white">
             <VerificationBadge 
               level={verificationLevel as any}
               isVerified={verified}
@@ -335,8 +340,8 @@ export default function ProductCard({
               showLabel={false}
             />
             {tradeAssurance && (
-              <Badge className="bg-primary text-white border-0 text-xs px-2 py-1">
-                <Award className="w-3 h-3 mr-1" />
+              <Badge className="flex items-center gap-1 border border-white/30 bg-white/10 px-2 py-1 text-[11px] font-medium text-white shadow-sm backdrop-blur-sm">
+                <Award className="w-3 h-3" />
                 Trade Assurance
               </Badge>
             )}
@@ -344,14 +349,14 @@ export default function ProductCard({
           
           <div className="absolute bottom-2 left-2 flex flex-wrap gap-1">
             {readyToShip && (
-              <Badge variant="secondary" className="text-xs px-2 py-1">
-                <Truck className="w-3 h-3 mr-1" />
+              <Badge className="flex items-center gap-1 border border-white/25 bg-white/10 px-2 py-1 text-[11px] font-medium text-white shadow-sm backdrop-blur-sm">
+                <Truck className="w-3 h-3" />
                 Ready to Ship
               </Badge>
             )}
             {sampleAvailable && (
-              <Badge variant="secondary" className="text-xs px-2 py-1">
-                <Package className="w-3 h-3 mr-1" />
+              <Badge className="flex items-center gap-1 border border-white/25 bg-white/10 px-2 py-1 text-[11px] font-medium text-white shadow-sm backdrop-blur-sm">
+                <Package className="w-3 h-3" />
                 Sample Available
               </Badge>
             )}
@@ -366,7 +371,7 @@ export default function ProductCard({
                 e.preventDefault();
                 handleFavorite();
               }}
-              className={`h-7 w-7 p-0 ${isFavorite(id) ? 'text-red-500' : 'text-gray-600'}`}
+              className={`h-7 w-7 p-0 bg-white/80 text-brand-grey-700 shadow-sm hover:bg-white ${isFavorite(id) ? 'text-red-500' : ''}`}
             >
               <Heart className={`h-3 w-3 ${isFavorite(id) ? 'fill-current' : ''}`} />
             </Button>
@@ -377,7 +382,7 @@ export default function ProductCard({
                 e.preventDefault();
                 handleAddToCart();
               }}
-              className="h-7 w-7 p-0 text-gray-600"
+              className="h-7 w-7 p-0 bg-white/80 text-brand-grey-700 shadow-sm hover:bg-white"
             >
               <ShoppingCart className="h-3 w-3" />
             </Button>
@@ -388,7 +393,7 @@ export default function ProductCard({
                 e.preventDefault();
                 handleShare();
               }}
-              className="h-7 w-7 p-0"
+              className="h-7 w-7 p-0 bg-white/80 text-brand-grey-700 shadow-sm hover:bg-white"
             >
               <Share2 className="h-3 w-3" />
             </Button>
@@ -429,8 +434,8 @@ export default function ProductCard({
         
         {/* Price and MOQ */}
         <div className="space-y-1">
-          <p className="text-xl font-bold text-primary" data-testid={`text-price-${id}`}>{priceRange}</p>
-          <p className="text-sm text-muted-foreground font-medium" data-testid={`text-moq-${id}`}>MOQ: {typeof moq === 'number' ? moq : moq}</p>
+          <p className="text-xl font-semibold text-brand-orange-600" data-testid={`text-price-${id}`}>{priceRange}</p>
+          <p className="text-xs uppercase tracking-[0.08em] text-brand-grey-500" data-testid={`text-moq-${id}`}>MOQ {typeof moq === 'number' ? moq : moq}</p>
         </div>
         
         {/* Supplier Info */}
@@ -446,36 +451,36 @@ export default function ProductCard({
                 <span className="truncate text-xs" data-testid={`text-supplier-${id}`}>{supplierName}</span>
               )}
             </div>
-            <Badge className={`${getSupplierTypeColor(supplierType)} text-xs flex-shrink-0 ml-2 px-2 py-1`}>
+            <Badge className={`${getSupplierTypeColor()} text-xs flex-shrink-0 ml-2 px-2 py-1 font-medium`}>
               {getSupplierTypeLabel(supplierType)}
             </Badge>
           </div>
           
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <div className="flex items-center justify-between text-xs text-brand-grey-500">
             <span data-testid={`text-location-${id}`} className="flex items-center gap-1">
-              <Globe className="w-3 h-3" />
+              <Globe className="w-3 h-3 text-brand-orange-500" />
               {supplierCountry}
             </span>
             <div className="flex items-center gap-1">
-              <Clock className="w-3 h-3" />
+              <Clock className="w-3 h-3 text-brand-orange-500" />
               <span>{responseTime}</span>
             </div>
           </div>
           
           {/* Supplier Rating and Product Stats */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1">
-              <Star className="h-3 w-3 text-yellow-500 fill-current" />
-              <span className="text-sm font-semibold">{supplierRating > 0 ? supplierRating.toFixed(1) : rating}</span>
-              <span className="text-xs text-muted-foreground">({reviews})</span>
+            <div className="flex items-center gap-1 text-brand-orange-500">
+              <Star className="h-3 w-3 fill-current" />
+              <span className="text-sm font-semibold text-brand-grey-900">{normalizedSupplierRating > 0 ? normalizedSupplierRating.toFixed(1) : rating}</span>
+              <span className="text-xs text-brand-grey-500">({reviews})</span>
             </div>
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <div className="flex items-center gap-3 text-xs text-brand-grey-500">
               <div className="flex items-center gap-1">
-                <Eye className="w-3 h-3" />
+                <Eye className="w-3 h-3 text-brand-orange-500" />
                 <span>{views}</span>
               </div>
               <div className="flex items-center gap-1">
-                <MessageSquare className="w-3 h-3" />
+                <MessageSquare className="w-3 h-3 text-brand-orange-500" />
                 <span>{inquiries}</span>
               </div>
             </div>
@@ -504,7 +509,7 @@ export default function ProductCard({
           <Button 
             variant="outline" 
             size="sm" 
-            className="flex-1 text-sm h-9 font-medium" 
+            className="flex-1 text-sm h-9 font-medium border-brand-orange-500 text-brand-orange-600 hover:bg-brand-orange-500/10" 
             onClick={handleContact}
             data-testid={`button-contact-${id}`}
           >
@@ -513,7 +518,7 @@ export default function ProductCard({
           </Button>
           <Button 
             size="sm" 
-            className="flex-1 text-sm h-9 font-medium" 
+            className="flex-1 text-sm h-9 font-medium bg-brand-orange-500 text-white hover:bg-brand-orange-600" 
             onClick={handleQuote}
             data-testid={`button-quote-${id}`}
           >

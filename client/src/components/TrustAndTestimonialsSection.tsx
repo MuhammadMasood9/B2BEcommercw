@@ -1,18 +1,19 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Shield, 
-  Award, 
-  Clock, 
-  Users, 
-  Star, 
+import {
+  Shield,
+  Award,
+  Clock,
+  Users,
+  Star,
   CheckCircle,
   Globe,
   Zap,
   Heart,
-  Quote
+  Quote,
 } from "lucide-react";
+import HeroBackgroundWrapper from "@/components/HeroBackgroundWrapper";
 
 export default function TrustAndTestimonialsSection() {
   const trustFeatures = [
@@ -20,22 +21,16 @@ export default function TrustAndTestimonialsSection() {
       icon: Shield,
       title: "Trade Assurance",
       description: "Your payments are protected until you confirm receipt of your order",
-      color: "from-green-100 to-green-200",
-      iconColor: "text-green-600"
     },
     {
       icon: Award,
       title: "Quality Guarantee",
       description: "Get refunds if products don't meet the quality standards described",
-      color: "from-primary to-orange-600",
-      iconColor: "text-primary"
     },
     {
       icon: Clock,
       title: "On-Time Delivery",
       description: "Receive compensation if your order doesn't arrive on time",
-      color: "from-purple-100 to-purple-200",
-      iconColor: "text-purple-600"
     }
   ];
 
@@ -112,8 +107,8 @@ export default function TrustAndTestimonialsSection() {
           {trustFeatures.map((feature, index) => (
             <Card key={index} className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-white border-gray-100">
               <CardContent className="p-8 text-center">
-                <div className={`w-16 h-16 bg-gradient-to-br ${feature.color} rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300`}>
-                  <feature.icon className={`w-8 h-8 ${feature.iconColor}`} />
+                <div className="w-16 h-16 rounded-2xl border border-brand-orange-500/20 bg-gradient-to-br from-brand-orange-500/15 via-brand-orange-400/10 to-brand-orange-300/5 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                  <feature.icon className="w-8 h-8 text-brand-orange-500" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">
                   {feature.title}
@@ -127,28 +122,32 @@ export default function TrustAndTestimonialsSection() {
         </div>
 
         {/* Stats Section */}
-        <div className="bg-gradient-to-r from-primary to-purple-600 rounded-3xl p-8 mb-20 text-white">
+        <HeroBackgroundWrapper
+          as="div"
+          className="rounded-3xl p-8 mb-20 text-white"
+          contentClassName=""
+        >
           <div className="text-center mb-12">
             <h3 className="text-3xl font-bold mb-4">
               Trusted by Millions Worldwide
             </h3>
-            <p className="text-primary text-lg">
+            <p className="text-white/80 text-lg">
               Join the world's largest B2B marketplace
             </p>
           </div>
-          
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {stats.map((stat, index) => (
               <div key={index} className="text-center">
-                <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <stat.icon className="w-8 h-8 text-white" />
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20">
+                  <stat.icon className="h-8 w-8 text-white" />
                 </div>
                 <div className="text-3xl font-bold mb-2">{stat.number}</div>
-                <div className="text-primary text-sm">{stat.label}</div>
+                <div className="text-white/70 text-sm">{stat.label}</div>
               </div>
             ))}
           </div>
-        </div>
+        </HeroBackgroundWrapper>
 
         {/* Certifications */}
         <div className="text-center mb-16">
@@ -211,14 +210,14 @@ export default function TrustAndTestimonialsSection() {
                   </div>
                 </div>
                 
-                <div className="flex items-center mb-4">
+                <div className="flex items-center mb-4 text-brand-orange-500">
                   {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 text-yellow-400 fill-current" />
+                    <Star key={i} className="w-4 h-4 fill-current" />
                   ))}
                 </div>
                 
                 <div className="relative">
-                  <Quote className="w-8 h-8 text-primary absolute -top-2 -left-2" />
+                  <Quote className="w-8 h-8 text-brand-orange-500 absolute -top-2 -left-2" />
                   <p className="text-gray-700 leading-relaxed pl-6">
                     {testimonial.text}
                   </p>
@@ -230,22 +229,32 @@ export default function TrustAndTestimonialsSection() {
 
         {/* CTA Section */}
         <div className="text-center mt-16">
-          <div className="bg-gradient-to-r from-primary to-purple-50 rounded-3xl p-8">
-            <h3 className="text-2xl font-bold text-gray-900 mb-4">
-              Ready to Start Trading?
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Join millions of buyers and suppliers in the world's largest B2B marketplace
-            </p>
+          <HeroBackgroundWrapper
+            as="div"
+            className="rounded-3xl p-8"
+            contentClassName="text-center space-y-6"
+          >
+            <div>
+              <h3 className="text-2xl font-bold text-white mb-4">
+                Ready to Start Trading?
+              </h3>
+              <p className="text-white/80 mb-6">
+                Join millions of buyers and suppliers in the world's largest B2B marketplace
+              </p>
+            </div>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" className="bg-primary hover:bg-primary text-white px-8 py-3">
+              <Button size="lg" className="bg-white text-brand-grey-900 hover:bg-white/90 px-8 py-3 font-semibold">
                 Start Sourcing Now
               </Button>
-              <Button size="lg" variant="outline" className="border-primary text-primary hover:bg-primary px-8 py-3">
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-white text-white hover:bg-white/10 px-8 py-3 font-semibold"
+              >
                 Contact Admin
               </Button>
             </div>
-          </div>
+          </HeroBackgroundWrapper>
         </div>
       </div>
     </section>

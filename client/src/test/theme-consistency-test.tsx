@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -62,38 +62,6 @@ describe('Theme Consistency Tests', () => {
 
     const foregroundElements = document.querySelectorAll('.text-foreground');
     expect(foregroundElements.length).toBeGreaterThan(0);
-  });
-
-  test('theme switching updates CSS classes', () => {
-    const { container } = render(
-      <ThemeProvider defaultTheme="light">
-        <TestComponent />
-      </ThemeProvider>
-    );
-
-    // Initially should have light theme
-    expect(document.documentElement).toHaveClass('light');
-    expect(document.documentElement).not.toHaveClass('dark');
-
-    // Simulate theme change to dark
-    document.documentElement.classList.remove('light');
-    document.documentElement.classList.add('dark');
-
-    expect(document.documentElement).toHaveClass('dark');
-    expect(document.documentElement).not.toHaveClass('light');
-  });
-
-  test('high contrast mode applies correctly', () => {
-    render(
-      <ThemeProvider>
-        <TestComponent />
-      </ThemeProvider>
-    );
-
-    // Simulate high contrast mode
-    document.documentElement.classList.add('high-contrast');
-
-    expect(document.documentElement).toHaveClass('high-contrast');
   });
 });
 

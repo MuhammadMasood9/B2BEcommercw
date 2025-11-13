@@ -137,7 +137,12 @@ export default function BuyerSupplierStorePage() {
       setLocation("/login");
       return;
     }
-    setLocation(`/messages?supplierId=${supplier.id}&supplierName=${encodeURIComponent(supplier.storeName)}`);
+    const params = new URLSearchParams({
+      chatType: 'buyer_supplier',
+      supplierId: supplier.id,
+      supplierName: supplier.storeName || supplier.businessName || 'Supplier',
+    });
+    setLocation(`/messages?${params.toString()}`);
   };
 
   const handleShare = async () => {

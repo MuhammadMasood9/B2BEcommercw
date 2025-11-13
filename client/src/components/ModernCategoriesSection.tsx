@@ -3,8 +3,8 @@ import { useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  ArrowRight, 
+import {
+  ArrowRight,
   TrendingUp,
   Zap,
   Shield,
@@ -15,9 +15,11 @@ import {
   Home,
   Shirt,
   Wrench,
-  Heart
+  Heart,
+  Star
 } from "lucide-react";
 import { Link } from "wouter";
+import HeroBackgroundWrapper from "@/components/HeroBackgroundWrapper";
 
 const categoryIcons: { [key: string]: any } = {
   electronics: Smartphone,
@@ -109,11 +111,11 @@ export default function ModernCategoriesSection() {
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 bg-primary text-primary rounded-full px-4 py-2 text-sm font-medium mb-6">
-            <Globe className="w-4 h-4" />
-            <span>Global Categories</span>
-          </div>
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 bg-primary/10 text-primary rounded-full px-4 py-2 text-sm font-medium mb-6">
+              <Star className="w-4 h-4 text-primary" />
+              <span>Global Categories</span>
+            </div>
           <h2 className="text-4xl md:text-5xl font-bold mb-4 text-gray-900">
             Browse Categories
           </h2>
@@ -198,21 +200,21 @@ export default function ModernCategoriesSection() {
                     </h3>
                     
                     <div className="space-y-1 text-sm text-gray-500">
-                      <div className="flex items-center justify-center gap-1">
-                        <Package className="w-3 h-3" />
+                      <div className="flex items-center justify-center gap-1 text-primary">
+                        <Package className="w-3 h-3 text-primary" />
                         <span>{stats.productCount.toLocaleString()}+ products</span>
                       </div>
-                      <div className="flex items-center justify-center gap-1">
-                        <IconComponent className="w-3 h-3" />
+                      <div className="flex items-center justify-center gap-1 text-primary">
+                        <IconComponent className="w-3 h-3 text-primary" />
                         <span>{stats.subcategoryCount}+ subcategories</span>
                       </div>
-                      <div className="flex items-center justify-center gap-1">
-                        <Shield className="w-3 h-3" />
+                      <div className="flex items-center justify-center gap-1 text-primary">
+                        <Shield className="w-3 h-3 text-primary" />
                         <span>1 Admin Supplier</span>
                       </div>
                       {category.totalViews > 0 && (
-                        <div className="flex items-center justify-center gap-1">
-                          <TrendingUp className="w-3 h-3" />
+                        <div className="flex items-center justify-center gap-1 text-primary">
+                          <TrendingUp className="w-3 h-3 text-primary" />
                           <span>{category.totalViews} views</span>
                         </div>
                       )}
@@ -225,17 +227,19 @@ export default function ModernCategoriesSection() {
         </div>
 
         {/* Featured Categories */}
-        <div className="bg-gradient-to-r from-primary to-purple-50 rounded-3xl p-8 mb-12">
-          <div className="text-center mb-8">
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">
-              Popular This Week
-            </h3>
-            <p className="text-gray-600">
+        <HeroBackgroundWrapper
+          as="div"
+          className="mb-12 rounded-3xl p-8 text-white"
+          contentClassName="space-y-8"
+        >
+          <div className="text-center space-y-2">
+            <h3 className="text-2xl font-bold">Popular This Week</h3>
+            <p className="text-white/80">
               Trending categories with the most activity
             </p>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
             {categories.slice(0, 3).map((category: any, index: number) => {
               const IconComponent = getCategoryIcon(category.name);
               const stats = getCategoryStats(category.id);
@@ -265,15 +269,18 @@ export default function ModernCategoriesSection() {
                 (category.imageUrl.startsWith('/uploads/') ? category.imageUrl : `/uploads/${category.imageUrl}`) : 
                 getCategoryImage(category.name);
               console.log(`Popular category: ${category.name}, API Image: ${category.imageUrl}, Final Image: ${categoryImage}`);
-              
+
               return (
-                <div key={category.id} className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
+                <div
+                  key={category.id}
+                  className="rounded-2xl bg-white/10 p-6 shadow-lg backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:bg-white/20"
+                >
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100">
-                      <img 
+                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-white/20">
+                      <img
                         src={categoryImage} 
                         alt={category.name}
-                        className="w-full h-full object-cover"
+                        className="h-full w-full object-cover"
                         onError={(e) => {
                           console.log(`Image failed to load for category: ${category.name}, URL: ${categoryImage}`);
                           e.currentTarget.src = `https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=400&fit=crop&auto=format`;
@@ -284,8 +291,12 @@ export default function ModernCategoriesSection() {
                       />
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900">{category.name}</h4>
-                      <div className="flex items-center gap-4 text-sm text-gray-500">
+                      <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-white/70">
+                        <IconComponent className="w-4 h-4 text-white" />
+                        <span>#{index + 1} Trending</span>
+                      </div>
+                      <h4 className="font-semibold text-white">{category.name}</h4>
+                      <div className="flex items-center gap-4 text-sm text-white/70">
                         <span>{stats.productCount.toLocaleString()}+ products</span>
                         <span>{stats.subcategoryCount}+ subcategories</span>
                         {category.totalViews > 0 && (
@@ -296,7 +307,7 @@ export default function ModernCategoriesSection() {
                         )}
                       </div>
                     </div>
-                    <Badge className="bg-green-500 text-white">
+                    <Badge className="border border-white/30 bg-white/10 text-white">
                       #{index + 1}
                     </Badge>
                   </div>
@@ -304,7 +315,7 @@ export default function ModernCategoriesSection() {
               );
             })}
           </div>
-        </div>
+        </HeroBackgroundWrapper>
 
         {/* Trust Elements */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">

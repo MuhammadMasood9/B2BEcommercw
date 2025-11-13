@@ -74,6 +74,7 @@ import { useProduct } from "@/contexts/ProductContext";
 import SupplierInfoCard from "@/components/SupplierInfoCard";
 import type { SupplierProfile } from "@shared/schema";
 import Breadcrumb from "@/components/Breadcrumb";
+import HeroBackgroundWrapper from "@/components/HeroBackgroundWrapper";
 
 export default function ProductDetail() {
   const queryClient = useQueryClient();
@@ -285,8 +286,21 @@ export default function ProductDetail() {
       return;
     }
 
+    const params = new URLSearchParams({
+      chatType: 'product',
+      productId: product.id,
+      productName: product.name || 'Product',
+    });
+
+    const supplierId = supplier?.id || product.supplierId || undefined;
+    const productSupplierName = (product as any)?.supplierName || (product as any)?.storeName;
+    const supplierName = supplier?.storeName || supplier?.businessName || productSupplierName;
+
+    if (supplierId) params.set('supplierId', supplierId);
+    if (supplierName) params.set('supplierName', supplierName);
+
     // Navigate to product-specific chat
-    window.location.href = `/messages?productId=${product.id}&productName=${encodeURIComponent(product.name)}&chatType=product`;
+    window.location.href = `/messages?${params.toString()}`;
   };
 
   const handleRequestQuote = () => {
@@ -448,99 +462,104 @@ export default function ProductDetail() {
 
       <main className="flex-1">
         {/* Enhanced Hero Section */}
-        <section className="relative bg-gradient-to-r from-primary via-primary/90 to-secondary text-white py-12 overflow-hidden">
-          {/* Background Pattern */}
-          <div className="absolute inset-0 opacity-20">
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-secondary/10"></div>
+        <HeroBackgroundWrapper
+          className="py-16 text-white"
+          contentClassName="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
+        >
+          {/* Breadcrumb Navigation */}
+          <div className="mb-4">
+            <Breadcrumb
+              items={[
+                { label: "Products", href: "/products" },
+                ...(supplier
+                  ? [
+                      {
+                        label: supplier.storeName,
+                        href: `/suppliers/${supplier.storeSlug}`,
+                        icon: Store,
+                      },
+                    ]
+                  : []),
+                { label: product.name },
+              ]}
+              className="text-white/80"
+            />
           </div>
 
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            {/* Breadcrumb Navigation */}
-            <div className="mb-4">
-              <Breadcrumb
-                items={[
-                  { label: "Products", href: "/products" },
-                  ...(supplier ? [
-                    { label: supplier.storeName, href: `/suppliers/${supplier.storeSlug}`, icon: Store }
-                  ] : []),
-                  { label: product.name }
-                ]}
-                className="text-white/80"
-              />
-            </div>
+          <div className="flex items-center gap-4 mb-6">
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm"
+            >
+              <Link href="/products">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Products
+              </Link>
+            </Button>
+            <Badge className="flex items-center gap-1 border border-white/30 bg-white/10 text-xs font-medium text-white backdrop-blur-sm">
+              <Sparkles className="w-3 h-3" />
+              Premium Product
+            </Badge>
+          </div>
 
-            <div className="flex items-center gap-4 mb-6">
-              <Button
-                variant="outline"
-                size="sm"
-                asChild
-                className="bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm"
-              >
-                <Link href="/products">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Products
-                </Link>
-              </Button>
-              <Badge className="bg-white/20 text-white border-white/30 backdrop-blur-sm">
-                <Sparkles className="w-3 h-3 mr-1" />
-                Premium Product
-              </Badge>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-              <div>
-                <div className="flex items-center gap-3 mb-4">
-                  <Badge className="bg-green-100 text-green-800 border-green-200">
-                    <Verified className="w-3 h-3 mr-1" />
-                    Verified Admin
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:items-center">
+            <div className="space-y-6">
+              <div className="flex flex-wrap items-center gap-3">
+                <Badge className="flex items-center gap-1 border border-white/30 bg-white/10 text-xs font-medium text-white backdrop-blur-sm">
+                  <Verified className="w-3 h-3" />
+                  Verified Admin
+                </Badge>
+                {product.hasTradeAssurance && (
+                  <Badge className="flex items-center gap-1 border border-white/30 bg-white/10 text-xs font-medium text-white backdrop-blur-sm">
+                    <Shield className="w-3 h-3" />
+                    Trade Assurance
                   </Badge>
-                  {product.hasTradeAssurance && (
-                    <Badge className="bg-primary/10 text-primary border-primary/20">
-                      <Shield className="w-3 h-3 mr-1" />
-                      Trade Assurance
-                    </Badge>
-                  )}
-                  <Badge className="bg-purple-100 text-purple-800 border-purple-200">
-                    <Crown className="w-3 h-3 mr-1" />
-                    Premium Quality
-                  </Badge>
-                </div>
+                )}
+                <Badge className="flex items-center gap-1 border border-white/30 bg-white/10 text-xs font-medium text-white backdrop-blur-sm">
+                  <Crown className="w-3 h-3" />
+                  Premium Quality
+                </Badge>
+              </div>
 
-                <h1 className="text-4xl font-bold mb-4 leading-tight">{product.name}</h1>
-                <p className="text-primary-foreground/80 text-lg mb-6 leading-relaxed whitespace-pre-wrap">
-                  {product.shortDescription?.replace(/\\n/g, '\n').replace(/@/g, '') || 'High-quality product from verified admin with trade assurance and premium quality guarantee.'}
+              <div className="space-y-4">
+                <h1 className="text-4xl font-bold leading-tight md:text-5xl">{product.name}</h1>
+                <p className="max-w-2xl text-lg text-white/80 leading-relaxed whitespace-pre-wrap">
+                  {product.shortDescription?.replace(/\n/g, "\n").replace(/@/g, "") ||
+                    "High-quality product from verified admin with trade assurance and premium quality guarantee."}
                 </p>
-
-                <div className="flex items-center gap-6 text-sm">
+                <div className="flex flex-wrap items-center gap-5 text-sm text-white/80">
                   <div className="flex items-center gap-2">
                     <Package className="w-4 h-4" />
                     <span>MOQ: {product.minOrderQuantity || 1} pieces</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4" />
-                    <span>Lead Time: {product.leadTime || '7-15 days'}</span>
+                    <span>Lead Time: {product.leadTime || "7-15 days"}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <MapPin className="w-4 h-4" />
-                    <span>Port: {product.port || 'Any port'}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="text-right">
-                <div className="inline-block bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-                  <div className="text-5xl font-bold mb-2">
-                    {getPriceForQuantity(quantity)}
-                  </div>
-                  <div className="text-primary-foreground/80 text-lg mb-4">per piece</div>
-                  <div className="text-sm text-primary-foreground/60">
-                    For {quantity.toLocaleString()} pieces
+                    <span>Port: {product.port || "Any port"}</span>
                   </div>
                 </div>
               </div>
             </div>
+
+            <div className="flex justify-start lg:justify-end">
+              <div className="inline-flex flex-col items-start rounded-3xl border border-white/25 bg-white/10 px-8 py-6 text-left shadow-lg backdrop-blur-sm">
+                <span className="text-sm uppercase tracking-[0.2em] text-white/70">Starting from</span>
+                <span className="mt-2 text-4xl font-semibold text-white lg:text-5xl">
+                  {getPriceForQuantity(quantity)}
+                </span>
+                <span className="text-base text-white/80">per piece</span>
+                <span className="mt-4 text-sm text-white/60">
+                  Quote based on {quantity.toLocaleString()} pieces
+                </span>
+              </div>
+            </div>
           </div>
-        </section>
+        </HeroBackgroundWrapper>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -598,17 +617,17 @@ export default function ProductDetail() {
                       </div>
 
                       <div className="space-y-6">
-                        <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg p-4">
-                          <div className="text-2xl font-bold text-primary mb-2">
-                            {getPriceForQuantity(quantity)} <span className="text-sm text-gray-500">/piece</span>
+                        <div className="bg-gradient-to-r from-brand-orange-500/10 to-brand-orange-400/10 rounded-lg p-4 border border-brand-orange-500/20">
+                          <div className="text-2xl font-bold text-brand-orange-600 mb-2">
+                            {getPriceForQuantity(quantity)} <span className="text-sm text-brand-grey-500">/piece</span>
                           </div>
                           {safePriceRanges.length > 0 && (
                             <div className="space-y-2 text-sm">
-                              <div className="text-gray-600 font-medium mb-2">Volume Pricing:</div>
+                              <div className="text-brand-grey-700 font-medium mb-2">Volume Pricing:</div>
                               {safePriceRanges.map((range: any, idx: number) => (
-                                <div key={idx} className="flex justify-between items-center py-2 px-3 bg-white rounded-lg">
-                                  <span className="text-gray-700">{range.minQty}{range.maxQty ? `-${range.maxQty}` : '+'} pieces:</span>
-                                  <span className="font-semibold text-primary">${Number(range.pricePerUnit).toFixed(2)}</span>
+                                <div key={idx} className="flex justify-between items-center py-2 px-3 bg-white/80 rounded-lg border border-brand-orange-100">
+                                  <span className="text-brand-grey-700">{range.minQty}{range.maxQty ? `-${range.maxQty}` : '+'} pieces:</span>
+                                  <span className="font-semibold text-brand-orange-600">${Number(range.pricePerUnit).toFixed(2)}</span>
                                 </div>
                               ))}
                             </div>
@@ -617,13 +636,13 @@ export default function ProductDetail() {
 
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
-                            <label className="text-sm font-medium text-gray-700">Order Quantity:</label>
-                            <div className="flex items-center border border-gray-200 rounded overflow-hidden">
+                            <label className="text-sm font-medium text-brand-grey-800">Order Quantity:</label>
+                            <div className="flex items-center border border-brand-grey-200 rounded overflow-hidden">
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => setQuantity(Math.max(quantity - 10, product.minOrderQuantity || 1))}
-                                className="h-8 w-8 p-0 hover:bg-gray-100"
+                                className="h-8 w-8 p-0 text-brand-grey-500 hover:bg-brand-grey-50"
                               >
                                 <Minus className="h-3 w-3" />
                               </Button>
@@ -631,21 +650,21 @@ export default function ProductDetail() {
                                 type="number"
                                 value={quantity}
                                 onChange={(e) => setQuantity(Math.max(Number(e.target.value), product.minOrderQuantity || 1))}
-                                className="w-20 h-8 text-center border-0 font-medium text-sm"
+                                className="w-20 h-8 text-center border-0 font-medium text-sm text-brand-grey-900"
                               />
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => setQuantity(quantity + 10)}
-                                className="h-8 w-8 p-0 hover:bg-gray-100"
+                                className="h-8 w-8 p-0 text-brand-grey-500 hover:bg-brand-grey-50"
                               >
                                 <Plus className="h-3 w-3" />
                               </Button>
                             </div>
                           </div>
 
-                          <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
-                            <div className="flex items-center gap-2 text-yellow-800 text-sm">
+                          <div className="bg-brand-orange-50 border border-brand-orange-100 rounded p-3">
+                            <div className="flex items-center gap-2 text-brand-orange-700 text-sm">
                               <Info className="w-3 h-3" />
                               <span className="font-medium">Minimum Order Quantity: {product.minOrderQuantity || 1} pieces</span>
                             </div>
@@ -657,14 +676,15 @@ export default function ProductDetail() {
                         <div className="space-y-3">
                           <Button
                             onClick={handleAddToCart}
-                            className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded text-sm"
+                            className="w-full bg-brand-orange-500 hover:bg-brand-orange-600 text-white py-2 rounded text-sm"
                           >
                             <ShoppingCart className="w-4 h-4 mr-2" />
                             Add to Cart
                           </Button>
                           <Button
                             onClick={handleSendInquiry}
-                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-2 rounded text-sm"
+                            variant="outline"
+                            className="w-full border-brand-orange-500 text-brand-orange-600 hover:bg-brand-orange-500/10 py-2 rounded text-sm"
                           >
                             <MessageSquare className="w-4 h-4 mr-2" />
                             Send an Inquiry to Admin
@@ -672,7 +692,7 @@ export default function ProductDetail() {
                           <div className="flex gap-2">
                             <Button
                               onClick={handleContactSupplier}
-                              className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 rounded text-sm"
+                              className="flex-1 bg-brand-grey-900 hover:bg-brand-grey-800 text-white py-2 rounded text-sm"
                             >
                               <MessageSquare className="w-4 h-4 mr-1" />
                               Contact Admin
@@ -682,23 +702,23 @@ export default function ProductDetail() {
                               onClick={handleFavorite}
                               className={`px-3 py-2 rounded border text-sm ${isFavorite(productId)
                                   ? 'text-red-600 border-red-200 bg-red-50 hover:bg-red-100'
-                                  : 'hover:border-gray-300'
+                                  : 'border-brand-grey-200 text-brand-grey-500 hover:bg-brand-grey-50'
                                 }`}
                             >
                               <Heart className={`w-4 h-4 ${isFavorite(productId) ? 'fill-current' : ''}`} />
                             </Button>
-                            <Button variant="outline" className="px-3 py-2 rounded border text-sm hover:border-gray-300">
+                            <Button variant="outline" className="px-3 py-2 rounded border text-sm border-brand-grey-200 text-brand-grey-500 hover:bg-brand-grey-50">
                               <Share2 className="w-4 h-4" />
                             </Button>
                           </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-2">
-                          <Button variant="outline" className="py-2 rounded border text-sm" onClick={handleRequestQuote}>
+                          <Button variant="outline" className="py-2 rounded border text-sm border-brand-grey-200 text-brand-grey-600 hover:bg-brand-grey-50" onClick={handleRequestQuote}>
                             <FileText className="w-4 h-4 mr-1" />
                             Request Quote
                           </Button>
-                          <Button variant="outline" className="py-2 rounded border text-sm" onClick={handleDownloadCatalog}>
+                          <Button variant="outline" className="py-2 rounded border text-sm border-brand-grey-200 text-brand-grey-600 hover:bg-brand-grey-50" onClick={handleDownloadCatalog}>
                             <Download className="w-4 h-4 mr-1" />
                             Download Catalog
                           </Button>
@@ -768,17 +788,17 @@ export default function ProductDetail() {
                         <h3 className="text-xl font-semibold text-gray-900 mb-6">Key Features & Benefits</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {keyFeatures.map((feature, idx) => (
-                            <div key={idx} className="flex items-start gap-4 p-4 bg-green-50 rounded-xl border border-green-200">
-                              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                                <CheckCircle className="w-4 h-4 text-green-600" />
+                            <div key={idx} className="flex items-start gap-4 p-4 bg-brand-orange-50 rounded-xl border border-brand-orange-100">
+                              <div className="w-8 h-8 bg-brand-orange-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                                <CheckCircle className="w-4 h-4 text-brand-orange-600" />
                               </div>
-                              <span className="text-gray-700 font-medium">{feature}</span>
+                              <span className="text-brand-grey-700 font-medium">{feature}</span>
                             </div>
                           ))}
                           {keyFeatures.length === 0 && (
                             <div className="col-span-2 text-center py-12">
-                              <CheckCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                              <p className="text-gray-500 text-lg">No key features listed.</p>
+                              <CheckCircle className="w-12 h-12 text-brand-grey-300 mx-auto mb-4" />
+                              <p className="text-brand-grey-500 text-lg">No key features listed.</p>
                             </div>
                           )}
                         </div>
@@ -787,58 +807,58 @@ export default function ProductDetail() {
 
                     <TabsContent value="shipping" className="mt-8">
                       <div className="space-y-8">
-                        <h3 className="text-xl font-semibold text-gray-900 mb-6">Shipping & Payment Information</h3>
+                        <h3 className="text-xl font-semibold text-brand-grey-900 mb-6">Shipping & Payment Information</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                           <div className="space-y-6">
-                            <div className="bg-primary/5 rounded-2xl p-6 border border-primary/20">
-                              <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                                <Truck className="w-5 h-5 text-primary" />
+                            <div className="bg-brand-orange-50 rounded-2xl p-6 border border-brand-orange-100">
+                              <h4 className="font-semibold text-brand-grey-900 mb-4 flex items-center gap-2">
+                                <Truck className="w-5 h-5 text-brand-orange-600" />
                                 Shipping Information
                               </h4>
                               <div className="space-y-3">
                                 <div className="flex justify-between items-center py-2">
-                                  <span className="text-gray-600">Lead Time:</span>
-                                  <span className="font-semibold text-gray-900">{product.leadTime || '7-15 days'}</span>
+                                  <span className="text-brand-grey-600">Lead Time:</span>
+                                  <span className="font-semibold text-brand-grey-900">{product.leadTime || '7-15 days'}</span>
                                 </div>
                                 <div className="flex justify-between items-center py-2">
-                                  <span className="text-gray-600">Port:</span>
-                                  <span className="font-semibold text-gray-900">{product.port || 'Any port'}</span>
+                                  <span className="text-brand-grey-600">Port:</span>
+                                  <span className="font-semibold text-brand-grey-900">{product.port || 'Any port'}</span>
                                 </div>
                                 <div className="flex justify-between items-center py-2">
-                                  <span className="text-gray-600">Shipping Method:</span>
-                                  <span className="font-semibold text-gray-900">Sea/Air/FedEx</span>
+                                  <span className="text-brand-grey-600">Shipping Method:</span>
+                                  <span className="font-semibold text-brand-grey-900">Sea/Air/FedEx</span>
                                 </div>
                               </div>
                             </div>
                           </div>
 
                           <div className="space-y-6">
-                            <div className="bg-green-50 rounded-2xl p-6 border border-green-200">
-                              <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                                <CreditCard className="w-5 h-5 text-green-600" />
+                            <div className="bg-white rounded-2xl p-6 border border-brand-orange-100 shadow-sm">
+                              <h4 className="font-semibold text-brand-grey-900 mb-4 flex items-center gap-2">
+                                <CreditCard className="w-5 h-5 text-brand-orange-600" />
                                 Payment Terms
                               </h4>
                               <div className="space-y-3">
                                 {paymentTerms.length > 0 ? (
                                   paymentTerms.map((term, idx) => (
                                     <div key={idx} className="flex items-center gap-3 py-2">
-                                      <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
-                                      <span className="text-gray-700">{term}</span>
+                                      <CheckCircle className="w-4 h-4 text-brand-orange-600 flex-shrink-0" />
+                                      <span className="text-brand-grey-700">{term}</span>
                                     </div>
                                   ))
                                 ) : (
                                   <>
                                     <div className="flex items-center gap-3 py-2">
-                                      <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
-                                      <span className="text-gray-700">T/T (Telegraphic Transfer)</span>
+                                      <CheckCircle className="w-4 h-4 text-brand-orange-600 flex-shrink-0" />
+                                      <span className="text-brand-grey-700">T/T (Telegraphic Transfer)</span>
                                     </div>
                                     <div className="flex items-center gap-3 py-2">
-                                      <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
-                                      <span className="text-gray-700">L/C (Letter of Credit)</span>
+                                      <CheckCircle className="w-4 h-4 text-brand-orange-600 flex-shrink-0" />
+                                      <span className="text-brand-grey-700">L/C (Letter of Credit)</span>
                                     </div>
                                     <div className="flex items-center gap-3 py-2">
-                                      <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
-                                      <span className="text-gray-700">Western Union</span>
+                                      <CheckCircle className="w-4 h-4 text-brand-orange-600 flex-shrink-0" />
+                                      <span className="text-brand-grey-700">Western Union</span>
                                     </div>
                                   </>
                                 )}
@@ -883,41 +903,41 @@ export default function ProductDetail() {
               <Card className="bg-white border-gray-100 shadow-xl">
                 <CardHeader className="pb-4">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <Shield className="w-5 h-5 text-green-600" />
+                    <Shield className="w-5 h-5 text-brand-orange-600" />
                     Trust & Safety
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-4">
-                    <div className="flex items-center gap-4 p-4 bg-green-50 rounded-xl border border-green-200">
-                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                        <Verified className="w-5 h-5 text-green-600" />
+                    <div className="flex items-center gap-4 p-4 bg-brand-orange-50 rounded-xl border border-brand-orange-100">
+                      <div className="w-10 h-10 bg-brand-orange-100 rounded-full flex items-center justify-center">
+                        <Verified className="w-5 h-5 text-brand-orange-600" />
                       </div>
                       <div>
-                        <p className="font-semibold text-gray-900">Verified Admin</p>
-                        <p className="text-xs text-gray-600">Identity verified</p>
+                        <p className="font-semibold text-brand-grey-900">Verified Admin</p>
+                        <p className="text-xs text-brand-grey-600">Identity verified</p>
                       </div>
                     </div>
 
                     {product.hasTradeAssurance && (
-                      <div className="flex items-center gap-4 p-4 bg-primary/5 rounded-xl border border-primary/20">
-                        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                          <Shield className="w-5 h-5 text-primary" />
+                      <div className="flex items-center gap-4 p-4 bg-white rounded-xl border border-brand-orange-100">
+                        <div className="w-10 h-10 bg-brand-orange-100 rounded-full flex items-center justify-center">
+                          <Shield className="w-5 h-5 text-brand-orange-600" />
                         </div>
                         <div>
-                          <p className="font-semibold text-gray-900">Trade Assurance</p>
-                          <p className="text-xs text-gray-600">Order protection</p>
+                          <p className="font-semibold text-brand-grey-900">Trade Assurance</p>
+                          <p className="text-xs text-brand-grey-600">Order protection</p>
                         </div>
                       </div>
                     )}
 
-                    <div className="flex items-center gap-4 p-4 bg-purple-50 rounded-xl border border-purple-200">
-                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                        <Award className="w-5 h-5 text-purple-600" />
+                    <div className="flex items-center gap-4 p-4 bg-brand-grey-50 rounded-xl border border-brand-grey-200">
+                      <div className="w-10 h-10 bg-brand-grey-100 rounded-full flex items-center justify-center">
+                        <Award className="w-5 h-5 text-brand-grey-700" />
                       </div>
                       <div>
-                        <p className="font-semibold text-gray-900">Quality Guarantee</p>
-                        <p className="text-xs text-gray-600">High quality products</p>
+                        <p className="font-semibold text-brand-grey-900">Quality Guarantee</p>
+                        <p className="text-xs text-brand-grey-600">High quality products</p>
                       </div>
                     </div>
                   </div>

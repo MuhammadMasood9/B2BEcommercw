@@ -21,6 +21,160 @@ import {
 } from "@shared/schema";
 import bcrypt from "bcryptjs";
 
+let conversationsSchemaPatched = false;
+
+async function ensureConversationSchemaPatched() {
+  if (conversationsSchemaPatched) return;
+
+  const patchStatements = [
+    sql`
+      ALTER TABLE conversations
+      ALTER COLUMN buyer_id TYPE text USING buyer_id::text;
+    `,
+    sql`
+      ALTER TABLE conversations
+      ALTER COLUMN unread_count_admin TYPE text USING unread_count_admin::text;
+    `,
+    sql`
+      ALTER TABLE conversations
+      ALTER COLUMN unread_count_admin DROP NOT NULL;
+    `,
+    sql`
+      ALTER TABLE conversations
+      ADD COLUMN IF NOT EXISTS supplier_id text;
+    `,
+    sql`
+      ALTER TABLE conversations
+      ADD COLUMN IF NOT EXISTS product_id text;
+    `,
+    sql`
+      ALTER TABLE conversations
+      ADD COLUMN IF NOT EXISTS last_message text;
+    `,
+    sql`
+      ALTER TABLE conversations
+      ADD COLUMN IF NOT EXISTS last_message_at timestamp;
+    `,
+    sql`
+      ALTER TABLE conversations
+      ADD COLUMN IF NOT EXISTS unread_count_buyer integer DEFAULT 0;
+    `,
+    sql`
+      ALTER TABLE conversations
+      ADD COLUMN IF NOT EXISTS unread_count_supplier integer DEFAULT 0;
+    `,
+    sql`
+      ALTER TABLE conversations
+      ADD COLUMN IF NOT EXISTS type text;
+    `,
+    sql`
+      ALTER TABLE conversations
+      ALTER COLUMN type SET DEFAULT 'buyer_support';
+    `,
+    sql`
+      ALTER TABLE messages
+      ADD COLUMN IF NOT EXISTS receiver_id text;
+    `,
+    sql`
+      ALTER TABLE messages
+      ALTER COLUMN receiver_id TYPE text USING receiver_id::text;
+    `,
+    sql`
+      ALTER TABLE messages
+      ALTER COLUMN receiver_id DROP NOT NULL;
+    `,
+    sql`
+      ALTER TABLE messages
+      ADD COLUMN IF NOT EXISTS sender_type text;
+    `,
+    sql`
+      UPDATE messages
+      SET sender_type = COALESCE(sender_type, 'buyer');
+    `,
+    sql`
+      ALTER TABLE messages
+      ALTER COLUMN sender_type SET DEFAULT 'buyer';
+    `,
+    sql`
+      ALTER TABLE messages
+      ALTER COLUMN sender_type SET NOT NULL;
+    `,
+  ];
+
+  for (const statement of patchStatements) {
+    try {
+      await db.execute(statement);
+    } catch (error: any) {
+      const message = error?.message || '';
+      if (
+        !(message.includes('already exists') ||
+          message.includes('type text') ||
+          error?.code === '42701' ||
+          error?.code === '42703')
+      ) {
+        console.warn('[conversations schema] patch step skipped:', message || error);
+      }
+    }
+  }
+
+  try {
+    await db.execute(sql`
+      ALTER TABLE conversations
+      DROP CONSTRAINT IF EXISTS "conversations_buyer_id_fkey";
+    `);
+  } catch (error: any) {
+    const message = error?.message || '';
+    if (!message.includes('does not exist')) {
+      console.warn('[conversations schema] drop buyer fk skipped:', message || error);
+    }
+  }
+
+  try {
+    await db.execute(sql`
+      ALTER TABLE conversations
+      DROP CONSTRAINT IF EXISTS "conversations_buyer_id_users_id_fk";
+    `);
+  } catch (error: any) {
+    const message = error?.message || '';
+    if (!message.includes('does not exist')) {
+      console.warn('[conversations schema] drop buyer fk (users_id) skipped:', message || error);
+    }
+  }
+
+  try {
+    await db.execute(sql`
+      ALTER TABLE conversations
+      ADD CONSTRAINT "conversations_buyer_id_users_fkey"
+      FOREIGN KEY (buyer_id) REFERENCES users(id) ON DELETE CASCADE;
+    `);
+  } catch (error: any) {
+    const message = error?.message || '';
+    if (!message.includes('already exists')) {
+      console.warn('[conversations schema] add buyer fk skipped:', message || error);
+    }
+  }
+
+  // Ensure type is not null after default applied
+  try {
+    await db.execute(sql`
+      UPDATE conversations
+      SET type = 'buyer_support'
+      WHERE type IS NULL;
+    `);
+    await db.execute(sql`
+      ALTER TABLE conversations
+      ALTER COLUMN type SET NOT NULL;
+    `);
+  } catch (error: any) {
+    const message = error?.message || '';
+    if (!(message.includes('not null') || error?.code === '42701')) {
+      console.warn('[conversations schema] type constraint skipped:', message || error);
+    }
+  }
+
+  conversationsSchemaPatched = true;
+}
+
 export interface IStorage {
   // User operations
   getUser(id: string): Promise<User | undefined>;
@@ -984,9 +1138,15 @@ export class PostgresStorage implements IStorage {
       .limit(1);
 
     if (conversation[0]) {
-      const unreadField = userId === conversation[0].buyerId
-        ? 'unreadCountBuyer'
-        : 'unreadCountAdmin';
+      let unreadField: 'unreadCountBuyer' | 'unreadCountAdmin' | 'unreadCountSupplier' = 'unreadCountBuyer';
+
+      if (userId === conversation[0].buyerId) {
+        unreadField = 'unreadCountBuyer';
+      } else if (conversation[0].supplierId && userId === conversation[0].supplierId) {
+        unreadField = 'unreadCountSupplier';
+      } else {
+        unreadField = 'unreadCountAdmin';
+      }
 
       await db.update(conversations)
         .set({ [unreadField]: 0 })
@@ -1155,82 +1315,128 @@ export class PostgresStorage implements IStorage {
   }
 
   async getBuyerDashboardStats(buyerId: string) {
-    // Get basic counts
-    const [activeRfqCount] = await db.select({ count: drizzleSql`count(*)::int` })
-      .from(rfqs)
-      .where(and(eq(rfqs.buyerId, buyerId), eq(rfqs.status, 'open')));
+    const fetchCount = async <T>(query: () => Promise<T>, extract: (value: T) => number, label: string): Promise<number> => {
+      try {
+        const result = await query();
+        return extract(result);
+      } catch (error) {
+        console.error(`[getBuyerDashboardStats] Failed to fetch ${label}:`, error);
+        return 0;
+      }
+    };
 
-    const [pendingInquiryCount] = await db.select({ count: drizzleSql`count(*)::int` })
-      .from(inquiries)
-      .where(and(eq(inquiries.buyerId, buyerId), eq(inquiries.status, 'pending')));
+    const parseCount = (value: unknown): number => {
+      if (typeof value === 'number') return value;
+      if (typeof value === 'string') {
+        const parsed = parseInt(value, 10);
+        return Number.isNaN(parsed) ? 0 : parsed;
+      }
+      return 0;
+    };
 
-    const [unreadMessageCount] = await db.select({
-      total: drizzleSql`COALESCE(SUM(${conversations.unreadCountBuyer}), 0)::int`
-    })
-      .from(conversations)
-      .where(eq(conversations.buyerId, buyerId));
+    const [activeRfqs, pendingInquiries, unreadMessages, favoriteProducts] = await Promise.all([
+      fetchCount(
+        () => db.select({ count: drizzleSql`count(*)::int` }).from(rfqs).where(and(eq(rfqs.buyerId, buyerId), eq(rfqs.status, 'open'))),
+        (rows) => parseCount(Array.isArray(rows) ? rows[0]?.count : (rows as any)?.count),
+        'active RFQs'
+      ),
+      fetchCount(
+        () => db.select({ count: drizzleSql`count(*)::int` }).from(inquiries).where(and(eq(inquiries.buyerId, buyerId), eq(inquiries.status, 'pending'))),
+        (rows) => parseCount(Array.isArray(rows) ? rows[0]?.count : (rows as any)?.count),
+        'pending inquiries'
+      ),
+      fetchCount(
+        () => db.select({ total: drizzleSql`COALESCE(SUM(${conversations.unreadCountBuyer}), 0)::int` }).from(conversations).where(eq(conversations.buyerId, buyerId)),
+        (rows) => parseCount(Array.isArray(rows) ? rows[0]?.total : (rows as any)?.total),
+        'unread messages'
+      ),
+      fetchCount(
+        () => db.select({ count: drizzleSql`count(*)::int` }).from(favorites).where(and(eq(favorites.userId, buyerId), eq(favorites.itemType, 'product'))),
+        (rows) => parseCount(Array.isArray(rows) ? rows[0]?.count : (rows as any)?.count),
+        'favorite products'
+      ),
+    ]);
 
-    const [favoriteProductCount] = await db.select({ count: drizzleSql`count(*)::int` })
-      .from(favorites)
-      .where(and(eq(favorites.userId, buyerId), eq(favorites.itemType, 'product')));
+    const safeLoad = async <T>(label: string, loader: () => Promise<T>): Promise<T | []> => {
+      try {
+        return await loader();
+      } catch (error) {
+        console.error(`[getBuyerDashboardStats] Failed to load ${label}:`, error);
+        return [];
+      }
+    };
 
-    // Get total quotations count
-    const quotations = await this.getInquiryQuotations();
-    const buyerQuotations = quotations.filter((q: any) => q.buyerId && q.buyerId.toString() === buyerId.toString());
+    const [quotationListRaw, orderListRaw] = await Promise.all([
+      safeLoad('buyer quotations', async () =>
+        (await this.getInquiryQuotations()).filter(
+          (q: any) => q.buyerId && q.buyerId.toString() === buyerId.toString()
+        )
+      ),
+      safeLoad('buyer orders', () => this.getOrders({ buyerId })),
+    ]);
 
-    // Get total orders count and total spent
-    const orders = await this.getOrders({ buyerId });
-    const totalSpent = orders.reduce((sum: number, order: any) => sum + (order.totalAmount || 0), 0);
+    const quotationList = Array.isArray(quotationListRaw) ? quotationListRaw : [];
+    const orderList = Array.isArray(orderListRaw) ? orderListRaw : [];
 
-    // Get recent data (last 5 of each)
-    const recentInquiries = await db.select({
-      id: inquiries.id,
-      productName: products.name,
-      quantity: inquiries.quantity,
-      status: inquiries.status,
-      createdAt: inquiries.createdAt,
-      estimatedValue: inquiries.targetPrice
-    })
-      .from(inquiries)
-      .leftJoin(products, eq(inquiries.productId, products.id))
-      .where(eq(inquiries.buyerId, buyerId))
-      .orderBy(desc(inquiries.createdAt))
-      .limit(5);
+    const totalSpent = orderList.reduce((sum: number, order: any) => sum + (Number(order?.totalAmount) || 0), 0);
 
-    const recentRFQs = await db.select()
-      .from(rfqs)
-      .where(eq(rfqs.buyerId, buyerId))
-      .orderBy(desc(rfqs.createdAt))
-      .limit(5);
+    const safeSlice = async <T>(label: string, loader: () => Promise<T[]>): Promise<T[]> => {
+      const data = await safeLoad(label, loader);
+      return Array.isArray(data) ? data.slice(0, 5) : [];
+    };
 
-    const recentQuotations = buyerQuotations.slice(0, 5);
-
-    const recentOrders = orders.slice(0, 5);
-
-    const recentConversations = await this.getBuyerConversations(buyerId);
-    const recentConversationsLimited = recentConversations.slice(0, 5);
-
-    // Get recent notifications
-    const recentNotifications = await db.select()
-      .from(notifications)
-      .where(eq(notifications.userId, buyerId))
-      .orderBy(desc(notifications.createdAt))
-      .limit(5);
+    const [recentInquiries, recentRFQs, recentQuotations, recentOrders, recentConversations, recentNotifications] = await Promise.all([
+      safeSlice('recent inquiries', async () =>
+        await db
+          .select({
+            id: inquiries.id,
+            productName: products.name,
+            quantity: inquiries.quantity,
+            status: inquiries.status,
+            createdAt: inquiries.createdAt,
+            estimatedValue: inquiries.targetPrice,
+          })
+          .from(inquiries)
+          .leftJoin(products, eq(inquiries.productId, products.id))
+          .where(eq(inquiries.buyerId, buyerId))
+          .orderBy(desc(inquiries.createdAt))
+          .limit(5)
+      ),
+      safeSlice('recent RFQs', async () =>
+        await db
+          .select()
+          .from(rfqs)
+          .where(eq(rfqs.buyerId, buyerId))
+          .orderBy(desc(rfqs.createdAt))
+          .limit(5)
+      ),
+      safeSlice('recent quotations', async () => quotationList),
+      safeSlice('recent orders', async () => orderList),
+      safeSlice('recent conversations', async () => this.getBuyerConversations(buyerId)),
+      safeSlice('recent notifications', async () =>
+        await db
+          .select()
+          .from(notifications)
+          .where(eq(notifications.userId, buyerId))
+          .orderBy(desc(notifications.createdAt))
+          .limit(5)
+      ),
+    ]);
 
     return {
-      activeRfqs: parseInt(activeRfqCount.count as string) || 0,
-      pendingInquiries: parseInt(pendingInquiryCount.count as string) || 0,
-      unreadMessages: parseInt(unreadMessageCount.total as string) || 0,
-      favoriteProducts: parseInt(favoriteProductCount.count as string) || 0,
-      totalQuotations: buyerQuotations.length,
-      totalOrders: orders.length,
-      totalSpent: totalSpent,
-      recentInquiries: recentInquiries,
-      recentRFQs: recentRFQs,
-      recentQuotations: recentQuotations,
-      recentOrders: recentOrders,
-      recentConversations: recentConversationsLimited,
-      recentNotifications: recentNotifications
+      activeRfqs,
+      pendingInquiries,
+      unreadMessages,
+      favoriteProducts,
+      totalQuotations: quotationList.length,
+      totalOrders: orderList.length,
+      totalSpent,
+      recentInquiries,
+      recentRFQs,
+      recentQuotations,
+      recentOrders,
+      recentConversations,
+      recentNotifications,
     };
   }
 
@@ -1515,28 +1721,62 @@ export class PostgresStorage implements IStorage {
       .where(eq(inquiries.id, inquiryId));
   }
 
+  async resolveSupplierUserId(identifier?: string | null): Promise<string | null> {
+    if (!identifier) return null;
+
+    const [profile] = await db.select({
+      id: supplierProfiles.id,
+      userId: supplierProfiles.userId
+    })
+      .from(supplierProfiles)
+      .where(or(eq(supplierProfiles.id, identifier), eq(supplierProfiles.userId, identifier)))
+      .limit(1);
+
+    return profile?.userId || identifier;
+  }
+
   // ==================== CHAT SYSTEM METHODS ====================
 
   async getBuyerConversations(buyerId: string) {
+    await ensureConversationSchemaPatched();
+
+    const supplierJoinCondition = or(
+      eq(conversations.supplierId, supplierProfiles.id),
+      eq(conversations.supplierId, supplierProfiles.userId)
+    );
+
     const results = await db.select({
       id: conversations.id,
       buyerId: conversations.buyerId,
+      supplierId: sql<string>`COALESCE(${supplierProfiles.userId}, ${conversations.supplierId})`,
+      supplierProfileId: supplierProfiles.id,
       adminId: conversations.unreadCountAdmin, // This is actually adminId in existing table
+      type: conversations.type,
       subject: conversations.lastMessage,
+      lastMessage: conversations.lastMessage,
       status: sql`'active'`.as('status'), // Default status since it doesn't exist in existing table
       lastMessageAt: conversations.lastMessageAt,
       createdAt: conversations.createdAt,
+      unreadCountBuyer: conversations.unreadCountBuyer,
+      unreadCountSupplier: conversations.unreadCountSupplier,
+      unreadCount: conversations.unreadCountBuyer,
       // Join with admin data
       adminName: users.firstName,
       adminEmail: users.email,
       adminCompany: users.companyName,
       productId: conversations.productId,
       productName: products.name,
-      productImages: products.images
+      productImages: products.images,
+      supplierName: supplierProfiles.storeName,
+      supplierCompany: supplierProfiles.businessName,
+      supplierSlug: supplierProfiles.storeSlug,
+      supplierLogo: supplierProfiles.storeLogo,
+      supplierCountry: supplierProfiles.country
     })
       .from(conversations)
       .leftJoin(users, eq(conversations.unreadCountAdmin, users.id))
       .leftJoin(products, eq(conversations.productId, products.id))
+      .leftJoin(supplierProfiles, supplierJoinCondition)
       .where(eq(conversations.buyerId, buyerId))
       .orderBy(desc(conversations.lastMessageAt));
 
@@ -1544,11 +1784,15 @@ export class PostgresStorage implements IStorage {
   }
 
   async getAdminConversations(adminId: string) {
+    await ensureConversationSchemaPatched();
     const results = await db.select({
       id: conversations.id,
       buyerId: conversations.buyerId,
+      supplierId: conversations.supplierId,
       adminId: conversations.unreadCountAdmin, // This field actually stores adminId
+      type: conversations.type,
       subject: conversations.lastMessage,
+      lastMessage: conversations.lastMessage,
       status: sql`'active'`.as('status'),
       lastMessageAt: conversations.lastMessageAt,
       createdAt: conversations.createdAt,
@@ -1558,11 +1802,15 @@ export class PostgresStorage implements IStorage {
       buyerEmail: users.email,
       buyerCompany: users.companyName,
       productName: products.name,
-      productImages: products.images
+      productImages: products.images,
+      supplierName: supplierProfiles.storeName,
+      supplierCompany: supplierProfiles.businessName,
+      supplierSlug: supplierProfiles.storeSlug
     })
       .from(conversations)
       .leftJoin(users, eq(conversations.buyerId, users.id))
       .leftJoin(products, eq(conversations.productId, products.id))
+      .leftJoin(supplierProfiles, eq(conversations.supplierId, supplierProfiles.id))
       .where(eq(conversations.unreadCountAdmin, adminId))
       .orderBy(desc(conversations.lastMessageAt));
 
@@ -1570,17 +1818,27 @@ export class PostgresStorage implements IStorage {
   }
 
   async getSupplierConversations(supplierId: string) {
+    await ensureConversationSchemaPatched();
+    const supplierJoinCondition = or(
+      eq(conversations.supplierId, supplierProfiles.id),
+      eq(conversations.supplierId, supplierProfiles.userId)
+    );
+
     const results = await db.select({
       id: conversations.id,
       buyerId: conversations.buyerId,
-      supplierId: conversations.supplierId,
+      supplierId: sql<string>`COALESCE(${supplierProfiles.userId}, ${conversations.supplierId})`,
+      supplierProfileId: supplierProfiles.id,
+      type: conversations.type,
       subject: conversations.lastMessage,
+      lastMessage: conversations.lastMessage,
       status: sql`'active'`.as('status'),
       lastMessageAt: conversations.lastMessageAt,
       createdAt: conversations.createdAt,
       productId: conversations.productId,
       unreadCountBuyer: conversations.unreadCountBuyer,
       unreadCountSupplier: conversations.unreadCountSupplier,
+      unreadCount: conversations.unreadCountSupplier,
       // Join with buyer data
       buyerName: users.firstName,
       buyerEmail: users.email,
@@ -1591,13 +1849,15 @@ export class PostgresStorage implements IStorage {
       .from(conversations)
       .leftJoin(users, eq(conversations.buyerId, users.id))
       .leftJoin(products, eq(conversations.productId, products.id))
-      .where(eq(conversations.supplierId, supplierId))
+      .leftJoin(supplierProfiles, supplierJoinCondition)
+      .where(or(eq(conversations.supplierId, supplierId), eq(supplierProfiles.userId, supplierId)))
       .orderBy(desc(conversations.lastMessageAt));
 
     return results;
   }
 
   async getAllConversationsForAdmin(adminId?: string) {
+    await ensureConversationSchemaPatched();
     let whereCondition = sql`1=1`; // Default condition
 
     if (adminId) {
@@ -1607,8 +1867,11 @@ export class PostgresStorage implements IStorage {
     const results = await db.select({
       id: conversations.id,
       buyerId: conversations.buyerId,
+      supplierId: conversations.supplierId,
       adminId: conversations.unreadCountAdmin, // This field actually stores adminId
+      type: conversations.type,
       subject: conversations.lastMessage,
+      lastMessage: conversations.lastMessage,
       status: sql`'active'`.as('status'),
       lastMessageAt: conversations.lastMessageAt,
       createdAt: conversations.createdAt,
@@ -1621,11 +1884,15 @@ export class PostgresStorage implements IStorage {
       buyerCompany: users.companyName,
       // Join with product data
       productName: products.name,
-      productImages: products.images
+      productImages: products.images,
+      supplierName: supplierProfiles.storeName,
+      supplierCompany: supplierProfiles.businessName,
+      supplierSlug: supplierProfiles.storeSlug
     })
       .from(conversations)
       .leftJoin(users, eq(conversations.buyerId, users.id))
       .leftJoin(products, eq(conversations.productId, products.id))
+      .leftJoin(supplierProfiles, eq(conversations.supplierId, supplierProfiles.id))
       .where(whereCondition)
       .orderBy(desc(conversations.lastMessageAt));
 
@@ -1660,6 +1927,7 @@ export class PostgresStorage implements IStorage {
       id: messages.id,
       conversationId: messages.conversationId,
       senderId: messages.senderId,
+      senderType: messages.senderType,
       content: messages.message,
       messageType: sql`'text'`.as('messageType'),
       attachments: messages.attachments,
@@ -1717,20 +1985,28 @@ export class PostgresStorage implements IStorage {
     supplierId?: string;
     subject?: string;
     productId?: string;
+    type?: string;
   }) {
+    await ensureConversationSchemaPatched();
+    const conversationType = data.type || (data.supplierId ? 'buyer_supplier' : data.adminId ? 'buyer_admin' : 'buyer_support');
+    const adminIdValue = data.adminId || null;
+    const supplierIdValue = data.supplierId || null;
+    const subject = data.subject || '';
+    const productIdValue = data.productId || null;
     // First, try to check what columns exist in the conversations table
     try {
       // Try the full insert with all columns
       const [conversation] = await db.insert(conversations)
         .values({
           buyerId: data.buyerId,
-          unreadCountAdmin: data.adminId || data.supplierId || data.buyerId, // Store adminId or supplierId in unreadCountAdmin column (legacy schema)
-          supplierId: data.supplierId,
-          lastMessage: data.subject || '',
+          unreadCountAdmin: adminIdValue,
+          supplierId: supplierIdValue,
+          type: conversationType,
+          lastMessage: subject,
           lastMessageAt: new Date(),
-          productId: data.productId,
-          unreadCountBuyer: 0, // Initialize unread count for buyer
-          unreadCountSupplier: 0 // Initialize unread count for supplier
+          productId: productIdValue,
+          unreadCountBuyer: 0,
+          unreadCountSupplier: 0
         })
         .returning();
 
@@ -1743,7 +2019,14 @@ export class PostgresStorage implements IStorage {
         const [conversation] = await db.insert(conversations)
           .values({
             buyerId: data.buyerId,
-            unreadCountAdmin: data.adminId || data.supplierId || data.buyerId
+            unreadCountAdmin: adminIdValue,
+            supplierId: supplierIdValue,
+            type: conversationType,
+            productId: productIdValue,
+            lastMessage: subject,
+            lastMessageAt: new Date(),
+            unreadCountBuyer: 0,
+            unreadCountSupplier: 0
           })
           .returning();
 
@@ -1754,8 +2037,8 @@ export class PostgresStorage implements IStorage {
         // Last resort: use raw SQL with only essential columns
         try {
           const result = await db.execute(sql`
-            INSERT INTO conversations (id, buyer_id, unread_count_admin, created_at)
-            VALUES (gen_random_uuid(), ${data.buyerId}, ${data.adminId || data.supplierId || data.buyerId}, NOW())
+            INSERT INTO conversations (id, buyer_id, unread_count_admin, supplier_id, type, product_id, last_message, last_message_at, unread_count_buyer, unread_count_supplier, created_at)
+            VALUES (gen_random_uuid(), ${data.buyerId}, ${adminIdValue}, ${supplierIdValue}, ${conversationType}, ${productIdValue}, ${subject}, NOW(), 0, 0, NOW())
             RETURNING *
           `);
           
@@ -1772,35 +2055,65 @@ export class PostgresStorage implements IStorage {
   }
 
   async createMessage(message: InsertMessage): Promise<Message> {
-    const [created] = await db.insert(messages).values(message).returning();
-
-    // Update conversation
-    const conversation = await db.select().from(conversations)
+    const [conversation] = await db.select({
+      id: conversations.id,
+      buyerId: conversations.buyerId,
+      supplierId: conversations.supplierId,
+      adminId: conversations.unreadCountAdmin
+    })
+      .from(conversations)
       .where(eq(conversations.id, message.conversationId))
       .limit(1);
 
-    if (conversation[0]) {
-      const isFromBuyer = message.senderId === conversation[0].buyerId;
+    if (!conversation) {
+      throw new Error('Conversation not found');
+    }
 
-      if (isFromBuyer) {
-        // Message from buyer, increment admin unread count
+    let normalizedSupplierId = conversation.supplierId;
+    if (conversation.supplierId) {
+      const resolvedSupplierId = await this.resolveSupplierUserId(conversation.supplierId);
+      if (resolvedSupplierId && resolvedSupplierId !== conversation.supplierId) {
+        normalizedSupplierId = resolvedSupplierId;
         await db.update(conversations)
-          .set({
-            lastMessage: message.message,
-            lastMessageAt: new Date(),
-            unreadCountSupplier: sql`COALESCE(${conversations.unreadCountSupplier}, 0) + 1`
-          })
-          .where(eq(conversations.id, message.conversationId));
-      } else {
-        // Message from admin, increment buyer unread count
-        await db.update(conversations)
-          .set({
-            lastMessage: message.message,
-            lastMessageAt: new Date(),
-            unreadCountBuyer: sql`COALESCE(${conversations.unreadCountBuyer}, 0) + 1`
-          })
-          .where(eq(conversations.id, message.conversationId));
+          .set({ supplierId: resolvedSupplierId })
+          .where(eq(conversations.id, conversation.id));
       }
+    }
+
+    const isFromBuyer = message.senderId === conversation.buyerId;
+    const isFromSupplier = normalizedSupplierId ? message.senderId === normalizedSupplierId : false;
+    const isFromAdmin = conversation.adminId ? message.senderId === conversation.adminId : false;
+
+    const senderType = isFromBuyer
+      ? 'buyer'
+      : isFromSupplier
+        ? 'supplier'
+        : isFromAdmin
+          ? 'admin'
+          : 'buyer';
+
+    const [created] = await db.insert(messages).values({
+      ...message,
+      receiverId: message.receiverId || (isFromBuyer ? normalizedSupplierId : conversation.buyerId) || null,
+      senderType
+    }).returning();
+
+    if (isFromBuyer) {
+      await db.update(conversations)
+        .set({
+          lastMessage: message.message,
+          lastMessageAt: new Date(),
+          unreadCountSupplier: sql`COALESCE(${conversations.unreadCountSupplier}, 0) + 1`
+        })
+        .where(eq(conversations.id, message.conversationId));
+    } else {
+      await db.update(conversations)
+        .set({
+          lastMessage: message.message,
+          lastMessageAt: new Date(),
+          unreadCountBuyer: sql`COALESCE(${conversations.unreadCountBuyer}, 0) + 1`
+        })
+        .where(eq(conversations.id, message.conversationId));
     }
 
     return created;
@@ -1855,7 +2168,8 @@ export class PostgresStorage implements IStorage {
         and(
           or(
             eq(conversations.buyerId, userId),
-            eq(conversations.unreadCountAdmin, userId)
+            eq(conversations.unreadCountAdmin, userId),
+            eq(conversations.supplierId, userId)
           ),
           ne(messages.senderId, userId),
           eq(messages.isRead, false)

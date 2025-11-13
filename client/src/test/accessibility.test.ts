@@ -98,49 +98,6 @@ describe('Accessibility Utilities', () => {
   });
 });
 
-describe('High Contrast Mode', () => {
-  let mockMediaQuery: {
-    matches: boolean;
-    addEventListener: any;
-    removeEventListener: any;
-  };
-
-  beforeEach(() => {
-    // Mock matchMedia for Node.js environment
-    mockMediaQuery = {
-      matches: false,
-      addEventListener: () => {},
-      removeEventListener: () => {}
-    };
-    
-    // Mock window.matchMedia if it doesn't exist
-    if (typeof window !== 'undefined') {
-      Object.defineProperty(window, 'matchMedia', {
-        writable: true,
-        value: () => mockMediaQuery
-      });
-    }
-  });
-
-  it('should detect system high contrast preference', () => {
-    mockMediaQuery.matches = true;
-    expect(mockMediaQuery.matches).toBe(true);
-  });
-
-  it('should handle high contrast class management', () => {
-    // Test the concept of high contrast class management
-    const className = 'high-contrast';
-    expect(className).toBe('high-contrast');
-  });
-
-  it('should handle localStorage operations', () => {
-    // Test localStorage concept
-    const key = 'high-contrast-mode';
-    const value = 'true';
-    expect(key).toBe('high-contrast-mode');
-    expect(value).toBe('true');
-  });
-});
 
 describe('Focus Indicators', () => {
   it('should handle focus management concepts', () => {

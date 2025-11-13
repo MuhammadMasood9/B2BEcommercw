@@ -219,36 +219,10 @@ describe('Theme Utilities', () => {
 
   describe('Theme-Specific Color Adjustments', () => {
     describe('adjustColorForTheme', () => {
-      it('should adjust colors for dark theme', () => {
-        const lightColor = '#F2A30F';
-        const darkAdjusted = adjustColorForTheme(lightColor, 'dark');
-        
-        // Dark theme should generally make colors brighter
-        const [, , lightL] = hexToHsl(lightColor);
-        const [, , darkL] = hexToHsl(darkAdjusted);
-        
-        expect(darkL).toBeGreaterThanOrEqual(lightL);
-      });
-
-      it('should not adjust colors for light theme', () => {
+      it('should return the original color in light-only mode', () => {
         const color = '#F2A30F';
-        const lightAdjusted = adjustColorForTheme(color, 'light');
-        
-        expect(lightAdjusted).toBe(color);
-      });
-
-      it('should handle high contrast adjustments', () => {
-        const color = '#F2A30F';
-        const highContrastLight = adjustColorForTheme(color, 'light', true);
-        const highContrastDark = adjustColorForTheme(color, 'dark', true);
-        
-        // High contrast should make colors more extreme
-        const [, , originalL] = hexToHsl(color);
-        const [, , hcLightL] = hexToHsl(highContrastLight);
-        const [, , hcDarkL] = hexToHsl(highContrastDark);
-        
-        expect(Math.abs(hcLightL - 50)).toBeGreaterThan(Math.abs(originalL - 50));
-        expect(Math.abs(hcDarkL - 50)).toBeGreaterThan(Math.abs(originalL - 50));
+        const adjusted = adjustColorForTheme(color);
+        expect(adjusted).toBe(color);
       });
     });
   });

@@ -27,6 +27,9 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef(0);
+  const isConnectingRef = useRef(false);
+  const connectRef = useRef<() => void>();
+  const disconnectRef = useRef<() => void>();
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
@@ -34,6 +37,11 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     if (!user?.id) {
       console.log('Cannot connect WebSocket: No user logged in');
       setIsConnected(false);
+      return;
+    }
+
+    if (isConnectingRef.current) {
+      console.log('WebSocket connection attempt already in progress');
       return;
     }
 
@@ -49,6 +57,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     }
 
     try {
+      isConnectingRef.current = true;
       // Determine protocol based on current page protocol
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const host = window.location.host;
@@ -59,6 +68,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
 
       ws.onopen = () => {
         console.log('WebSocket connected');
+        isConnectingRef.current = false;
         setIsConnected(true);
         setConnectionError(null);
         reconnectAttemptsRef.current = 0;
@@ -77,11 +87,13 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
 
       ws.onerror = (error) => {
         console.error('WebSocket error:', error);
+        isConnectingRef.current = false;
         setConnectionError('Connection error occurred');
       };
 
       ws.onclose = (event) => {
         console.log('WebSocket disconnected:', event.code, event.reason);
+        isConnectingRef.current = false;
         setIsConnected(false);
         wsRef.current = null;
         onDisconnect?.();
@@ -96,7 +108,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         if (reconnectAttemptsRef.current < maxReconnectAttempts) {
           reconnectAttemptsRef.current++;
           console.log(`Reconnecting... Attempt ${reconnectAttemptsRef.current}/${maxReconnectAttempts}`);
-          
           reconnectTimeoutRef.current = setTimeout(() => {
             connect();
           }, reconnectInterval);
@@ -109,6 +120,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       wsRef.current = ws;
     } catch (error) {
       console.error('Error creating WebSocket connection:', error);
+      isConnectingRef.current = false;
       setConnectionError('Failed to create connection');
     }
   }, [user, onMessage, onConnect, onDisconnect, reconnectInterval, maxReconnectAttempts]);
@@ -124,8 +136,25 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       wsRef.current = null;
     }
 
+    isConnectingRef.current = false;
     setIsConnected(false);
   }, []);
+
+  connectRef.current = connect;
+  disconnectRef.current = disconnect;
+
+  useEffect(() => {
+    if (user?.id) {
+      reconnectAttemptsRef.current = 0;
+      connectRef.current?.();
+    } else {
+      disconnectRef.current?.();
+    }
+
+    return () => {
+      disconnectRef.current?.();
+    };
+  }, [user?.id]);
 
   const send = useCallback((message: WebSocketMessage) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -135,22 +164,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     console.warn('Cannot send message: WebSocket not connected');
     return false;
   }, []);
-
-  // Auto-connect when user is available
-  useEffect(() => {
-    if (user?.id) {
-      // Reset reconnection attempts when user changes
-      reconnectAttemptsRef.current = 0;
-      connect();
-    } else {
-      // Disconnect if user logs out
-      disconnect();
-    }
-
-    return () => {
-      disconnect();
-    };
-  }, [user?.id, connect, disconnect]);
 
   return {
     isConnected,

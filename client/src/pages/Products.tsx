@@ -276,6 +276,14 @@ export default function Products() {
     }
     const firstImage = images.length > 0 ? images[0] : 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop';
 
+    const supplierId = product.supplierId || (product as any)?.supplier?.id || null;
+    const supplierName =
+      (product as any).storeName ||
+      (product as any).supplierName ||
+      (product as any)?.supplier?.storeName ||
+      'Supplier';
+    const supplierSlug = (product as any).storeSlug || (product as any).supplierSlug || (product as any)?.supplier?.storeSlug || undefined;
+
     return {
       id: product.id,
       name: product.name,
@@ -283,7 +291,7 @@ export default function Products() {
       priceRange,
       image: firstImage,
       moq: product.minOrderQuantity || 1,
-      supplierName: (product as any).supplierName || 'Admin Supplier',
+      supplierName,
       supplierCountry: (product as any).supplierCountry || 'USA',
       supplierType: (product as any).supplierType || 'manufacturer',
       responseRate: (product as any).responseRate || '100%',
@@ -304,9 +312,9 @@ export default function Products() {
       paymentTerms: product.paymentTerms || ['T/T', 'L/C', 'PayPal'],
       inStock: product.inStock || true,
       stockQuantity: product.stockQuantity || Math.floor(Math.random() * 1000) + 100,
-      supplierId: product.supplierId || undefined,
-      supplierSlug: (product as any).supplierSlug || undefined,
-      supplierRating: (product as any).supplierRating || 0
+      supplierId: supplierId || undefined,
+      supplierSlug,
+      supplierRating: (product as any).supplierRating || (product as any)?.rating || 0
     };
   };
 
@@ -713,8 +721,19 @@ export default function Products() {
                                 });
                                 return;
                               }
-                              // Navigate to product-specific chat
-                              window.location.href = `/messages?productId=${product.id}&productName=${encodeURIComponent(product.name)}&chatType=product`;
+                              const params = new URLSearchParams({
+                                chatType: 'product',
+                                productId: product.id,
+                                productName: product.name || 'Product',
+                              });
+                              const supplierId = product.supplierId || (product as any)?.supplier?.id;
+                              const supplierName =
+                                (product as any).storeName ||
+                                (product as any).supplierName ||
+                                (product as any)?.supplier?.storeName;
+                              if (supplierId) params.set('supplierId', supplierId);
+                              if (supplierName) params.set('supplierName', supplierName);
+                              window.location.href = `/messages?${params.toString()}`;
                             }}
                             onQuote={() => {
                               if (!user) {

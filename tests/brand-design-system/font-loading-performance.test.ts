@@ -339,18 +339,9 @@ describe('CSS Optimization Performance', () => {
     expect(optimizationTime).toBeLessThan(100); // Should be very fast
   });
 
-  it('should support dark mode optimization', async () => {
+  it('should expose light theme optimization hooks', async () => {
     const { cssOptimizer } = await import('../../client/src/utils/cssOptimizer');
-    
-    // Should not throw when optimizing dark mode
-    expect(() => cssOptimizer.optimizeDarkMode()).not.toThrow();
-  });
-
-  it('should support high contrast mode', async () => {
-    const { cssOptimizer } = await import('../../client/src/utils/cssOptimizer');
-    
-    // Should not throw when optimizing high contrast
-    expect(() => cssOptimizer.optimizeHighContrast()).not.toThrow();
+    expect(cssOptimizer).toHaveProperty('initialize');
   });
 });
 

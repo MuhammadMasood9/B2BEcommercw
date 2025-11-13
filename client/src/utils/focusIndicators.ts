@@ -94,42 +94,13 @@ export function removeFocusIndicator(element: HTMLElement): void {
 export class FocusManager {
   private focusedElement: HTMLElement | null = null;
   private backgroundColor: string;
-  private isHighContrast: boolean = false;
 
   constructor(backgroundColor: string = '#FFFFFF') {
     this.backgroundColor = backgroundColor;
-    this.detectHighContrastMode();
-  }
-
-  private detectHighContrastMode(): void {
-    this.isHighContrast = document.documentElement.classList.contains('high-contrast');
-    
-    // Listen for high contrast mode changes
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-          this.isHighContrast = document.documentElement.classList.contains('high-contrast');
-          if (this.focusedElement) {
-            this.applyEnhancedFocus(this.focusedElement);
-          }
-        }
-      });
-    });
-    
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class']
-    });
   }
 
   private applyEnhancedFocus(element: HTMLElement): void {
-    if (this.isHighContrast) {
-      element.style.outline = `4px solid ${BRAND_COLORS.primaryAccessible}`;
-      element.style.outlineOffset = '3px';
-      element.style.boxShadow = `0 0 0 8px rgba(168, 92, 0, 0.3)`;
-    } else {
-      applyFocusIndicator(element, this.backgroundColor);
-    }
+    applyFocusIndicator(element, this.backgroundColor);
   }
 
   focus(element: HTMLElement): void {
@@ -148,13 +119,6 @@ export class FocusManager {
 
   setBackgroundColor(color: string): void {
     this.backgroundColor = color;
-    if (this.focusedElement) {
-      this.applyEnhancedFocus(this.focusedElement);
-    }
-  }
-
-  setHighContrastMode(enabled: boolean): void {
-    this.isHighContrast = enabled;
     if (this.focusedElement) {
       this.applyEnhancedFocus(this.focusedElement);
     }

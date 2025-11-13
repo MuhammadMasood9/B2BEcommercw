@@ -118,6 +118,10 @@ export default function SubcategoryProducts() {
     }
     const firstImage = images.length > 0 ? images[0] : 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop';
 
+    const supplierId = product.supplierId || (product as any)?.supplier?.id || null;
+    const supplierName = product.storeName || product.supplierName || (product as any)?.supplier?.storeName || 'Supplier';
+    const supplierSlug = product.storeSlug || (product as any)?.supplier?.storeSlug || undefined;
+
     return {
       id: product.id,
       name: product.name,
@@ -145,9 +149,18 @@ export default function SubcategoryProducts() {
       paymentTerms: product.paymentTerms || ['T/T', 'L/C', 'PayPal'],
       inStock: product.inStock || true,
       stockQuantity: product.stockQuantity || Math.floor(Math.random() * 1000) + 100,
+      supplierId: supplierId || undefined,
+      supplierSlug,
+      supplierRating: product.supplierRating || product.rating || 0,
       onContact: () => {
-        // Navigate to product-specific chat
-        window.location.href = `/messages?productId=${product.id}&productName=${encodeURIComponent(product.name)}&chatType=product`;
+        const params = new URLSearchParams({
+          chatType: 'product',
+          productId: product.id,
+          productName: product.name || 'Product',
+        });
+        if (supplierId) params.set('supplierId', supplierId);
+        if (supplierName) params.set('supplierName', supplierName);
+        window.location.href = `/messages?${params.toString()}`;
       },
       onQuote: () => console.log('Request quote for product:', product.id),
       onSample: () => console.log('Request sample for product:', product.id)

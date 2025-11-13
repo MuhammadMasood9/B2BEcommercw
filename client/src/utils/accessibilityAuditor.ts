@@ -35,8 +35,6 @@ interface AccessibilityAuditResult {
   };
   themeCompliance: {
     lightMode: boolean;
-    darkMode: boolean;
-    highContrast: boolean;
   };
 }
 
@@ -361,40 +359,17 @@ class AccessibilityAuditor {
    */
   private async auditThemeCompliance(): Promise<void> {
     const root = document.documentElement;
-    const currentTheme = root.classList.contains('dark') ? 'dark' : 'light';
-    const isHighContrast = root.classList.contains('high-contrast');
-    
-    // Test theme switching accessibility
-    if (!isHighContrast) {
-      this.addIssue({
-        type: 'contrast',
-        severity: 'info',
-        element: 'html',
-        description: 'High contrast mode is available but not currently active',
-        recommendation: 'Ensure high contrast mode is easily discoverable and functional',
-        wcagCriterion: 'WCAG 2.1 AAA - 1.4.6 Contrast (Enhanced)',
-      });
-    }
+    const isLightTheme = root.classList.contains('light');
 
-    // Check for theme toggle accessibility
-    const themeToggle = document.querySelector('[data-theme-toggle], .theme-toggle, #theme-toggle');
-    if (themeToggle) {
-      this.testedElements++;
-      
-      const hasAriaLabel = themeToggle.hasAttribute('aria-label');
-      const hasTitle = themeToggle.hasAttribute('title');
-      const hasText = themeToggle.textContent?.trim();
-      
-      if (!hasAriaLabel && !hasTitle && !hasText) {
-        this.addIssue({
-          type: 'aria',
-          severity: 'error',
-          element: this.getElementSelector(themeToggle),
-          description: 'Theme toggle lacks accessible name',
-          recommendation: 'Add aria-label describing current theme and toggle action',
-          wcagCriterion: 'WCAG 2.1 A - 4.1.2 Name, Role, Value',
-        });
-      }
+    if (!isLightTheme) {
+      this.addIssue({
+        type: 'theme',
+        severity: 'warning',
+        element: 'html',
+        description: 'Expected document root to use light theme classes',
+        recommendation: 'Ensure the document root includes the `light` class for consistent styling',
+        wcagCriterion: 'WCAG 2.1 A - 1.4.3 Contrast (Minimum)',
+      });
     }
   }
 
@@ -561,7 +536,6 @@ class AccessibilityAuditor {
     
     // Determine theme compliance
     const contrastIssues = this.issues.filter(i => i.type === 'contrast' && i.severity === 'error');
-    const hasHighContrastMode = document.documentElement.classList.contains('high-contrast');
     
     return {
       score,
@@ -575,8 +549,6 @@ class AccessibilityAuditor {
       },
       themeCompliance: {
         lightMode: contrastIssues.length === 0,
-        darkMode: contrastIssues.length === 0, // Simplified - would need theme-specific testing
-        highContrast: hasHighContrastMode && contrastIssues.length === 0,
       },
     };
   }

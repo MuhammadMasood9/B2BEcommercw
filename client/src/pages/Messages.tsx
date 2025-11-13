@@ -61,6 +61,7 @@ export default function Messages() {
   const [attachments, setAttachments] = useState<File[]>([]);
   const [showAttachmentDialog, setShowAttachmentDialog] = useState(false);
   const [hasAttemptedProductConversation, setHasAttemptedProductConversation] = useState(false);
+  const [hasAttemptedSupplierConversation, setHasAttemptedSupplierConversation] = useState(false);
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -72,7 +73,9 @@ export default function Messages() {
   const urlParams = new URLSearchParams(window.location.search);
   const productId = urlParams.get('productId');
   const productName = urlParams.get('productName');
-  const urlChatType = urlParams.get('chatType') as 'general' | 'product' | null;
+  const supplierId = urlParams.get('supplierId');
+  const supplierName = urlParams.get('supplierName');
+  const requestedChatType = urlParams.get('chatType') as 'general' | 'product' | 'buyer_supplier' | null;
 
   // Conversations from API
   const { data: conversationsResp, isLoading } = useQuery({
@@ -93,65 +96,148 @@ export default function Messages() {
   // Separate conversations by type
   const generalConversations = conversations.filter(conv => !conv.productId);
   const productConversations = conversations.filter(conv => conv.productId);
+  const supplierConversations = conversations.filter(conv => conv.supplierId);
 
-  const createConversationMutation = useMutation({
-    mutationFn: async ({ productId, productName }: { productId: string; productName: string }) => {
-      return apiRequest('POST', '/api/chat/conversations', {
-        subject: `Inquiry about ${productName}`,
-        productId
-      });
+  type ConversationIntent = 'product' | 'supplier';
+  interface CreateConversationVariables {
+    productId?: string;
+    productName?: string;
+    supplierId?: string;
+    supplierName?: string;
+    intent: ConversationIntent;
+  }
+
+  const createConversationMutation = useMutation<any, unknown, CreateConversationVariables>({
+    mutationFn: async ({ productId, productName, supplierId, supplierName, intent }) => {
+      const payload: Record<string, any> = {};
+
+      if (productId) {
+        payload.productId = productId;
+      }
+
+      if (supplierId) {
+        payload.supplierId = supplierId;
+      }
+
+      if (productName) {
+        payload.subject = `Inquiry about ${productName}`;
+      } else if (supplierName) {
+        payload.subject = `Inquiry with ${supplierName}`;
+      } else {
+        payload.subject = 'New Inquiry';
+      }
+
+      payload.type = 'buyer_supplier';
+
+      return apiRequest('POST', '/api/chat/conversations', payload);
     },
-    onSuccess: (newConversation) => {
+    onSuccess: (newConversation, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/chat/conversations'] });
       setSelectedConversation(newConversation);
-      setHasAttemptedProductConversation(true);
+      if (variables.intent === 'product') {
+        setHasAttemptedProductConversation(true);
+      }
+      if (variables.intent === 'supplier') {
+        setHasAttemptedSupplierConversation(true);
+      }
     },
-    onError: (error) => {
+    onError: (error, variables) => {
       console.error('Error creating conversation:', error);
-      // Reset the flag on error so user can try again
-      setHasAttemptedProductConversation(false);
+      if (variables.intent === 'product') {
+        setHasAttemptedProductConversation(false);
+      }
+      if (variables.intent === 'supplier') {
+        setHasAttemptedSupplierConversation(false);
+      }
     }
   });
 
-  const createProductConversation = (productId: string, productName: string) => {
-    createConversationMutation.mutate({ productId, productName });
+  const { mutate: mutateConversation, isPending: isCreatingConversation } = createConversationMutation;
+
+  const createProductConversation = (productId: string, productName: string, supplierIdValue?: string | null, supplierNameValue?: string | null) => {
+    mutateConversation({
+      productId,
+      productName,
+      supplierId: supplierIdValue || undefined,
+      supplierName: supplierNameValue || undefined,
+      intent: 'product'
+    });
   };
 
   // Set chat type from URL parameter and handle product-specific chat
   useEffect(() => {
-    if (urlChatType && (urlChatType === 'general' || urlChatType === 'product')) {
-      setChatType(urlChatType);
+    if (requestedChatType) {
+      setChatType(requestedChatType === 'product' ? 'product' : 'general');
     }
-    
-    // Reset attempt flag when productId changes (different product)
+
     if (productId) {
       setHasAttemptedProductConversation(false);
     }
-  }, [urlChatType, productId]);
+
+    if (supplierId) {
+      setHasAttemptedSupplierConversation(false);
+    }
+  }, [requestedChatType, productId, supplierId]);
 
   // Handle product-specific conversation creation when conversations are loaded or when we have URL parameters
   useEffect(() => {
-    if (productId && productName && urlChatType === 'product' && !hasAttemptedProductConversation) {
-      // Check if conversations are loaded (either empty array or with data)
+    if (productId && productName && requestedChatType === 'product' && !hasAttemptedProductConversation) {
       if (conversations !== undefined) {
-        const existingProductConversation = productConversations.find(conv => conv.productId === productId);
-        if (existingProductConversation) {
-          setSelectedConversation(existingProductConversation);
+        const matchingConversation = productConversations.find(conv =>
+          conv.productId === productId && (!supplierId || !conv.supplierId || conv.supplierId === supplierId)
+        );
+
+        if (matchingConversation) {
+          setSelectedConversation(matchingConversation);
           setHasAttemptedProductConversation(true);
-        } else if (!createConversationMutation.isPending) {
-          // Double-check that no conversation exists for this product before creating
-          const doubleCheckConversation = conversations.find(conv => conv.productId === productId);
-          if (!doubleCheckConversation) {
-            setHasAttemptedProductConversation(true);
-            createProductConversation(productId, productName);
-          } else {
-            setSelectedConversation(doubleCheckConversation);
-            setHasAttemptedProductConversation(true);
-          }
+        } else if (!isCreatingConversation) {
+          setHasAttemptedProductConversation(true);
+          createProductConversation(productId, productName, supplierId, supplierName);
         }
       }
     }
-  }, [conversations, productId, productName, urlChatType, hasAttemptedProductConversation, createConversationMutation.isPending]);
+  }, [
+    conversations,
+    productId,
+    productName,
+    requestedChatType,
+    hasAttemptedProductConversation,
+    isCreatingConversation,
+    supplierId,
+    supplierName,
+    productConversations
+  ]);
+
+  useEffect(() => {
+    if (supplierId && requestedChatType === 'buyer_supplier' && !hasAttemptedSupplierConversation) {
+      if (conversations !== undefined) {
+        const matchingConversation = supplierConversations.find(
+          conv => conv.supplierId === supplierId && !conv.productId
+        );
+
+        if (matchingConversation) {
+          setSelectedConversation(matchingConversation);
+          setHasAttemptedSupplierConversation(true);
+        } else if (!isCreatingConversation) {
+          setHasAttemptedSupplierConversation(true);
+          mutateConversation({
+            supplierId,
+            supplierName: supplierName || undefined,
+            intent: 'supplier'
+          });
+        }
+      }
+    }
+  }, [
+    conversations,
+    supplierId,
+    supplierName,
+    requestedChatType,
+    hasAttemptedSupplierConversation,
+    supplierConversations,
+    mutateConversation,
+    isCreatingConversation
+  ]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -172,6 +258,7 @@ export default function Messages() {
   useEffect(() => {
     return () => {
       setHasAttemptedProductConversation(false);
+      setHasAttemptedSupplierConversation(false);
     };
   }, []);
 
@@ -214,12 +301,28 @@ export default function Messages() {
     }
   });
 
-  const getTitle = (c: any) => (c.adminName || c.adminEmail || c.buyerName || c.buyerEmail || 'Chat');
-  const getCompany = (c: any) => (c.adminCompany || c.buyerCompany || '');
+  const getTitle = (c: any) =>
+    c.supplierName ||
+    c.adminName ||
+    c.adminEmail ||
+    c.buyerName ||
+    c.buyerEmail ||
+    'Chat';
+
+  const getCompany = (c: any) =>
+    c.supplierCompany ||
+    c.adminCompany ||
+    c.buyerCompany ||
+    '';
+
   const getAvatarImage = (c: any) => {
     const img = c.productImages?.[0];
     if (img && img.startsWith('http')) return img;
     if (img) return `/uploads/${img}`;
+    if (c.supplierLogo) {
+      if (c.supplierLogo.startsWith('http')) return c.supplierLogo;
+      return `/uploads/${c.supplierLogo}`;
+    }
     return undefined;
   };
 
@@ -229,7 +332,8 @@ export default function Messages() {
     const q = searchQuery.toLowerCase();
     return getTitle(conversation).toLowerCase().includes(q) ||
            getCompany(conversation).toLowerCase().includes(q) ||
-           (conversation.productName?.toLowerCase() || '').includes(q);
+           (conversation.productName?.toLowerCase() || '').includes(q) ||
+           (conversation.supplierName?.toLowerCase() || '').includes(q);
   });
 
   const formatTime = (dateString: string) => {

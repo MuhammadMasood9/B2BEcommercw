@@ -171,10 +171,10 @@ export function SupplierSidebar() {
               <Store className="w-5 h-5 text-primary-foreground" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-foreground dark:text-white">
+              <h2 className="text-lg font-bold text-white">
                 Supplier Portal
               </h2>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-gray-300 font-semibold">
                 {user?.firstName} {user?.lastName}
               </p>
             </div>
@@ -301,8 +301,8 @@ export function SupplierSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t p-4">
-        <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
-          <p>Supplier Portal v1.0</p>
+        <div className="text-xs text-white text-center">
+          <p>Supplier Portal </p>
           <Link href="/help">
             <span className="text-primary hover:text-primary/80 cursor-pointer">
               Need Help?

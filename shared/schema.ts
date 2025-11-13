@@ -531,13 +531,15 @@ export type PlatformSetting = typeof platformSettings.$inferSelect;
 export const conversations = pgTable("conversations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   buyerId: varchar("buyer_id").notNull(),
-  supplierId: varchar("supplier_id"), // Supplier in conversation
-  unreadCountAdmin: varchar("unread_count_admin").notNull(), // This is actually adminId in existing table
+  supplierId: varchar("supplier_id"), // Supplier user ID in conversation
+  adminId: varchar("admin_id"), // Admin user ID in conversation
+  productId: varchar("product_id"), // Product reference for product-based conversations
+  type: text("type").notNull().default('buyer_supplier'), // 'buyer_supplier', 'buyer_admin', 'support'
   lastMessage: text("last_message"),
   lastMessageAt: timestamp("last_message_at"),
   unreadCountBuyer: integer("unread_count_buyer").default(0),
   unreadCountSupplier: integer("unread_count_supplier").default(0),
-  productId: varchar("product_id"), // Add productId for product-based conversations
+  unreadCountAdmin: integer("unread_count_admin").default(0),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -555,7 +557,8 @@ export const messages = pgTable("messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   conversationId: varchar("conversation_id").notNull(),
   senderId: varchar("sender_id").notNull(),
-  receiverId: varchar("receiver_id").notNull(),
+  receiverId: varchar("receiver_id"), // Direct message recipient
+  senderType: text("sender_type").default('buyer'), // 'buyer', 'supplier', 'admin'
   message: text("message").notNull(),
   attachments: text("attachments").array(),
   isRead: boolean("is_read").default(false),

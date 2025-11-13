@@ -80,14 +80,18 @@ export default function FeaturedProductsCarousel() {
       ? `$${product.priceRanges[0].pricePerUnit} - $${product.priceRanges[product.priceRanges.length - 1].pricePerUnit}`
       : '$0.00';
     
+    const supplierId = product.supplierId || product.supplier?.id || null;
+    const supplierName = product.storeName || product.supplierName || product.supplier?.storeName || 'Supplier';
+    const supplierSlug = product.storeSlug || product.supplierSlug || product.supplier?.storeSlug || undefined;
+
     return {
       ...product,
       image,
       priceRange,
       moq: product.minOrderQuantity || 1,
-      supplierName: 'Admin Supplier', // Admin is the supplier
-      supplierCountry: 'USA',
-      supplierType: 'manufacturer',
+      supplierName,
+      supplierCountry: product.supplierCountry || 'USA',
+      supplierType: product.supplierType || 'manufacturer',
       responseRate: '100%',
       responseTime: '< 2h',
       verified: true,
@@ -104,7 +108,10 @@ export default function FeaturedProductsCarousel() {
       port: product.port || 'Los Angeles, USA',
       paymentTerms: ['T/T', 'L/C', 'PayPal'],
       inStock: true,
-      stockQuantity: product.stockQuantity || Math.floor(Math.random() * 1000) + 100
+      stockQuantity: product.stockQuantity || Math.floor(Math.random() * 1000) + 100,
+      supplierId: supplierId || undefined,
+      supplierSlug,
+      supplierRating: product.supplierRating || product.rating || 0
     };
   };
 
@@ -147,10 +154,10 @@ export default function FeaturedProductsCarousel() {
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 bg-primary text-primary rounded-full px-4 py-2 text-sm font-medium mb-6">
-            <TrendingUp className="w-4 h-4" />
-            <span>Trending Now</span>
-          </div>
+        <div className="inline-flex items-center gap-2 bg-primary/10 text-primary rounded-full px-4 py-2 text-sm font-medium mb-6">
+                <Star className="w-4 h-4" />
+                <span>Trending Products</span>
+              </div>
           <h2 className="text-4xl md:text-5xl font-bold mb-4 text-gray-900">
             Featured Products
           </h2>
@@ -191,8 +198,16 @@ export default function FeaturedProductsCarousel() {
                 key={product.id}
                 {...transformProductForCard(product)}
                 onContact={() => {
-                  // Handle contact supplier
-                  console.log('Contact supplier for product:', product.id);
+                  const params = new URLSearchParams({
+                    chatType: 'product',
+                    productId: product.id,
+                    productName: product.name || 'Product',
+                  });
+                  const supplierId = product.supplierId || product.supplier?.id;
+                  const supplierName = product.storeName || product.supplierName || product.supplier?.storeName;
+                  if (supplierId) params.set('supplierId', supplierId);
+                  if (supplierName) params.set('supplierName', supplierName);
+                  window.location.href = `/messages?${params.toString()}`;
                 }}
                 onQuote={() => {
                   // Handle request quote

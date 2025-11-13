@@ -13,12 +13,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   MapPin,
   Star,
-  ShieldCheck,
   Building2,
   Package,
   Globe,
   Phone,
-  Mail,
   Clock,
   TrendingUp,
   Award,
@@ -29,7 +27,6 @@ import {
   CheckCircle,
   Store,
   Search,
-  Filter,
   Eye,
   Heart,
   Share2,
@@ -48,6 +45,7 @@ import VerificationBadge from "@/components/VerificationBadge";
 import TrustIndicators from "@/components/TrustIndicators";
 import SupplierReviews from "@/components/SupplierReviews";
 import Breadcrumb from "@/components/Breadcrumb";
+import HeroBackgroundWrapper from "@/components/HeroBackgroundWrapper";
 
 export default function SupplierStore() {
   const [, params] = useRoute("/suppliers/:slug");
@@ -121,7 +119,12 @@ export default function SupplierStore() {
       return;
     }
     // Navigate to chat with supplier
-    setLocation(`/messages?supplierId=${supplier.id}&supplierName=${encodeURIComponent(supplier.storeName)}`);
+    const params = new URLSearchParams({
+      chatType: 'buyer_supplier',
+      supplierId: supplier.id,
+      supplierName: supplier.storeName || supplier.businessName || 'Supplier',
+    });
+    setLocation(`/messages?${params.toString()}`);
   };
 
   const handleShare = async () => {
@@ -266,202 +269,290 @@ export default function SupplierStore() {
 
   const bannerImage = supplier.storeBanner || 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1600&h=400&fit=crop';
   const logoImage = supplier.storeLogo || 'https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=200&h=200&fit=crop';
+  const ratingValue = Number.parseFloat(supplier.rating || '0');
+  const ratingDisplay = Number.isFinite(ratingValue) ? ratingValue.toFixed(1) : '0.0';
+  const totalReviews = supplier.totalReviews ?? 0;
+  const responseRateValue = Number.parseFloat(supplier.responseRate || '0');
+  const responseRateDisplay = `${Number.isFinite(responseRateValue) ? responseRateValue.toFixed(0) : 0}%`;
+  const responseTimeDisplay = supplier.responseTime || '< 24h';
+  const totalOrders = supplier.totalOrders ?? 0;
+  const totalProducts = supplier.metrics?.totalProducts ?? products.length;
+  const totalInquiries = supplier.metrics?.totalInquiries ?? 0;
+  const totalViews = supplier.metrics?.totalViews ?? 0;
+  const yearsInBusiness = supplier.yearEstablished ? Math.max(new Date().getFullYear() - supplier.yearEstablished, 0) : null;
+  const sanitizedMainProducts: string[] = Array.isArray(supplier.mainProducts)
+    ? (supplier.mainProducts as unknown[]).filter((product): product is string =>
+        typeof product === "string" && product.trim().length > 0
+      )
+    : [];
+  const sanitizedExportMarkets: string[] = Array.isArray(supplier.exportMarkets)
+    ? (supplier.exportMarkets as unknown[]).filter((market): market is string =>
+        typeof market === "string" && market.trim().length > 0
+      )
+    : [];
+  const quickStats = [
+    {
+      label: 'Rating',
+      value: ratingDisplay,
+      hint: `${totalReviews} reviews`,
+      icon: Star,
+      iconColor: 'text-brand-orange-400',
+    },
+    {
+      label: 'Products',
+      value: totalProducts,
+      hint: 'Active listings',
+      icon: Package,
+      iconColor: 'text-white',
+    },
+    {
+      label: 'Orders',
+      value: totalOrders,
+      hint: 'Completed',
+      icon: TrendingUp,
+      iconColor: 'text-emerald-300',
+    },
+    {
+      label: 'Response Time',
+      value: responseTimeDisplay,
+      hint: responseRateDisplay,
+      icon: Clock,
+      iconColor: 'text-brand-orange-200',
+    },
+    {
+      label: 'Inquiries',
+      value: totalInquiries,
+      hint: 'Buyer messages',
+      icon: BarChart3,
+      iconColor: 'text-sky-200',
+    },
+    {
+      label: 'Years Active',
+      value: yearsInBusiness ? `${yearsInBusiness}+` : 'N/A',
+      hint: supplier.yearEstablished ? `Since ${supplier.yearEstablished}` : 'Year not set',
+      icon: Calendar,
+      iconColor: 'text-lime-200',
+    },
+  ];
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-white">
       <Header />
 
-      {/* Banner */}
-      <div className="relative h-64 bg-gradient-to-r from-secondary to-secondary/80 overflow-hidden">
-        <img
-          src={bannerImage}
-          alt={supplier.storeName}
-          className="w-full h-full object-cover opacity-50"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-      </div>
+      <HeroBackgroundWrapper
+        className="pt-28 pb-16 rounded-b-[48px]"
+        contentClassName="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
+      >
+        <div className="absolute inset-0 -z-10 overflow-hidden">
+          <img
+            src={bannerImage}
+            alt={supplier.storeName}
+            className="h-full w-full object-cover opacity-60"
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-brand-grey-900/85 via-brand-grey-800/80 to-brand-orange-900/60" />
+        </div>
 
-      <main className="flex-1 -mt-32 relative z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Breadcrumb Navigation */}
-          <div className="mb-4">
-            <Breadcrumb
-              items={[
-                { label: "Suppliers", href: "/suppliers" },
-                { label: supplier.storeName, icon: Store }
-              ]}
-              className="text-white"
-            />
-          </div>
+        <div className="space-y-10">
+          <Breadcrumb
+            items={[
+              { label: "Suppliers", href: "/suppliers" },
+              { label: supplier.storeName, icon: Store }
+            ]}
+            className="text-white/80"
+          />
 
-          {/* Supplier Header Card */}
-          <Card className="mb-8">
-            <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row gap-6">
-                {/* Logo */}
-                <div className="flex-shrink-0">
-                  <div className="w-32 h-32 rounded-lg border-4 border-white bg-white shadow-lg overflow-hidden">
-                    <img
-                      src={logoImage}
-                      alt={supplier.storeName}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
+          <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
+            <div className="flex flex-1 flex-col gap-6 lg:flex-row">
+              <div className="flex-shrink-0">
+                <div className="h-28 w-28 overflow-hidden rounded-2xl border-4 border-white/40 bg-white shadow-xl">
+                  <img
+                    src={logoImage}
+                    alt={`${supplier.storeName} logo`}
+                    className="h-full w-full object-cover"
+                  />
                 </div>
+              </div>
 
-                {/* Info */}
-                <div className="flex-1">
-                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-4">
-                    <div>
-                      <h1 className="text-3xl font-bold mb-2">{supplier.storeName}</h1>
-                      <p className="text-lg text-muted-foreground mb-3">{supplier.businessName}</p>
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        <Badge className="bg-primary/10 text-primary">
-                          {getBusinessTypeLabel(supplier.businessType)}
-                        </Badge>
-                        <VerificationBadge
-                          level={supplier.verificationLevel}
-                          isVerified={supplier.isVerified}
-                          size="md"
-                        />
+              <div className="flex-1 space-y-6">
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center gap-3 text-white">
+                        <h1 className="text-3xl font-semibold tracking-tight">
+                          {supplier.storeName}
+                        </h1>
                         {supplier.isFeatured && (
-                          <Badge className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white">
-                            <Award className="w-3 h-3 mr-1" />
-                            Featured
+                          <Badge className="gap-1 border border-white/40 bg-white/15 text-white">
+                            <Award className="h-3 w-3" /> Featured
                           </Badge>
                         )}
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <MapPin className="w-4 h-4" />
+                      <p className="text-white/70 text-base">
+                        {supplier.businessName}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-3 text-sm text-white/70">
+                        <span className="inline-flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-brand-orange-200" />
                           {supplier.city}, {supplier.country}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          Since {supplier.yearEstablished || 'N/A'}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Eye className="w-4 h-4" />
-                          {supplier.metrics?.totalViews || 0} views
-                        </div>
+                        </span>
+                        {supplier.yearEstablished && (
+                          <span className="inline-flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-brand-orange-200" />
+                            Since {supplier.yearEstablished}
+                          </span>
+                        )}
+                        <span className="inline-flex items-center gap-2">
+                          <Eye className="h-4 w-4 text-brand-orange-200" />
+                          {totalViews.toLocaleString()} views
+                        </span>
                       </div>
                     </div>
 
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={handleFavorite}>
-                        <Heart className="w-4 h-4" />
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={handleShare}>
-                        <Share2 className="w-4 h-4" />
-                      </Button>
-                      <Button onClick={handleContact}>
-                        <MessageSquare className="w-4 h-4 mr-2" />
-                        Contact Supplier
-                      </Button>
-                    </div>
+                    <VerificationBadge
+                      level={supplier.verificationLevel}
+                      isVerified={supplier.isVerified}
+                      size="lg"
+                    />
                   </div>
 
                   {supplier.storeDescription && (
-                    <p className="text-muted-foreground mb-4">{supplier.storeDescription}</p>
+                    <p className="text-base leading-relaxed text-white/70">
+                      {supplier.storeDescription}
+                    </p>
                   )}
 
-                  {/* Quick Stats */}
-                  <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                    <div className="flex items-center gap-2">
-                      <Star className="w-5 h-5 text-yellow-500 fill-current" />
-                      <div>
-                        <div className="font-semibold">{parseFloat(supplier.rating || '0').toFixed(1)}</div>
-                        <div className="text-xs text-muted-foreground">{supplier.totalReviews || 0} reviews</div>
-                      </div>
+                  {sanitizedMainProducts.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {sanitizedMainProducts.slice(0, 6).map((product, index) => (
+                        <Badge
+                          key={product + index}
+                          variant="outline"
+                          className="border-white/25 bg-white/10 text-white"
+                        >
+                          {product}
+                        </Badge>
+                      ))}
+                      {sanitizedMainProducts.length > 6 && (
+                        <Badge
+                          variant="outline"
+                          className="border-white/25 bg-white/10 text-white"
+                        >
+                          +{sanitizedMainProducts.length - 6} more
+                        </Badge>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Package className="w-5 h-5 text-primary" />
-                      <div>
-                        <div className="font-semibold">{supplier.metrics?.totalProducts || 0}</div>
-                        <div className="text-xs text-muted-foreground">Products</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <TrendingUp className="w-5 h-5 text-green-500" />
-                      <div>
-                        <div className="font-semibold">{supplier.totalOrders || 0}</div>
-                        <div className="text-xs text-muted-foreground">Total orders</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-5 h-5 text-primary" />
-                      <div>
-                        <div className="font-semibold">{supplier.responseTime || '< 24h'}</div>
-                        <div className="text-xs text-muted-foreground">Response time</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-5 h-5 text-purple-500" />
-                      <div>
-                        <div className="font-semibold">{parseFloat(supplier.responseRate || '100').toFixed(0)}%</div>
-                        <div className="text-xs text-muted-foreground">Response rate</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <BarChart3 className="w-5 h-5 text-orange-500" />
-                      <div>
-                        <div className="font-semibold">{supplier.metrics?.totalInquiries || 0}</div>
-                        <div className="text-xs text-muted-foreground">Inquiries</div>
-                      </div>
-                    </div>
-                  </div>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    size="lg"
+                    className="bg-white text-brand-grey-900 hover:bg-white/90"
+                    onClick={handleContact}
+                  >
+                    <MessageSquare className="mr-2 h-5 w-5" />
+                    Contact Supplier
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="border-white/40 text-white hover:bg-white/10"
+                    onClick={handleFavorite}
+                  >
+                    <Heart className="mr-2 h-4 w-4" />
+                    Save Store
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="border-white/40 text-white hover:bg-white/10"
+                    onClick={handleShare}
+                  >
+                    <Share2 className="mr-2 h-4 w-4" />
+                    Share
+                  </Button>
+                  {supplier.website && (
+                    <Button
+                      variant="outline"
+                      className="border-white/40 text-white hover:bg-white/10"
+                      asChild
+                    >
+                      <a href={supplier.website} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Visit Website
+                      </a>
+                    </Button>
+                  )}
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Action Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-            <div className="flex items-center gap-4">
-              <Button onClick={handleContact} size="lg">
-                <MessageSquare className="w-5 h-5 mr-2" />
-                Contact Supplier
-              </Button>
-              <Button variant="outline" onClick={handleFavorite}>
-                <Heart className="w-4 h-4 mr-2" />
-                Save Store
-              </Button>
-              <Button variant="outline" onClick={handleShare}>
-                <Share2 className="w-4 h-4 mr-2" />
-                Share
-              </Button>
             </div>
 
-            {supplier.website && (
-              <Button variant="outline" asChild>
-                <a href={supplier.website} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Visit Website
-                </a>
-              </Button>
-            )}
+            <Card className="w-full max-w-sm self-stretch border-white/10 bg-white/10 backdrop-blur">
+              <CardContent className="p-5">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  {quickStats.map(({ label, value, hint, icon: Icon, iconColor }) => (
+                    <div
+                      key={label}
+                      className="rounded-2xl border border-white/15 bg-white/5 p-4 text-white"
+                    >
+                      <div className="mb-3 flex items-center gap-3">
+                        <span className={`rounded-xl bg-white/10 p-2 ${iconColor}`}>
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <span className="text-xs uppercase tracking-wide text-white/70">
+                          {label}
+                        </span>
+                      </div>
+                      <div className="text-lg font-semibold leading-none">
+                        {value}
+                      </div>
+                      <div className="mt-1 text-xs text-white/60">
+                        {hint}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           </div>
+        </div>
+      </HeroBackgroundWrapper>
 
+      <main className="flex-1">
+        <div className="relative -mt-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           {/* Tabs */}
           <Tabs defaultValue="products" className="mb-8">
-            <TabsList className="grid w-full grid-cols-5 max-w-3xl">
-              <TabsTrigger value="products">
+            <TabsList className="grid w-full gap-2 rounded-2xl bg-brand-grey-100/80 p-1 shadow-sm sm:grid-cols-3 lg:grid-cols-5">
+              <TabsTrigger
+                value="products"
+                className="flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium text-brand-grey-600 data-[state=active]:bg-white data-[state=active]:text-brand-orange-500 data-[state=active]:shadow-sm"
+              >
                 <Package className="w-4 h-4 mr-2" />
                 Products
               </TabsTrigger>
-              <TabsTrigger value="about">
+              <TabsTrigger
+                value="about"
+                className="flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium text-brand-grey-600 data-[state=active]:bg-white data-[state=active]:text-brand-orange-500 data-[state=active]:shadow-sm"
+              >
                 <Building2 className="w-4 h-4 mr-2" />
                 About
               </TabsTrigger>
-              <TabsTrigger value="reviews">
+              <TabsTrigger
+                value="reviews"
+                className="flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium text-brand-grey-600 data-[state=active]:bg-white data-[state=active]:text-brand-orange-500 data-[state=active]:shadow-sm"
+              >
                 <Star className="w-4 h-4 mr-2" />
                 Reviews
               </TabsTrigger>
-              <TabsTrigger value="contact">
+              <TabsTrigger
+                value="contact"
+                className="flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium text-brand-grey-600 data-[state=active]:bg-white data-[state=active]:text-brand-orange-500 data-[state=active]:shadow-sm"
+              >
                 <Phone className="w-4 h-4 mr-2" />
                 Contact
               </TabsTrigger>
-              <TabsTrigger value="capabilities">
+              <TabsTrigger
+                value="capabilities"
+                className="flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium text-brand-grey-600 data-[state=active]:bg-white data-[state=active]:text-brand-orange-500 data-[state=active]:shadow-sm"
+              >
                 <Factory className="w-4 h-4 mr-2" />
                 Capabilities
               </TabsTrigger>
@@ -680,15 +771,14 @@ export default function SupplierStore() {
                           <Target className="w-5 h-5 text-muted-foreground mt-0.5" />
                           <div>
                             <div className="font-medium">Total Products</div>
-                            <div className="text-muted-foreground">{supplier.metrics?.totalProducts || 0}</div>
+                            <div className="text-muted-foreground">{totalProducts}</div>
                           </div>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
 
-                  {/* Main Products */}
-                  {supplier.mainProducts && supplier.mainProducts.length > 0 && (
+                  {sanitizedMainProducts.length > 0 && (
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
@@ -698,8 +788,12 @@ export default function SupplierStore() {
                       </CardHeader>
                       <CardContent>
                         <div className="flex flex-wrap gap-2">
-                          {supplier.mainProducts.map((product: string, index: number) => (
-                            <Badge key={index} variant="outline" className="text-sm">
+                          {sanitizedMainProducts.map((product, index) => (
+                            <Badge
+                              key={product + index}
+                              variant="outline"
+                              className="border-brand-orange-200 bg-brand-orange-50 text-brand-orange-700 text-sm"
+                            >
                               {product}
                             </Badge>
                           ))}
@@ -708,8 +802,7 @@ export default function SupplierStore() {
                     </Card>
                   )}
 
-                  {/* Export Markets */}
-                  {supplier.exportMarkets && supplier.exportMarkets.length > 0 && (
+                  {sanitizedExportMarkets.length > 0 && (
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
@@ -719,8 +812,12 @@ export default function SupplierStore() {
                       </CardHeader>
                       <CardContent>
                         <div className="flex flex-wrap gap-2">
-                          {supplier.exportMarkets.map((market: string, index: number) => (
-                            <Badge key={index} variant="secondary" className="text-sm">
+                          {sanitizedExportMarkets.map((market, index) => (
+                            <Badge
+                              key={market + index}
+                              variant="secondary"
+                              className="bg-brand-grey-100 text-brand-grey-700"
+                            >
                               {market}
                             </Badge>
                           ))}
@@ -798,14 +895,14 @@ export default function SupplierStore() {
                         <Building2 className="w-5 h-5 text-muted-foreground mt-0.5" />
                         <div>
                           <div className="font-medium">Contact Person</div>
-                          <div className="text-muted-foreground">{supplier.contactPerson}</div>
+                          <div className="text-muted-foreground">{supplier.contactPerson || 'Not provided'}</div>
                         </div>
                       </div>
                       <div className="flex items-start gap-3">
                         <Phone className="w-5 h-5 text-muted-foreground mt-0.5" />
                         <div>
                           <div className="font-medium">Phone</div>
-                          <div className="text-muted-foreground">{supplier.phone}</div>
+                          <div className="text-muted-foreground">{supplier.phone || 'Not provided'}</div>
                         </div>
                       </div>
                       {supplier.whatsapp && (
@@ -838,8 +935,15 @@ export default function SupplierStore() {
                         <div>
                           <div className="font-medium">Address</div>
                           <div className="text-muted-foreground">
-                            {supplier.address}<br />
-                            {supplier.city}, {supplier.country}
+                            {supplier.address || 'Address not available'}
+                            <br />
+                            {supplier.city && supplier.country ? (
+                              <>
+                                {supplier.city}, {supplier.country}
+                              </>
+                            ) : (
+                              'Location not specified'
+                            )}
                           </div>
                         </div>
                       </div>
@@ -886,17 +990,30 @@ export default function SupplierStore() {
                       )}
                       <div>
                         <div className="text-sm font-medium text-muted-foreground">Total Products</div>
-                        <div className="font-semibold">{supplier.metrics?.totalProducts || 0}</div>
+                        <div className="font-semibold">{totalProducts}</div>
                       </div>
                     </div>
 
-                    {supplier.mainProducts && supplier.mainProducts.length > 0 && (
+                    {sanitizedMainProducts.length > 0 && (
                       <div>
                         <div className="text-sm font-medium text-muted-foreground mb-2">Main Product Categories</div>
                         <div className="flex flex-wrap gap-2">
-                          {supplier.mainProducts.map((product: string, index: number) => (
-                            <Badge key={index} variant="secondary">
+                          {sanitizedMainProducts.map((product, index) => (
+                            <Badge key={product + index} variant="secondary" className="bg-brand-orange-50 text-brand-orange-700">
                               {product}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {sanitizedExportMarkets.length > 0 && (
+                      <div>
+                        <div className="text-sm font-medium text-muted-foreground mb-2">Export Markets</div>
+                        <div className="flex flex-wrap gap-2">
+                          {sanitizedExportMarkets.map((market, index) => (
+                            <Badge key={market + index} variant="outline">
+                              {market}
                             </Badge>
                           ))}
                         </div>
@@ -916,10 +1033,10 @@ export default function SupplierStore() {
                   <CardContent className="space-y-4">
                     <div>
                       <div className="text-sm font-medium text-muted-foreground mb-2">Export Markets</div>
-                      {supplier.exportMarkets && supplier.exportMarkets.length > 0 ? (
+                      {sanitizedExportMarkets.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
-                          {supplier.exportMarkets.map((market: string, index: number) => (
-                            <Badge key={index} variant="outline">
+                          {sanitizedExportMarkets.map((market, index) => (
+                            <Badge key={market + index} variant="outline" className="border-brand-grey-200 text-brand-grey-700">
                               {market}
                             </Badge>
                           ))}
@@ -932,12 +1049,12 @@ export default function SupplierStore() {
                     <div className="grid grid-cols-2 gap-4 pt-4 border-t">
                       <div>
                         <div className="text-sm font-medium text-muted-foreground">Total Orders</div>
-                        <div className="font-semibold">{supplier.totalOrders || 0}</div>
+                        <div className="font-semibold">{totalOrders}</div>
                       </div>
                       <div>
                         <div className="text-sm font-medium text-muted-foreground">Years in Business</div>
                         <div className="font-semibold">
-                          {supplier.yearEstablished ? new Date().getFullYear() - supplier.yearEstablished : 'N/A'} years
+                          {yearsInBusiness ? `${yearsInBusiness} years` : 'N/A'}
                         </div>
                       </div>
                     </div>
@@ -964,17 +1081,17 @@ export default function SupplierStore() {
 
                       <div className="text-center p-4 bg-muted rounded-lg">
                         <Star className="w-8 h-8 text-yellow-500 mx-auto mb-2 fill-current" />
-                        <div className="font-semibold">{parseFloat(supplier.rating || '0').toFixed(1)} Rating</div>
+                        <div className="font-semibold">{ratingDisplay} Rating</div>
                         <div className="text-sm text-muted-foreground">
-                          {supplier.totalReviews || 0} customer reviews
+                          {totalReviews} customer reviews
                         </div>
                       </div>
 
                       <div className="text-center p-4 bg-muted rounded-lg">
                         <Zap className="w-8 h-8 text-primary mx-auto mb-2" />
-                        <div className="font-semibold">{parseFloat(supplier.responseRate || '100').toFixed(0)}%</div>
+                        <div className="font-semibold">{responseRateDisplay}</div>
                         <div className="text-sm text-muted-foreground">
-                          Response rate ({supplier.responseTime || '< 24h'})
+                          Response rate ({responseTimeDisplay})
                         </div>
                       </div>
                     </div>

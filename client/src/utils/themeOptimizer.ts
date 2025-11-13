@@ -140,8 +140,7 @@ class ThemeOptimizer {
     
     const compliance = report.score >= 90 && 
                       report.summary.errors === 0 && 
-                      report.themeCompliance.lightMode && 
-                      report.themeCompliance.darkMode;
+                      report.themeCompliance.lightMode;
 
     return {
       score: report.score,

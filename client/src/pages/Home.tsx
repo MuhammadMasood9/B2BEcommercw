@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ShieldCheck, Award, ArrowRight, Star, MapPin, Clock, Eye, MessageSquare, TrendingUp, Users, Globe, Package } from "lucide-react";
 import { useLoading } from "@/contexts/LoadingContext";
 import { Link } from "wouter";
+import HeroBackgroundWrapper from "@/components/HeroBackgroundWrapper";
 
 export default function Home() {
   const { setLoading } = useLoading();
@@ -134,14 +135,18 @@ export default function Home() {
       ? `$${product.priceRanges[0].pricePerUnit} - $${product.priceRanges[product.priceRanges.length - 1].pricePerUnit}`
       : '$0.00';
     
+    const supplierId = product.supplierId || product.supplier?.id || null;
+    const supplierName = product.storeName || product.supplierName || product.supplier?.storeName || 'Supplier';
+    const supplierSlug = product.storeSlug || product.supplierSlug || product.supplier?.storeSlug || undefined;
+
     return {
       ...product,
       image,
       priceRange,
       moq: product.minOrderQuantity || 1,
-      supplierName: 'Admin Supplier', // Admin is the supplier
-      supplierCountry: 'USA',
-      supplierType: 'manufacturer',
+      supplierName,
+      supplierCountry: product.supplierCountry || 'USA',
+      supplierType: product.supplierType || 'manufacturer',
       responseRate: '100%',
       responseTime: '< 2h',
       verified: true,
@@ -158,7 +163,10 @@ export default function Home() {
       port: product.port || 'Los Angeles, USA',
       paymentTerms: ['T/T', 'L/C', 'PayPal'],
       inStock: true,
-      stockQuantity: product.stockQuantity || Math.floor(Math.random() * 1000) + 100
+      stockQuantity: product.stockQuantity || Math.floor(Math.random() * 1000) + 100,
+      supplierId: supplierId || undefined,
+      supplierSlug,
+      supplierRating: product.supplierRating || product.rating || 0
     };
   };
 
@@ -175,7 +183,7 @@ export default function Home() {
         <section className="py-20 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16">
-              <div className="inline-flex items-center gap-2 bg-primary/10 text-primary rounded-full px-4 py-2 text-sm font-medium mb-6">
+            <div className="inline-flex items-center gap-2 bg-primary/10 text-primary rounded-full px-4 py-2 text-sm font-medium mb-6">
                 <Star className="w-4 h-4" />
                 <span>Featured Products</span>
               </div>
@@ -194,8 +202,16 @@ export default function Home() {
                   key={product.id}
                   {...transformProductForCard(product)}
                   onContact={() => {
-                    // Navigate to product-specific chat
-                    window.location.href = `/messages?productId=${product.id}&productName=${encodeURIComponent(product.name)}&chatType=product`;
+                    const params = new URLSearchParams({
+                      chatType: 'product',
+                      productId: product.id,
+                      productName: product.name || 'Product',
+                    });
+                    const supplierId = product.supplierId || product.supplier?.id;
+                    const supplierName = product.storeName || product.supplierName || product.supplier?.storeName;
+                    if (supplierId) params.set('supplierId', supplierId);
+                    if (supplierName) params.set('supplierName', supplierName);
+                    window.location.href = `/messages?${params.toString()}`;
                   }}
                   onQuote={() => {
                     // Handle request quote
@@ -251,8 +267,8 @@ export default function Home() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <Card className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-white border-gray-100">
                 <CardContent className="p-8 text-center">
-                  <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-green-200 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-                    <Clock className="w-8 h-8 text-green-600" />
+                  <div className="w-16 h-16 rounded-2xl border border-brand-orange-500/20 bg-gradient-to-br from-brand-orange-500/15 via-brand-orange-400/10 to-brand-orange-300/5 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                    <Clock className="w-8 h-8 text-brand-orange-500" />
                   </div>
                   <h3 className="text-xl font-semibold text-foreground mb-3">
                     Same Day Shipping
@@ -265,8 +281,8 @@ export default function Home() {
               
               <Card className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-white border-gray-100">
                 <CardContent className="p-8 text-center">
-                  <div className="w-16 h-16 bg-gradient-to-br from-primary/10 to-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-                    <Globe className="w-8 h-8 text-primary" />
+                  <div className="w-16 h-16 rounded-2xl border border-brand-orange-500/20 bg-gradient-to-br from-brand-orange-500/15 via-brand-orange-400/10 to-brand-orange-300/5 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                    <Globe className="w-8 h-8 text-brand-orange-500" />
                   </div>
                   <h3 className="text-xl font-semibold text-foreground mb-3">
                     Global Shipping
@@ -279,8 +295,8 @@ export default function Home() {
               
               <Card className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-2 bg-white border-gray-100">
                 <CardContent className="p-8 text-center">
-                  <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-purple-200 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-                    <ShieldCheck className="w-8 h-8 text-purple-600" />
+                  <div className="w-16 h-16 rounded-2xl border border-brand-orange-500/20 bg-gradient-to-br from-brand-orange-500/15 via-brand-orange-400/10 to-brand-orange-300/5 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                    <ShieldCheck className="w-8 h-8 text-brand-orange-500" />
                   </div>
                   <h3 className="text-xl font-semibold text-foreground mb-3">
                     Secure Delivery
@@ -304,25 +320,30 @@ export default function Home() {
         </section>
         
         {/* Final CTA Section */}
-        <section className="py-20 bg-gradient-to-r from-primary to-secondary text-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-4xl md:text-5xl font-bold mb-6">
-              Ready to Transform Your Business?
-            </h2>
-            <p className="text-xl text-primary-foreground/80 mb-8 max-w-2xl mx-auto">
-              Join millions of buyers and suppliers in the world's largest B2B marketplace
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" className="bg-white text-primary hover:bg-white/90 px-8 py-3 font-semibold">
-                Start Sourcing Now
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-              <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 px-8 py-3 font-semibold">
-                Contact Admin
-              </Button>
-            </div>
+        <HeroBackgroundWrapper
+          className="py-20"
+          contentClassName="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-8"
+        >
+          <h2 className="text-4xl md:text-5xl font-bold">
+            Ready to Transform Your Business?
+          </h2>
+          <p className="text-xl text-white/80 max-w-2xl mx-auto">
+            Join millions of buyers and suppliers in the world's largest B2B marketplace
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button size="lg" className="bg-white text-brand-grey-900 hover:bg-white/90 px-8 py-3 font-semibold">
+              Start Sourcing Now
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="border-white text-white hover:bg-white/10 px-8 py-3 font-semibold"
+            >
+              Contact Admin
+            </Button>
           </div>
-        </section>
+        </HeroBackgroundWrapper>
       </main>
       <Footer />
     </div>

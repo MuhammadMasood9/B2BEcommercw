@@ -120,7 +120,7 @@ router.get('/conversations/:conversationId/messages', authMiddleware, async (req
 router.post('/conversations', authMiddleware, async (req, res) => {
   try {
     console.log('Creating conversation with data:', req.body);
-    const { buyerId, adminId, supplierId, subject, productId } = req.body;
+    const { buyerId, adminId, supplierId, subject, productId, type } = req.body;
     const userId = req.user?.id;
     
     if (!userId) {
@@ -137,34 +137,73 @@ router.post('/conversations', authMiddleware, async (req, res) => {
     console.log('Creating conversation for user:', userId, 'supplier:', supplierId, 'admin:', adminId);
     
     // Determine buyer, admin, and supplier IDs based on user role
-    let actualBuyerId, actualAdminId, actualSupplierId;
+    let actualBuyerId: string | null = null;
+    let actualAdminId: string | null = null;
+    let actualSupplierId: string | null = null;
     
     if (req.user?.role === 'buyer') {
       actualBuyerId = userId;
-      actualSupplierId = supplierId;
-      
-      // If no supplier specified, get admin
-      if (!actualSupplierId) {
+      actualSupplierId = supplierId || null;
+
+      if (!actualSupplierId && adminId) {
+        actualAdminId = adminId;
+      }
+
+      // If no supplier specified, fallback to admin support
+      if (!actualSupplierId && !actualAdminId) {
         const adminUsers = await db.select({ id: users.id }).from(users).where(eq(users.role, 'admin')).limit(1);
-        actualAdminId = adminUsers[0]?.id || userId;
+        actualAdminId = adminUsers[0]?.id || null;
+      }
+
+      if (!actualSupplierId && !actualAdminId) {
+        return res.status(400).json({ error: 'No supplier or admin available to start a conversation' });
       }
     } else if (req.user?.role === 'supplier') {
       actualSupplierId = userId;
-      actualBuyerId = buyerId || userId;
+      actualBuyerId = buyerId || null;
+
+      if (!actualBuyerId) {
+        return res.status(400).json({ error: 'Buyer ID is required when suppliers initiate conversations' });
+      }
     } else if (req.user?.role === 'admin') {
       actualAdminId = userId;
-      actualBuyerId = buyerId || userId;
-      actualSupplierId = supplierId;
+      actualBuyerId = buyerId || null;
+      actualSupplierId = supplierId || null;
+
+      if (!actualBuyerId) {
+        return res.status(400).json({ error: 'Buyer ID is required to start a conversation' });
+      }
     } else {
       return res.status(403).json({ error: 'Invalid user role for conversation creation' });
     }
     
+    if (actualSupplierId) {
+      const resolved = await storage.resolveSupplierUserId(actualSupplierId);
+      actualSupplierId = resolved || actualSupplierId;
+    }
+
+    if (!actualBuyerId) {
+      return res.status(400).json({ error: 'Buyer ID is required to create a conversation' });
+    }
+
+    const conversationType = type || (actualSupplierId ? 'buyer_supplier' : actualAdminId ? 'buyer_admin' : 'buyer_support');
+
+    console.log('Resolved conversation participants:', {
+      actualBuyerId,
+      actualAdminId,
+      actualSupplierId,
+      subject,
+      productId,
+      conversationType
+    });
+
     const conversation = await storage.createConversation({
       buyerId: actualBuyerId,
       adminId: actualAdminId || undefined,
-      supplierId: actualSupplierId,
+      supplierId: actualSupplierId || undefined,
       subject: subject || `Inquiry about Product ${productId || ''}`,
-      productId
+      productId,
+      type: conversationType
     });
 
     console.log('Conversation created successfully:', conversation);
@@ -212,7 +251,25 @@ router.post('/conversations/:conversationId/messages', authMiddleware, async (re
       return res.status(404).json({ error: 'Conversation not found' });
     }
 
-    const receiverId = conversation.buyerId === userId ? conversation.unreadCountAdmin : conversation.buyerId;
+    const isBuyer = conversation.buyerId === userId;
+    const isSupplier = conversation.supplierId && conversation.supplierId === userId;
+    const isAdmin = conversation.unreadCountAdmin && conversation.unreadCountAdmin === userId;
+
+    let receiverId: string | null = null;
+
+    if (isBuyer) {
+      receiverId = conversation.supplierId || conversation.unreadCountAdmin || null;
+    } else if (isSupplier) {
+      receiverId = conversation.buyerId;
+    } else if (isAdmin) {
+      receiverId = conversation.buyerId;
+    } else {
+      receiverId = conversation.unreadCountAdmin || conversation.supplierId || conversation.buyerId;
+    }
+
+    if (!receiverId) {
+      return res.status(400).json({ error: 'Unable to determine message recipient for this conversation' });
+    }
 
     const message = await storage.createMessage({
       conversationId,

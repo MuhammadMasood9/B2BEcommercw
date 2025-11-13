@@ -119,7 +119,6 @@ import SupplierProfile from "@/pages/supplier/SupplierProfile";
 import SupplierPayments from "@/pages/supplier/SupplierPayments";
 import NotFound from "@/pages/not-found";
 import { ThemeProvider } from "@/contexts/ThemeContext";
-import ThemeToggleDemo from "@/components/ThemeToggleDemo";
 
 function AdminRouter() {
   return (
@@ -501,7 +500,6 @@ function PublicRouter() {
           <ProfilePage />
         </ProtectedRoute>
       </Route>
-      <Route path="/theme-demo" component={ThemeToggleDemo} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -632,12 +630,7 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider
-        defaultTheme="system"
-        storageKey="b2b-marketplace-theme"
-        enableSystem={true}
-        disableTransitionOnChange={false}
-      >
+      <ThemeProvider>
         <LoadingProvider>
           <AuthProvider>
             <WebSocketProvider>

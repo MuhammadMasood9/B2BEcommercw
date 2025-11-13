@@ -29,7 +29,6 @@ import {
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function Header() {
   const [location, setLocation] = useLocation();
@@ -242,11 +241,6 @@ export default function Header() {
 
           {/* User Actions */}
           <div className="flex items-center gap-3 flex-shrink-0">
-            {/* Theme & Accessibility Toggle */}
-            <div className="hidden sm:block">
-              <ThemeToggle variant="enhanced-dropdown" size="md" showHighContrast={true} className="h-11" />
-            </div>
-            
             {/* Mobile Search Button */}
             <Sheet open={isMobileSearchOpen} onOpenChange={setIsMobileSearchOpen}>
               <SheetTrigger asChild>
@@ -330,14 +324,6 @@ export default function Header() {
               </SheetTrigger>
               <SheetContent side="right" className="w-80 h-full overflow-y-auto">
                 <div className="flex flex-col space-y-4 mt-8 pb-8">
-                  {/* Theme Toggle for Mobile */}
-                  <div className="px-1 pb-4 border-b border-card-border">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-muted-foreground">Theme & Accessibility</span>
-                      <ThemeToggle variant="enhanced-dropdown" size="sm" showHighContrast={true} />
-                    </div>
-                  </div>
-                  
                   {isAuthenticated ? (
                     <>
                       <div className="px-1">

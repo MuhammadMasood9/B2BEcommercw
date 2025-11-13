@@ -106,10 +106,10 @@ export default function Categories() {
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center text-white">
-            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/30 rounded-full px-6 py-3 text-sm text-white/95 shadow-lg mb-6">
-              <Globe className="w-4 h-4" />
-              <span>Global Categories</span>
-            </div>
+          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary rounded-full px-4 py-2 text-sm font-medium mb-6">
+                <Star className="w-4 h-4" />
+                <span>Global Categories</span>
+              </div>
             
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
               Browse

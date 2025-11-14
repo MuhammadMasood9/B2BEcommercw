@@ -21,7 +21,8 @@ import {
   Clock,
   Send,
   Paperclip,
-  Smile
+  Smile,
+  Building2
 } from 'lucide-react';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
@@ -29,7 +30,7 @@ import ConversationList from './ConversationList';
 import { useToast } from '@/hooks/use-toast';
 
 interface ImprovedChatInterfaceProps {
-  userRole: 'buyer' | 'admin';
+  userRole: 'buyer' | 'admin' | 'supplier';
   userId: string;
 }
 
@@ -44,12 +45,8 @@ export default function ImprovedChatInterface({ userRole, userId }: ImprovedChat
 
   // Fetch conversations based on user role
   const { data: conversationsData, isLoading: conversationsLoading } = useQuery({
-    queryKey: userRole === 'admin' 
-      ? ['/api/chat/conversations/admin/all']
-      : ['/api/chat/conversations/buyer', userId],
-    queryFn: () => userRole === 'admin' 
-      ? apiRequest('GET', '/api/chat/conversations/admin/all')
-      : apiRequest('GET', `/api/chat/conversations/buyer/${userId}`),
+    queryKey: ['/api/chat/conversations'],
+    queryFn: () => apiRequest('GET', '/api/chat/conversations'),
     enabled: !!userId,
     refetchInterval: 30000, // Poll every 30 seconds
   });
@@ -146,11 +143,14 @@ export default function ImprovedChatInterface({ userRole, userId }: ImprovedChat
         buyerId: userId,
         adminId: 'admin', // Generic admin ID
         subject: 'General Inquiry',
+        type: 'buyer_admin'
       });
     } else {
       toast({
         title: "Create Conversation",
-        description: "Admins can respond to existing conversations or wait for new ones.",
+        description: userRole === 'admin' 
+          ? "Admins can respond to existing conversations or wait for new ones."
+          : "Suppliers can respond to existing conversations or wait for new ones.",
       });
     }
   };
@@ -159,8 +159,15 @@ export default function ImprovedChatInterface({ userRole, userId }: ImprovedChat
     if (!selectedConversation) return userRole === 'buyer' ? 'Select a conversation' : 'Select a customer';
     
     if (userRole === 'buyer') {
+      // For buyers, show supplier name if it's a buyer-supplier conversation, otherwise admin
+      if (selectedConversation.type === 'buyer_supplier' && selectedConversation.supplierName) {
+        return selectedConversation.supplierName;
+      }
       return selectedConversation.adminName || selectedConversation.adminEmail || 'Support Team';
+    } else if (userRole === 'supplier') {
+      return selectedConversation.buyerName || selectedConversation.buyerEmail || 'Customer';
     } else {
+      // Admin view - show buyer name
       return selectedConversation.buyerName || selectedConversation.buyerEmail || 'Customer';
     }
   };
@@ -170,7 +177,13 @@ export default function ImprovedChatInterface({ userRole, userId }: ImprovedChat
     
     let subtitle = '';
     if (userRole === 'buyer') {
-      subtitle = selectedConversation.adminCompany || 'Support Team';
+      if (selectedConversation.type === 'buyer_supplier' && selectedConversation.supplierCompany) {
+        subtitle = selectedConversation.supplierCompany;
+      } else {
+        subtitle = selectedConversation.adminCompany || 'Support Team';
+      }
+    } else if (userRole === 'supplier') {
+      subtitle = selectedConversation.buyerCompany || 'Customer';
     } else {
       subtitle = selectedConversation.buyerCompany || 'Customer';
     }
@@ -190,9 +203,14 @@ export default function ImprovedChatInterface({ userRole, userId }: ImprovedChat
       conv.lastMessage?.toLowerCase().includes(searchLower) ||
       conv.productId?.toLowerCase().includes(searchLower) ||
       conv.productName?.toLowerCase().includes(searchLower) ||
+      conv.supplierName?.toLowerCase().includes(searchLower) ||
+      conv.supplierCompany?.toLowerCase().includes(searchLower) ||
       (userRole === 'buyer' 
-        ? (conv.adminName?.toLowerCase().includes(searchLower) || conv.adminEmail?.toLowerCase().includes(searchLower))
-        : (conv.buyerName?.toLowerCase().includes(searchLower) || conv.buyerEmail?.toLowerCase().includes(searchLower))
+        ? (conv.adminName?.toLowerCase().includes(searchLower) || 
+           conv.adminEmail?.toLowerCase().includes(searchLower) ||
+           conv.supplierName?.toLowerCase().includes(searchLower))
+        : (conv.buyerName?.toLowerCase().includes(searchLower) || 
+           conv.buyerEmail?.toLowerCase().includes(searchLower))
       )
     );
   });
@@ -206,13 +224,14 @@ export default function ImprovedChatInterface({ userRole, userId }: ImprovedChat
           <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-primary to-orange-600">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-gray-900">
-                {userRole === 'buyer' ? 'Support Chats' : 'Customer Chats'}
+                {userRole === 'buyer' ? 'Support Chats' : 
+                 userRole === 'supplier' ? 'Customer Chats' : 'All Conversations'}
               </h2>
               <div className="flex items-center space-x-2">
                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                   <Search className="h-4 w-4" />
                 </Button>
-                {userRole === 'admin' && (
+                {(userRole === 'admin' || userRole === 'supplier') && (
                   <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                     <Filter className="h-4 w-4" />
                   </Button>
@@ -228,7 +247,9 @@ export default function ImprovedChatInterface({ userRole, userId }: ImprovedChat
                   type="text"
                   placeholder={userRole === 'buyer' 
                     ? "Search conversations..." 
-                    : "Search customers, products..."
+                    : userRole === 'supplier'
+                    ? "Search customers, products..."
+                    : "Search all conversations..."
                   }
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -264,8 +285,10 @@ export default function ImprovedChatInterface({ userRole, userId }: ImprovedChat
                 </h3>
                 <p className="text-gray-500 text-sm">
                   {userRole === 'buyer' 
-                    ? 'Start a conversation with our support team'
-                    : 'Customer conversations will appear here'
+                    ? 'Start a conversation with our support team or suppliers'
+                    : userRole === 'supplier'
+                    ? 'Customer conversations will appear here'
+                    : 'All platform conversations will appear here'
                   }
                 </p>
               </div>
@@ -287,13 +310,23 @@ export default function ImprovedChatInterface({ userRole, userId }: ImprovedChat
                         <div className="flex-shrink-0">
                           <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-md ${
                             userRole === 'buyer' 
-                              ? 'bg-gradient-to-br from-primary to-orange-600'
-                              : 'bg-gradient-to-br from-green-500 to-green-600'
+                              ? (conversation.type === 'buyer_supplier' 
+                                 ? 'bg-gradient-to-br from-blue-500 to-blue-600'
+                                 : 'bg-gradient-to-br from-primary to-orange-600')
+                              : userRole === 'supplier'
+                              ? 'bg-gradient-to-br from-green-500 to-green-600'
+                              : 'bg-gradient-to-br from-purple-500 to-purple-600'
                           }`}>
                             {userRole === 'buyer' ? (
-                              <Shield className="h-6 w-6 text-white" />
-                            ) : (
+                              conversation.type === 'buyer_supplier' ? (
+                                <Building2 className="h-6 w-6 text-white" />
+                              ) : (
+                                <Shield className="h-6 w-6 text-white" />
+                              )
+                            ) : userRole === 'supplier' ? (
                               <User className="h-6 w-6 text-white" />
+                            ) : (
+                              <MessageCircle className="h-6 w-6 text-white" />
                             )}
                           </div>
                         </div>
@@ -303,15 +336,26 @@ export default function ImprovedChatInterface({ userRole, userId }: ImprovedChat
                           <div className="flex items-center justify-between mb-1">
                             <h4 className="text-sm font-medium text-gray-900 truncate">
                               {userRole === 'buyer' 
-                                ? (conversation.adminName || conversation.adminEmail || 'Support Team')
-                                : (conversation.buyerName || conversation.buyerEmail || 'Customer')
+                                ? (conversation.type === 'buyer_supplier' && conversation.supplierName 
+                                   ? conversation.supplierName 
+                                   : (conversation.adminName || conversation.adminEmail || 'Support Team'))
+                                : userRole === 'supplier'
+                                ? (conversation.buyerName || conversation.buyerEmail || 'Customer')
+                                : (conversation.type === 'buyer_supplier' 
+                                   ? `${conversation.buyerName || 'Customer'} ↔ ${conversation.supplierName || 'Supplier'}`
+                                   : (conversation.buyerName || conversation.buyerEmail || 'Customer'))
                               }
                             </h4>
                             <div className="flex items-center space-x-1">
                               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                              {conversation.unreadCount && conversation.unreadCount > 0 && (
+                              {/* Show correct unread count based on user role */}
+                              {((userRole === 'buyer' && conversation.unreadCountBuyer > 0) ||
+                                (userRole === 'supplier' && conversation.unreadCountSupplier > 0) ||
+                                (userRole === 'admin' && conversation.unreadCountAdmin > 0)) && (
                                 <Badge variant="destructive" className="h-5 w-5 p-0 flex items-center justify-center text-xs">
-                                  {conversation.unreadCount}
+                                  {userRole === 'buyer' ? conversation.unreadCountBuyer :
+                                   userRole === 'supplier' ? conversation.unreadCountSupplier :
+                                   conversation.unreadCountAdmin}
                                 </Badge>
                               )}
                             </div>
@@ -360,11 +404,17 @@ export default function ImprovedChatInterface({ userRole, userId }: ImprovedChat
                   <div className="flex items-center space-x-4">
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg ${
                       userRole === 'buyer' 
-                        ? 'bg-gradient-to-br from-primary to-orange-600'
+                        ? (selectedConversation.type === 'buyer_supplier' 
+                           ? 'bg-gradient-to-br from-blue-500 to-blue-600'
+                           : 'bg-gradient-to-br from-primary to-orange-600')
                         : 'bg-gradient-to-br from-green-500 to-green-600'
                     }`}>
                       {userRole === 'buyer' ? (
-                        <Shield className="h-6 w-6 text-white" />
+                        selectedConversation.type === 'buyer_supplier' ? (
+                          <Building2 className="h-6 w-6 text-white" />
+                        ) : (
+                          <Shield className="h-6 w-6 text-white" />
+                        )
                       ) : (
                         <User className="h-6 w-6 text-white" />
                       )}

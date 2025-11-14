@@ -14,13 +14,16 @@ import {
   User,
   ArrowRight,
   Star,
-  CheckCircle
+  CheckCircle,
+  Phone
 } from 'lucide-react';
 import Breadcrumb from '@/components/Breadcrumb';
 import { useToast } from '@/hooks/use-toast';
 import AIAssistant from '@/components/AIAssistant';
+import ImprovedChatInterface from '@/components/chat/ImprovedChatInterface';
 
 export default function Chat() {
+  const [showChatInterface, setShowChatInterface] = useState(false);
   const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const { toast } = useToast();
@@ -32,6 +35,18 @@ export default function Chat() {
   });
 
   const user = (userData as any)?.user;
+
+  const handleStartChat = () => {
+    if (!user) {
+      toast({
+        title: "Please Sign In",
+        description: "You need to be signed in to start a chat.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setShowChatInterface(true);
+  };
 
   const handleOpenAIAssistant = () => {
     setIsAIAssistantOpen(true);
@@ -81,7 +96,7 @@ export default function Chat() {
 
           {/* Chat Interface */}
           <div className="h-[calc(100vh-120px)]">
-            <ImprovedChatInterface userRole="buyer" userId={user.id} />
+            <ImprovedChatInterface userRole={user.role || "buyer"} userId={user.id} />
           </div>
         </div>
       </div>

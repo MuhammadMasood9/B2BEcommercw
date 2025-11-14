@@ -61,14 +61,28 @@ export default function FloatingChatWidget({
         return existing;
       }
       
-      // Create new conversation
-      return await apiRequest('POST', '/api/chat/conversations', {
-        supplierId,
-        productId,
-        subject: productName 
-          ? `Inquiry about ${productName}` 
-          : `Chat with ${supplierName || 'Supplier'}`
-      });
+      // Create new conversation with proper type
+      const payload: any = {
+        type: 'buyer_supplier'
+      };
+      
+      if (supplierId) {
+        payload.supplierId = supplierId;
+      }
+      
+      if (productId) {
+        payload.productId = productId;
+      }
+      
+      if (productName) {
+        payload.subject = `Inquiry about ${productName}`;
+      } else if (supplierName) {
+        payload.subject = `Chat with ${supplierName}`;
+      } else {
+        payload.subject = 'Product Inquiry';
+      }
+      
+      return await apiRequest('POST', '/api/chat/conversations', payload);
     },
     enabled: isOpen && !!user && !!supplierId,
   });
@@ -164,9 +178,15 @@ export default function FloatingChatWidget({
         >
           <MessageCircle className="h-6 w-6" />
           {/* Unread badge */}
-          <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center bg-red-500 text-white text-xs">
-            0
-          </Badge>
+          {((user?.role === 'buyer' && conversationData?.unreadCountBuyer > 0) ||
+            (user?.role === 'supplier' && conversationData?.unreadCountSupplier > 0) ||
+            (user?.role === 'admin' && conversationData?.unreadCountAdmin > 0)) && (
+            <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center bg-red-500 text-white text-xs">
+              {user?.role === 'buyer' ? conversationData.unreadCountBuyer :
+               user?.role === 'supplier' ? conversationData.unreadCountSupplier :
+               conversationData.unreadCountAdmin}
+            </Badge>
+          )}
         </Button>
       )}
 
@@ -189,13 +209,22 @@ export default function FloatingChatWidget({
                     {supplierName || 'Supplier'}
                   </CardTitle>
                   {productName && (
-                    <p className="text-xs text-primary truncate max-w-[200px]">
+                    <p className="text-xs text-white/80 truncate max-w-[200px]">
                       {productName}
                     </p>
                   )}
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                {((user?.role === 'buyer' && conversationData?.unreadCountBuyer > 0) ||
+                  (user?.role === 'supplier' && conversationData?.unreadCountSupplier > 0) ||
+                  (user?.role === 'admin' && conversationData?.unreadCountAdmin > 0)) && (
+                  <Badge variant="destructive" className="h-5 w-5 p-0 flex items-center justify-center text-xs">
+                    {user?.role === 'buyer' ? conversationData.unreadCountBuyer :
+                     user?.role === 'supplier' ? conversationData.unreadCountSupplier :
+                     conversationData.unreadCountAdmin}
+                  </Badge>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"

@@ -280,14 +280,14 @@ export default function ProductDetail() {
     if (!user) {
       toast({
         title: "Please Sign In",
-        description: "You need to be signed in to contact the admin.",
+        description: "You need to be signed in to contact the supplier.",
         variant: "destructive",
       });
       return;
     }
 
     const params = new URLSearchParams({
-      chatType: 'product',
+      chatType: 'buyer_supplier',
       productId: product.id,
       productName: product.name || 'Product',
     });
@@ -695,7 +695,7 @@ export default function ProductDetail() {
                               className="flex-1 bg-brand-grey-900 hover:bg-brand-grey-800 text-white py-2 rounded text-sm"
                             >
                               <MessageSquare className="w-4 h-4 mr-1" />
-                              Contact Admin
+                              Contact Supplier
                             </Button>
                             <Button
                               variant="outline"

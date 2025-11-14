@@ -12,7 +12,8 @@ import {
   Shield,
   Clock,
   CheckCircle,
-  Circle
+  Circle,
+  Building2
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -39,7 +40,7 @@ interface ConversationListProps {
   selectedConversationId?: string;
   onSelectConversation: (conversationId: string) => void;
   onCreateConversation?: () => void;
-  userRole: 'buyer' | 'admin';
+  userRole: 'buyer' | 'admin' | 'supplier';
   searchQuery: string;
   onSearchChange: (query: string) => void;
 }
@@ -57,17 +58,37 @@ export default function ConversationList({
 
   const getConversationTitle = (conversation: Conversation) => {
     if (userRole === 'buyer') {
-      return conversation.adminName || conversation.adminEmail || 'Admin';
+      // For buyers, show supplier name if it's a buyer-supplier conversation, otherwise admin
+      if ((conversation as any).type === 'buyer_supplier' && (conversation as any).supplierName) {
+        return (conversation as any).supplierName;
+      }
+      return conversation.adminName || conversation.adminEmail || 'Support Team';
+    } else if (userRole === 'supplier') {
+      return conversation.buyerName || conversation.buyerEmail || 'Customer';
     } else {
-      return conversation.buyerName || conversation.buyerEmail || 'Buyer';
+      // Admin view - show conversation participants
+      if ((conversation as any).type === 'buyer_supplier') {
+        return `${conversation.buyerName || 'Customer'} ↔ ${(conversation as any).supplierName || 'Supplier'}`;
+      }
+      return conversation.buyerName || conversation.buyerEmail || 'Customer';
     }
   };
 
   const getConversationSubtitle = (conversation: Conversation) => {
     if (userRole === 'buyer') {
+      if ((conversation as any).type === 'buyer_supplier' && (conversation as any).supplierCompany) {
+        return (conversation as any).supplierCompany;
+      }
       return conversation.adminCompany || 'Support Team';
-    } else {
+    } else if (userRole === 'supplier') {
       return conversation.buyerCompany || 'Customer';
+    } else {
+      // Admin view - show conversation type and product if applicable
+      let subtitle = (conversation as any).type === 'buyer_supplier' ? 'Buyer-Supplier Chat' : 'Support Chat';
+      if (conversation.productId) {
+        subtitle += ' • Product Inquiry';
+      }
+      return subtitle;
     }
   };
 
@@ -112,7 +133,8 @@ export default function ConversationList({
       <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-primary to-orange-600">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-gray-900">
-            {userRole === 'buyer' ? 'Support Chats' : 'Customer Chats'}
+            {userRole === 'buyer' ? 'Support Chats' : 
+             userRole === 'supplier' ? 'Customer Chats' : 'All Conversations'}
           </h2>
           <div className="flex items-center space-x-2">
             <Button
@@ -159,8 +181,10 @@ export default function ConversationList({
             </h3>
             <p className="text-gray-500 text-sm">
               {userRole === 'buyer' 
-                ? 'Start a conversation with our support team'
-                : 'Customer conversations will appear here'
+                ? 'Start a conversation with our support team or suppliers'
+                : userRole === 'supplier'
+                ? 'Customer conversations will appear here'
+                : 'All platform conversations will appear here'
               }
             </p>
             {userRole === 'buyer' && onCreateConversation && (
@@ -190,11 +214,29 @@ export default function ConversationList({
                   <div className="flex items-start space-x-3">
                     {/* Avatar */}
                     <div className="flex-shrink-0">
-                      <div className="w-12 h-12 bg-gradient-to-br from-primary to-orange-600 rounded-full flex items-center justify-center shadow-md">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-md ${
+                        userRole === 'buyer' 
+                          ? ((conversation as any).type === 'buyer_supplier' 
+                             ? 'bg-gradient-to-br from-blue-500 to-blue-600'
+                             : 'bg-gradient-to-br from-primary to-orange-600')
+                          : userRole === 'supplier'
+                          ? 'bg-gradient-to-br from-green-500 to-green-600'
+                          : 'bg-gradient-to-br from-purple-500 to-purple-600'
+                      }`}>
                         {userRole === 'buyer' ? (
-                          <Shield className="h-6 w-6 text-white" />
-                        ) : (
+                          (conversation as any).type === 'buyer_supplier' ? (
+                            <Building2 className="h-6 w-6 text-white" />
+                          ) : (
+                            <Shield className="h-6 w-6 text-white" />
+                          )
+                        ) : userRole === 'supplier' ? (
                           <User className="h-6 w-6 text-white" />
+                        ) : (
+                          (conversation as any).type === 'buyer_supplier' ? (
+                            <Building2 className="h-6 w-6 text-white" />
+                          ) : (
+                            <Shield className="h-6 w-6 text-white" />
+                          )
                         )}
                       </div>
                     </div>
@@ -207,9 +249,14 @@ export default function ConversationList({
                         </h4>
                         <div className="flex items-center space-x-1">
                           {getStatusIcon(conversation.status)}
-                          {conversation.unreadCount && conversation.unreadCount > 0 && (
+                          {/* Show correct unread count based on user role */}
+                          {((userRole === 'buyer' && (conversation as any).unreadCountBuyer > 0) ||
+                            (userRole === 'supplier' && (conversation as any).unreadCountSupplier > 0) ||
+                            (userRole === 'admin' && (conversation as any).unreadCountAdmin > 0)) && (
                             <Badge variant="destructive" className="h-5 w-5 p-0 flex items-center justify-center text-xs">
-                              {conversation.unreadCount}
+                              {userRole === 'buyer' ? (conversation as any).unreadCountBuyer :
+                               userRole === 'supplier' ? (conversation as any).unreadCountSupplier :
+                               (conversation as any).unreadCountAdmin}
                             </Badge>
                           )}
                         </div>

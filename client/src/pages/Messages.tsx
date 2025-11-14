@@ -127,7 +127,7 @@ export default function Messages() {
         payload.subject = 'New Inquiry';
       }
 
-      payload.type = 'buyer_supplier';
+      payload.type = intent === 'supplier' ? 'buyer_supplier' : 'buyer_supplier';
 
       return apiRequest('POST', '/api/chat/conversations', payload);
     },
@@ -301,19 +301,27 @@ export default function Messages() {
     }
   });
 
-  const getTitle = (c: any) =>
-    c.supplierName ||
-    c.adminName ||
-    c.adminEmail ||
-    c.buyerName ||
-    c.buyerEmail ||
-    'Chat';
+  const getTitle = (c: any) => {
+    // For buyers, show supplier name for buyer-supplier conversations, otherwise admin
+    if (user?.role === 'buyer') {
+      if (c.type === 'buyer_supplier' && c.supplierName) {
+        return c.supplierName;
+      }
+      return c.adminName || c.adminEmail || 'Support Team';
+    }
+    // For suppliers and admins, show buyer name
+    return c.buyerName || c.buyerEmail || 'Customer';
+  };
 
-  const getCompany = (c: any) =>
-    c.supplierCompany ||
-    c.adminCompany ||
-    c.buyerCompany ||
-    '';
+  const getCompany = (c: any) => {
+    if (user?.role === 'buyer') {
+      if (c.type === 'buyer_supplier' && c.supplierCompany) {
+        return c.supplierCompany;
+      }
+      return c.adminCompany || 'Support Team';
+    }
+    return c.buyerCompany || 'Customer';
+  };
 
   const getAvatarImage = (c: any) => {
     const img = c.productImages?.[0];

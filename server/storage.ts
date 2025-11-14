@@ -270,16 +270,31 @@ export interface IStorage {
 
   // Conversation operations
   getConversations(userId: string, role: 'buyer' | 'admin'): Promise<Conversation[]>;
+  getBuyerConversations(buyerId: string): Promise<any[]>;
+  getSupplierConversations(supplierId: string): Promise<any[]>;
+  getAdminConversations(adminId: string): Promise<any[]>;
+  getAllConversationsForAdmin(adminId?: string): Promise<any[]>;
   getConversation(id: string): Promise<Conversation | undefined>;
   getOrCreateConversation(buyerId: string): Promise<Conversation>;
+  createConversation(data: {
+    buyerId: string;
+    supplierId?: string;
+    adminId?: string;
+    productId?: string;
+    type?: string;
+  }): Promise<Conversation>;
   updateConversation(id: string, conversation: Partial<InsertConversation>): Promise<Conversation | undefined>;
+  resolveSupplierUserId(identifier?: string | null): Promise<string | null>;
 
   // Message operations
   getMessages(conversationId: string): Promise<Message[]>;
+  getConversationMessages(conversationId: string, userId: string, userRole?: string, limit?: number, before?: string): Promise<any[]>;
   getMessage(id: string): Promise<Message | undefined>;
   createMessage(message: InsertMessage): Promise<Message>;
   markMessageAsRead(id: string): Promise<void>;
   markConversationMessagesAsRead(conversationId: string, userId: string): Promise<void>;
+  getUnreadMessageCount(userId: string): Promise<number>;
+  updateConversationLastMessage(conversationId: string): Promise<void>;
 
   // Review operations
   getReviews(filters?: { productId?: string; buyerId?: string }): Promise<Review[]>;
@@ -1088,7 +1103,7 @@ export class PostgresStorage implements IStorage {
     const [created] = await db.insert(conversations)
       .values({
         buyerId,
-        unreadCountAdmin: '0',
+        unreadCountAdmin: 0,
         unreadCountBuyer: 0,
         unreadCountSupplier: 0
       })
@@ -1124,6 +1139,9 @@ export class PostgresStorage implements IStorage {
   }
 
   async markConversationMessagesAsRead(conversationId: string, userId: string): Promise<void> {
+    await ensureConversationSchemaPatched();
+    
+    // Mark messages as read for this user
     await db.update(messages)
       .set({ isRead: true })
       .where(and(
@@ -1132,24 +1150,40 @@ export class PostgresStorage implements IStorage {
         eq(messages.isRead, false)
       ));
 
-    // Reset unread count
-    const conversation = await db.select().from(conversations)
+    // Get conversation details to determine user role
+    const [conversation] = await db.select({
+      id: conversations.id,
+      buyerId: conversations.buyerId,
+      supplierId: conversations.supplierId,
+      adminId: conversations.adminId
+    }).from(conversations)
       .where(eq(conversations.id, conversationId))
       .limit(1);
 
-    if (conversation[0]) {
-      let unreadField: 'unreadCountBuyer' | 'unreadCountAdmin' | 'unreadCountSupplier' = 'unreadCountBuyer';
+    if (!conversation) {
+      return;
+    }
 
-      if (userId === conversation[0].buyerId) {
-        unreadField = 'unreadCountBuyer';
-      } else if (conversation[0].supplierId && userId === conversation[0].supplierId) {
-        unreadField = 'unreadCountSupplier';
-      } else {
-        unreadField = 'unreadCountAdmin';
-      }
+    // Resolve supplier user ID if needed
+    let normalizedSupplierId = conversation.supplierId;
+    if (conversation.supplierId) {
+      normalizedSupplierId = await this.resolveSupplierUserId(conversation.supplierId);
+    }
 
+    // Determine which unread count to reset based on user role
+    const updateData: any = {};
+    
+    if (userId === conversation.buyerId) {
+      updateData.unreadCountBuyer = 0;
+    } else if (normalizedSupplierId && userId === normalizedSupplierId) {
+      updateData.unreadCountSupplier = 0;
+    } else if (conversation.adminId && userId === conversation.adminId) {
+      updateData.unreadCountAdmin = 0;
+    }
+
+    if (Object.keys(updateData).length > 0) {
       await db.update(conversations)
-        .set({ [unreadField]: 0 })
+        .set(updateData)
         .where(eq(conversations.id, conversationId));
     }
   }
@@ -1750,15 +1784,16 @@ export class PostgresStorage implements IStorage {
       buyerId: conversations.buyerId,
       supplierId: sql<string>`COALESCE(${supplierProfiles.userId}, ${conversations.supplierId})`,
       supplierProfileId: supplierProfiles.id,
-      adminId: conversations.unreadCountAdmin, // This is actually adminId in existing table
+      adminId: conversations.adminId,
       type: conversations.type,
       subject: conversations.lastMessage,
       lastMessage: conversations.lastMessage,
-      status: sql`'active'`.as('status'), // Default status since it doesn't exist in existing table
+      status: sql`'active'`.as('status'),
       lastMessageAt: conversations.lastMessageAt,
       createdAt: conversations.createdAt,
       unreadCountBuyer: conversations.unreadCountBuyer,
       unreadCountSupplier: conversations.unreadCountSupplier,
+      unreadCountAdmin: conversations.unreadCountAdmin,
       unreadCount: conversations.unreadCountBuyer,
       // Join with admin data
       adminName: users.firstName,
@@ -1774,7 +1809,7 @@ export class PostgresStorage implements IStorage {
       supplierCountry: supplierProfiles.country
     })
       .from(conversations)
-      .leftJoin(users, eq(conversations.unreadCountAdmin, users.id))
+      .leftJoin(users, eq(conversations.adminId, users.id))
       .leftJoin(products, eq(conversations.productId, products.id))
       .leftJoin(supplierProfiles, supplierJoinCondition)
       .where(eq(conversations.buyerId, buyerId))
@@ -1785,40 +1820,7 @@ export class PostgresStorage implements IStorage {
 
   async getAdminConversations(adminId: string) {
     await ensureConversationSchemaPatched();
-    const results = await db.select({
-      id: conversations.id,
-      buyerId: conversations.buyerId,
-      supplierId: conversations.supplierId,
-      adminId: conversations.unreadCountAdmin, // This field actually stores adminId
-      type: conversations.type,
-      subject: conversations.lastMessage,
-      lastMessage: conversations.lastMessage,
-      status: sql`'active'`.as('status'),
-      lastMessageAt: conversations.lastMessageAt,
-      createdAt: conversations.createdAt,
-      productId: conversations.productId,
-      // Join with buyer data
-      buyerName: users.firstName,
-      buyerEmail: users.email,
-      buyerCompany: users.companyName,
-      productName: products.name,
-      productImages: products.images,
-      supplierName: supplierProfiles.storeName,
-      supplierCompany: supplierProfiles.businessName,
-      supplierSlug: supplierProfiles.storeSlug
-    })
-      .from(conversations)
-      .leftJoin(users, eq(conversations.buyerId, users.id))
-      .leftJoin(products, eq(conversations.productId, products.id))
-      .leftJoin(supplierProfiles, eq(conversations.supplierId, supplierProfiles.id))
-      .where(eq(conversations.unreadCountAdmin, adminId))
-      .orderBy(desc(conversations.lastMessageAt));
-
-    return results;
-  }
-
-  async getSupplierConversations(supplierId: string) {
-    await ensureConversationSchemaPatched();
+    
     const supplierJoinCondition = or(
       eq(conversations.supplierId, supplierProfiles.id),
       eq(conversations.supplierId, supplierProfiles.userId)
@@ -1829,6 +1831,63 @@ export class PostgresStorage implements IStorage {
       buyerId: conversations.buyerId,
       supplierId: sql<string>`COALESCE(${supplierProfiles.userId}, ${conversations.supplierId})`,
       supplierProfileId: supplierProfiles.id,
+      adminId: conversations.adminId,
+      type: conversations.type,
+      subject: conversations.lastMessage,
+      lastMessage: conversations.lastMessage,
+      status: sql`'active'`.as('status'),
+      lastMessageAt: conversations.lastMessageAt,
+      createdAt: conversations.createdAt,
+      unreadCountBuyer: conversations.unreadCountBuyer,
+      unreadCountSupplier: conversations.unreadCountSupplier,
+      unreadCountAdmin: conversations.unreadCountAdmin,
+      unreadCount: conversations.unreadCountAdmin,
+      productId: conversations.productId,
+      // Join with buyer data
+      buyerName: users.firstName,
+      buyerEmail: users.email,
+      buyerCompany: users.companyName,
+      productName: products.name,
+      productImages: products.images,
+      supplierName: supplierProfiles.storeName,
+      supplierCompany: supplierProfiles.businessName,
+      supplierSlug: supplierProfiles.storeSlug,
+      supplierLogo: supplierProfiles.storeLogo,
+      supplierCountry: supplierProfiles.country
+    })
+      .from(conversations)
+      .leftJoin(users, eq(conversations.buyerId, users.id))
+      .leftJoin(products, eq(conversations.productId, products.id))
+      .leftJoin(supplierProfiles, supplierJoinCondition)
+      .where(eq(conversations.adminId, adminId))
+      .orderBy(desc(conversations.lastMessageAt));
+
+    return results;
+  }
+
+  async getSupplierConversations(supplierId: string) {
+    await ensureConversationSchemaPatched();
+    
+    // First resolve the supplier user ID
+    const resolvedSupplierId = await this.resolveSupplierUserId(supplierId);
+    
+    const supplierJoinCondition = or(
+      eq(conversations.supplierId, supplierProfiles.id),
+      eq(conversations.supplierId, supplierProfiles.userId)
+    );
+
+    const whereCondition = or(
+      eq(conversations.supplierId, supplierId),
+      eq(conversations.supplierId, resolvedSupplierId || supplierId),
+      eq(supplierProfiles.userId, supplierId)
+    );
+
+    const results = await db.select({
+      id: conversations.id,
+      buyerId: conversations.buyerId,
+      supplierId: sql<string>`COALESCE(${supplierProfiles.userId}, ${conversations.supplierId})`,
+      supplierProfileId: supplierProfiles.id,
+      adminId: conversations.adminId,
       type: conversations.type,
       subject: conversations.lastMessage,
       lastMessage: conversations.lastMessage,
@@ -1838,19 +1897,24 @@ export class PostgresStorage implements IStorage {
       productId: conversations.productId,
       unreadCountBuyer: conversations.unreadCountBuyer,
       unreadCountSupplier: conversations.unreadCountSupplier,
+      unreadCountAdmin: conversations.unreadCountAdmin,
       unreadCount: conversations.unreadCountSupplier,
       // Join with buyer data
       buyerName: users.firstName,
       buyerEmail: users.email,
       buyerCompany: users.companyName,
       productName: products.name,
-      productImages: products.images
+      productImages: products.images,
+      // Join with admin data
+      adminName: sql<string>`admin_users.first_name`,
+      adminEmail: sql<string>`admin_users.email`
     })
       .from(conversations)
       .leftJoin(users, eq(conversations.buyerId, users.id))
       .leftJoin(products, eq(conversations.productId, products.id))
       .leftJoin(supplierProfiles, supplierJoinCondition)
-      .where(or(eq(conversations.supplierId, supplierId), eq(supplierProfiles.userId, supplierId)))
+      .leftJoin(sql`users as admin_users`, sql`admin_users.id = ${conversations.adminId}`)
+      .where(whereCondition)
       .orderBy(desc(conversations.lastMessageAt));
 
     return results;
@@ -1858,17 +1922,25 @@ export class PostgresStorage implements IStorage {
 
   async getAllConversationsForAdmin(adminId?: string) {
     await ensureConversationSchemaPatched();
-    let whereCondition = sql`1=1`; // Default condition
+    
+    const supplierJoinCondition = or(
+      eq(conversations.supplierId, supplierProfiles.id),
+      eq(conversations.supplierId, supplierProfiles.userId)
+    );
+
+    let whereCondition = sql`1=1`; // Default condition - show all conversations for admin overview
 
     if (adminId) {
-      whereCondition = eq(conversations.unreadCountAdmin, adminId);
+      // If specific admin ID provided, show only conversations where this admin is a participant
+      whereCondition = eq(conversations.adminId, adminId);
     }
 
     const results = await db.select({
       id: conversations.id,
       buyerId: conversations.buyerId,
-      supplierId: conversations.supplierId,
-      adminId: conversations.unreadCountAdmin, // This field actually stores adminId
+      supplierId: sql<string>`COALESCE(${supplierProfiles.userId}, ${conversations.supplierId})`,
+      supplierProfileId: supplierProfiles.id,
+      adminId: conversations.adminId,
       type: conversations.type,
       subject: conversations.lastMessage,
       lastMessage: conversations.lastMessage,
@@ -1878,6 +1950,8 @@ export class PostgresStorage implements IStorage {
       productId: conversations.productId,
       unreadCountBuyer: conversations.unreadCountBuyer,
       unreadCountSupplier: conversations.unreadCountSupplier,
+      unreadCountAdmin: conversations.unreadCountAdmin,
+      unreadCount: conversations.unreadCountAdmin,
       // Join with buyer data
       buyerName: users.firstName,
       buyerEmail: users.email,
@@ -1887,52 +1961,73 @@ export class PostgresStorage implements IStorage {
       productImages: products.images,
       supplierName: supplierProfiles.storeName,
       supplierCompany: supplierProfiles.businessName,
-      supplierSlug: supplierProfiles.storeSlug
+      supplierSlug: supplierProfiles.storeSlug,
+      supplierLogo: supplierProfiles.storeLogo,
+      supplierCountry: supplierProfiles.country
     })
       .from(conversations)
       .leftJoin(users, eq(conversations.buyerId, users.id))
       .leftJoin(products, eq(conversations.productId, products.id))
-      .leftJoin(supplierProfiles, eq(conversations.supplierId, supplierProfiles.id))
+      .leftJoin(supplierProfiles, supplierJoinCondition)
       .where(whereCondition)
       .orderBy(desc(conversations.lastMessageAt));
 
     return results;
   }
 
-  async getConversationMessages(conversationId: string, userId: string, userRole?: string) {
-    // First get the conversation to determine admin ID
-    const conversation = await db.select({
+  async getConversationMessages(conversationId: string, userId: string, userRole?: string, limit: number = 50, before?: string): Promise<any[]> {
+    await ensureConversationSchemaPatched();
+    
+    // Get conversation details to verify access and get participant info
+    const [conversation] = await db.select({
+      id: conversations.id,
       buyerId: conversations.buyerId,
-      adminId: conversations.unreadCountAdmin // This field actually stores adminId
+      supplierId: conversations.supplierId,
+      adminId: conversations.adminId,
+      type: conversations.type
     })
       .from(conversations)
       .where(eq(conversations.id, conversationId))
       .limit(1);
 
-    if (!conversation[0]) {
+    if (!conversation) {
       return [];
     }
 
-    let { buyerId, adminId } = conversation[0];
-
-    // If current user is admin and conversation has generic admin ID, update it
-    if (userRole === 'admin' && adminId === 'admin') {
-      await db.update(conversations)
-        .set({ unreadCountAdmin: userId })
-        .where(eq(conversations.id, conversationId));
-      adminId = userId; // Update local variable
+    // Resolve supplier user ID if needed
+    let normalizedSupplierId = conversation.supplierId;
+    if (conversation.supplierId) {
+      normalizedSupplierId = await this.resolveSupplierUserId(conversation.supplierId);
     }
 
+    // Verify user has access to this conversation
+    const hasAccess = userId === conversation.buyerId || 
+                     userId === normalizedSupplierId || 
+                     userId === conversation.adminId ||
+                     userRole === 'admin';
+
+    if (!hasAccess) {
+      throw new Error('Access denied to conversation');
+    }
+
+    // Build query conditions
+    const conditions = [eq(messages.conversationId, conversationId)];
+    
+    if (before) {
+      // For pagination - get messages before the specified message ID
+      conditions.push(sql`${messages.createdAt} < (SELECT created_at FROM messages WHERE id = ${before})`);
+    }
+
+    // Get messages with sender details
     const results = await db.select({
       id: messages.id,
       conversationId: messages.conversationId,
       senderId: messages.senderId,
+      receiverId: messages.receiverId,
       senderType: messages.senderType,
       content: messages.message,
-      messageType: sql`'text'`.as('messageType'),
       attachments: messages.attachments,
       isRead: messages.isRead,
-      readAt: sql`NULL`.as('readAt'),
       createdAt: messages.createdAt,
       // Join with sender data
       senderName: users.firstName,
@@ -1941,125 +2036,116 @@ export class PostgresStorage implements IStorage {
     })
       .from(messages)
       .leftJoin(users, eq(messages.senderId, users.id))
-      .where(eq(messages.conversationId, conversationId))
-      .orderBy(asc(messages.createdAt));
+      .where(and(...conditions))
+      .orderBy(desc(messages.createdAt))
+      .limit(limit);
 
-    // Add proper sender type based on current user role and conversation data
+    // Process results to ensure correct sender types and names
     const processedResults = results.map(msg => {
-      // Check if the sender is the current admin user (regardless of conversation admin ID)
-      const isCurrentAdmin = msg.senderId === userId && userRole === 'admin';
-      // Check if the sender matches the conversation's admin ID
-      const isConversationAdmin = msg.senderId === adminId;
+      let senderType = msg.senderType || 'buyer';
+      let senderName = msg.senderName || 'User';
 
-      // Determine if this is an admin message
-      // Priority: if current user is admin and sent the message, it's admin
-      const isAdminMessage = isCurrentAdmin || isConversationAdmin;
-
-      console.log('Message processing:', {
-        messageId: msg.id,
-        senderId: msg.senderId,
-        userId: userId,
-        userRole: userRole,
-        conversationAdminId: adminId,
-        isCurrentAdmin: isCurrentAdmin,
-        isConversationAdmin: isConversationAdmin,
-        isAdminMessage: isAdminMessage,
-        finalSenderType: isAdminMessage ? 'admin' : 'buyer'
-      });
+      // Determine sender type based on conversation participants
+      if (msg.senderId === conversation.buyerId) {
+        senderType = 'buyer';
+      } else if (normalizedSupplierId && msg.senderId === normalizedSupplierId) {
+        senderType = 'supplier';
+      } else if (conversation.adminId && msg.senderId === conversation.adminId) {
+        senderType = 'admin';
+        senderName = msg.senderName || 'Admin';
+      }
 
       return {
         ...msg,
-        senderType: isAdminMessage ? 'admin' : 'buyer',
-        senderName: isAdminMessage
-          ? (msg.senderName || 'Admin')
-          : (msg.senderName || 'Customer')
+        senderType,
+        senderName,
+        messageType: 'text' // Default message type
       };
     });
 
-    return processedResults;
+    // Return in chronological order (oldest first)
+    return processedResults.reverse();
   }
 
   async createConversation(data: {
     buyerId: string;
-    adminId?: string;
     supplierId?: string;
-    subject?: string;
+    adminId?: string;
     productId?: string;
     type?: string;
-  }) {
+  }): Promise<Conversation> {
     await ensureConversationSchemaPatched();
-    const conversationType = data.type || (data.supplierId ? 'buyer_supplier' : data.adminId ? 'buyer_admin' : 'buyer_support');
-    const adminIdValue = data.adminId || null;
-    const supplierIdValue = data.supplierId || null;
-    const subject = data.subject || '';
-    const productIdValue = data.productId || null;
-    // First, try to check what columns exist in the conversations table
-    try {
-      // Try the full insert with all columns
-      const [conversation] = await db.insert(conversations)
-        .values({
-          buyerId: data.buyerId,
-          unreadCountAdmin: adminIdValue,
-          supplierId: supplierIdValue,
-          type: conversationType,
-          lastMessage: subject,
-          lastMessageAt: new Date(),
-          productId: productIdValue,
-          unreadCountBuyer: 0,
-          unreadCountSupplier: 0
-        })
-        .returning();
-
-      return conversation;
-    } catch (error: any) {
-      console.warn('⚠️  Full conversation creation failed, trying fallback:', error.message);
-      
-      // Try with minimal columns (only the ones that should definitely exist)
-      try {
-        const [conversation] = await db.insert(conversations)
-          .values({
-            buyerId: data.buyerId,
-            unreadCountAdmin: adminIdValue,
-            supplierId: supplierIdValue,
-            type: conversationType,
-            productId: productIdValue,
-            lastMessage: subject,
-            lastMessageAt: new Date(),
-            unreadCountBuyer: 0,
-            unreadCountSupplier: 0
-          })
-          .returning();
-
-        return conversation;
-      } catch (fallbackError: any) {
-        console.error('❌ Even fallback conversation creation failed:', fallbackError.message);
-        
-        // Last resort: use raw SQL with only essential columns
-        try {
-          const result = await db.execute(sql`
-            INSERT INTO conversations (id, buyer_id, unread_count_admin, supplier_id, type, product_id, last_message, last_message_at, unread_count_buyer, unread_count_supplier, created_at)
-            VALUES (gen_random_uuid(), ${data.buyerId}, ${adminIdValue}, ${supplierIdValue}, ${conversationType}, ${productIdValue}, ${subject}, NOW(), 0, 0, NOW())
-            RETURNING *
-          `);
-          
-          if (result.rows && result.rows.length > 0) {
-            return result.rows[0] as any;
-          }
-        } catch (rawError: any) {
-          console.error('❌ Raw SQL conversation creation also failed:', rawError.message);
-        }
-        
-        throw new Error(`Failed to create conversation: ${error.message}`);
+    
+    // Determine conversation type based on participants
+    let conversationType = data.type;
+    if (!conversationType) {
+      if (data.supplierId && data.adminId) {
+        conversationType = 'support'; // Multi-party conversation
+      } else if (data.supplierId) {
+        conversationType = 'buyer_supplier';
+      } else if (data.adminId) {
+        conversationType = 'buyer_admin';
+      } else {
+        conversationType = 'buyer_support'; // Default fallback
       }
     }
+
+    // Resolve supplier user ID if needed
+    let resolvedSupplierId = null;
+    if (data.supplierId) {
+      resolvedSupplierId = await this.resolveSupplierUserId(data.supplierId);
+    }
+
+    // Check if conversation already exists for this combination
+    const existingConditions = [eq(conversations.buyerId, data.buyerId)];
+    
+    if (resolvedSupplierId) {
+      existingConditions.push(eq(conversations.supplierId, resolvedSupplierId));
+    }
+    if (data.adminId) {
+      existingConditions.push(eq(conversations.adminId, data.adminId));
+    }
+    if (data.productId) {
+      existingConditions.push(eq(conversations.productId, data.productId));
+    }
+
+    const [existing] = await db.select()
+      .from(conversations)
+      .where(and(...existingConditions))
+      .limit(1);
+
+    if (existing) {
+      return existing;
+    }
+
+    // Create new conversation
+    const [conversation] = await db.insert(conversations)
+      .values({
+        buyerId: data.buyerId,
+        supplierId: resolvedSupplierId,
+        adminId: data.adminId || null,
+        productId: data.productId || null,
+        type: conversationType,
+        lastMessage: null,
+        lastMessageAt: null,
+        unreadCountBuyer: 0,
+        unreadCountSupplier: 0,
+        unreadCountAdmin: 0
+      })
+      .returning();
+
+    return conversation;
   }
 
   async createMessage(message: InsertMessage): Promise<Message> {
+    await ensureConversationSchemaPatched();
+    
     const [conversation] = await db.select({
       id: conversations.id,
       buyerId: conversations.buyerId,
       supplierId: conversations.supplierId,
-      adminId: conversations.unreadCountAdmin
+      adminId: conversations.adminId,
+      type: conversations.type
     })
       .from(conversations)
       .where(eq(conversations.id, message.conversationId))
@@ -2069,6 +2155,7 @@ export class PostgresStorage implements IStorage {
       throw new Error('Conversation not found');
     }
 
+    // Resolve supplier user ID if needed
     let normalizedSupplierId = conversation.supplierId;
     if (conversation.supplierId) {
       const resolvedSupplierId = await this.resolveSupplierUserId(conversation.supplierId);
@@ -2080,6 +2167,7 @@ export class PostgresStorage implements IStorage {
       }
     }
 
+    // Determine sender type and receiver
     const isFromBuyer = message.senderId === conversation.buyerId;
     const isFromSupplier = normalizedSupplierId ? message.senderId === normalizedSupplierId : false;
     const isFromAdmin = conversation.adminId ? message.senderId === conversation.adminId : false;
@@ -2092,29 +2180,57 @@ export class PostgresStorage implements IStorage {
           ? 'admin'
           : 'buyer';
 
+    // Determine receiver ID based on conversation type and sender
+    let receiverId = message.receiverId;
+    if (!receiverId) {
+      if (isFromBuyer) {
+        receiverId = normalizedSupplierId || conversation.adminId;
+      } else if (isFromSupplier) {
+        receiverId = conversation.buyerId;
+      } else if (isFromAdmin) {
+        receiverId = conversation.buyerId;
+      }
+    }
+
+    // Create the message
     const [created] = await db.insert(messages).values({
       ...message,
-      receiverId: message.receiverId || (isFromBuyer ? normalizedSupplierId : conversation.buyerId) || null,
+      receiverId,
       senderType
     }).returning();
 
+    // Update conversation last message and increment unread counts
+    const updateData: any = {
+      lastMessage: message.message,
+      lastMessageAt: new Date()
+    };
+
+    // Increment unread counts for recipients (not the sender)
     if (isFromBuyer) {
-      await db.update(conversations)
-        .set({
-          lastMessage: message.message,
-          lastMessageAt: new Date(),
-          unreadCountSupplier: sql`COALESCE(${conversations.unreadCountSupplier}, 0) + 1`
-        })
-        .where(eq(conversations.id, message.conversationId));
-    } else {
-      await db.update(conversations)
-        .set({
-          lastMessage: message.message,
-          lastMessageAt: new Date(),
-          unreadCountBuyer: sql`COALESCE(${conversations.unreadCountBuyer}, 0) + 1`
-        })
-        .where(eq(conversations.id, message.conversationId));
+      // Buyer sent message - increment unread for supplier and admin
+      if (normalizedSupplierId) {
+        updateData.unreadCountSupplier = sql`COALESCE(${conversations.unreadCountSupplier}, 0) + 1`;
+      }
+      if (conversation.adminId) {
+        updateData.unreadCountAdmin = sql`COALESCE(${conversations.unreadCountAdmin}, 0) + 1`;
+      }
+    } else if (isFromSupplier) {
+      // Supplier sent message - increment unread for buyer and admin
+      updateData.unreadCountBuyer = sql`COALESCE(${conversations.unreadCountBuyer}, 0) + 1`;
+      if (conversation.adminId) {
+        updateData.unreadCountAdmin = sql`COALESCE(${conversations.unreadCountAdmin}, 0) + 1`;
+      }
+    } else if (isFromAdmin) {
+      // Admin sent message - increment unread for buyer and supplier
+      updateData.unreadCountBuyer = sql`COALESCE(${conversations.unreadCountBuyer}, 0) + 1`;
+      if (normalizedSupplierId) {
+        updateData.unreadCountSupplier = sql`COALESCE(${conversations.unreadCountSupplier}, 0) + 1`;
+      }
     }
+
+    await db.update(conversations)
+      .set(updateData)
+      .where(eq(conversations.id, message.conversationId));
 
     return created;
   }
@@ -2125,7 +2241,51 @@ export class PostgresStorage implements IStorage {
       .where(eq(conversations.id, conversationId));
   }
 
+  async getUnreadMessageCount(userId: string): Promise<number> {
+    await ensureConversationSchemaPatched();
+    
+    // Get all conversations where the user is a participant
+    const userConversations = await db.select({
+      id: conversations.id,
+      buyerId: conversations.buyerId,
+      supplierId: conversations.supplierId,
+      adminId: conversations.adminId,
+      unreadCountBuyer: conversations.unreadCountBuyer,
+      unreadCountSupplier: conversations.unreadCountSupplier,
+      unreadCountAdmin: conversations.unreadCountAdmin
+    })
+      .from(conversations)
+      .where(or(
+        eq(conversations.buyerId, userId),
+        eq(conversations.supplierId, userId),
+        eq(conversations.adminId, userId)
+      ));
+
+    let totalUnread = 0;
+
+    for (const conversation of userConversations) {
+      // Resolve supplier user ID if needed
+      let normalizedSupplierId = conversation.supplierId;
+      if (conversation.supplierId) {
+        normalizedSupplierId = await this.resolveSupplierUserId(conversation.supplierId);
+      }
+
+      // Determine which unread count applies to this user
+      if (userId === conversation.buyerId) {
+        totalUnread += conversation.unreadCountBuyer || 0;
+      } else if (normalizedSupplierId && userId === normalizedSupplierId) {
+        totalUnread += conversation.unreadCountSupplier || 0;
+      } else if (conversation.adminId && userId === conversation.adminId) {
+        totalUnread += conversation.unreadCountAdmin || 0;
+      }
+    }
+
+    return totalUnread;
+  }
+
   async markMessagesAsRead(conversationId: string, userId: string) {
+    await ensureConversationSchemaPatched();
+    
     // Mark messages as read
     await db.update(messages)
       .set({
@@ -2138,46 +2298,38 @@ export class PostgresStorage implements IStorage {
         )
       );
 
-    // Reset unread count for the user
-    const conversation = await db.select().from(conversations)
+    // Get conversation to determine user role and reset appropriate unread count
+    const [conversation] = await db.select().from(conversations)
       .where(eq(conversations.id, conversationId))
       .limit(1);
 
-    if (conversation[0]) {
-      const isFromBuyer = userId === conversation[0].buyerId;
+    if (conversation) {
+      // Resolve supplier user ID if needed
+      let normalizedSupplierId = conversation.supplierId;
+      if (conversation.supplierId) {
+        normalizedSupplierId = await this.resolveSupplierUserId(conversation.supplierId);
+      }
 
-      if (isFromBuyer) {
-        // Buyer read messages, reset admin unread count
+      const updateData: any = {};
+      
+      // Determine which unread count to reset based on user role in conversation
+      if (userId === conversation.buyerId) {
+        updateData.unreadCountBuyer = 0;
+      } else if (normalizedSupplierId && userId === normalizedSupplierId) {
+        updateData.unreadCountSupplier = 0;
+      } else if (conversation.adminId && userId === conversation.adminId) {
+        updateData.unreadCountAdmin = 0;
+      }
+
+      if (Object.keys(updateData).length > 0) {
         await db.update(conversations)
-          .set({ unreadCountSupplier: 0 })
-          .where(eq(conversations.id, conversationId));
-      } else {
-        // Admin read messages, reset buyer unread count
-        await db.update(conversations)
-          .set({ unreadCountBuyer: 0 })
+          .set(updateData)
           .where(eq(conversations.id, conversationId));
       }
     }
   }
 
-  async getUnreadMessageCount(userId: string) {
-    const result = await db.select({ count: count() })
-      .from(messages)
-      .leftJoin(conversations, eq(messages.conversationId, conversations.id))
-      .where(
-        and(
-          or(
-            eq(conversations.buyerId, userId),
-            eq(conversations.unreadCountAdmin, userId),
-            eq(conversations.supplierId, userId)
-          ),
-          ne(messages.senderId, userId),
-          eq(messages.isRead, false)
-        )
-      );
 
-    return result[0]?.count || 0;
-  }
 
   async getAvailableAdmins() {
     const results = await db.select({

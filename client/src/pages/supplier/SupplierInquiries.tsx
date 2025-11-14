@@ -11,6 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import RestrictionBanner from "@/components/supplier/RestrictionBanner";
+import RestrictionModal from "@/components/supplier/RestrictionModal";
+import { useRestrictionCheck } from "@/hooks/useRestrictionCheck";
 import {
   Search,
   MessageSquare,
@@ -76,6 +79,15 @@ export default function SupplierInquiries() {
     validUntil: "",
     message: ""
   });
+
+  // Restriction check hook
+  const {
+    restrictionStatus,
+    showRestrictionModal,
+    setShowRestrictionModal,
+    restrictionActionType,
+    checkRestriction,
+  } = useRestrictionCheck();
 
   // Fetch inquiries with filters
   const { data: inquiriesData, isLoading: inquiriesLoading } = useQuery({
@@ -169,6 +181,11 @@ export default function SupplierInquiries() {
   };
 
   const handleCreateQuotation = (inquiry: Inquiry) => {
+    // Check restriction before allowing quotation creation
+    if (!checkRestriction("inquiry")) {
+      return;
+    }
+    
     setSelectedInquiry(inquiry);
     // Pre-fill quotation form with inquiry data
     setQuotationForm({
@@ -261,6 +278,9 @@ export default function SupplierInquiries() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Restriction Banner */}
+      <RestrictionBanner />
+
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -271,59 +291,83 @@ export default function SupplierInquiries() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <Card>
-          <CardContent className="p-4">
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Inquiries</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Total Inquiries
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-orange-50">
+                <MessageSquare className="h-5 w-5 text-orange-600" />
               </div>
-              <MessageSquare className="w-8 h-8 text-brand-orange-500" />
             </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{stats.total}</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
+
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Pending</p>
-                <p className="text-2xl font-bold">{stats.pending}</p>
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Pending
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-yellow-50">
+                <Clock className="h-5 w-5 text-yellow-600" />
               </div>
-              <Clock className="w-8 h-8 text-yellow-500" />
             </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{stats.pending}</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
+
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Replied</p>
-                <p className="text-2xl font-bold">{stats.replied}</p>
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Replied
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-orange-50">
+                <MessageSquare className="h-5 w-5 text-orange-600" />
               </div>
-              <MessageSquare className="w-8 h-8 text-brand-orange-500" />
             </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{stats.replied}</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
+
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Quoted</p>
-                <p className="text-2xl font-bold">{stats.quoted}</p>
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Quoted
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-purple-50">
+                <FileText className="h-5 w-5 text-purple-600" />
               </div>
-              <FileText className="w-8 h-8 text-purple-500" />
             </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{stats.quoted}</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
+
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">High Priority</p>
-                <p className="text-2xl font-bold">{stats.highPriority}</p>
+              <CardTitle className="text-sm font-medium text-gray-600">
+                High Priority
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-red-50">
+                <AlertCircle className="h-5 w-5 text-red-600" />
               </div>
-              <AlertCircle className="w-8 h-8 text-red-500" />
             </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{stats.highPriority}</div>
           </CardContent>
         </Card>
       </div>
@@ -738,6 +782,16 @@ export default function SupplierInquiries() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Restriction Modal */}
+      {restrictionStatus && (
+        <RestrictionModal
+          open={showRestrictionModal}
+          onOpenChange={setShowRestrictionModal}
+          restrictionStatus={restrictionStatus}
+          actionType={restrictionActionType}
+        />
+      )}
     </div>
   );
 }

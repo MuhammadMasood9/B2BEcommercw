@@ -60,7 +60,7 @@ router.get('/supplier/credit-status', requireAuth, requireRole('supplier'), asyn
     // Calculate total outstanding commissions
     const [outstandingResult] = await db
       .select({
-        total: sql<number>`COALESCE(SUM(${commissions.amount}), 0)`
+        total: sql<number>`COALESCE(SUM(CAST(${commissions.commissionAmount} AS DECIMAL)), 0)`
       })
       .from(commissions)
       .where(and(
@@ -71,11 +71,11 @@ router.get('/supplier/credit-status', requireAuth, requireRole('supplier'), asyn
     const totalOutstanding = outstandingResult?.total || 0;
 
     res.json({
-      currentBalance: profile.currentBalance || 0,
-      creditLimit: profile.creditLimit || 0,
+      currentBalance: 0, // Not used in current schema
+      creditLimit: parseFloat(profile.commissionCreditLimit || '10000'),
       totalOutstanding,
       isRestricted: profile.isRestricted || false,
-      restrictionReason: profile.restrictionReason
+      restrictionReason: null // Not used in current schema
     });
   } catch (error) {
     console.error('Error fetching credit status:', error);
@@ -106,7 +106,7 @@ router.post('/supplier/submit-payment', requireAuth, requireRole('supplier'), as
       return res.status(400).json({ message: 'Invalid commission selection' });
     }
 
-    const totalCommissionAmount = selectedCommissions.reduce((sum, c) => sum + parseFloat(c.amount), 0);
+    const totalCommissionAmount = selectedCommissions.reduce((sum, c) => sum + parseFloat(c.commissionAmount), 0);
 
     if (Math.abs(amount - totalCommissionAmount) > 0.01) {
       return res.status(400).json({ message: 'Payment amount does not match selected commissions' });
@@ -218,16 +218,15 @@ router.post('/admin/payment-submissions/:id/approve', requireAuth, requireRole('
         .update(commissions)
         .set({
           status: 'paid',
-          paidAt: new Date()
+          paymentDate: new Date()
         })
         .where(inArray(commissions.id, submission.commissionIds as string[]));
 
-      // Update supplier balance
+      // Update supplier last payment date
       await tx
         .update(supplierProfiles)
         .set({
-          currentBalance: sql`${supplierProfiles.currentBalance} + ${submission.amount}`,
-          lastPaymentAt: new Date()
+          lastPaymentDate: new Date()
         })
         .where(eq(supplierProfiles.userId, submission.supplierId));
     });
@@ -287,11 +286,9 @@ router.get('/admin/suppliers/credit-status', requireAuth, requireRole('admin'), 
         id: users.id,
         name: sql<string>`CONCAT(${users.firstName}, ' ', ${users.lastName})`,
         email: users.email,
-        currentBalance: supplierProfiles.currentBalance,
-        creditLimit: supplierProfiles.creditLimit,
+        creditLimit: supplierProfiles.commissionCreditLimit,
         isRestricted: supplierProfiles.isRestricted,
-        restrictionReason: supplierProfiles.restrictionReason,
-        lastPaymentAt: supplierProfiles.lastPaymentAt,
+        lastPaymentDate: supplierProfiles.lastPaymentDate,
         registeredAt: users.createdAt
       })
       .from(users)
@@ -303,7 +300,7 @@ router.get('/admin/suppliers/credit-status', requireAuth, requireRole('admin'), 
       suppliersWithCredit.map(async (supplier) => {
         const [outstandingResult] = await db
           .select({
-            total: sql<number>`COALESCE(SUM(${commissions.amount}), 0)`
+            total: sql<number>`COALESCE(SUM(CAST(${commissions.commissionAmount} AS DECIMAL)), 0)`
           })
           .from(commissions)
           .where(and(
@@ -313,11 +310,11 @@ router.get('/admin/suppliers/credit-status', requireAuth, requireRole('admin'), 
 
         return {
           ...supplier,
-          currentBalance: supplier.currentBalance || 0,
-          creditLimit: supplier.creditLimit || 0,
+          currentBalance: 0, // Not used in current schema
+          creditLimit: parseFloat(supplier.creditLimit || '10000'),
           totalOutstanding: outstandingResult?.total || 0,
           isRestricted: supplier.isRestricted || false,
-          lastPayment: supplier.lastPaymentAt
+          lastPayment: supplier.lastPaymentDate
         };
       })
     );
@@ -345,17 +342,11 @@ router.put('/admin/suppliers/:id/credit-limit', requireAuth, requireRole('admin'
       .where(eq(supplierProfiles.userId, supplierId));
 
     if (!existingProfile) {
-      await db
-        .insert(supplierProfiles)
-        .values({
-          userId: supplierId,
-          creditLimit,
-          currentBalance: 0
-        });
+      return res.status(404).json({ message: 'Supplier profile not found' });
     } else {
       await db
         .update(supplierProfiles)
-        .set({ creditLimit })
+        .set({ commissionCreditLimit: creditLimit.toString() })
         .where(eq(supplierProfiles.userId, supplierId));
     }
 
@@ -378,21 +369,12 @@ router.put('/admin/suppliers/:id/restriction', requireAuth, requireRole('admin')
       .where(eq(supplierProfiles.userId, supplierId));
 
     if (!existingProfile) {
-      await db
-        .insert(supplierProfiles)
-        .values({
-          userId: supplierId,
-          isRestricted,
-          restrictionReason: isRestricted ? restrictionReason : null,
-          creditLimit: 0,
-          currentBalance: 0
-        });
+      return res.status(404).json({ message: 'Supplier profile not found' });
     } else {
       await db
         .update(supplierProfiles)
         .set({
-          isRestricted,
-          restrictionReason: isRestricted ? restrictionReason : null
+          isRestricted
         })
         .where(eq(supplierProfiles.userId, supplierId));
     }

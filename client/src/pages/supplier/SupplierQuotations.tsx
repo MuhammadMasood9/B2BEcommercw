@@ -13,6 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Send, Eye, CheckCircle, XCircle, Clock, Plus, Search, Edit, RefreshCw, AlertCircle, TrendingUp } from "lucide-react";
 import { Link } from "wouter";
+import RestrictionBanner from "@/components/supplier/RestrictionBanner";
+import RestrictionModal from "@/components/supplier/RestrictionModal";
+import { useRestrictionCheck } from "@/hooks/useRestrictionCheck";
 
 export default function SupplierQuotations() {
   const [selectedQuotation, setSelectedQuotation] = useState<any>(null);
@@ -23,6 +26,16 @@ export default function SupplierQuotations() {
   const [typeFilter, setTypeFilter] = useState("all");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Restriction check hook
+  const {
+    isRestricted,
+    restrictionStatus,
+    showRestrictionModal,
+    setShowRestrictionModal,
+    restrictionActionType,
+    checkRestriction,
+  } = useRestrictionCheck();
 
   // Fetch supplier quotations
   const { data: quotationsResponse, isLoading } = useQuery({
@@ -145,11 +158,20 @@ export default function SupplierQuotations() {
   };
 
   const handleEditQuotation = (quotation: any) => {
+    // Check restriction before allowing edit
+    if (!checkRestriction("quotation")) {
+      return;
+    }
     setSelectedQuotation(quotation);
     setIsEditDialogOpen(true);
   };
 
   const handleResendQuotation = (quotation: any) => {
+    // Check restriction before allowing resend
+    if (!checkRestriction("quotation")) {
+      return;
+    }
+    
     // Extend validity and resend
     const newValidUntil = new Date();
     newValidUntil.setDate(newValidUntil.getDate() + 30);
@@ -269,6 +291,9 @@ export default function SupplierQuotations() {
 
   return (
     <div className="p-8 space-y-6">
+      {/* Restriction Banner */}
+      <RestrictionBanner />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -385,12 +410,37 @@ export default function SupplierQuotations() {
             <div className="text-center py-8 text-gray-500">Loading quotations...</div>
           ) : (
             <Tabs defaultValue="all" value={statusFilter} onValueChange={setStatusFilter}>
-              <TabsList>
-                <TabsTrigger value="all">All ({filteredQuotations.length})</TabsTrigger>
-                <TabsTrigger value="pending">Pending ({sentQuotations.length})</TabsTrigger>
-                <TabsTrigger value="accepted">Accepted ({acceptedQuotations.length})</TabsTrigger>
-                <TabsTrigger value="rejected">Rejected ({rejectedQuotations.length})</TabsTrigger>
-                <TabsTrigger value="expired">Expired ({expiredQuotations.length})</TabsTrigger>
+              <TabsList className="inline-flex h-12 items-center justify-start rounded-lg bg-gray-100 p-1 w-full">
+                <TabsTrigger 
+                  value="all"
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-6 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-brand-orange-500 data-[state=active]:text-white data-[state=active]:shadow-sm hover:bg-gray-200 data-[state=active]:hover:bg-brand-orange-600"
+                >
+                  All ({filteredQuotations.length})
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="pending"
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-6 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-brand-orange-500 data-[state=active]:text-white data-[state=active]:shadow-sm hover:bg-gray-200 data-[state=active]:hover:bg-brand-orange-600"
+                >
+                  Pending ({sentQuotations.length})
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="accepted"
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-6 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-brand-orange-500 data-[state=active]:text-white data-[state=active]:shadow-sm hover:bg-gray-200 data-[state=active]:hover:bg-brand-orange-600"
+                >
+                  Accepted ({acceptedQuotations.length})
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="rejected"
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-6 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-brand-orange-500 data-[state=active]:text-white data-[state=active]:shadow-sm hover:bg-gray-200 data-[state=active]:hover:bg-brand-orange-600"
+                >
+                  Rejected ({rejectedQuotations.length})
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="expired"
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-6 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-brand-orange-500 data-[state=active]:text-white data-[state=active]:shadow-sm hover:bg-gray-200 data-[state=active]:hover:bg-brand-orange-600"
+                >
+                  Expired ({expiredQuotations.length})
+                </TabsTrigger>
               </TabsList>
               <TabsContent value="all">
                 <QuotationTable data={filteredQuotations} />
@@ -650,6 +700,16 @@ export default function SupplierQuotations() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Restriction Modal */}
+      {restrictionStatus && (
+        <RestrictionModal
+          open={showRestrictionModal}
+          onOpenChange={setShowRestrictionModal}
+          restrictionStatus={restrictionStatus}
+          actionType={restrictionActionType}
+        />
+      )}
     </div>
   );
 }

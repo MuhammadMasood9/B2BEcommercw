@@ -262,6 +262,135 @@ export class NotificationService {
       }
     });
   }
+
+  /**
+   * Notify supplier about commission created (Task 12 - Requirement 2.5)
+   */
+  async notifyCommissionCreated(supplierId: string, commissionId: string, amount: number, rate: number, orderId: string, dueDate: Date) {
+    await this.createNotification({
+      userId: supplierId,
+      type: 'info',
+      title: 'Commission Created',
+      message: `A commission of ₹${amount.toFixed(2)} (${(rate * 100).toFixed(1)}%) has been created for order #${orderId}. Due date: ${dueDate.toLocaleDateString()}.`,
+      relatedId: commissionId,
+      relatedType: 'commission'
+    });
+
+    websocketService.sendToUser(supplierId, {
+      type: 'commission',
+      payload: {
+        action: 'created',
+        commission: { id: commissionId, amount, rate, orderId, dueDate }
+      }
+    });
+  }
+
+  /**
+   * Notify supplier about account restriction (Task 12 - Requirement 3.5)
+   */
+  async notifyAccountRestricted(supplierId: string, totalUnpaid: number) {
+    await this.createNotification({
+      userId: supplierId,
+      type: 'error',
+      title: 'Account Restricted',
+      message: `Your account has been restricted due to unpaid commissions (₹${totalUnpaid.toFixed(2)}). Please submit payment to restore access.`,
+      relatedType: 'commission'
+    });
+
+    websocketService.sendToUser(supplierId, {
+      type: 'restriction',
+      payload: {
+        action: 'restricted',
+        totalUnpaid
+      }
+    });
+  }
+
+  /**
+   * Notify supplier about account restriction lifted
+   */
+  async notifyAccountRestrictionLifted(supplierId: string) {
+    await this.createNotification({
+      userId: supplierId,
+      type: 'success',
+      title: 'Account Restriction Lifted',
+      message: `Your account restriction has been lifted. You can now access all features.`,
+      relatedType: 'commission'
+    });
+
+    websocketService.sendToUser(supplierId, {
+      type: 'restriction',
+      payload: {
+        action: 'lifted'
+      }
+    });
+  }
+
+  /**
+   * Notify admin about payment submission (Task 12 - Requirement 5.5)
+   */
+  async notifyPaymentSubmitted(adminId: string, paymentId: string, supplierName: string, amount: number) {
+    await this.createNotification({
+      userId: adminId,
+      type: 'info',
+      title: 'New Payment Submission',
+      message: `${supplierName} has submitted a commission payment of ₹${amount.toFixed(2)} for verification.`,
+      relatedId: paymentId,
+      relatedType: 'payment_submission'
+    });
+
+    websocketService.sendToUser(adminId, {
+      type: 'payment',
+      payload: {
+        action: 'submitted',
+        payment: { id: paymentId, supplierName, amount }
+      }
+    });
+  }
+
+  /**
+   * Notify supplier about payment approved (Task 12 - Requirement 6.5)
+   */
+  async notifyPaymentApproved(supplierId: string, paymentId: string, amount: number) {
+    await this.createNotification({
+      userId: supplierId,
+      type: 'success',
+      title: 'Payment Approved',
+      message: `Your commission payment of ₹${amount.toFixed(2)} has been verified and approved.`,
+      relatedId: paymentId,
+      relatedType: 'payment_submission'
+    });
+
+    websocketService.sendToUser(supplierId, {
+      type: 'payment',
+      payload: {
+        action: 'approved',
+        payment: { id: paymentId, amount }
+      }
+    });
+  }
+
+  /**
+   * Notify supplier about payment rejected (Task 12 - Requirement 7.3)
+   */
+  async notifyPaymentRejected(supplierId: string, paymentId: string, amount: number, reason: string) {
+    await this.createNotification({
+      userId: supplierId,
+      type: 'error',
+      title: 'Payment Rejected',
+      message: `Your commission payment of ₹${amount.toFixed(2)} was rejected. Reason: ${reason}`,
+      relatedId: paymentId,
+      relatedType: 'payment_submission'
+    });
+
+    websocketService.sendToUser(supplierId, {
+      type: 'payment',
+      payload: {
+        action: 'rejected',
+        payment: { id: paymentId, amount, reason }
+      }
+    });
+  }
 }
 
 export const notificationService = new NotificationService();

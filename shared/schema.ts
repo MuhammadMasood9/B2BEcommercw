@@ -66,7 +66,7 @@ export const supplierProfiles = pgTable("supplier_profiles", {
   storeDescription: text("store_description"),
   storeLogo: text("store_logo"),
   storeBanner: text("store_banner"),
-  
+
   // Contact Information
   contactPerson: text("contact_person").notNull(),
   position: text("position"),
@@ -76,20 +76,20 @@ export const supplierProfiles = pgTable("supplier_profiles", {
   city: text("city").notNull(),
   country: text("country").notNull(),
   website: text("website"),
-  
+
   // Business Details
   yearEstablished: integer("year_established"),
   employeesCount: text("employees_count"),
   annualRevenue: text("annual_revenue"),
   mainProducts: text("main_products").array(),
   exportMarkets: text("export_markets").array(),
-  
+
   // Verification & Status
   verificationLevel: text("verification_level").default("none"), // 'none', 'basic', 'business', 'premium'
   verificationDocuments: json("verification_documents"),
   isVerified: boolean("is_verified").default(false),
   verifiedAt: timestamp("verified_at"),
-  
+
   // Performance Metrics
   rating: decimal("rating").default("0"),
   totalReviews: integer("total_reviews").default(0),
@@ -97,26 +97,26 @@ export const supplierProfiles = pgTable("supplier_profiles", {
   responseTime: text("response_time"), // '< 2 hours'
   totalSales: decimal("total_sales").default("0"),
   totalOrders: integer("total_orders").default(0),
-  
+
   // Status
   status: text("status").default("pending"), // 'pending', 'approved', 'rejected', 'suspended'
   isActive: boolean("is_active").default(false),
   isFeatured: boolean("is_featured").default(false),
-  
+
   // Commission
   commissionRate: decimal("commission_rate"), // Override default platform commission
-  
+
   // Commission Credit & Restrictions
   commissionCreditLimit: decimal("commission_credit_limit").default("1000.00"), // Max unpaid commission allowed
   totalUnpaidCommission: decimal("total_unpaid_commission").default("0.00"), // Current unpaid amount
   isRestricted: boolean("is_restricted").default(false), // Account restricted when limit exceeded
   lastPaymentDate: timestamp("last_payment_date"),
   paymentReminderSentAt: timestamp("payment_reminder_sent_at"),
-  
+
   // Store Settings
   storePolicies: json("store_policies"),
   operatingHours: json("operating_hours"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -165,53 +165,53 @@ export const products = pgTable("products", {
   specifications: json("specifications"), // Key-value pairs
   images: text("images").array(),
   videos: text("videos").array(),
-  
+
   // B2B Pricing
   minOrderQuantity: integer("min_order_quantity").notNull().default(1),
   priceRanges: json("price_ranges"), // [{ minQty, maxQty, pricePerUnit }]
-  
+
   // Sample & Customization
   sampleAvailable: boolean("sample_available").default(false),
   samplePrice: decimal("sample_price", { precision: 10, scale: 2 }),
   customizationAvailable: boolean("customization_available").default(false),
-  
+
   // Shipping & Delivery
   leadTime: text("lead_time"), // e.g., "15-30 days"
   port: text("port"), // e.g., "Shanghai/Ningbo"
   paymentTerms: text("payment_terms").array(), // ["T/T", "L/C", "Western Union"]
-  
+
   // Stock & Status
   inStock: boolean("in_stock").default(true),
   stockQuantity: integer("stock_quantity").default(0),
   isPublished: boolean("is_published").default(true),
   isFeatured: boolean("is_featured").default(false),
-  
+
   // Analytics
   views: integer("views").default(0),
   inquiries: integer("inquiries").default(0),
-  
+
   // Product Variants & Options
   colors: text("colors").array(), // Available colors: ["Black", "White", "Blue"]
   sizes: text("sizes").array(), // Available sizes: ["S", "M", "L", "XL"] or ["250g", "500g", "1kg"]
   keyFeatures: text("key_features").array(), // Array of key features
   customizationDetails: text("customization_details"), // Details about customization options
-  
+
   // Certifications & Badges
   certifications: text("certifications").array(), // ["ISO9001", "CE", "RoHS"]
   hasTradeAssurance: boolean("has_trade_assurance").default(false),
-  
+
   // Metadata
   tags: text("tags").array(),
   sku: text("sku"),
   metaData: json("meta_data"),
-  
+
   // Supplier Management
   supplierId: varchar("supplier_id"),
   approvalStatus: text("approval_status").default("pending"), // 'pending', 'approved', 'rejected'
   approvedBy: varchar("approved_by"), // admin_id
   approvedAt: timestamp("approved_at"),
   rejectionReason: text("rejection_reason"),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -397,9 +397,17 @@ export const commissions = pgTable("commissions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   orderId: varchar("order_id").notNull(),
   supplierId: varchar("supplier_id").notNull(),
-  amount: decimal("amount").notNull(),
-  status: text("status").default("pending"), // 'pending', 'paid', 'overdue'
-  dueDate: timestamp("due_date").notNull(),
+  orderAmount: decimal("order_amount", { precision: 10, scale: 2 }),
+  commissionRate: decimal("commission_rate", { precision: 5, scale: 4 }),
+  commissionAmount: decimal("commission_amount", { precision: 10, scale: 2 }).notNull(),
+  supplierAmount: decimal("supplier_amount", { precision: 10, scale: 2 }),
+  status: text("status").default("unpaid"), // 'unpaid', 'payment_submitted', 'paid', 'overdue', 'disputed'
+  dueDate: timestamp("due_date"),
+  paymentSubmittedAt: timestamp("payment_submitted_at"),
+  paymentDate: timestamp("payment_date"),
+  paymentTransactionId: text("payment_transaction_id"),
+  paymentVerifiedBy: varchar("payment_verified_by"),
+  paymentVerifiedAt: timestamp("payment_verified_at"),
   paidAt: timestamp("paid_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -411,6 +419,28 @@ export const insertCommissionSchema = createInsertSchema(commissions).omit({
 
 export type InsertCommission = z.infer<typeof insertCommissionSchema>;
 export type Commission = typeof commissions.$inferSelect;
+
+// ==================== COMMISSION TIERS ====================
+
+export const commissionTiers = pgTable("commission_tiers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  minAmount: decimal("min_amount", { precision: 10, scale: 2 }).notNull(),
+  maxAmount: decimal("max_amount", { precision: 10, scale: 2 }),
+  commissionRate: decimal("commission_rate", { precision: 5, scale: 4 }).notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCommissionTierSchema = createInsertSchema(commissionTiers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertCommissionTier = z.infer<typeof insertCommissionTierSchema>;
+export type CommissionTier = typeof commissionTiers.$inferSelect;
 
 // ==================== PAYMENT SUBMISSIONS ====================
 

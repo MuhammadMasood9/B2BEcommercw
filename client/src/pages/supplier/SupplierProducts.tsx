@@ -414,59 +414,83 @@ export default function SupplierProducts() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <Card>
-          <CardContent className="p-4">
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Products</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Total Products
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-orange-50">
+                <Package className="h-5 w-5 text-orange-600" />
               </div>
-              <Package className="w-8 h-8 text-primary" />
             </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{stats.total}</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
+
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Published</p>
-                <p className="text-2xl font-bold">{stats.published}</p>
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Published
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-orange-50">
+                <Eye className="h-5 w-5 text-orange-600" />
               </div>
-              <Eye className="w-8 h-8 text-primary" />
             </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{stats.published}</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
+
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Pending</p>
-                <p className="text-2xl font-bold">{stats.pending}</p>
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Pending
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-yellow-50">
+                <Clock className="h-5 w-5 text-yellow-600" />
               </div>
-              <Clock className="w-8 h-8 text-accent" />
             </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{stats.pending}</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
+
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Approved</p>
-                <p className="text-2xl font-bold">{stats.approved}</p>
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Approved
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-green-50">
+                <CheckCircle className="h-5 w-5 text-green-600" />
               </div>
-              <CheckCircle className="w-8 h-8 text-primary" />
             </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{stats.approved}</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
+
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Rejected</p>
-                <p className="text-2xl font-bold">{stats.rejected}</p>
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Rejected
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-red-50">
+                <XCircle className="h-5 w-5 text-red-600" />
               </div>
-              <XCircle className="w-8 h-8 text-destructive" />
             </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{stats.rejected}</div>
           </CardContent>
         </Card>
       </div>

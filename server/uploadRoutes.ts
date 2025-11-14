@@ -48,6 +48,28 @@ uploadRoutes.post('/upload/multiple', (req: Request, res: Response) => {
   });
 });
 
+// Upload payment proof (accepts images and PDFs)
+uploadRoutes.post('/upload/payment-proof', (req: Request, res: Response) => {
+  uploadSingle(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ error: err.message });
+    }
+    
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+    
+    const fileUrl = `/uploads/${req.file.filename}`;
+    res.json({
+      success: true,
+      url: fileUrl,
+      filename: req.file.filename,
+      mimetype: req.file.mimetype,
+      size: req.file.size
+    });
+  });
+});
+
 // Delete uploaded image
 uploadRoutes.delete('/upload/:filename', (req: Request, res: Response) => {
   try {

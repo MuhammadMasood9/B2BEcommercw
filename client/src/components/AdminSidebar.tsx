@@ -75,13 +75,23 @@ const adminMenuItems = [
     icon: DollarSign,
   },
   {
+    title: "Commission Tiers",
+    url: "/admin/commission-tiers",
+    icon: DollarSign,
+  },
+  {
+    title: "Commission Settings",
+    url: "/admin/commission-settings",
+    icon: Settings,
+  },
+  {
     title: "Payouts",
     url: "/admin/payouts",
     icon: DollarSign,
   },
   {
     title: "Payment Verification",
-    url: "/admin/commission-payments",
+    url: "/admin/payment-verification",
     icon: DollarSign,
   },
   {

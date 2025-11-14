@@ -7,11 +7,10 @@ import {
 } from '@shared/schema';
 import { eq, and, desc, sql, ilike, or, gte, asc } from 'drizzle-orm';
 import { authMiddleware } from './auth';
-import { checkSupplierRestriction, warnCreditLimit } from './restrictionMiddleware';
+import { checkSupplierRestriction, warnCreditLimit, requireUnrestrictedSupplier } from './middleware/restrictionMiddleware';
 import { uploadMultiple, uploadSingle, uploadSingleFile } from './upload';
 import { z } from 'zod';
 import { calculateCommission } from './commissionRoutes';
-import { checkSupplierRestriction, requireUnrestrictedSupplier } from './middleware/restrictionMiddleware';
 
 const router = Router();
 
@@ -717,6 +716,33 @@ router.put('/metrics', authMiddleware, async (req, res) => {
     }
 });
 
+// ==================== RESTRICTION STATUS API ====================
+
+// Get supplier restriction status
+router.get('/restriction-status', authMiddleware, async (req, res) => {
+    try {
+        if (req.user?.role !== 'supplier') {
+            return res.status(403).json({ error: 'Access denied. Supplier role required.' });
+        }
+
+        const { getSupplierRestrictionStatus } = await import('./middleware/restrictionMiddleware');
+        const status = await getSupplierRestrictionStatus(req.user.id);
+
+        if (!status) {
+            return res.status(404).json({ error: 'Supplier profile not found' });
+        }
+
+        res.json({
+            success: true,
+            restrictionStatus: status
+        });
+
+    } catch (error: any) {
+        console.error('Get restriction status error:', error);
+        res.status(500).json({ error: 'Failed to fetch restriction status' });
+    }
+});
+
 // ==================== TEST DATA API ====================
 
 // Create test supplier data (development only)
@@ -1069,12 +1095,13 @@ router.get('/store/:slug/products', async (req, res) => {
 
         if (search) {
             const searchPattern = `%${search}%`;
-            conditions.push(
-                or(
-                    ilike(products.name, searchPattern),
-                    ilike(products.description, searchPattern)
-                )
+            const searchCondition = or(
+                ilike(products.name, searchPattern),
+                ilike(products.description, searchPattern)
             );
+            if (searchCondition) {
+                conditions.push(searchCondition);
+            }
         }
 
         // Get products with pagination
@@ -1117,7 +1144,7 @@ router.get('/store/:slug/products', async (req, res) => {
             .from(products)
             .where(and(...conditions));
 
-        const totalCount = totalCountResult[0]?.count || 0;
+        const totalCount = parseInt(totalCountResult[0]?.count as string || '0');
         const totalPages = Math.ceil(totalCount / limitNum);
 
         res.json({
@@ -2733,7 +2760,7 @@ router.post('/inquiry-quotations', authMiddleware, checkSupplierRestriction, asy
 });
 
 // Update inquiry quotation
-router.put('/inquiry-quotations/:id', authMiddleware, async (req, res) => {
+router.put('/inquiry-quotations/:id', authMiddleware, checkSupplierRestriction, async (req, res) => {
     try {
         if (req.user?.role !== 'supplier') {
             return res.status(403).json({ error: 'Access denied. Supplier role required.' });
@@ -2938,7 +2965,7 @@ router.get('/quotations', authMiddleware, async (req, res) => {
 });
 
 // Update quotation
-router.put('/quotations/:id', authMiddleware, async (req, res) => {
+router.put('/quotations/:id', authMiddleware, checkSupplierRestriction, async (req, res) => {
     try {
         if (req.user?.role !== 'supplier') {
             return res.status(403).json({ error: 'Access denied. Supplier role required.' });
@@ -5681,6 +5708,33 @@ router.get('/analytics/export', authMiddleware, async (req, res) => {
     } catch (error: any) {
         console.error('Export analytics error:', error);
         res.status(500).json({ error: 'Failed to export analytics' });
+    }
+});
+
+// ==================== RESTRICTION STATUS API ====================
+
+// Get supplier restriction status
+router.get('/restriction-status', authMiddleware, async (req, res) => {
+    try {
+        if (req.user?.role !== 'supplier') {
+            return res.status(403).json({ error: 'Access denied. Supplier role required.' });
+        }
+
+        const { getSupplierRestrictionStatus } = await import('./middleware/restrictionMiddleware');
+        const status = await getSupplierRestrictionStatus(req.user.id);
+
+        if (!status) {
+            return res.status(404).json({ error: 'Supplier profile not found' });
+        }
+
+        res.json({
+            success: true,
+            restrictionStatus: status
+        });
+
+    } catch (error: any) {
+        console.error('Get restriction status error:', error);
+        res.status(500).json({ error: 'Failed to fetch restriction status' });
     }
 });
 

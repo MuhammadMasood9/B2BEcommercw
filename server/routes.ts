@@ -68,6 +68,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalReviews: supplierProfiles.totalReviews,
         totalSales: supplierProfiles.totalSales,
         totalOrders: supplierProfiles.totalOrders,
+        commissionRate: supplierProfiles.commissionRate,
         createdAt: supplierProfiles.createdAt,
         updatedAt: supplierProfiles.updatedAt,
         // Join user data
@@ -345,16 +346,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { commissionRate } = req.body;
-      console.log('Commission rate:', commissionRate);
+      console.log('Commission rate received:', commissionRate);
 
       if (commissionRate === undefined || commissionRate === null) {
         return res.status(400).json({ error: 'Commission rate is required' });
       }
 
       const rate = parseFloat(commissionRate);
-      if (isNaN(rate) || rate < 0 || rate > 100) {
-        return res.status(400).json({ error: 'Commission rate must be between 0 and 100' });
+      if (isNaN(rate) || rate < 0 || rate > 1) {
+        return res.status(400).json({ error: 'Commission rate must be between 0 and 1 (decimal format)' });
       }
+
+      console.log('Storing commission rate as decimal:', rate);
 
       const updatedSupplier = await db.update(supplierProfiles)
         .set({
@@ -2539,7 +2542,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get the quotation with RFQ details
       const quotation = await storage.getQuotation(quotationId);
       console.log('Quotation found:', quotation);
-      
+
       if (!quotation) {
         return res.status(404).json({ error: "Quotation not found" });
       }
@@ -2555,7 +2558,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get RFQ details
       const rfq = await storage.getRfq(quotation.rfqId);
       console.log('RFQ found:', rfq);
-      
+
       if (!rfq) {
         return res.status(404).json({ error: "Associated RFQ not found" });
       }
@@ -2592,7 +2595,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'pending',
         paymentStatus: 'pending'
       };
-      
+
       console.log('Creating order with data:', JSON.stringify(orderData, null, 2));
       const order = await storage.createOrder(orderData);
       console.log('Order created:', order);
@@ -2744,36 +2747,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send notifications
       const { notificationService } = await import('./notificationService');
-      
+
       // Get supplier user ID
       if (quotationData.supplierId) {
         const supplierProfile = await db.select({ userId: supplierProfiles.userId })
           .from(supplierProfiles)
           .where(eq(supplierProfiles.id, quotationData.supplierId))
           .limit(1);
-        
+
         if (supplierProfile.length > 0) {
-        // Notify supplier about quotation acceptance
-        await notificationService.notifyQuotationUpdate(
-          supplierProfile[0].userId,
-          quotationId,
-          'accepted'
-        );
-        
-        // Get buyer name
-        const buyer = await db.select({ firstName: users.firstName, lastName: users.lastName })
-          .from(users)
-          .where(eq(users.id, inquiryData.buyerId))
-          .limit(1);
-        
-        const buyerName = buyer.length > 0 ? `${buyer[0].firstName} ${buyer[0].lastName}` : 'A buyer';
-        
-        // Notify supplier about new order
-        await notificationService.notifyNewOrder(
-          supplierProfile[0].userId,
-          createdOrder.id,
-          buyerName
-        );
+          // Notify supplier about quotation acceptance
+          await notificationService.notifyQuotationUpdate(
+            supplierProfile[0].userId,
+            quotationId,
+            'accepted'
+          );
+
+          // Get buyer name
+          const buyer = await db.select({ firstName: users.firstName, lastName: users.lastName })
+            .from(users)
+            .where(eq(users.id, inquiryData.buyerId))
+            .limit(1);
+
+          const buyerName = buyer.length > 0 ? `${buyer[0].firstName} ${buyer[0].lastName}` : 'A buyer';
+
+          // Notify supplier about new order
+          await notificationService.notifyNewOrder(
+            supplierProfile[0].userId,
+            createdOrder.id,
+            buyerName
+          );
         }
       }
 
@@ -3081,15 +3084,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Notify the supplier with real-time notification
       const { notificationService } = await import('./notificationService');
-      
+
       // Get buyer name for notification
       const buyer = await db.select({ firstName: users.firstName, lastName: users.lastName })
         .from(users)
         .where(eq(users.id, req.body.buyerId))
         .limit(1);
-      
+
       const buyerName = buyer.length > 0 ? `${buyer[0].firstName} ${buyer[0].lastName}` : 'A buyer';
-      
+
       await notificationService.notifyNewInquiry(
         supplier[0].userId,
         inquiry.id,
@@ -3491,7 +3494,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const order = await storage.getOrder(req.params.id);
       console.log('Order found:', order);
-      
+
       if (!order) {
         return res.status(404).json({ error: "Order not found" });
       }
@@ -3514,7 +3517,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Calculate and create commission if supplier exists
       if (order.supplierId) {
         console.log('Creating commission for supplier:', order.supplierId);
-        
+
         // Get supplier profile to check for custom commission rate
         const [supplierProfile] = await db.select()
           .from(supplierProfiles)
@@ -3522,8 +3525,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .limit(1);
 
         // Use supplier's custom rate or default platform rate (10%)
-        const commissionRate = supplierProfile?.commissionRate 
-          ? parseFloat(supplierProfile.commissionRate.toString()) 
+        const commissionRate = supplierProfile?.commissionRate
+          ? parseFloat(supplierProfile.commissionRate.toString())
           : 10.0;
 
         const orderAmount = parseFloat(order.totalAmount.toString());
@@ -3569,7 +3572,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updatedOrder = await storage.getOrder(req.params.id);
-      
+
       res.json({
         success: true,
         message: 'Order marked as paid successfully. Commission has been calculated.',
@@ -4041,7 +4044,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const countQuery = db.select({ count: sql`count(*)` })
         .from(orders)
         .where(conditions.length > 0 ? and(...conditions) : undefined);
-      
+
       const [{ count }] = await countQuery;
 
       res.json({
@@ -5202,13 +5205,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let count = 0;
 
       if (userRole === 'admin') {
-        // For admin, count unread messages from buyers
-        // Note: unreadCountAdmin column actually stores adminId, not count
-        // So we need to count unreadCountBuyer for conversations where adminId matches
+        // For admin, count unread messages from buyers across all conversations where admin is involved
         const result = await db
-          .select({ count: sql<number>`sum(coalesce(cast(${conversations.unreadCountBuyer} as integer), 0))` })
+          .select({ count: sql<number>`sum(coalesce(cast(${conversations.unreadCountAdmin} as integer), 0))` })
           .from(conversations)
-          .where(eq(conversations.unreadCountAdmin, userId));
+          .where(eq(conversations.adminId, userId));
         count = result[0]?.count || 0;
       } else {
         // For buyer, count unread messages from admin

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Link } from "wouter";
+import RestrictionBanner from "@/components/supplier/RestrictionBanner";
 import {
   Package,
   Eye,
@@ -98,6 +99,9 @@ export default function SupplierDashboard() {
 
   return (
     <div className="p-8 space-y-6">
+      {/* Restriction Banner */}
+      <RestrictionBanner />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -115,62 +119,86 @@ export default function SupplierDashboard() {
       </div>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="bg-gradient-to-br from-primary to-primary/80 text-white border-0 shadow-lg">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-primary-foreground/80">Total Products</CardTitle>
-            <Package className="h-6 w-6 text-primary-foreground/70" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Total Products
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-orange-50">
+                <Package className="h-5 w-5 text-orange-600" />
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-white">
+            <div className="text-3xl font-bold">
               {statsLoading ? "..." : statsData.totalProducts}
             </div>
-            <p className="text-sm text-primary-foreground/80 mt-1">
-              <span className="text-green-300">+{statsData.newProductsThisMonth || 0}</span> this month
+            <p className="text-xs text-gray-500 mt-1">
+              +{statsData.newProductsThisMonth || 0} this month
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-secondary to-secondary/80 text-white border-0 shadow-lg">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-secondary-foreground/80">Product Views</CardTitle>
-            <Eye className="h-6 w-6 text-secondary-foreground/70" />
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Product Views
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-gray-50">
+                <Eye className="h-5 w-5 text-gray-600" />
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-white">
+            <div className="text-3xl font-bold">
               {statsLoading ? "..." : statsData.productViews.toLocaleString()}
             </div>
-            <p className="text-sm text-secondary-foreground/80 mt-1">
-              <span className="text-green-300">+15%</span> from last month
+            <p className="text-xs text-gray-500 mt-1">
+              +15% from last month
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-accent to-accent/80 text-white border-0 shadow-lg">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-accent-foreground/80">Inquiries</CardTitle>
-            <MessageSquare className="h-6 w-6 text-accent-foreground/70" />
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Inquiries
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-purple-50">
+                <MessageSquare className="h-5 w-5 text-purple-600" />
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-white">
+            <div className="text-3xl font-bold">
               {statsLoading ? "..." : statsData.inquiriesReceived}
             </div>
-            <p className="text-sm text-accent-foreground/80 mt-1">
+            <p className="text-xs text-gray-500 mt-1">
               {statsData.pendingInquiries || 0} pending
             </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-primary/90 to-primary text-white border-0 shadow-lg">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-primary-foreground/80">Total Revenue</CardTitle>
-            <DollarSign className="h-6 w-6 text-primary-foreground/70" />
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Total Revenue
+              </CardTitle>
+              <div className="p-2 rounded-lg bg-green-50">
+                <DollarSign className="h-5 w-5 text-green-600" />
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-white">
+            <div className="text-3xl font-bold">
               ${statsLoading ? "..." : statsData.totalRevenue.toLocaleString()}
             </div>
-            <p className="text-sm text-primary-foreground/80 mt-1">
+            <p className="text-xs text-gray-500 mt-1">
               {statsData.ordersReceived || 0} orders
             </p>
           </CardContent>
@@ -179,11 +207,31 @@ export default function SupplierDashboard() {
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="performance">Performance</TabsTrigger>
-          <TabsTrigger value="products">Products</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+        <TabsList className="inline-flex h-12 items-center justify-start rounded-lg bg-gray-100 p-1 w-full">
+          <TabsTrigger 
+            value="overview"
+            className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-6 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-brand-orange-500 data-[state=active]:text-white data-[state=active]:shadow-sm hover:bg-gray-200 data-[state=active]:hover:bg-brand-orange-600"
+          >
+            Overview
+          </TabsTrigger>
+          <TabsTrigger 
+            value="performance"
+            className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-6 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-brand-orange-500 data-[state=active]:text-white data-[state=active]:shadow-sm hover:bg-gray-200 data-[state=active]:hover:bg-brand-orange-600"
+          >
+            Performance
+          </TabsTrigger>
+          <TabsTrigger 
+            value="products"
+            className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-6 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-brand-orange-500 data-[state=active]:text-white data-[state=active]:shadow-sm hover:bg-gray-200 data-[state=active]:hover:bg-brand-orange-600"
+          >
+            Products
+          </TabsTrigger>
+          <TabsTrigger 
+            value="analytics"
+            className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-6 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-brand-orange-500 data-[state=active]:text-white data-[state=active]:shadow-sm hover:bg-gray-200 data-[state=active]:hover:bg-brand-orange-600"
+          >
+            Analytics
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">

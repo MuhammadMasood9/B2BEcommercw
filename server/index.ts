@@ -78,6 +78,10 @@ app.use((req, res, next) => {
   const { websocketService } = await import('./websocket');
   websocketService.initialize(server);
 
+  // Initialize Commission Scheduler (Task 10)
+  const { commissionScheduler } = await import('./commissionScheduler');
+  commissionScheduler.start();
+
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";

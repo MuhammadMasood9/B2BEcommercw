@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { storage } from './storage';
 import { authMiddleware } from './auth';
+import { checkSupplierRestriction } from './middleware/restrictionMiddleware';
 import { db } from './db';
 import { notifications, users, conversations, messages } from '../shared/schema';
 import { eq, and, ne, sql, inArray } from 'drizzle-orm';
@@ -117,7 +118,7 @@ router.get('/conversations/:conversationId/messages', authMiddleware, async (req
 });
 
 // Create a new conversation
-router.post('/conversations', authMiddleware, async (req, res) => {
+router.post('/conversations', authMiddleware, checkSupplierRestriction, async (req, res) => {
   try {
     const { buyerId, adminId, supplierId, productId, type } = req.body;
     const userId = req.user?.id;
@@ -283,7 +284,8 @@ router.post('/conversations', authMiddleware, async (req, res) => {
 });
 
 // Send a message
-router.post('/conversations/:conversationId/messages', authMiddleware, async (req, res) => {
+router.post('/conversations/:conversationId/messages', authMiddleware, checkSupplierRestriction, async (req, res) => {
+
   try {
     const { conversationId } = req.params;
     const { content, attachments } = req.body;

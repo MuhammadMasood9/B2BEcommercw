@@ -53,6 +53,7 @@ interface Supplier {
   totalReviews: number;
   totalSales: number;
   totalOrders: number;
+  commissionRate: string | null;
   createdAt: string;
   email?: string;
   firstName?: string;
@@ -188,7 +189,8 @@ export default function AdminSuppliers() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ commissionRate: parseFloat(commissionRate) }),
+        // Convert percentage to decimal (10 -> 0.10)
+        body: JSON.stringify({ commissionRate: parseFloat(commissionRate) / 100 }),
       });
       if (!response.ok) throw new Error('Failed to update commission rate');
       return await response.json();
@@ -475,6 +477,12 @@ export default function AdminSuppliers() {
                         <div className="text-xs text-muted-foreground">
                           {supplier.totalOrders || 0} orders • ${Number(supplier.totalSales || 0).toLocaleString()}
                         </div>
+                        {supplier.commissionRate && (
+                          <Badge variant="outline" className="mt-1 text-xs bg-green-50 text-green-700 border-green-200">
+                            <DollarSign className="h-3 w-3 mr-1" />
+                            {(parseFloat(supplier.commissionRate) * 100).toFixed(1)}% Custom
+                          </Badge>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
@@ -514,7 +522,11 @@ export default function AdminSuppliers() {
                               variant="outline"
                               onClick={() => {
                                 setCommissionDialog({ open: true, supplier });
-                                setCommissionRate((supplier as any).commissionRate || "10");
+                                // Convert decimal to percentage (0.10 -> 10)
+                                const currentRate = supplier.commissionRate 
+                                  ? (parseFloat(supplier.commissionRate) * 100).toString()
+                                  : "10";
+                                setCommissionRate(currentRate);
                               }}
                               title="Set Commission Rate"
                             >
@@ -625,7 +637,7 @@ export default function AdminSuppliers() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <DollarSign className="h-5 w-5 text-green-600" />
-              Set Commission Rate
+              Set Custom Commission Rate
             </DialogTitle>
           </DialogHeader>
           
@@ -634,6 +646,11 @@ export default function AdminSuppliers() {
               <div className="p-4 bg-gray-50 rounded-lg">
                 <p className="font-medium">{commissionDialog.supplier.storeName}</p>
                 <p className="text-sm text-muted-foreground">{commissionDialog.supplier.businessName}</p>
+                {commissionDialog.supplier.commissionRate && (
+                  <Badge variant="outline" className="mt-2 bg-green-50 text-green-700 border-green-200">
+                    Current: {(parseFloat(commissionDialog.supplier.commissionRate) * 100).toFixed(1)}%
+                  </Badge>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -649,7 +666,7 @@ export default function AdminSuppliers() {
                   placeholder="Enter commission rate (e.g., 10 for 10%)"
                 />
                 <p className="text-sm text-muted-foreground">
-                  Default platform rate is 10%. Set a custom rate for this supplier.
+                  Default platform rate is 10%. Set a custom rate to override the tiered commission system for this supplier.
                 </p>
               </div>
 

@@ -28,6 +28,8 @@ import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import ConversationList from './ConversationList';
 import { useToast } from '@/hooks/use-toast';
+import RestrictionBanner from '../supplier/RestrictionBanner';
+import { useRestrictionCheck } from '@/hooks/useRestrictionCheck';
 
 interface ImprovedChatInterfaceProps {
   userRole: 'buyer' | 'admin' | 'supplier';
@@ -42,6 +44,9 @@ export default function ImprovedChatInterface({ userRole, userId }: ImprovedChat
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Restriction check for suppliers
+  const { isRestricted } = useRestrictionCheck();
 
   // Fetch conversations based on user role
   const { data: conversationsData, isLoading: conversationsLoading } = useQuery({
@@ -216,9 +221,13 @@ export default function ImprovedChatInterface({ userRole, userId }: ImprovedChat
   });
 
   return (
-    <div className="flex h-full bg-gray-50 w-full">
-      {/* Conversation List */}
-      {showConversationList && (
+    <div className="flex h-full bg-gray-50 w-full flex-col">
+      {/* Restriction Banner for Suppliers */}
+      {userRole === 'supplier' && <RestrictionBanner />}
+      
+      <div className="flex h-full bg-gray-50 w-full">
+        {/* Conversation List */}
+        {showConversationList && (
         <div className={`${userRole === 'admin' ? 'w-[450px]' : 'w-[400px]'} bg-white border-r border-gray-200 flex flex-col h-full shadow-lg`}>
           {/* Header */}
           <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-primary to-orange-600">
@@ -494,8 +503,12 @@ export default function ImprovedChatInterface({ userRole, userId }: ImprovedChat
             <ChatInput
               onSendMessage={handleSendMessage}
               onSendImage={handleSendImage}
-              disabled={sendMessageMutation.isPending}
-              placeholder={`Message ${getConversationTitle()}...`}
+              disabled={sendMessageMutation.isPending || (userRole === 'supplier' && isRestricted)}
+              placeholder={
+                userRole === 'supplier' && isRestricted
+                  ? "Account restricted - Cannot send messages"
+                  : `Message ${getConversationTitle()}...`
+              }
             />
           </>
         ) : (
@@ -533,6 +546,7 @@ export default function ImprovedChatInterface({ userRole, userId }: ImprovedChat
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 }

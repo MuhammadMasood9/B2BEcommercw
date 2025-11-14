@@ -322,11 +322,31 @@ export default function SupplierNegotiations() {
             <div className="text-center py-8 text-gray-500">Loading negotiations...</div>
           ) : (
             <Tabs defaultValue="all" value={statusFilter} onValueChange={setStatusFilter}>
-              <TabsList>
-                <TabsTrigger value="all">All ({filteredQuotations.length})</TabsTrigger>
-                <TabsTrigger value="pending">Active ({pendingNegotiations.length})</TabsTrigger>
-                <TabsTrigger value="accepted">Accepted ({acceptedNegotiations.length})</TabsTrigger>
-                <TabsTrigger value="rejected">Rejected ({rejectedNegotiations.length})</TabsTrigger>
+              <TabsList className="inline-flex h-12 items-center justify-start rounded-lg bg-gray-100 p-1 w-full">
+                <TabsTrigger 
+                  value="all"
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-6 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-brand-orange-500 data-[state=active]:text-white data-[state=active]:shadow-sm hover:bg-gray-200 data-[state=active]:hover:bg-brand-orange-600"
+                >
+                  All ({filteredQuotations.length})
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="pending"
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-6 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-brand-orange-500 data-[state=active]:text-white data-[state=active]:shadow-sm hover:bg-gray-200 data-[state=active]:hover:bg-brand-orange-600"
+                >
+                  Active ({pendingNegotiations.length})
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="accepted"
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-6 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-brand-orange-500 data-[state=active]:text-white data-[state=active]:shadow-sm hover:bg-gray-200 data-[state=active]:hover:bg-brand-orange-600"
+                >
+                  Accepted ({acceptedNegotiations.length})
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="rejected"
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-6 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-brand-orange-500 data-[state=active]:text-white data-[state=active]:shadow-sm hover:bg-gray-200 data-[state=active]:hover:bg-brand-orange-600"
+                >
+                  Rejected ({rejectedNegotiations.length})
+                </TabsTrigger>
               </TabsList>
               <TabsContent value="all">
                 <NegotiationTable data={filteredQuotations} />

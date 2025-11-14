@@ -3,7 +3,7 @@ import { db } from "./db";
 import { authMiddleware } from "./auth";
 import { 
   commissions, payouts, orders, supplierProfiles, users,
-  commissionPayments, commissionPaymentItems
+  commissionPayments, commissionPaymentItems, commissionTiers, paymentSubmissions
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, sql, or, inArray } from "drizzle-orm";
 import { notificationService } from "./notificationService";
@@ -14,31 +14,129 @@ const router = Router();
 const DEFAULT_COMMISSION_RATE = 0.10; // 10%
 
 // Default credit limit for suppliers
-const DEFAULT_CREDIT_LIMIT = 1000.00;
+const DEFAULT_CREDIT_LIMIT = 10000.00; // ₹10,000
+
+// Commission payment grace period (days)
+const COMMISSION_GRACE_PERIOD_DAYS = 30;
 
 // ==================== COMMISSION CALCULATION ====================
 
 /**
- * Calculate commission for an order
+ * Select commission tier based on order amount
+ * Returns the applicable tier or null if no tier matches
+ */
+export async function selectCommissionTier(orderAmount: number) {
+  try {
+    console.log('=== SELECT COMMISSION TIER ===');
+    console.log('Order amount:', orderAmount);
+
+    // Get active commission tiers ordered by minAmount ascending
+    const tiers = await db.select()
+      .from(commissionTiers)
+      .where(eq(commissionTiers.isActive, true))
+      .orderBy(commissionTiers.minAmount);
+
+    console.log('Active tiers:', tiers.length);
+
+    // Find applicable tier
+    for (const tier of tiers) {
+      const minAmount = parseFloat(tier.minAmount);
+      const maxAmount = tier.maxAmount ? parseFloat(tier.maxAmount) : Infinity;
+      
+      console.log(`Checking tier: ${minAmount} - ${maxAmount === Infinity ? '∞' : maxAmount}, rate: ${tier.commissionRate}`);
+      
+      // Check if order amount falls within this tier
+      if (orderAmount >= minAmount && orderAmount <= maxAmount) {
+        console.log('✅ Tier selected:', tier.id);
+        return tier;
+      }
+    }
+
+    console.log('⚠️ No tier matched, will use default rate');
+    return null;
+  } catch (error) {
+    console.error('Error selecting commission tier:', error);
+    return null;
+  }
+}
+
+/**
+ * Get commission rate based on order amount using tiered system
+ */
+export async function getCommissionRate(orderAmount: number): Promise<number> {
+  try {
+    const tier = await selectCommissionTier(orderAmount);
+    
+    if (tier) {
+      return parseFloat(tier.commissionRate);
+    }
+
+    // Default rate if no tier matches
+    return DEFAULT_COMMISSION_RATE;
+  } catch (error) {
+    console.error('Error getting commission rate:', error);
+    return DEFAULT_COMMISSION_RATE;
+  }
+}
+
+/**
+ * Calculate commission for an order with tiered rates
+ * Implements task 2: Tiered commission calculation
+ * - Checks custom supplier rate first
+ * - Falls back to tier-based rate
+ * - Auto-creates commission with 'unpaid' status
+ * - Updates supplier totalUnpaidCommission
+ * - Checks credit limit and applies restriction if exceeded
  */
 export async function calculateCommission(orderId: string, supplierId: string, orderAmount: number) {
   try {
-    // Get supplier's custom commission rate or use default
+    console.log('=== CALCULATE COMMISSION ===');
+    console.log('Order ID:', orderId);
+    console.log('Supplier ID:', supplierId);
+    console.log('Order Amount:', orderAmount);
+
+    // Step 1: Get supplier profile to check for custom commission rate
     const supplier = await db.select({
-      commissionRate: supplierProfiles.commissionRate
+      commissionRate: supplierProfiles.commissionRate,
+      commissionCreditLimit: supplierProfiles.commissionCreditLimit,
+      totalUnpaidCommission: supplierProfiles.totalUnpaidCommission
     })
     .from(supplierProfiles)
     .where(eq(supplierProfiles.id, supplierId))
     .limit(1);
 
-    const commissionRate = supplier[0]?.commissionRate 
-      ? parseFloat(supplier[0].commissionRate) 
-      : DEFAULT_COMMISSION_RATE;
+    if (!supplier || supplier.length === 0) {
+      throw new Error(`Supplier not found: ${supplierId}`);
+    }
 
+    // Step 2: Determine commission rate - check custom rate first, then use tier
+    let commissionRate: number;
+    let rateSource: string;
+
+    if (supplier[0]?.commissionRate) {
+      // Use supplier-specific custom rate
+      commissionRate = parseFloat(supplier[0].commissionRate);
+      rateSource = 'custom';
+      console.log('✅ Using custom supplier rate:', commissionRate);
+    } else {
+      // Use tiered rate based on order amount
+      commissionRate = await getCommissionRate(orderAmount);
+      rateSource = 'tier';
+      console.log('✅ Using tier-based rate:', commissionRate);
+    }
+
+    // Step 3: Calculate commission amounts
     const commissionAmount = orderAmount * commissionRate;
     const supplierAmount = orderAmount - commissionAmount;
 
-    // Create commission record
+    console.log('Commission Amount:', commissionAmount);
+    console.log('Supplier Amount:', supplierAmount);
+
+    // Step 4: Calculate due date (30 days from now)
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + COMMISSION_GRACE_PERIOD_DAYS);
+
+    // Step 5: Auto-create commission record with 'unpaid' status
     const [commission] = await db.insert(commissions)
       .values({
         orderId,
@@ -47,14 +145,159 @@ export async function calculateCommission(orderId: string, supplierId: string, o
         commissionRate: commissionRate.toString(),
         commissionAmount: commissionAmount.toString(),
         supplierAmount: supplierAmount.toString(),
-        status: 'pending'
+        status: 'unpaid',
+        dueDate
       })
       .returning();
 
+    console.log('✅ Commission record created:', commission.id);
+
+    // Step 6: Update supplier's total unpaid commission and check credit limit
+    const { totalUnpaid, isRestricted } = await updateSupplierUnpaidTotal(supplierId);
+
+    console.log('Total Unpaid Commission:', totalUnpaid);
+    console.log('Supplier Restricted:', isRestricted);
+
+    // Step 7: Send notification to supplier about commission created (Task 12 - Requirement 2.5)
+    try {
+      const supplierData = await db.select({
+        userId: supplierProfiles.userId
+      })
+      .from(supplierProfiles)
+      .where(eq(supplierProfiles.id, supplierId))
+      .limit(1);
+
+      if (supplierData.length > 0 && supplierData[0].userId) {
+        await notificationService.notifyCommissionCreated(
+          supplierData[0].userId,
+          commission.id,
+          commissionAmount,
+          commissionRate,
+          orderId,
+          dueDate
+        );
+        console.log('✅ Commission creation notification sent to supplier');
+      }
+    } catch (notifError) {
+      console.error('⚠️ Failed to send commission notification:', notifError);
+      // Don't fail commission creation if notification fails
+    }
+
     return commission;
   } catch (error) {
-    console.error('Error calculating commission:', error);
+    console.error('❌ Error calculating commission:', error);
     throw error;
+  }
+}
+
+/**
+ * Update supplier's total unpaid commission and check restriction
+ * Implements task 2 requirements:
+ * - Updates supplier totalUnpaidCommission when commission created
+ * - Checks credit limit and applies restriction if exceeded
+ */
+export async function updateSupplierUnpaidTotal(supplierId: string) {
+  try {
+    console.log('=== UPDATE SUPPLIER UNPAID TOTAL ===');
+    console.log('Supplier ID:', supplierId);
+
+    // Calculate total unpaid commission (unpaid, payment_submitted, overdue)
+    const result = await db.select({
+      total: sql`COALESCE(SUM(CAST(${commissions.commissionAmount} AS DECIMAL)), 0)`
+    })
+    .from(commissions)
+    .where(and(
+      eq(commissions.supplierId, supplierId),
+      or(
+        eq(commissions.status, 'unpaid'),
+        eq(commissions.status, 'payment_submitted'),
+        eq(commissions.status, 'overdue')
+      )
+    ));
+
+    const totalUnpaid = parseFloat(result[0]?.total as string || '0');
+    console.log('Total Unpaid Commission:', totalUnpaid);
+
+    // Get supplier's credit limit and current restriction status
+    const supplier = await db.select({
+      creditLimit: supplierProfiles.commissionCreditLimit,
+      isRestricted: supplierProfiles.isRestricted,
+      userId: supplierProfiles.userId
+    })
+    .from(supplierProfiles)
+    .where(eq(supplierProfiles.id, supplierId))
+    .limit(1);
+
+    if (!supplier || supplier.length === 0) {
+      throw new Error(`Supplier not found: ${supplierId}`);
+    }
+
+    const creditLimit = parseFloat(supplier[0]?.creditLimit || DEFAULT_CREDIT_LIMIT.toString());
+    const wasRestricted = supplier[0]?.isRestricted || false;
+    console.log('Credit Limit:', creditLimit);
+    console.log('Was Restricted:', wasRestricted);
+
+    // Check if credit limit is exceeded
+    const isRestricted = totalUnpaid >= creditLimit;
+    console.log('Should Be Restricted:', isRestricted);
+    
+    // Update supplier profile with new totals and restriction status
+    await db.update(supplierProfiles)
+      .set({
+        totalUnpaidCommission: totalUnpaid.toString(),
+        isRestricted,
+        updatedAt: new Date()
+      })
+      .where(eq(supplierProfiles.id, supplierId));
+
+    console.log('✅ Supplier profile updated');
+
+    // Send notification if supplier is being newly restricted (Task 12 - Requirement 3.5)
+    if (isRestricted && !wasRestricted) {
+      console.log('⚠️ Applying new restriction - sending notification');
+      
+      if (supplier[0].userId) {
+        await notificationService.notifyAccountRestricted(
+          supplier[0].userId,
+          totalUnpaid
+        );
+        console.log('✅ Restriction notification sent');
+      }
+    } else if (!isRestricted && wasRestricted) {
+      // Restriction lifted
+      console.log('✅ Restriction lifted');
+      
+      if (supplier[0].userId) {
+        await notificationService.notifyAccountRestrictionLifted(
+          supplier[0].userId
+        );
+        console.log('✅ Restriction lifted notification sent');
+      }
+    }
+
+    return { totalUnpaid, isRestricted };
+  } catch (error) {
+    console.error('❌ Error updating supplier unpaid total:', error);
+    throw error;
+  }
+}
+
+/**
+ * Check if supplier is restricted
+ */
+export async function checkSupplierRestriction(supplierId: string): Promise<boolean> {
+  try {
+    const supplier = await db.select({
+      isRestricted: supplierProfiles.isRestricted
+    })
+    .from(supplierProfiles)
+    .where(eq(supplierProfiles.id, supplierId))
+    .limit(1);
+
+    return supplier[0]?.isRestricted || false;
+  } catch (error) {
+    console.error('Error checking supplier restriction:', error);
+    return false;
   }
 }
 
@@ -1030,6 +1273,69 @@ router.get("/supplier/payment-history", authMiddleware, async (req, res) => {
 
 // ==================== ADMIN COMMISSION PAYMENT ROUTES ====================
 
+// Get pending payment submissions (Task 8)
+router.get("/admin/payments/pending", authMiddleware, async (req, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Admin role required.' });
+    }
+
+    const pendingPayments = await db.select({
+      id: commissionPayments.id,
+      supplierId: commissionPayments.supplierId,
+      supplierName: supplierProfiles.businessName,
+      storeName: supplierProfiles.storeName,
+      supplierEmail: users.email,
+      supplierPhone: supplierProfiles.phone,
+      amount: commissionPayments.amount,
+      paymentMethod: commissionPayments.paymentMethod,
+      transactionId: commissionPayments.transactionId,
+      paymentDate: commissionPayments.paymentDate,
+      paymentProofUrl: commissionPayments.paymentProofUrl,
+      status: commissionPayments.status,
+      notes: commissionPayments.notes,
+      createdAt: commissionPayments.createdAt
+    })
+    .from(commissionPayments)
+    .leftJoin(supplierProfiles, eq(commissionPayments.supplierId, supplierProfiles.id))
+    .leftJoin(users, eq(supplierProfiles.userId, users.id))
+    .where(eq(commissionPayments.status, 'pending'))
+    .orderBy(desc(commissionPayments.createdAt));
+
+    // Get commission details for each payment
+    const paymentsWithCommissions = await Promise.all(
+      pendingPayments.map(async (payment) => {
+        const items = await db.select({
+          commissionId: commissionPaymentItems.commissionId,
+          amount: commissionPaymentItems.amount,
+          orderNumber: orders.orderNumber,
+          orderAmount: commissions.orderAmount,
+          commissionRate: commissions.commissionRate
+        })
+        .from(commissionPaymentItems)
+        .leftJoin(commissions, eq(commissionPaymentItems.commissionId, commissions.id))
+        .leftJoin(orders, eq(commissions.orderId, orders.id))
+        .where(eq(commissionPaymentItems.paymentId, payment.id));
+
+        return {
+          ...payment,
+          commissions: items
+        };
+      })
+    );
+
+    res.json({
+      success: true,
+      payments: paymentsWithCommissions,
+      total: paymentsWithCommissions.length
+    });
+
+  } catch (error: any) {
+    console.error('Get pending payments error:', error);
+    res.status(500).json({ error: 'Failed to fetch pending payments' });
+  }
+});
+
 // Get all payment submissions
 router.get("/admin/payment-submissions", authMiddleware, async (req, res) => {
   try {
@@ -1333,6 +1639,723 @@ router.get("/admin/restricted-suppliers", authMiddleware, async (req, res) => {
   } catch (error: any) {
     console.error('Get restricted suppliers error:', error);
     res.status(500).json({ error: 'Failed to fetch restricted suppliers' });
+  }
+});
+
+// ==================== COMMISSION TIER MANAGEMENT (ADMIN) ====================
+
+// Get all commission tiers
+router.get("/admin/commission-tiers", authMiddleware, async (req, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Admin role required.' });
+    }
+
+    const tiers = await db.select()
+      .from(commissionTiers)
+      .orderBy(commissionTiers.minAmount);
+
+    res.json({
+      success: true,
+      tiers
+    });
+
+  } catch (error: any) {
+    console.error('Get commission tiers error:', error);
+    res.status(500).json({ error: 'Failed to fetch commission tiers' });
+  }
+});
+
+// Create commission tier
+router.post("/admin/commission-tiers", authMiddleware, async (req, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Admin role required.' });
+    }
+
+    const { minAmount, maxAmount, commissionRate, description } = req.body;
+
+    if (minAmount === undefined || commissionRate === undefined) {
+      return res.status(400).json({ error: 'Min amount and commission rate are required' });
+    }
+
+    if (minAmount < 0) {
+      return res.status(400).json({ error: 'Minimum amount must be a positive number' });
+    }
+
+    if (maxAmount !== undefined && maxAmount !== null && maxAmount <= minAmount) {
+      return res.status(400).json({ error: 'Maximum amount must be greater than minimum amount' });
+    }
+
+    if (commissionRate < 0 || commissionRate > 1) {
+      return res.status(400).json({ error: 'Commission rate must be between 0 and 1' });
+    }
+
+    // Check for overlapping ranges with active tiers
+    const existingTiers = await db.select()
+      .from(commissionTiers)
+      .where(eq(commissionTiers.isActive, true));
+
+    const newMin = parseFloat(minAmount.toString());
+    const newMax = maxAmount ? parseFloat(maxAmount.toString()) : Infinity;
+
+    for (const tier of existingTiers) {
+      const tierMin = parseFloat(tier.minAmount);
+      const tierMax = tier.maxAmount ? parseFloat(tier.maxAmount) : Infinity;
+
+      // Check if ranges overlap
+      const overlaps = 
+        (newMin >= tierMin && newMin <= tierMax) ||
+        (newMax >= tierMin && newMax <= tierMax) ||
+        (newMin <= tierMin && newMax >= tierMax);
+
+      if (overlaps) {
+        return res.status(400).json({ 
+          error: `Range overlaps with existing tier: ₹${tierMin} - ${tierMax === Infinity ? '∞' : `₹${tierMax}`}` 
+        });
+      }
+    }
+
+    const [tier] = await db.insert(commissionTiers)
+      .values({
+        minAmount: minAmount.toString(),
+        maxAmount: maxAmount ? maxAmount.toString() : null,
+        commissionRate: commissionRate.toString(),
+        description: description || null,
+        isActive: true
+      })
+      .returning();
+
+    res.json({
+      success: true,
+      message: 'Commission tier created successfully',
+      tier
+    });
+
+  } catch (error: any) {
+    console.error('Create commission tier error:', error);
+    res.status(500).json({ error: 'Failed to create commission tier' });
+  }
+});
+
+// Update commission tier
+router.patch("/admin/commission-tiers/:id", authMiddleware, async (req, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Admin role required.' });
+    }
+
+    const { minAmount, maxAmount, commissionRate, description, isActive } = req.body;
+
+    // Get current tier
+    const [currentTier] = await db.select()
+      .from(commissionTiers)
+      .where(eq(commissionTiers.id, req.params.id))
+      .limit(1);
+
+    if (!currentTier) {
+      return res.status(404).json({ error: 'Commission tier not found' });
+    }
+
+    const updateData: any = { updatedAt: new Date() };
+
+    // Validate and prepare update data
+    const newMin = minAmount !== undefined ? parseFloat(minAmount.toString()) : parseFloat(currentTier.minAmount);
+    const newMax = maxAmount !== undefined 
+      ? (maxAmount ? parseFloat(maxAmount.toString()) : Infinity)
+      : (currentTier.maxAmount ? parseFloat(currentTier.maxAmount) : Infinity);
+
+    if (minAmount !== undefined) {
+      if (minAmount < 0) {
+        return res.status(400).json({ error: 'Minimum amount must be a positive number' });
+      }
+      updateData.minAmount = minAmount.toString();
+    }
+
+    if (maxAmount !== undefined) {
+      if (maxAmount !== null && newMax <= newMin) {
+        return res.status(400).json({ error: 'Maximum amount must be greater than minimum amount' });
+      }
+      updateData.maxAmount = maxAmount ? maxAmount.toString() : null;
+    }
+
+    if (commissionRate !== undefined) {
+      if (commissionRate < 0 || commissionRate > 1) {
+        return res.status(400).json({ error: 'Commission rate must be between 0 and 1' });
+      }
+      updateData.commissionRate = commissionRate.toString();
+    }
+
+    if (description !== undefined) updateData.description = description;
+    if (isActive !== undefined) updateData.isActive = isActive;
+
+    // Check for overlapping ranges with other active tiers (excluding current tier)
+    if (minAmount !== undefined || maxAmount !== undefined) {
+      const existingTiers = await db.select()
+        .from(commissionTiers)
+        .where(eq(commissionTiers.isActive, true));
+
+      for (const tier of existingTiers) {
+        if (tier.id === req.params.id) continue; // Skip current tier
+
+        const tierMin = parseFloat(tier.minAmount);
+        const tierMax = tier.maxAmount ? parseFloat(tier.maxAmount) : Infinity;
+
+        // Check if ranges overlap
+        const overlaps = 
+          (newMin >= tierMin && newMin <= tierMax) ||
+          (newMax >= tierMin && newMax <= tierMax) ||
+          (newMin <= tierMin && newMax >= tierMax);
+
+        if (overlaps) {
+          return res.status(400).json({ 
+            error: `Range overlaps with existing tier: ₹${tierMin} - ${tierMax === Infinity ? '∞' : `₹${tierMax}`}` 
+          });
+        }
+      }
+    }
+
+    const [tier] = await db.update(commissionTiers)
+      .set(updateData)
+      .where(eq(commissionTiers.id, req.params.id))
+      .returning();
+
+    res.json({
+      success: true,
+      message: 'Commission tier updated successfully',
+      tier
+    });
+
+  } catch (error: any) {
+    console.error('Update commission tier error:', error);
+    res.status(500).json({ error: 'Failed to update commission tier' });
+  }
+});
+
+// Delete commission tier
+router.delete("/admin/commission-tiers/:id", authMiddleware, async (req, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Admin role required.' });
+    }
+
+    await db.delete(commissionTiers)
+      .where(eq(commissionTiers.id, req.params.id));
+
+    res.json({
+      success: true,
+      message: 'Commission tier deleted successfully'
+    });
+
+  } catch (error: any) {
+    console.error('Delete commission tier error:', error);
+    res.status(500).json({ error: 'Failed to delete commission tier' });
+  }
+});
+
+// Manually lift supplier restriction (admin override)
+router.post("/admin/suppliers/:id/lift-restriction", authMiddleware, async (req, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Admin role required.' });
+    }
+
+    const [supplier] = await db.update(supplierProfiles)
+      .set({
+        isRestricted: false,
+        updatedAt: new Date()
+      })
+      .where(eq(supplierProfiles.id, req.params.id))
+      .returning();
+
+    if (!supplier) {
+      return res.status(404).json({ error: 'Supplier not found' });
+    }
+
+    // Notify supplier
+    await notificationService.createNotification({
+      userId: supplier.userId,
+      type: 'success',
+      title: 'Restriction Lifted',
+      message: 'Your account restriction has been lifted by admin. You can now access all features.',
+      relatedType: 'commission'
+    });
+
+    res.json({
+      success: true,
+      message: 'Supplier restriction lifted successfully',
+      supplier
+    });
+
+  } catch (error: any) {
+    console.error('Lift restriction error:', error);
+    res.status(500).json({ error: 'Failed to lift restriction' });
+  }
+});
+
+// ==================== PAYMENT SUBMISSION WITH FILE UPLOAD ====================
+
+/**
+ * Submit commission payment with proof of payment file upload
+ * Implements task 7: Payment submission
+ * - Accepts file upload for payment proof
+ * - Creates PaymentSubmission record with status 'pending'
+ * - Updates commission status to 'payment_submitted'
+ * - Sends notification to admin
+ */
+router.post("/supplier/payments/submit", authMiddleware, async (req, res) => {
+  try {
+    if (req.user?.role !== 'supplier') {
+      return res.status(403).json({ error: 'Access denied. Supplier role required.' });
+    }
+
+    console.log('=== PAYMENT SUBMISSION ===');
+    console.log('User ID:', req.user.id);
+    console.log('Body:', req.body);
+
+    // Get supplier profile
+    const supplierProfile = await db.select()
+      .from(supplierProfiles)
+      .where(eq(supplierProfiles.userId, req.user.id))
+      .limit(1);
+
+    if (supplierProfile.length === 0) {
+      return res.status(404).json({ error: 'Supplier profile not found' });
+    }
+
+    const supplierId = supplierProfile[0].id;
+    const { commissionIds, paymentMethod, transactionReference, proofOfPayment } = req.body;
+
+    // Validate required fields
+    if (!commissionIds || !Array.isArray(commissionIds) || commissionIds.length === 0) {
+      return res.status(400).json({ error: 'At least one commission must be selected' });
+    }
+
+    if (!paymentMethod) {
+      return res.status(400).json({ error: 'Payment method is required' });
+    }
+
+    if (!proofOfPayment) {
+      return res.status(400).json({ error: 'Payment proof is required' });
+    }
+
+    console.log('Supplier ID:', supplierId);
+    console.log('Commission IDs:', commissionIds);
+    console.log('Payment Method:', paymentMethod);
+
+    // Get selected commissions and validate they are unpaid
+    const selectedCommissions = await db.select()
+      .from(commissions)
+      .where(and(
+        eq(commissions.supplierId, supplierId),
+        inArray(commissions.id, commissionIds),
+        eq(commissions.status, 'unpaid')
+      ));
+
+    if (selectedCommissions.length === 0) {
+      return res.status(400).json({ error: 'No valid unpaid commissions found' });
+    }
+
+    if (selectedCommissions.length !== commissionIds.length) {
+      return res.status(400).json({ 
+        error: `Only ${selectedCommissions.length} of ${commissionIds.length} selected commissions are valid and unpaid` 
+      });
+    }
+
+    // Calculate total amount
+    const totalAmount = selectedCommissions.reduce((sum, comm) => 
+      sum + parseFloat(comm.commissionAmount), 0
+    );
+
+    console.log('Total Amount:', totalAmount);
+    console.log('Selected Commissions:', selectedCommissions.length);
+
+    // Create payment submission record
+    const [paymentSubmission] = await db.insert(paymentSubmissions)
+      .values({
+        supplierId,
+        amount: totalAmount.toString(),
+        commissionIds: JSON.stringify(commissionIds),
+        paymentMethod: paymentMethod || 'bank_transfer',
+        status: 'pending',
+        proofOfPayment,
+        submittedAt: new Date()
+      })
+      .returning();
+
+    console.log('Payment Submission Created:', paymentSubmission.id);
+
+    // Update commission statuses to 'payment_submitted'
+    for (const commission of selectedCommissions) {
+      await db.update(commissions)
+        .set({ 
+          status: 'payment_submitted',
+          paymentSubmittedAt: new Date()
+        })
+        .where(eq(commissions.id, commission.id));
+    }
+
+    console.log('Commission statuses updated to payment_submitted');
+
+    // Send notification to supplier
+    await notificationService.createNotification({
+      userId: req.user.id,
+      type: 'success',
+      title: 'Payment Submitted',
+      message: `Your commission payment of ₹${totalAmount.toFixed(2)} has been submitted for admin verification.`,
+      relatedId: paymentSubmission.id,
+      relatedType: 'payment_submission'
+    });
+
+    console.log('Notification sent to supplier');
+
+    // Send notification to all admins (Task 12 - Requirement 5.5)
+    const admins = await db.select()
+      .from(users)
+      .where(eq(users.role, 'admin'));
+
+    for (const admin of admins) {
+      await notificationService.notifyPaymentSubmitted(
+        admin.id,
+        paymentSubmission.id,
+        supplierProfile[0].businessName || 'Supplier',
+        totalAmount
+      );
+    }
+
+    console.log('Notifications sent to admins');
+    console.log('✅ Payment submission completed successfully');
+
+    res.json({
+      success: true,
+      message: 'Payment submitted successfully for verification',
+      paymentSubmission: {
+        id: paymentSubmission.id,
+        amount: totalAmount,
+        commissionCount: selectedCommissions.length,
+        status: 'pending',
+        submittedAt: paymentSubmission.submittedAt
+      }
+    });
+
+  } catch (error: any) {
+    console.error('❌ Submit payment error:', error);
+    res.status(500).json({ error: 'Failed to submit payment' });
+  }
+});
+
+// ==================== TASK 8: ADMIN PAYMENT VERIFICATION ENDPOINTS ====================
+
+/**
+ * Get pending payment submissions (Task 8)
+ * Returns all payment submissions with status 'pending' for admin verification
+ */
+router.get("/admin/payments/pending", authMiddleware, async (req, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Admin role required.' });
+    }
+
+    const pendingPayments = await db.select({
+      id: paymentSubmissions.id,
+      supplierId: paymentSubmissions.supplierId,
+      supplierName: supplierProfiles.businessName,
+      storeName: supplierProfiles.storeName,
+      supplierEmail: users.email,
+      supplierPhone: supplierProfiles.phone,
+      amount: paymentSubmissions.amount,
+      commissionIds: paymentSubmissions.commissionIds,
+      paymentMethod: paymentSubmissions.paymentMethod,
+      status: paymentSubmissions.status,
+      proofOfPayment: paymentSubmissions.proofOfPayment,
+      submittedAt: paymentSubmissions.submittedAt,
+      createdAt: paymentSubmissions.createdAt
+    })
+    .from(paymentSubmissions)
+    .leftJoin(supplierProfiles, eq(paymentSubmissions.supplierId, supplierProfiles.id))
+    .leftJoin(users, eq(supplierProfiles.userId, users.id))
+    .where(eq(paymentSubmissions.status, 'pending'))
+    .orderBy(desc(paymentSubmissions.submittedAt));
+
+    // Get commission details for each payment
+    const paymentsWithCommissions = await Promise.all(
+      pendingPayments.map(async (payment) => {
+        const commissionIds = JSON.parse(payment.commissionIds as string);
+        
+        const commissionDetails = await db.select({
+          id: commissions.id,
+          orderId: commissions.orderId,
+          orderNumber: orders.orderNumber,
+          orderAmount: commissions.orderAmount,
+          commissionAmount: commissions.commissionAmount,
+          commissionRate: commissions.commissionRate,
+          status: commissions.status,
+          createdAt: commissions.createdAt
+        })
+        .from(commissions)
+        .leftJoin(orders, eq(commissions.orderId, orders.id))
+        .where(inArray(commissions.id, commissionIds));
+
+        return {
+          ...payment,
+          commissions: commissionDetails
+        };
+      })
+    );
+
+    res.json({
+      success: true,
+      payments: paymentsWithCommissions,
+      total: paymentsWithCommissions.length
+    });
+
+  } catch (error: any) {
+    console.error('Get pending payments error:', error);
+    res.status(500).json({ error: 'Failed to fetch pending payments' });
+  }
+});
+
+/**
+ * Verify/Approve payment submission (Task 8)
+ * - Updates payment submission status to 'approved'
+ * - Marks all linked commissions as 'paid'
+ * - Reduces supplier's totalUnpaidCommission
+ * - Removes restriction if total unpaid falls below credit limit
+ * - Sends notification to supplier
+ */
+router.post("/admin/payments/:id/verify", authMiddleware, async (req, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Admin role required.' });
+    }
+
+    const paymentId = req.params.id;
+
+    console.log('=== VERIFY PAYMENT ===');
+    console.log('Payment ID:', paymentId);
+    console.log('Admin ID:', req.user.id);
+
+    // Get payment submission
+    const [payment] = await db.select()
+      .from(paymentSubmissions)
+      .where(eq(paymentSubmissions.id, paymentId))
+      .limit(1);
+
+    if (!payment) {
+      return res.status(404).json({ error: 'Payment submission not found' });
+    }
+
+    if (payment.status !== 'pending') {
+      return res.status(400).json({ error: 'Payment submission is not pending' });
+    }
+
+    console.log('Payment Amount:', payment.amount);
+    console.log('Supplier ID:', payment.supplierId);
+
+    const commissionIds = JSON.parse(payment.commissionIds as string);
+    console.log('Commission IDs:', commissionIds);
+
+    // Update payment submission status
+    await db.update(paymentSubmissions)
+      .set({
+        status: 'approved',
+        verifiedBy: req.user.id,
+        verifiedAt: new Date()
+      })
+      .where(eq(paymentSubmissions.id, paymentId));
+
+    console.log('✅ Payment submission status updated to approved');
+
+    // Mark all linked commissions as paid
+    for (const commissionId of commissionIds) {
+      await db.update(commissions)
+        .set({
+          status: 'paid',
+          paymentDate: new Date(),
+          paymentVerifiedBy: req.user.id,
+          paymentVerifiedAt: new Date()
+        })
+        .where(eq(commissions.id, commissionId));
+    }
+
+    console.log('✅ All commissions marked as paid');
+
+    // Update supplier's totalUnpaidCommission and check restriction
+    // This will recalculate the total and remove restriction if needed
+    const { totalUnpaid, isRestricted } = await updateSupplierUnpaidTotal(payment.supplierId);
+
+    console.log('Updated Total Unpaid:', totalUnpaid);
+    console.log('Is Restricted:', isRestricted);
+
+    // Update supplier's last payment date
+    await db.update(supplierProfiles)
+      .set({
+        lastPaymentDate: new Date()
+      })
+      .where(eq(supplierProfiles.id, payment.supplierId));
+
+    console.log('✅ Supplier last payment date updated');
+
+    // Get supplier user ID for notification (Task 12 - Requirement 6.5)
+    const supplier = await db.select({ userId: supplierProfiles.userId })
+      .from(supplierProfiles)
+      .where(eq(supplierProfiles.id, payment.supplierId))
+      .limit(1);
+
+    if (supplier.length > 0) {
+      await notificationService.notifyPaymentApproved(
+        supplier[0].userId,
+        paymentId,
+        parseFloat(payment.amount)
+      );
+      console.log('✅ Notification sent to supplier');
+    }
+
+    console.log('✅ Payment verification completed successfully');
+
+    res.json({
+      success: true,
+      message: 'Payment verified and approved successfully',
+      totalUnpaid,
+      isRestricted
+    });
+
+  } catch (error: any) {
+    console.error('❌ Verify payment error:', error);
+    res.status(500).json({ error: 'Failed to verify payment' });
+  }
+});
+
+/**
+ * Reject payment submission (Task 8)
+ * - Updates payment submission status to 'rejected'
+ * - Resets commission statuses back to 'unpaid'
+ * - Stores rejection reason
+ * - Sends notification to supplier with reason
+ */
+router.post("/admin/payments/:id/reject", authMiddleware, async (req, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Admin role required.' });
+    }
+
+    const paymentId = req.params.id;
+    const { reason } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({ error: 'Rejection reason is required' });
+    }
+
+    console.log('=== REJECT PAYMENT ===');
+    console.log('Payment ID:', paymentId);
+    console.log('Admin ID:', req.user.id);
+    console.log('Reason:', reason);
+
+    // Get payment submission
+    const [payment] = await db.select()
+      .from(paymentSubmissions)
+      .where(eq(paymentSubmissions.id, paymentId))
+      .limit(1);
+
+    if (!payment) {
+      return res.status(404).json({ error: 'Payment submission not found' });
+    }
+
+    if (payment.status !== 'pending') {
+      return res.status(400).json({ error: 'Payment submission is not pending' });
+    }
+
+    console.log('Payment Amount:', payment.amount);
+    console.log('Supplier ID:', payment.supplierId);
+
+    const commissionIds = JSON.parse(payment.commissionIds as string);
+    console.log('Commission IDs:', commissionIds);
+
+    // Update payment submission status
+    await db.update(paymentSubmissions)
+      .set({
+        status: 'rejected',
+        rejectionReason: reason,
+        verifiedBy: req.user.id,
+        verifiedAt: new Date()
+      })
+      .where(eq(paymentSubmissions.id, paymentId));
+
+    console.log('✅ Payment submission status updated to rejected');
+
+    // Reset commission statuses back to unpaid
+    for (const commissionId of commissionIds) {
+      await db.update(commissions)
+        .set({
+          status: 'unpaid',
+          paymentSubmittedAt: null
+        })
+        .where(eq(commissions.id, commissionId));
+    }
+
+    console.log('✅ All commissions reset to unpaid');
+
+    // Get supplier user ID for notification (Task 12 - Requirement 7.3)
+    const supplier = await db.select({ userId: supplierProfiles.userId })
+      .from(supplierProfiles)
+      .where(eq(supplierProfiles.id, payment.supplierId))
+      .limit(1);
+
+    if (supplier.length > 0) {
+      await notificationService.notifyPaymentRejected(
+        supplier[0].userId,
+        paymentId,
+        parseFloat(payment.amount),
+        reason
+      );
+      console.log('✅ Notification sent to supplier');
+    }
+
+    console.log('✅ Payment rejection completed successfully');
+
+    res.json({
+      success: true,
+      message: 'Payment rejected successfully'
+    });
+
+  } catch (error: any) {
+    console.error('❌ Reject payment error:', error);
+    res.status(500).json({ error: 'Failed to reject payment' });
+  }
+});
+
+// ==================== TASK 10: MANUAL PAYMENT REMINDER ====================
+
+/**
+ * Send manual payment reminder to supplier (Admin)
+ * Implements Requirement 10.5: Manual payment reminders
+ */
+router.post("/admin/suppliers/:id/payment-reminder", authMiddleware, async (req, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Admin role required.' });
+    }
+
+    const supplierId = req.params.id;
+
+    console.log('=== MANUAL PAYMENT REMINDER ===');
+    console.log('Supplier ID:', supplierId);
+    console.log('Admin ID:', req.user.id);
+
+    // Import scheduler
+    const { commissionScheduler } = await import('./commissionScheduler');
+
+    // Send manual reminder
+    await commissionScheduler.sendManualReminder(supplierId, req.user.id);
+
+    res.json({
+      success: true,
+      message: 'Payment reminder sent successfully'
+    });
+
+  } catch (error: any) {
+    console.error('❌ Send payment reminder error:', error);
+    res.status(500).json({ error: error.message || 'Failed to send payment reminder' });
   }
 });
 

@@ -72,8 +72,11 @@ import AdminCategories from "@/pages/admin/AdminCategories";
 import AdminCustomers from "@/pages/admin/AdminCustomers";
 import AdminOrders from "@/pages/admin/AdminOrders";
 import AdminCommissions from "@/pages/admin/AdminCommissions";
+import AdminCommissionTiers from "@/pages/admin/AdminCommissionTiers";
+import AdminCommissionSettings from "@/pages/admin/AdminCommissionSettings";
 import AdminPayouts from "@/pages/admin/AdminPayouts";
 import AdminCommissionPayments from "@/pages/admin/AdminCommissionPayments";
+import AdminPaymentVerification from "@/pages/admin/AdminPaymentVerification";
 import AdminOrderManagement from "@/pages/admin/AdminOrderManagement";
 import BuyerOrderManagement from "@/pages/buyer/BuyerOrderManagement";
 import OrderDetail from "@/pages/buyer/OrderDetail";
@@ -88,7 +91,6 @@ import AdminActivityLogPage from "@/pages/admin/AdminActivityLogPage";
 import AdminLogin from "@/pages/admin/AdminLogin";
 import AdminSuppliers from "@/pages/admin/AdminSuppliers";
 import AdminProductApproval from "@/pages/admin/AdminProductApproval";
-import AdminPaymentVerification from "@/pages/admin/AdminPaymentVerification";
 import AdminCreditManagement from "@/pages/admin/AdminCreditManagement";
 import FloatingActionButtons from "@/components/FloatingActionButtons";
 import NotificationPage from "@/pages/buyer/NotificationPage";
@@ -117,6 +119,7 @@ import SupplierAnalytics from "@/pages/supplier/SupplierAnalytics";
 import SupplierStoreManagement from "@/pages/supplier/SupplierStore";
 import SupplierProfile from "@/pages/supplier/SupplierProfile";
 import SupplierPayments from "@/pages/supplier/SupplierPayments";
+import SupplierReviews from "@/pages/supplier/SupplierReviews";
 import NotFound from "@/pages/not-found";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 
@@ -205,6 +208,18 @@ function AdminRouter() {
         </ProtectedRoute>
       </Route>
 
+      <Route path="/admin/commission-tiers">
+        <ProtectedRoute requiredRole="admin">
+          <AdminCommissionTiers />
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/admin/commission-settings">
+        <ProtectedRoute requiredRole="admin">
+          <AdminCommissionSettings />
+        </ProtectedRoute>
+      </Route>
+
       <Route path="/admin/payouts">
         <ProtectedRoute requiredRole="admin">
           <AdminPayouts />
@@ -216,6 +231,13 @@ function AdminRouter() {
           <AdminCommissionPayments />
         </ProtectedRoute>
       </Route>
+
+      <Route path="/admin/payment-verification">
+        <ProtectedRoute requiredRole="admin">
+          <AdminPaymentVerification />
+        </ProtectedRoute>
+      </Route>
+
       <Route path="/admin/customers">
         <ProtectedRoute requiredRole="admin">
           <AdminCustomers />
@@ -361,6 +383,11 @@ function SupplierRouter() {
       <Route path="/supplier/payments">
         <ProtectedRoute requiredRole="supplier">
           <SupplierPayments />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/supplier/reviews">
+        <ProtectedRoute requiredRole="supplier">
+          <SupplierReviews />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />

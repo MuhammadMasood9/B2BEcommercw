@@ -68,12 +68,12 @@ const supplierMenuItems = [
     href: "/supplier/rfqs",
     badgeKey: "newRfqs",
   },
-  {
-    title: "Auctions",
-    icon: Gavel,
-    href: "/supplier/auctions",
-    badgeKey: null,
-  },
+  // {
+  //   title: "Auctions",
+  //   icon: Gavel,
+  //   href: "/supplier/auctions",
+  //   badgeKey: null,
+  // },
   {
     title: "Negotiations",
     icon: Handshake,
@@ -156,7 +156,7 @@ export function SupplierSidebar() {
   // Get badge count for a menu item
   const getBadgeCount = (badgeKey: string | null): number | null => {
     if (!badgeKey || !stats) return null;
-    
+
     // Map badge keys to stats data
     const count = stats[badgeKey as keyof typeof stats];
     return typeof count === 'number' && count > 0 ? count : null;
@@ -198,7 +198,7 @@ export function SupplierSidebar() {
                       className={cn(
                         "w-full justify-start gap-3 px-3 py-2.5",
                         isActive(item.href) &&
-                          "bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary font-semibold"
+                        "bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary font-semibold"
                       )}
                     >
                       <Link href={item.href}>
@@ -234,7 +234,7 @@ export function SupplierSidebar() {
                     className={cn(
                       "w-full justify-start gap-3 px-3 py-2.5",
                       isActive(item.href) &&
-                        "bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary font-semibold"
+                      "bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary font-semibold"
                     )}
                   >
                     <Link href={item.href}>
@@ -261,7 +261,7 @@ export function SupplierSidebar() {
                     className={cn(
                       "w-full justify-start gap-3 px-3 py-2.5",
                       isActive(item.href) &&
-                        "bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary font-semibold"
+                      "bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary font-semibold"
                     )}
                   >
                     <Link href={item.href}>
@@ -286,7 +286,7 @@ export function SupplierSidebar() {
                   className={cn(
                     "w-full justify-start gap-3 px-3 py-2.5",
                     isActive("/supplier/settings") &&
-                      "bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary font-semibold"
+                    "bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary font-semibold"
                   )}
                 >
                   <Link href="/supplier/settings">
